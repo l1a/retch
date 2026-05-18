@@ -1,8 +1,8 @@
-# retch
+# retch-cli
 
 A minimal system information fetcher written in Rust.
 
-> **Note**: This crate name is currently reserved for future development.
+> **Note**: This is currently a placeholder crate.
 
 ## Status
 

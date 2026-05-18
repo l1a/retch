@@ -1,9 +1,9 @@
 [package]
-name = "retch"
+name = "retch-cli"
 version = "0.1.0"
 edition = "2021"
 authors = ["Ken Tobias"]
-description = "A minimal system information fetcher (name reserved)"
+description = "A minimal system information fetcher"
 license = "GPL-3.0"
 repository = "https://github.com/l1a/retch"
 readme = "README.md"
