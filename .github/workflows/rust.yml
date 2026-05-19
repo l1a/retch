@@ -71,6 +71,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
 
+    permissions:
+      contents: write   # Required to create GitHub Releases
+
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
@@ -88,7 +91,7 @@ jobs:
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
         with:
           tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          name: retch ${{ github.ref_name }}
           draft: false
           prerelease: false
           files: |
