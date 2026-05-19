@@ -69,8 +69,8 @@ impl Theme {
             label_color: Color::Blue,
             value_color: Color::Black,
             accent_color: Color::Green,
-            title_color: Color::Yellow,
-            separator_color: Color::BrightBlack,
+            title_color: Color::BrightYellow,
+            separator_color: Color::Black,
         }
     }
 
@@ -200,6 +200,10 @@ impl Theme {
 
     pub fn color_accent(&self, text: &str) -> ColoredString {
         text.color(self.accent_color)
+    }
+
+    pub fn color_separator(&self, text: &str) -> ColoredString {
+        text.color(self.separator_color)
     }
 }
 

@@ -98,8 +98,9 @@ impl SystemInfo {
         let print_line = |label: &str, value: &str| {
             if should_show(label) {
                 println!(
-                    "{:>width$}: {}",
+                    "{:>width$}{} {}",
                     theme.color_label(label),
+                    theme.color_separator(":"),
                     theme.color_value(value),
                     width = label_width
                 );
