@@ -33,23 +33,27 @@ jobs:
       matrix:
         container: 
           - ubuntu:latest
-          - fedora:40
+          - fedora:latest
 
     container: ${{ matrix.container }}
 
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
-    - name: Install dependencies (Ubuntu)
+    - name: Install Rust toolchain (Ubuntu)
       if: matrix.container == 'ubuntu:latest'
       run: |
         apt-get update
-        apt-get install -y pandoc
+        apt-get install -y curl build-essential pandoc
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-    - name: Install dependencies (Fedora)
-      if: matrix.container == 'fedora:40'
+    - name: Install Rust toolchain (Fedora)
+      if: matrix.container == 'fedora:latest'
       run: |
-        dnf install -y pandoc
+        dnf install -y curl gcc make pandoc
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
     - name: Build (release)
       run: cargo build --release --verbose
