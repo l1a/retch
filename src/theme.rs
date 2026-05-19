@@ -153,6 +153,7 @@ impl Theme {
             "dark" => Self::dark(),
             "light" => Self::light(),
             "custom" => Self::default(),
+            "auto" => Self::detect_system_theme(),
             "catppuccin-latte" | "catppuccin_latte" | "latte" => Self::catppuccin_latte(),
             "catppuccin-frappe" | "catppuccin_frappe" | "frappe" => Self::catppuccin_frappe(),
             "catppuccin-macchiato" | "catppuccin_macchiato" | "macchiato" => Self::catppuccin_macchiato(),
@@ -161,6 +162,29 @@ impl Theme {
             "solarized-dark" | "solarized_dark" => Self::solarized_dark(),
             _ => Self::default(),
         }
+    }
+
+    /// Detect system dark/light preference (basic implementation)
+    pub fn detect_system_theme() -> Self {
+        // Try to read GTK settings
+        if let Some(config_dir) = dirs::config_dir() {
+            let gtk_settings = config_dir.join("gtk-3.0").join("settings.ini");
+            if gtk_settings.exists() {
+                if let Ok(contents) = std::fs::read_to_string(&gtk_settings) {
+                    for line in contents.lines() {
+                        if line.to_lowercase().contains("prefer-dark-theme") {
+                            if line.to_lowercase().contains("true") {
+                                return Self::dark();
+                            } else {
+                                return Self::light();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // Default fallback
+        Self::dark()
     }
 
     /// Build a theme from a base theme + custom color overrides (from config)
