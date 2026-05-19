@@ -134,3 +134,74 @@ I should be able to pick up from here using this file + the codebase.
 ---
 
 *End of update*
+
+---
+
+## Session Update - Late May 2025 (Major Theming + Polish Phase)
+
+### Progress Made
+
+- **Theming System Overhaul (Major Work)**
+  - Expanded `Theme` struct with `title_color` and `separator_color`
+  - Added `parse_color()` with support for named colors + hex values (e.g. `"#89b4fa"`)
+  - Added full support for custom themes via `[custom_theme]` section in config
+  - Implemented `Theme::with_custom_overrides()` and `detect_system_theme()`
+  - Added `theme = "auto"` to automatically follow system dark/light preference (via GTK settings)
+  - Made `auto` the default behavior when no theme is specified
+  - Added many new built-in themes:
+    - Catppuccin Latte, Frappe, Macchiato, Mocha
+    - Solarized Light and Dark
+  - Renamed the old "default" theme to `"neutral"` (kept backward compatibility)
+  - Added `--list-themes` command
+  - Added `--print-theme-template` to output a ready-to-use custom theme example
+
+- **CLI Improvements**
+  - Added `--short` and `--long` output modes with proper field filtering
+  - Short mode: OS, Kernel, Host, CPU, GPU, Memory, Disk
+  - Default mode: OS, Kernel, Host, CPU, GPU, Memory, Swap, Load, Disk, Net, Uptime
+  - Long mode: Everything
+  - `--ascii-only` flag now fully functional
+
+- **Documentation & Polish**
+  - Major README overhaul with better structure, features, installation, usage, and examples
+  - Added fun note: *"This project was 100% vibe coded using Grok. Real programmers are welcome."*
+  - Man page (`docs/retch.1.md`) significantly expanded with theming documentation
+  - Default config template updated with theme examples and output mode comments
+
+- **Release & CI Automation**
+  - Added `full-test` job that runs on version tags (`v*`)
+  - Full test runs on both **Ubuntu** and **Fedora** (via containers)
+  - Includes: Release build, `--all-features` tests, Clippy, Format check, Man page generation
+  - Added `release` job that automatically creates a GitHub Release with:
+    - Release binary
+    - Man page
+    - Source tarball
+    - Auto-generated release notes
+
+- **Testing**
+  - Added unit tests for `Theme` module (neutral, dark, light, etc.)
+  - Added unit tests for logo selection logic
+
+- **Developer Experience**
+  - Improved Justfile with man page generation and `install-man` support
+  - Better default config examples
+
+### Current State
+
+- Theming system is now quite mature and flexible
+- Release process is largely automated
+- Documentation is in good shape (README + Man page)
+- Core CLI features are solid
+- Project is in a releasable state
+
+### Next Steps (Updated Priority)
+
+1. **More Distros** — Add logos and support for additional distributions (Pop!_OS, Manjaro, EndeavourOS, openSUSE, etc.)
+2. **Release Polish** — Multi-platform binaries, better artifact naming, checksums, version handling
+3. **Shell Completions** — Add Bash/Zsh/Fish completions
+4. **Sixel Support** (optional) — Alternative graphical output method
+5. **Expand Testing** — More coverage, especially around config merging and theming
+
+---
+
+*End of update*
