@@ -1,12 +1,13 @@
-# retch-cli
+# retch
 
-A minimal system information fetcher written in Rust.
+A fast, feature-rich system information fetcher written in Rust.
 
-> **Note**: This is currently a placeholder crate.
+> **Note**: The crate on crates.io is published as `retch-cli` because `retch` was taken.  
+> Users interact with it as `retch` (binary name and config directory).
 
 ## Status
 
-This repository currently only contains a placeholder to reserve the `retch` name on crates.io.
+Active development is in progress.
 
 Active development will begin soon.
 

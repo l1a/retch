@@ -1,0 +1,147 @@
+use crate::cli::Cli;
+use crate::config::Config;
+use crate::fetch::SystemInfo;
+use crate::logo;
+use crate::theme::Theme;
+
+impl SystemInfo {
+    pub fn display(&self, cli: &Cli, _config: &Config) -> anyhow::Result<()> {
+        let theme_name = _config.theme.as_deref().or(cli.theme.as_deref());
+        let theme = match theme_name {
+            Some(name) => Theme::from_name(name),
+            None => Theme::default(),
+        };
+
+        let show_logo = _config.show_logo.unwrap_or(true) && !cli.no_logo;
+        if show_logo {
+            let distro_hint = if self.os.to_lowercase().contains("fedora") {
+                Some("fedora")
+            } else {
+                None
+            };
+            let logo = logo::get_ascii_logo(distro_hint);
+            for line in &logo {
+                println!("{}", theme.color_accent(line));
+            }
+            println!(); // spacing
+        }
+
+        // Determine which fields to show
+        let allowed_fields: Option<Vec<String>> = _config.fields.as_ref().map(|f| {
+            f.iter().map(|s| s.to_lowercase()).collect()
+        });
+
+        let should_show = |label: &str| -> bool {
+            match &allowed_fields {
+                Some(fields) => fields.contains(&label.to_lowercase()),
+                None => true,
+            }
+        };
+
+        // Helper for right-aligned labels
+        let label_width = 10;
+        let print_line = |label: &str, value: &str| {
+            if should_show(label) {
+                println!(
+                    "{:>width$}: {}",
+                    theme.color_label(label),
+                    theme.color_value(value),
+                    width = label_width
+                );
+            }
+        };
+
+        print_line("OS", &self.os);
+        if let Some(kernel) = &self.kernel {
+            print_line("Kernel", kernel);
+        }
+        if let Some(host) = &self.hostname {
+            print_line("Host", host);
+        }
+        print_line("Arch", &self.arch);
+        print_line("CPU", &format!("{} ({} cores)", self.cpu, self.cpu_cores));
+        print_line("Memory", &self.memory);
+        print_line("Swap", &self.swap);
+        print_line("Uptime", &self.uptime);
+        print_line("Procs", &self.processes.to_string());
+        if let Some(load) = &self.load_avg {
+            print_line("Load", load);
+        }
+
+        if should_show("Disk") {
+            for disk in &self.disks {
+                print_line("Disk", disk);
+            }
+        }
+
+        if should_show("Temp") {
+            for temp in &self.temps {
+                print_line("Temp", temp);
+            }
+        }
+
+        if should_show("Net") {
+            for net in &self.networks {
+                print_line("Net", net);
+            }
+        }
+
+        // Boot time: ISO datetime + human-readable time since boot
+        let uptime_str = format_uptime(&self.uptime);
+        let boot_display = format!("{} ({} ago)", self.boot_time, uptime_str);
+        print_line("Booted", &boot_display);
+
+        if let Some(bat) = &self.battery {
+            print_line("Battery", bat);
+        }
+
+        if let Some(shell) = &self.shell {
+            print_line("Shell", shell);
+        }
+        if let Some(term) = &self.terminal {
+            print_line("Terminal", term);
+        }
+        if let Some(de) = &self.desktop {
+            print_line("Desktop", de);
+        }
+        if let Some(freq) = &self.cpu_freq {
+            print_line("CPU Freq", freq);
+        }
+        print_line("Users", &self.users.to_string());
+
+        Ok(())
+    }
+}
+
+fn format_uptime(uptime: &str) -> String {
+    // Parse the uptime string (e.g. "45224s")
+    let seconds: u64 = uptime
+        .trim_end_matches('s')
+        .parse()
+        .unwrap_or(0);
+
+    let years = seconds / (365 * 24 * 3600);
+    let days = (seconds % (365 * 24 * 3600)) / (24 * 3600);
+    let hours = (seconds % (24 * 3600)) / 3600;
+    let minutes = (seconds % 3600) / 60;
+    let secs = seconds % 60;
+
+    let mut parts = Vec::new();
+    if years > 0 {
+        parts.push(format!("{}y", years));
+    }
+    if days > 0 {
+        parts.push(format!("{}d", days));
+    }
+    if hours > 0 {
+        parts.push(format!("{}h", hours));
+    }
+    if minutes > 0 {
+        parts.push(format!("{}m", minutes));
+    }
+    if secs > 0 || parts.is_empty() {
+        parts.push(format!("{}s", secs));
+    }
+
+    parts.join(" ")
+}

@@ -1,7 +1,7 @@
-# retch-cli Development Notes
+# retch Development Notes
 
 ## Project Overview
-- **Name**: retch-cli
+- **Name**: retch (published as `retch-cli` on crates.io)
 - **Goal**: A fast, feature-rich system information fetcher (Fastfetch-like) written in Rust
 - **Key Technologies**: sysinfo, clap, serde, toml, colored/owo-colors
 - **License**: GPLv3
@@ -16,57 +16,69 @@
 - `colored` + `owo-colors` — Terminal coloring
 - `dirs` — Config directory handling
 - `anyhow` — Error handling
+- `chrono = "0.4"` — Date/time formatting for boot time
 - Optional graphics support: `image` + `base64` (behind `graphics` feature)
 
 ### Module Structure
-- `main.rs` — Entry point
+- `main.rs` — Entry point + CLI special commands
 - `lib.rs` — Module declarations
-- `cli.rs` — CLI definition with `OutputMode` (Short/Long/Custom)
-- `config.rs` — Config struct + loading skeleton
-- `fetch.rs` — SystemInfo struct using sysinfo
-- `display.rs` — Basic display implementation
-- `logo.rs` — Placeholder for ASCII + graphical logo support
+- `cli.rs` — Full CLI with many options
+- `config.rs` — Config loading + CLI merge logic
+- `fetch.rs` — Rich SystemInfo struct
+- `display.rs` — Formatted + field-filtered display
+- `logo.rs` — ASCII logo support
+- `theme.rs` — Theming system
 
 ### Current Features Implemented
-- Basic CLI with clap (`--mode`, `--theme`, `--config`, `--no-logo`, `--ascii-only`)
-- System information collection:
-  - OS name/version
-  - Kernel version
-  - Hostname
-  - CPU model
-  - Memory usage
-  - Uptime
-- Very basic display output
-- Placeholder theming and logo system
-- Compiles cleanly
+- Rich system information:
+  - OS, Kernel, Hostname, Arch
+  - CPU (model + cores + frequency)
+  - Memory + Swap
+  - Uptime, Processes, Load Average
+  - Disks, Temperatures, Networks
+  - Boot time (ISO + human-readable duration)
+  - Battery, Shell, Terminal, Desktop Environment
+  - Users count
+- Theming system (`default`, `dark`, `light`) with `--list-themes`
+- ASCII logo support with basic distro detection
+- Full config support (`~/.config/retch/config.toml`)
+- CLI options: `--fields`, `--generate-config`, `--write-config`, `--merge-config`
+- Field selection (config + CLI)
+- Smart config merging
+- Clean right-aligned formatted display
+- Boot time formatted with `chrono`
 
 ### Design Goals
 - Support **ASCII** and **graphical logos** (Kitty / iTerm inline image protocol)
 - Theming with several default themes
-- Config file support (`~/.config/retch-cli/config.toml`)
+- Config file support (`~/.config/retch/config.toml`)
 - Output modes: short, long, custom (via config)
 - Highly readable output
 - As feature-rich as Fastfetch
 
 ## Next Steps (Recommended Order)
 
-1. **Expand SystemInfo** — Add more fields (GPU, Disks, Battery, Packages, Desktop Environment, Window Manager, Shell, Terminal, etc.)
-2. **Implement theming system** — Create a `theme.rs` module with structs for colors and layout
-3. **Logo system** — ASCII logos + Kitty/iTerm graphics support
-4. **Config loading** — Full TOML config with field selection and theme choice
-5. **Improve display** — Better formatting, alignment, colors
-6. **Add more CLI options** — e.g. `--list-themes`, `--generate-config`
+1. **Graphical logo support** — Kitty / iTerm inline image protocol
+2. **More system information** — GPU, Packages, more detailed hardware info
+3. **Enhanced theming** — Custom color overrides, more themes
+4. **Documentation & polish** — Improve README, examples, error messages
+5. **Release preparation** — Versioning, packaging, crates.io updates
 
 ## Important Notes
 
 - We chose `sysinfo` over `libmacchina` for broader data access (especially Swap, Network, Temperatures).
-- The original `retch` name was taken on crates.io, so we switched to `retch-cli`.
-- A placeholder `retch-cli` v0.1.0 has already been published.
+- The original `retch` name was taken on crates.io, so the crate is published as `retch-cli`.
+- Users interact with the tool as `retch` (binary + config directory `~/.config/retch/`).
 - The project is in early development — currently a working skeleton.
 
 ## How to Resume
 
 Just say something like:
-> "Continue working on retch-cli"
+> "Continue working on retch"
+
+Current focus areas:
+- Graphical logo support (next major feature)
+- Additional system information fields
+- Polish and release preparation
 
 I should be able to pick up from here using this file + the codebase.
