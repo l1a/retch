@@ -65,3 +65,34 @@ jobs:
 
     - name: Generate man page
       run: just man || echo "Man page generation skipped (just may not be installed)"
+
+  release:
+    needs: full-test
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          cp target/release/retch release/
+          cp docs/retch.1 release/ || true
+          tar -czvf release/retch-source.tar.gz --exclude='.git' .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            release/retch
+            release/retch.1
+            release/retch-source.tar.gz
+          generate_release_notes: true
