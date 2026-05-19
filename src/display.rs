@@ -74,10 +74,23 @@ impl SystemInfo {
         }
 
         // Determine which fields to show
-        let allowed_fields: Option<Vec<String>> = _config
-            .fields
-            .as_ref()
-            .map(|f| f.iter().map(|s| s.to_lowercase()).collect());
+        let allowed_fields: Option<Vec<String>> = if cli.long {
+            None // show everything
+        } else if cli.short {
+            Some(vec![
+                "os".to_string(), "kernel".to_string(), "host".to_string(),
+                "cpu".to_string(), "gpu".to_string(), "memory".to_string(), "disk".to_string(),
+            ])
+        } else if let Some(fields) = &_config.fields {
+            Some(fields.iter().map(|s| s.to_lowercase()).collect())
+        } else {
+            // Default set
+            Some(vec![
+                "os".to_string(), "kernel".to_string(), "host".to_string(),
+                "cpu".to_string(), "gpu".to_string(), "memory".to_string(), "swap".to_string(),
+                "load".to_string(), "disk".to_string(), "net".to_string(), "uptime".to_string(),
+            ])
+        };
 
         let should_show = |label: &str| -> bool {
             match &allowed_fields {

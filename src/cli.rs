@@ -27,6 +27,14 @@ pub struct Cli {
     #[arg(long)]
     pub ascii_only: bool,
 
+    /// Short output mode (OS, Kernel, Host, CPU, GPU, Memory, Disk)
+    #[arg(long)]
+    pub short: bool,
+
+    /// Long output mode (show all fields)
+    #[arg(long)]
+    pub long: bool,
+
     /// List available themes
     #[arg(long)]
     pub list_themes: bool,

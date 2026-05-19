@@ -119,7 +119,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn default_config_content() -> String {
-    r#"# retch configuration file
+    r##"# retch configuration file
 # 
 # This file uses TOML syntax.
 # All settings below are commented out by default.
@@ -147,12 +147,12 @@ fn default_config_content() -> String {
 
 # List of fields to display (leave empty or omit to show all)
 # fields = [
-#     "os", "kernel", "host", "arch", "cpu", "cpu freq", "gpu",
+#     "os", "kernel", "host", "arch", "cpu", "cpu-freq", "gpu",
 #     "memory", "swap", "uptime", "procs", "load",
 #     "disk", "temp", "net", "battery",
 #     "shell", "terminal", "desktop", "users", "packages"
 # ]
-"#
+"##
     .to_string()
 }
 
