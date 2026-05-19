@@ -131,6 +131,7 @@ fn default_config_content() -> String {
 # theme = "auto"
 
 # Custom theme color overrides (used when theme = "custom" or when partial overrides are provided)
+# Colors can be named (e.g. "bright_cyan") or hex (e.g. "#89b4fa")
 # [custom_theme]
 # label_color = "bright_cyan"
 # value_color = "white"

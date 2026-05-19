@@ -68,11 +68,15 @@ The following themes are available:
 - **dark** and **light**: Basic dark and light themes.
 - Popular community themes: **catppuccin-latte**, **catppuccin-frappe**, **catppuccin-macchiato**, **catppuccin-mocha**, **solarized-light**, **solarized-dark**.
 
-You can also define custom colors using the `[custom_theme]` section in your configuration file. Example:
+You can also define custom colors using the `[custom_theme]` section in your configuration file.
+
+Colors can be specified using names (e.g. `"bright_cyan"`) or hex values (e.g. `"#89b4fa"`).
+
+Example:
 
     [custom_theme]
     label_color = "bright_cyan"
-    value_color = "white"
+    value_color = "#cdd6f4"
     accent_color = "bright_green"
 
 # LOGOS
