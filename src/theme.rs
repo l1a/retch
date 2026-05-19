@@ -74,11 +74,85 @@ impl Theme {
         }
     }
 
+    // === Popular Community Themes ===
+
+    pub fn catppuccin_latte() -> Self {
+        Self {
+            name: "catppuccin-latte".to_string(),
+            label_color: Color::Blue,
+            value_color: Color::Black,
+            accent_color: Color::Green,
+            title_color: Color::Yellow,
+            separator_color: Color::BrightBlack,
+        }
+    }
+
+    pub fn catppuccin_frappe() -> Self {
+        Self {
+            name: "catppuccin-frappe".to_string(),
+            label_color: Color::BrightBlue,
+            value_color: Color::White,
+            accent_color: Color::BrightGreen,
+            title_color: Color::BrightYellow,
+            separator_color: Color::BrightBlack,
+        }
+    }
+
+    pub fn catppuccin_macchiato() -> Self {
+        Self {
+            name: "catppuccin-macchiato".to_string(),
+            label_color: Color::BrightBlue,
+            value_color: Color::BrightWhite,
+            accent_color: Color::BrightGreen,
+            title_color: Color::BrightYellow,
+            separator_color: Color::BrightBlack,
+        }
+    }
+
+    pub fn catppuccin_mocha() -> Self {
+        Self {
+            name: "catppuccin-mocha".to_string(),
+            label_color: Color::BrightBlue,
+            value_color: Color::BrightWhite,
+            accent_color: Color::BrightGreen,
+            title_color: Color::BrightYellow,
+            separator_color: Color::BrightBlack,
+        }
+    }
+
+    pub fn solarized_light() -> Self {
+        Self {
+            name: "solarized-light".to_string(),
+            label_color: Color::Blue,
+            value_color: Color::Black,
+            accent_color: Color::Green,
+            title_color: Color::Yellow,
+            separator_color: Color::BrightBlack,
+        }
+    }
+
+    pub fn solarized_dark() -> Self {
+        Self {
+            name: "solarized-dark".to_string(),
+            label_color: Color::BrightBlue,
+            value_color: Color::BrightWhite,
+            accent_color: Color::BrightGreen,
+            title_color: Color::BrightYellow,
+            separator_color: Color::BrightBlack,
+        }
+    }
+
     pub fn from_name(name: &str) -> Self {
-        match name.to_lowercase().as_str() {
+        match name.to_lowercase().replace('_', "-").as_str() {
             "dark" => Self::dark(),
             "light" => Self::light(),
-            "custom" => Self::default(), // Will be overridden by custom_theme
+            "custom" => Self::default(),
+            "catppuccin-latte" | "catppuccin_latte" | "latte" => Self::catppuccin_latte(),
+            "catppuccin-frappe" | "catppuccin_frappe" | "frappe" => Self::catppuccin_frappe(),
+            "catppuccin-macchiato" | "catppuccin_macchiato" | "macchiato" => Self::catppuccin_macchiato(),
+            "catppuccin-mocha" | "catppuccin_mocha" | "mocha" => Self::catppuccin_mocha(),
+            "solarized-light" | "solarized_light" => Self::solarized_light(),
+            "solarized-dark" | "solarized_dark" => Self::solarized_dark(),
             _ => Self::default(),
         }
     }
