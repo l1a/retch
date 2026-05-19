@@ -76,6 +76,7 @@ impl Theme {
 
     // === Popular Community Themes ===
 
+    // Catppuccin Latte (light)
     pub fn catppuccin_latte() -> Self {
         Self {
             name: "catppuccin-latte".to_string(),
@@ -87,6 +88,7 @@ impl Theme {
         }
     }
 
+    // Catppuccin Frappe
     pub fn catppuccin_frappe() -> Self {
         Self {
             name: "catppuccin-frappe".to_string(),
@@ -98,6 +100,7 @@ impl Theme {
         }
     }
 
+    // Catppuccin Macchiato
     pub fn catppuccin_macchiato() -> Self {
         Self {
             name: "catppuccin-macchiato".to_string(),
@@ -109,34 +112,37 @@ impl Theme {
         }
     }
 
+    // Catppuccin Mocha (most popular dark variant)
     pub fn catppuccin_mocha() -> Self {
         Self {
             name: "catppuccin-mocha".to_string(),
             label_color: Color::BrightBlue,
             value_color: Color::BrightWhite,
-            accent_color: Color::BrightGreen,
+            accent_color: Color::BrightMagenta, // Catppuccin uses pink/magenta accents
             title_color: Color::BrightYellow,
             separator_color: Color::BrightBlack,
         }
     }
 
+    // Solarized Light
     pub fn solarized_light() -> Self {
         Self {
             name: "solarized-light".to_string(),
             label_color: Color::Blue,
             value_color: Color::Black,
-            accent_color: Color::Green,
-            title_color: Color::Yellow,
+            accent_color: Color::Yellow,
+            title_color: Color::BrightYellow,
             separator_color: Color::BrightBlack,
         }
     }
 
+    // Solarized Dark
     pub fn solarized_dark() -> Self {
         Self {
             name: "solarized-dark".to_string(),
-            label_color: Color::BrightBlue,
+            label_color: Color::Blue,           // Solarized signature blue
             value_color: Color::BrightWhite,
-            accent_color: Color::BrightGreen,
+            accent_color: Color::Yellow,        // Solarized yellow accent
             title_color: Color::BrightYellow,
             separator_color: Color::BrightBlack,
         }
