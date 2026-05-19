@@ -25,6 +25,22 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
+    if cli.print_theme_template {
+        println!("# Example custom theme configuration");
+        println!("# Add this to your config.toml (or use with theme = \"custom\")");
+        println!();
+        println!("[custom_theme]");
+        println!("# label_color = \"bright_cyan\"");
+        println!("# value_color = \"white\"");
+        println!("# accent_color = \"bright_green\"");
+        println!("# title_color = \"bright_yellow\"");
+        println!("# separator_color = \"bright_black\"");
+        println!();
+        println!("# Available color names: black, red, green, yellow, blue, magenta, cyan, white,");
+        println!("# bright_black, bright_red, bright_green, bright_yellow, bright_blue, etc.");
+        return Ok(());
+    }
+
     if cli.list_distros {
         println!("Known distros:");
         println!("  arch");

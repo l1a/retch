@@ -31,6 +31,10 @@ pub struct Cli {
     #[arg(long)]
     pub list_themes: bool,
 
+    /// Print an example custom theme template
+    #[arg(long)]
+    pub print_theme_template: bool,
+
     /// List known distros
     #[arg(long)]
     pub list_distros: bool,
