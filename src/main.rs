@@ -8,10 +8,18 @@ fn main() -> anyhow::Result<()> {
 
     // Handle special CLI commands
     if cli.list_themes {
-        println!("Available themes:");
+        println!("Built-in themes:");
         println!("  default");
         println!("  dark");
         println!("  light");
+        println!("  catppuccin-latte");
+        println!("  catppuccin-frappe");
+        println!("  catppuccin-macchiato");
+        println!("  catppuccin-mocha");
+        println!("  solarized-light");
+        println!("  solarized-dark");
+        println!();
+        println!("You can also use 'custom' + [custom_theme] in config.toml for fully custom colors.");
         return Ok(());
     }
 
