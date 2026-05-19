@@ -43,6 +43,12 @@ retch - a fast, feature-rich system information fetcher
 **--write-config** [*PATH*]
 :   Write the default configuration to a file (uses `~/.config/retch/config.toml` if no path is given).
 
+**--short**
+:   Short output mode. Shows: OS, Kernel, Host, CPU, GPU, Memory, Disk.
+
+**--long**
+:   Long output mode. Shows all available fields.
+
 # CONFIGURATION
 
 retch reads its configuration from:
