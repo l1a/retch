@@ -2,37 +2,115 @@
 
 A fast, feature-rich system information fetcher written in Rust.
 
-> **Note**: The crate on crates.io is published as `retch-cli` because `retch` was taken.  
-> Users interact with it as `retch` (binary name and config directory).
+> **Note**: The crate is published as `retch-cli` on crates.io because the name `retch` was already taken.  
+> Users interact with the tool as `retch` (binary name and config directory `~/.config/retch/`).
 
 ## Status
 
 **Active and usable.**  
 retch is under active development with a working core, rich system information output, theming, config support, and high-quality distro logos (ASCII + graphical via Chafa).
 
-## Repository
+## Features
 
-https://github.com/l1a/retch
+- Rich system information (OS, CPU, GPU, Memory, Disks, Network, etc.)
+- High-quality ASCII logos (adapted from Fastfetch)
+- Graphical logo support via Chafa (Unicode symbols)
+- Theming system (`default`, `dark`, `light`)
+- Full configuration file support (`~/.config/retch/config.toml`)
+- Smart config + CLI merging
+- `--ascii-only` flag to force text-only output
+- `--print-logos` and `--list-distros` commands
+
+## Installation
+
+### From crates.io
+
+```sh
+cargo install retch-cli
+```
+
+### From source
+
+```sh
+git clone https://github.com/l1a/retch.git
+cd retch
+cargo install --path .
+```
+
+## Usage
+
+Basic usage:
+
+```sh
+retch
+```
+
+Force ASCII-only output:
+
+```sh
+retch --ascii-only
+```
+
+List available logos:
+
+```sh
+retch --print-logos
+```
+
+List known distros:
+
+```sh
+retch --list-distros
+```
+
+Show help:
+
+```sh
+retch --help
+```
+
+## Configuration
+
+retch looks for a configuration file at:
+
+```
+~/.config/retch/config.toml
+```
+
+You can generate a default config with:
+
+```sh
+retch --generate-config
+```
+
+Or write it directly to the default location:
+
+```sh
+retch --write-config
+```
+
+## Logos
+
+### ASCII Logos
+
+Some ASCII logos are adapted from [Fastfetch](https://github.com/fastfetch-cli/fastfetch) (MIT licensed).
+
+### Graphic Logos
+
+Graphic logos are converted from official or community SVG logos. These are **not** covered by the project's GPLv3 license and remain subject to the original trademarks and licenses of their respective projects.
+
+See the full list of supported distros with:
+
+```sh
+retch --print-logos
+```
 
 ## License
 
 This project is licensed under the GNU General Public License v3.0.
 
-## ASCII Logos
+## Contributing
 
-Some of the ASCII logos in this project are adapted from the excellent collection in [Fastfetch](https://github.com/fastfetch-cli/fastfetch).
-
-- Fastfetch is licensed under the **MIT License**.
-- We have used or adapted several of their logos for the distros we currently support.
-- Full credit goes to the Fastfetch authors and contributors.
+Contributions are welcome! Feel free to open issues or pull requests.
 
 If you are the copyright holder of any logo and would like different attribution or removal, please open an issue.
-
-## Graphic Logos
-
-The embedded graphic logos (PNG files) are converted from official or community-provided SVG logos of the respective distributions.
-
-- These logos are **not** covered by the project's GPLv3 license.
-- They remain subject to the original licenses and trademarks of their respective projects/websites.
-- Sources include official distribution websites and logo repositories (e.g., Arch Linux, Fedora, Ubuntu, etc.).
-- For commercial use or redistribution of the graphic logos, please refer to the original sources and their licensing terms.
