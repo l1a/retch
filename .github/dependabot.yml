@@ -9,6 +9,10 @@ updates:
     commit-message:
       prefix: "deps"
       include: "scope"
+    groups:
+      cargo-dependencies:
+        patterns:
+          - "*"
 
   # Enable Dependabot for GitHub Actions
   - package-ecosystem: "github-actions"
@@ -19,3 +23,7 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
