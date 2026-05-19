@@ -29,13 +29,27 @@ jobs:
     # Only run on version tags pushed to main
     if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
 
+    strategy:
+      matrix:
+        container: 
+          - ubuntu:latest
+          - fedora:40
+
+    container: ${{ matrix.container }}
+
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install dependencies
+    - name: Install dependencies (Ubuntu)
+      if: matrix.container == 'ubuntu:latest'
       run: |
-        sudo apt-get update
-        sudo apt-get install -y pandoc
+        apt-get update
+        apt-get install -y pandoc
+
+    - name: Install dependencies (Fedora)
+      if: matrix.container == 'fedora:40'
+      run: |
+        dnf install -y pandoc
 
     - name: Build (release)
       run: cargo build --release --verbose
