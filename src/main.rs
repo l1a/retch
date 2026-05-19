@@ -105,11 +105,10 @@ fn default_config_content() -> String {
 # All settings below are commented out by default.
 # Uncomment and modify as needed.
 
-# Theme to use: "default", "dark", "light", "custom", "auto",
-# or popular community themes: "catppuccin-mocha", "catppuccin-latte",
-# "solarized-dark", "solarized-light", etc.
-# "auto" will try to follow your system dark/light preference.
-# theme = "default"
+# Theme to use. Defaults to "auto" (follows system dark/light preference).
+# Other options: "dark", "light", "custom",
+# or popular themes: "catppuccin-mocha", "solarized-dark", etc.
+# theme = "auto"
 
 # Custom theme color overrides (used when theme = "custom" or when partial overrides are provided)
 # [custom_theme]
