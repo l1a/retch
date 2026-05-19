@@ -29,10 +29,14 @@ lint:
 install: install-man
     cargo install --path .
 
-# Generate man page from Markdown using pandoc
+# Generate man page from Markdown using pandoc (includes version from Cargo.toml)
 man:
     @mkdir -p docs
-    pandoc docs/retch.1.md -s -t man -o docs/retch.1
+    @VERSION=$(grep '^version' Cargo.toml | head -1 | cut -d '"' -f2); \
+    pandoc docs/retch.1.md \
+        -s -t man \
+        --variable=footer="retch $VERSION" \
+        -o docs/retch.1
 
 # Install man page to XDG user location (~/.local/share/man)
 install-man: man
