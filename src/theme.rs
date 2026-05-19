@@ -4,22 +4,22 @@ use owo_colors::{OwoColorize, Rgb};
 /// Supports both ANSI names and some common aliases.
 pub fn parse_color(name: &str) -> Option<Rgb> {
     match name.to_lowercase().as_str() {
-        "black"       => Some(Rgb(0, 0, 0)),
-        "red"         => Some(Rgb(255, 0, 0)),
-        "green"       => Some(Rgb(0, 255, 0)),
-        "yellow"      => Some(Rgb(255, 255, 0)),
-        "blue"        => Some(Rgb(0, 0, 255)),
-        "magenta"     => Some(Rgb(255, 0, 255)),
-        "cyan"        => Some(Rgb(0, 255, 255)),
-        "white"       => Some(Rgb(255, 255, 255)),
+        "black" => Some(Rgb(0, 0, 0)),
+        "red" => Some(Rgb(255, 0, 0)),
+        "green" => Some(Rgb(0, 255, 0)),
+        "yellow" => Some(Rgb(255, 255, 0)),
+        "blue" => Some(Rgb(0, 0, 255)),
+        "magenta" => Some(Rgb(255, 0, 255)),
+        "cyan" => Some(Rgb(0, 255, 255)),
+        "white" => Some(Rgb(255, 255, 255)),
         "bright_black" | "grey" | "gray" => Some(Rgb(128, 128, 128)),
-        "bright_red"   => Some(Rgb(255, 128, 128)),
+        "bright_red" => Some(Rgb(255, 128, 128)),
         "bright_green" => Some(Rgb(128, 255, 128)),
         "bright_yellow" => Some(Rgb(255, 255, 128)),
-        "bright_blue"   => Some(Rgb(128, 128, 255)),
+        "bright_blue" => Some(Rgb(128, 128, 255)),
         "bright_magenta" => Some(Rgb(255, 128, 255)),
-        "bright_cyan"   => Some(Rgb(128, 255, 255)),
-        "bright_white"  => Some(Rgb(255, 255, 255)),
+        "bright_cyan" => Some(Rgb(128, 255, 255)),
+        "bright_white" => Some(Rgb(255, 255, 255)),
         _ => None,
     }
 }
@@ -38,11 +38,11 @@ impl Default for Theme {
     fn default() -> Self {
         Self {
             name: "neutral".to_string(),
-            label_color: Rgb(0, 255, 255),      // Cyan
-            value_color: Rgb(255, 255, 255),    // White
-            accent_color: Rgb(0, 255, 0),       // Green
-            title_color: Rgb(255, 255, 0),      // Yellow
-            separator_color: Rgb(128, 128, 128),// BrightBlack / Gray
+            label_color: Rgb(0, 255, 255),       // Cyan
+            value_color: Rgb(255, 255, 255),     // White
+            accent_color: Rgb(0, 255, 0),        // Green
+            title_color: Rgb(255, 255, 0),       // Yellow
+            separator_color: Rgb(128, 128, 128), // BrightBlack / Gray
         }
     }
 }
@@ -71,11 +71,11 @@ impl Theme {
     pub fn light() -> Self {
         Self {
             name: "light".to_string(),
-            label_color: Rgb(0, 0, 255),         // Blue
-            value_color: Rgb(0, 0, 0),           // Black
-            accent_color: Rgb(0, 255, 0),        // Green
-            title_color: Rgb(255, 255, 128),     // Bright Yellow
-            separator_color: Rgb(0, 0, 0),       // Black
+            label_color: Rgb(0, 0, 255),     // Blue
+            value_color: Rgb(0, 0, 0),       // Black
+            accent_color: Rgb(0, 255, 0),    // Green
+            title_color: Rgb(255, 255, 128), // Bright Yellow
+            separator_color: Rgb(0, 0, 0),   // Black
         }
     }
 
@@ -97,11 +97,11 @@ impl Theme {
     pub fn catppuccin_frappe() -> Self {
         Self {
             name: "catppuccin-frappe".to_string(),
-            label_color: Rgb(137, 180, 250),     // Blue      #89b4fa
-            value_color: Rgb(198, 208, 245),     // Text      #c6d0f5
-            accent_color: Rgb(166, 227, 161),    // Green     #a6e3a1
-            title_color: Rgb(249, 226, 175),     // Yellow    #f9e2af
-            separator_color: Rgb(98, 104, 128),  // Overlay0  #626880
+            label_color: Rgb(137, 180, 250),    // Blue      #89b4fa
+            value_color: Rgb(198, 208, 245),    // Text      #c6d0f5
+            accent_color: Rgb(166, 227, 161),   // Green     #a6e3a1
+            title_color: Rgb(249, 226, 175),    // Yellow    #f9e2af
+            separator_color: Rgb(98, 104, 128), // Overlay0  #626880
         }
     }
 
@@ -109,11 +109,11 @@ impl Theme {
     pub fn catppuccin_macchiato() -> Self {
         Self {
             name: "catppuccin-macchiato".to_string(),
-            label_color: Rgb(138, 173, 244),     // Blue      #8aadf4
-            value_color: Rgb(202, 211, 245),     // Text      #cad3f5
-            accent_color: Rgb(166, 218, 149),    // Green     #a6da95
-            title_color: Rgb(238, 212, 159),     // Yellow    #eed6af
-            separator_color: Rgb(91, 96, 120),   // Overlay0  #5b6078
+            label_color: Rgb(138, 173, 244),   // Blue      #8aadf4
+            value_color: Rgb(202, 211, 245),   // Text      #cad3f5
+            accent_color: Rgb(166, 218, 149),  // Green     #a6da95
+            title_color: Rgb(238, 212, 159),   // Yellow    #eed6af
+            separator_color: Rgb(91, 96, 120), // Overlay0  #5b6078
         }
     }
 
@@ -162,7 +162,9 @@ impl Theme {
             "auto" => Self::detect_system_theme(),
             "catppuccin-latte" | "catppuccin_latte" | "latte" => Self::catppuccin_latte(),
             "catppuccin-frappe" | "catppuccin_frappe" | "frappe" => Self::catppuccin_frappe(),
-            "catppuccin-macchiato" | "catppuccin_macchiato" | "macchiato" => Self::catppuccin_macchiato(),
+            "catppuccin-macchiato" | "catppuccin_macchiato" | "macchiato" => {
+                Self::catppuccin_macchiato()
+            }
             "catppuccin-mocha" | "catppuccin_mocha" | "mocha" => Self::catppuccin_mocha(),
             "solarized-light" | "solarized_light" => Self::solarized_light(),
             "solarized-dark" | "solarized_dark" => Self::solarized_dark(),

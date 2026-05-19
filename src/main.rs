@@ -19,7 +19,9 @@ fn main() -> anyhow::Result<()> {
         println!("  solarized-light");
         println!("  solarized-dark");
         println!();
-        println!("You can also use 'custom' + [custom_theme] in config.toml for fully custom colors.");
+        println!(
+            "You can also use 'custom' + [custom_theme] in config.toml for fully custom colors."
+        );
         return Ok(());
     }
 

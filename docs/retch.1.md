@@ -57,6 +57,24 @@ You can generate a starting configuration with:
 
     retch --generate-config > ~/.config/retch/config.toml
 
+# THEMES
+
+retch supports multiple built-in themes as well as custom color overrides.
+
+The following themes are available:
+
+- **auto** (default): Automatically follows your system dark/light preference.
+- **neutral**: A balanced neutral theme (cyan labels, white values).
+- **dark** and **light**: Basic dark and light themes.
+- Popular community themes: **catppuccin-latte**, **catppuccin-frappe**, **catppuccin-macchiato**, **catppuccin-mocha**, **solarized-light**, **solarized-dark**.
+
+You can also define custom colors using the `[custom_theme]` section in your configuration file. Example:
+
+    [custom_theme]
+    label_color = "bright_cyan"
+    value_color = "white"
+    accent_color = "bright_green"
+
 # LOGOS
 
 retch supports both ASCII and graphical logos.
