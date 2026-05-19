@@ -80,11 +80,11 @@ impl Theme {
     pub fn catppuccin_latte() -> Self {
         Self {
             name: "catppuccin-latte".to_string(),
-            label_color: Rgb(30, 102, 245),      // Blue
-            value_color: Rgb(76, 79, 105),       // Text
-            accent_color: Rgb(64, 160, 43),      // Green
-            title_color: Rgb(223, 142, 29),      // Yellow
-            separator_color: Rgb(140, 143, 161), // Overlay0
+            label_color: Rgb(30, 102, 245),      // Blue      #1e66f5
+            value_color: Rgb(76, 79, 105),       // Text      #4c4f69
+            accent_color: Rgb(64, 160, 43),      // Green     #40a02b
+            title_color: Rgb(223, 142, 29),      // Yellow    #df8e1d
+            separator_color: Rgb(140, 143, 161), // Overlay0  #8c8fa1
         }
     }
 
@@ -92,11 +92,11 @@ impl Theme {
     pub fn catppuccin_frappe() -> Self {
         Self {
             name: "catppuccin-frappe".to_string(),
-            label_color: Rgb(137, 180, 250),     // Blue
-            value_color: Rgb(198, 208, 245),     // Text
-            accent_color: Rgb(166, 227, 161),    // Green
-            title_color: Rgb(249, 226, 175),     // Yellow
-            separator_color: Rgb(98, 104, 128),  // Overlay0
+            label_color: Rgb(137, 180, 250),     // Blue      #89b4fa
+            value_color: Rgb(198, 208, 245),     // Text      #c6d0f5
+            accent_color: Rgb(166, 227, 161),    // Green     #a6e3a1
+            title_color: Rgb(249, 226, 175),     // Yellow    #f9e2af
+            separator_color: Rgb(98, 104, 128),  // Overlay0  #626880
         }
     }
 
@@ -104,11 +104,11 @@ impl Theme {
     pub fn catppuccin_macchiato() -> Self {
         Self {
             name: "catppuccin-macchiato".to_string(),
-            label_color: Rgb(138, 173, 244),     // Blue
-            value_color: Rgb(202, 211, 245),     // Text
-            accent_color: Rgb(166, 218, 149),    // Green
-            title_color: Rgb(238, 212, 159),     // Yellow
-            separator_color: Rgb(91, 96, 120),   // Overlay0
+            label_color: Rgb(138, 173, 244),     // Blue      #8aadf4
+            value_color: Rgb(202, 211, 245),     // Text      #cad3f5
+            accent_color: Rgb(166, 218, 149),    // Green     #a6da95
+            title_color: Rgb(238, 212, 159),     // Yellow    #eed6af
+            separator_color: Rgb(91, 96, 120),   // Overlay0  #5b6078
         }
     }
 
@@ -116,11 +116,11 @@ impl Theme {
     pub fn catppuccin_mocha() -> Self {
         Self {
             name: "catppuccin-mocha".to_string(),
-            label_color: Rgb(137, 180, 250),     // Blue
-            value_color: Rgb(205, 214, 244),     // Text
-            accent_color: Rgb(245, 194, 231),    // Pink
-            title_color: Rgb(249, 226, 175),     // Yellow
-            separator_color: Rgb(108, 112, 134), // Overlay0
+            label_color: Rgb(137, 180, 250),     // Blue      #89b4fa
+            value_color: Rgb(205, 214, 244),     // Text      #cdd6f4
+            accent_color: Rgb(245, 194, 231),    // Pink      #f5c2e7
+            title_color: Rgb(249, 226, 175),     // Yellow    #f9e2af
+            separator_color: Rgb(108, 112, 134), // Overlay0  #6c7086
         }
     }
 
@@ -128,11 +128,11 @@ impl Theme {
     pub fn solarized_light() -> Self {
         Self {
             name: "solarized-light".to_string(),
-            label_color: Rgb(38, 139, 210),      // Solarized blue
-            value_color: Rgb(131, 148, 150),     // base0
-            accent_color: Rgb(181, 137, 0),      // Solarized yellow
-            title_color: Rgb(203, 75, 22),       // Orange
-            separator_color: Rgb(147, 161, 161), // base1
+            label_color: Rgb(38, 139, 210),      // blue      #268bd2
+            value_color: Rgb(101, 123, 131),     // base00    #657b83
+            accent_color: Rgb(181, 137, 0),      // yellow    #b58900
+            title_color: Rgb(203, 75, 22),       // orange    #cb4b16
+            separator_color: Rgb(147, 161, 161), // base1     #93a1a1
         }
     }
 
@@ -140,11 +140,11 @@ impl Theme {
     pub fn solarized_dark() -> Self {
         Self {
             name: "solarized-dark".to_string(),
-            label_color: Rgb(38, 139, 210),      // Solarized blue
-            value_color: Rgb(131, 148, 150),     // base0
-            accent_color: Rgb(181, 137, 0),      // Solarized yellow
-            title_color: Rgb(203, 75, 22),       // Orange
-            separator_color: Rgb(147, 161, 161), // base1
+            label_color: Rgb(38, 139, 210),      // blue      #268bd2
+            value_color: Rgb(131, 148, 150),     // base0     #839496
+            accent_color: Rgb(181, 137, 0),      // yellow    #b58900
+            title_color: Rgb(203, 75, 22),       // orange    #cb4b16
+            separator_color: Rgb(147, 161, 161), // base1     #93a1a1
         }
     }
 
