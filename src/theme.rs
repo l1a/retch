@@ -78,6 +78,7 @@ impl Theme {
         match name.to_lowercase().as_str() {
             "dark" => Self::dark(),
             "light" => Self::light(),
+            "custom" => Self::default(), // Will be overridden by custom_theme
             _ => Self::default(),
         }
     }

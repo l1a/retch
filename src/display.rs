@@ -9,7 +9,14 @@ impl SystemInfo {
         let theme_name = _config.theme.as_deref().or(cli.theme.as_deref());
         let mut theme = match theme_name {
             Some(name) => Theme::from_name(name),
-            None => Theme::new_default(),
+            None => {
+                // If user defined custom_theme but no theme name, start from default
+                if _config.custom_theme.is_some() {
+                    Theme::default()
+                } else {
+                    Theme::new_default()
+                }
+            }
         };
 
         // Apply custom theme overrides from config if present

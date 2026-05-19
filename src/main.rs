@@ -97,8 +97,16 @@ fn default_config_content() -> String {
 # All settings below are commented out by default.
 # Uncomment and modify as needed.
 
-# Theme to use: "default", "dark", or "light"
+# Theme to use: "default", "dark", "light", or "custom"
 # theme = "default"
+
+# Custom theme color overrides (used when theme = "custom" or when partial overrides are provided)
+# [custom_theme]
+# label_color = "bright_cyan"
+# value_color = "white"
+# accent_color = "bright_green"
+# title_color = "bright_yellow"
+# separator_color = "bright_black"
 
 # Whether to show the ASCII logo
 # show_logo = true
