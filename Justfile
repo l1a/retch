@@ -25,13 +25,20 @@ fmt:
 lint:
     cargo clippy -- -D warnings
 
-# Install the binary
-install:
+# Install the binary and man page
+install: install-man
     cargo install --path .
 
-# Generate man page (placeholder - customize as needed)
+# Generate man page from Markdown using pandoc
 man:
-    @echo "Man page generation not yet implemented"
+    @mkdir -p docs
+    pandoc docs/retch.1.md -s -t man -o docs/retch.1
+
+# Install man page to XDG user location (~/.local/share/man)
+install-man: man
+    @mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}/man/man1"
+    install -m 644 docs/retch.1 "${XDG_DATA_HOME:-$HOME/.local/share}/man/man1/retch.1"
+    @echo "Man page installed to ${XDG_DATA_HOME:-$HOME/.local/share}/man/man1/"
 
 # Convert all SVGs to PNGs (used for embedded logos)
 logos:
