@@ -1,25 +1,42 @@
 use owo_colors::{OwoColorize, Rgb};
 
-/// Parse a color name string into an RGB value.
-/// Supports both ANSI names and some common aliases.
-pub fn parse_color(name: &str) -> Option<Rgb> {
-    match name.to_lowercase().as_str() {
-        "black" => Some(Rgb(0, 0, 0)),
-        "red" => Some(Rgb(255, 0, 0)),
-        "green" => Some(Rgb(0, 255, 0)),
-        "yellow" => Some(Rgb(255, 255, 0)),
-        "blue" => Some(Rgb(0, 0, 255)),
-        "magenta" => Some(Rgb(255, 0, 255)),
-        "cyan" => Some(Rgb(0, 255, 255)),
-        "white" => Some(Rgb(255, 255, 255)),
+/// Parse a color name or hex string into an RGB value.
+/// Supports named colors and hex values (e.g. "#ff6432" or "ff6432").
+pub fn parse_color(input: &str) -> Option<Rgb> {
+    let s = input.trim();
+
+    // Hex color support
+    if s.starts_with('#') || s.len() == 6 {
+        let hex = if s.starts_with('#') { &s[1..] } else { s };
+        if hex.len() == 6 {
+            if let (Ok(r), Ok(g), Ok(b)) = (
+                u8::from_str_radix(&hex[0..2], 16),
+                u8::from_str_radix(&hex[2..4], 16),
+                u8::from_str_radix(&hex[4..6], 16),
+            ) {
+                return Some(Rgb(r, g, b));
+            }
+        }
+    }
+
+    // Named colors
+    match s.to_lowercase().as_str() {
+        "black"       => Some(Rgb(0, 0, 0)),
+        "red"         => Some(Rgb(255, 0, 0)),
+        "green"       => Some(Rgb(0, 255, 0)),
+        "yellow"      => Some(Rgb(255, 255, 0)),
+        "blue"        => Some(Rgb(0, 0, 255)),
+        "magenta"     => Some(Rgb(255, 0, 255)),
+        "cyan"        => Some(Rgb(0, 255, 255)),
+        "white"       => Some(Rgb(255, 255, 255)),
         "bright_black" | "grey" | "gray" => Some(Rgb(128, 128, 128)),
-        "bright_red" => Some(Rgb(255, 128, 128)),
+        "bright_red"   => Some(Rgb(255, 128, 128)),
         "bright_green" => Some(Rgb(128, 255, 128)),
         "bright_yellow" => Some(Rgb(255, 255, 128)),
-        "bright_blue" => Some(Rgb(128, 128, 255)),
+        "bright_blue"   => Some(Rgb(128, 128, 255)),
         "bright_magenta" => Some(Rgb(255, 128, 255)),
-        "bright_cyan" => Some(Rgb(128, 255, 255)),
-        "bright_white" => Some(Rgb(255, 255, 255)),
+        "bright_cyan"   => Some(Rgb(128, 255, 255)),
+        "bright_white"  => Some(Rgb(255, 255, 255)),
         _ => None,
     }
 }

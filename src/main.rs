@@ -36,8 +36,10 @@ fn main() -> anyhow::Result<()> {
         println!("# title_color = \"bright_yellow\"");
         println!("# separator_color = \"bright_black\"");
         println!();
-        println!("# Available color names: black, red, green, yellow, blue, magenta, cyan, white,");
-        println!("# bright_black, bright_red, bright_green, bright_yellow, bright_blue, etc.");
+        println!("# Available color names or hex values:");
+        println!("#   Names: black, red, green, yellow, blue, magenta, cyan, white,");
+        println!("#          bright_black, bright_red, bright_green, bright_yellow, bright_blue, ...");
+        println!("#   Hex:   \"#ff6432\", \"89b4fa\", etc.");
         return Ok(());
     }
 
