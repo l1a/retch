@@ -29,7 +29,8 @@ lint:
 install: install-man
     cargo install --path .
 
-# Generate man page from Markdown using pandoc (includes version from Cargo.toml)
+# Generate man page from Markdown using pandoc.
+# The version is dynamically read from Cargo.toml and placed in the footer.
 man:
     @mkdir -p docs
     @VERSION=$(grep '^version' Cargo.toml | head -1 | cut -d '"' -f2); \
