@@ -7,9 +7,8 @@ A fast, feature-rich system information fetcher written in Rust.
 
 ## Status
 
-Active development is in progress.
-
-Active development will begin soon.
+**Active and usable.**  
+retch is under active development with a working core, rich system information output, theming, config support, and high-quality distro logos (ASCII + graphical via Chafa).
 
 ## Repository
 
@@ -28,3 +27,12 @@ Some of the ASCII logos in this project are adapted from the excellent collectio
 - Full credit goes to the Fastfetch authors and contributors.
 
 If you are the copyright holder of any logo and would like different attribution or removal, please open an issue.
+
+## Graphic Logos
+
+The embedded graphic logos (PNG files) are converted from official or community-provided SVG logos of the respective distributions.
+
+- These logos are **not** covered by the project's GPLv3 license.
+- They remain subject to the original licenses and trademarks of their respective projects/websites.
+- Sources include official distribution websites and logo repositories (e.g., Arch Linux, Fedora, Ubuntu, etc.).
+- For commercial use or redistribution of the graphic logos, please refer to the original sources and their licensing terms.
