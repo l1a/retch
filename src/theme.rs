@@ -62,3 +62,37 @@ impl Theme {
         text.color(self.accent_color)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_theme() {
+        let theme = Theme::default();
+        assert_eq!(theme.name, "default");
+        assert_eq!(theme.label_color, Color::Cyan);
+        assert_eq!(theme.value_color, Color::White);
+        assert_eq!(theme.accent_color, Color::Green);
+    }
+
+    #[test]
+    fn test_dark_theme() {
+        let theme = Theme::dark();
+        assert_eq!(theme.name, "dark");
+        assert_eq!(theme.label_color, Color::BrightBlue);
+    }
+
+    #[test]
+    fn test_light_theme() {
+        let theme = Theme::light();
+        assert_eq!(theme.name, "light");
+        assert_eq!(theme.label_color, Color::Blue);
+    }
+
+    #[test]
+    fn test_new_default() {
+        let theme = Theme::new_default();
+        assert_eq!(theme.name, "default");
+    }
+}

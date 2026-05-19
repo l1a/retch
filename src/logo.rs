@@ -316,3 +316,29 @@ pub fn print_graphical_logo_from_path(path: &std::path::Path) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_ascii_logo_arch() {
+        let logo = get_ascii_logo(Some("arch"));
+        assert!(!logo.is_empty());
+        assert!(logo[0].contains("`"));
+    }
+
+    #[test]
+    fn test_get_ascii_logo_unknown() {
+        let logo = get_ascii_logo(Some("unknown_distro"));
+        assert!(!logo.is_empty());
+        // Should fall back to Tux
+        assert!(logo.iter().any(|line| line.contains("o_o")));
+    }
+
+    #[test]
+    fn test_get_ascii_logo_none() {
+        let logo = get_ascii_logo(None);
+        assert!(!logo.is_empty());
+    }
+}
