@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Install cargo-audit
-        uses: taiki-e/install-action@213ccc1a076163c093f914550b94feb90fab916d
+        run: cargo install cargo-audit
 
       - name: Run cargo audit
         run: cargo audit || exit 1
