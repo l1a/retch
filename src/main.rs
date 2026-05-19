@@ -15,33 +15,40 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    if cli.list_logos {
+    if cli.list_distros {
+        println!("Known distros:");
+        println!("  arch");
+        println!("  debian");
+        println!("  fedora");
+        println!("  nixos");
+        println!("  ubuntu");
+        println!("  (others fall back to Tux)");
+        return Ok(());
+    }
+
+    if cli.print_logos {
         use retch_cli::logo;
 
-        println!("Available ASCII logos:\n");
+        println!("Available logos:\n");
 
         let logos = [
             ("arch", "Arch Linux"),
             ("debian", "Debian"),
-            ("endeavouros", "EndeavourOS"),
             ("fedora", "Fedora"),
-            ("linuxmint", "Linux Mint"),
-            ("manjaro", "Manjaro"),
             ("nixos", "NixOS"),
-            ("pop", "Pop!_OS"),
             ("ubuntu", "Ubuntu"),
         ];
 
         for (id, name) in logos {
             println!("{}:", name);
-            let art = logo::get_ascii_logo(Some(id));
-            for line in art {
-                println!("  {}", line);
-            }
+            logo::print_distro_logo_with_ascii(Some(id), cli.ascii_only);
             println!();
         }
 
-        println!("(default fallback for unknown distros)");
+        println!("(default fallback for unknown distros: Tux)");
+        println!("Tux:");
+        logo::print_distro_logo_with_ascii(None, cli.ascii_only);
+        println!();
         return Ok(());
     }
 

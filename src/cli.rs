@@ -27,9 +27,13 @@ pub struct Cli {
     #[arg(long)]
     pub list_themes: bool,
 
-    /// List all available ASCII logos
+    /// List known distros
     #[arg(long)]
-    pub list_logos: bool,
+    pub list_distros: bool,
+
+    /// Print logos for known distros
+    #[arg(long)]
+    pub print_logos: bool,
 
     /// Print default config (commented) to stdout
     #[arg(long)]

@@ -19,27 +19,45 @@ impl SystemInfo {
             #[cfg(not(feature = "graphics"))]
             let printed_logo = false;
 
-            #[cfg(feature = "graphics")]
-            {
-                let use_graphics = !cli.ascii_only && logo::supports_graphical_logo();
-                if use_graphics {
-                    if let Some(config_dir) = dirs::config_dir() {
-                        let logo_path = config_dir.join("retch").join("logo.png");
-                        if logo_path.exists() {
-                            logo::print_graphical_logo_from_path(&logo_path);
+            if !cli.ascii_only {
+                // 1. Try user-provided custom logo first (config override)
+                let user_logo = if let Some(config_dir) = dirs::config_dir() {
+                    let p = config_dir.join("retch").join("logo.png");
+                    if p.exists() { Some(p) } else { None }
+                } else { None };
+
+                // 2. Graphics mode (Kitty / iTerm2)
+                #[cfg(feature = "graphics")]
+                if !printed_logo && logo::supports_graphical_logo() {
+                    if let Some(path) = &user_logo {
+                        logo::print_graphical_logo_from_path(path);
+                        printed_logo = true;
+                    } else if let Some(distro) = logo::detect_distro() {
+                        if let Some(bytes) = logo::get_embedded_logo(Some(&distro)) {
+                            logo::print_graphical_logo(bytes);
                             printed_logo = true;
                         }
                     }
                 }
+
+                // 3. Chafa fallback (high-quality symbols)
+                if !printed_logo && logo::chafa_available() {
+                    if let Some(path) = &user_logo {
+                        if logo::print_with_chafa(path) {
+                            printed_logo = true;
+                        }
+                    } else if logo::detect_distro().is_some() {
+                        // For chafa we need a file, so we skip embedded for now
+                        // (user can provide logo.png for chafa path)
+                    }
+                }
             }
 
+            // 3. Final fallback: Real Fastfetch ASCII logo
             if !printed_logo {
-                // ASCII fallback - use proper distro detection
                 let distro_hint = logo::detect_distro();
-                let logo = logo::get_ascii_logo(distro_hint.as_deref());
-                for line in &logo {
-                    println!("{}", theme.color_accent(line));
-                }
+                // Use the unified priority logic (graphic -> chafa -> ASCII)
+                logo::print_distro_logo_with_ascii(distro_hint.as_deref(), cli.ascii_only);
             }
             println!(); // spacing after logo
         }

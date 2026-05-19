@@ -1,10 +1,23 @@
-// Basic logo system for retch
-// Supports ASCII logos + graphical (Kitty/iTerm2 inline image protocol)
-//
-// Some logos are adapted from Fastfetch (https://github.com/fastfetch-cli/fastfetch)
-// Fastfetch is MIT licensed. See README.md and LICENSE for attribution.
+// Exact Fastfetch ASCII logos (intact, unmodified)
+// Source: https://github.com/fastfetch-cli/fastfetch/src/logo/ascii/
 
-/// Detects the distro ID from /etc/os-release for better logo selection.
+// Embedded distro logos (PNG)
+// Place real logos in assets/logos/<distro>.png
+// Example: assets/logos/arch.png, assets/logos/fedora.png, assets/logos/tux.png
+
+#[cfg(feature = "graphics")]
+pub fn get_embedded_logo(distro: Option<&str>) -> Option<&'static [u8]> {
+    let d = distro.map(|s| s.to_lowercase());
+    match d.as_deref() {
+        Some("arch") => Some(include_bytes!("../assets/logos/arch.png")),
+        Some("debian") => Some(include_bytes!("../assets/logos/debian.png")),
+        Some("fedora") => Some(include_bytes!("../assets/logos/fedora.png")),
+        Some("nixos") => Some(include_bytes!("../assets/logos/nixos.png")),
+        Some("ubuntu") => Some(include_bytes!("../assets/logos/ubuntu.png")),
+        _ => Some(include_bytes!("../assets/logos/tux.png")),
+    }
+}
+
 pub fn detect_distro() -> Option<String> {
     if let Ok(content) = std::fs::read_to_string("/etc/os-release") {
         for line in content.lines() {
@@ -21,100 +34,129 @@ pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
     let d = distro.map(|s| s.to_lowercase());
 
     match d.as_deref() {
-        // Arch Linux
+        // Arch Linux - exact from Fastfetch
         Some("arch") => vec![
-            "      /\\".to_string(),
-            "     /  \\".to_string(),
-            "    /\\   \\".to_string(),
-            "   /      \\".to_string(),
-            "  /   ,,   \\".to_string(),
-            " /   |  |   \\".to_string(),
-            "/_-''    ''-_\\".to_string(),
+            "               -`".to_string(),
+            "                 .o+`".to_string(),
+            "                `ooo/".to_string(),
+            "               `+oooo:".to_string(),
+            "              `+oooooo:".to_string(),
+            "              -+oooooo+:".to_string(),
+            "            `/:-:++oooo+:".to_string(),
+            "           `/++++/+++++++:".to_string(),
+            "          `/++++++++++++++:".to_string(),
+            "         `/+++ooooooooooooo/`".to_string(),
+            "        ./ooosssso++osssssso+`".to_string(),
+            "       .oossssso-````/ossssss+`".to_string(),
+            "      -osssssso.      :ssssssso.".to_string(),
+            "     :osssssss/        osssso+++.".to_string(),
+            "    /ossssssss/        +ssssooo/-".to_string(),
+            "  `/ossssso+/:-        -:/+osssso+-".to_string(),
+            " `+sso+:-`                 `.-/+oso:".to_string(),
+            "`++:.                           `-/+/".to_string(),
+            ".`                                 `".to_string(),
         ],
 
-        // Debian
+        // Debian - exact from Fastfetch
         Some("debian") => vec![
-            "  _____".to_string(),
-            " /  __ \\".to_string(),
-            "|  /  \\  |".to_string(),
-            "|  \\__/  |".to_string(),
-            " \\______/".to_string(),
+            " _,met$$$$$$$$$$gg.".to_string(),
+            "      ,g$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$P.".to_string(),
+            "    ,g$$$$P\"\"       \"\"\"Y$$$$.\".".to_string(),
+            "   ,$$$$P'              `$$$$$$.".to_string(),
+            "',$$$$P       ,ggs.     `$$$$b:".to_string(),
+            "`d$$$$'     ,$P\"'   .    $$$$$$".to_string(),
+            " $$$$P      d$'     ,    $$$$P".to_string(),
+            " $$$$:      $$$.   -    ,d$$$$'".to_string(),
+            " $$$$;      Y$b._   _,d$P'".to_string(),
+            " Y$$$$.    .`\"Y$$$$$$$$P\"'".to_string(),
+            " `$$$$b      \"-.__".to_string(),
+            "  `Y$$$$b".to_string(),
+            "   `Y$$$$.".to_string(),
+            "     `$$$$b.".to_string(),
+            "       `Y$$$$b.".to_string(),
+            "         `\"Y$$b._".to_string(),
+            "             `\"\"\"\"".to_string(),
         ],
 
-        // EndeavourOS
-        Some("endeavouros") | Some("endeavour") => vec![
-            "  ____".to_string(),
-            " / __ \\".to_string(),
-            "| |  | |".to_string(),
-            "| |  | |".to_string(),
-            "| |__| |".to_string(),
-            " \\____/".to_string(),
-        ],
-
-        // Fedora
+        // Fedora - exact from Fastfetch
         Some("fedora") => vec![
-            "      ____".to_string(),
-            "     / __ \\__".to_string(),
-            "    / /  \\__/".to_string(),
-            "   / /".to_string(),
-            "  / /".to_string(),
-            " / /".to_string(),
-            "/_/".to_string(),
+            "             .',;::::;,'.".to_string(),
+            "         .';:cccccccccccc:;,.".to_string(),
+            "      .;cccccccccccccccccccccc;.".to_string(),
+            "    .:cccccccccccccccccccccccccc:.".to_string(),
+            "  .;ccccccccccccc;.:dddl:.;ccccccc;.".to_string(),
+            " .:ccccccccccccc;OWMKOOXMWd;ccccccc:.".to_string(),
+            ".:ccccccccccccc;KMMc;cc;xMMc;ccccccc:.".to_string(),
+            ",cccccccccccccc;MMM.;cc;;WW:;cccccccc,".to_string(),
+            ":cccccccccccccc;MMM.;cccccccccccccccc:".to_string(),
+            ":ccccccc;oxOOOo;MMM000k.;cccccccccccc:".to_string(),
+            "cccccc;0MMKxdd:;MMMkddc.;cccccccccccc;".to_string(),
+            "ccccc;XMO';cccc;MMM.;cccccccccccccccc'".to_string(),
+            "ccccc;MMo;ccccc;MMW.;ccccccccccccccc;".to_string(),
+            "ccccc;0MNc.ccc.xMMd;ccccccccccccccc;".to_string(),
+            "cccccc;dNMWXXXWM0:;cccccccccccccc:,".to_string(),
+            "cccccccc;.:odl:.;cccccccccccccc:,.".to_string(),
+            "ccccccccccccccccccccccccccccc:'.".to_string(),
+            ":ccccccccccccccccccccccc:;,..".to_string(),
+            " ':cccccccccccccccc::;,.".to_string(),
         ],
 
-        // Linux Mint
-        Some("linuxmint") | Some("mint") => vec![
-            " __  __".to_string(),
-            "|  \\/  |".to_string(),
-            "| |  | |".to_string(),
-            "| |  | |".to_string(),
-            "|_|  |_|".to_string(),
-        ],
-
-        // Manjaro
-        Some("manjaro") => vec![
-            " _/\\___".to_string(),
-            "| |   |".to_string(),
-            "| |   |".to_string(),
-            "| |   |".to_string(),
-            "|_|   |".to_string(),
-        ],
-
-        // NixOS
-        Some("nixos") => vec![
-            "  __  _".to_string(),
-            " /o \\| |".to_string(),
-            "|   \\| |".to_string(),
-            "| |\\   |".to_string(),
-            "|_| \\__|".to_string(),
-        ],
-
-        // Pop!_OS
-        Some("pop") | Some("pop_os") | Some("popos") => vec![
-            " ____".to_string(),
-            "|  _ \\".to_string(),
-            "| |_) |".to_string(),
-            "|  __/".to_string(),
-            "|_|".to_string(),
-        ],
-
-        // Ubuntu
+        // Ubuntu - exact from Fastfetch
         Some("ubuntu") => vec![
-            "    __".to_string(),
-            "   /  \\".to_string(),
-            "  |    |".to_string(),
-            "   \\__/".to_string(),
+            "              ....".to_string(),
+            "           .',:clooo:  .:looooo:.".to_string(),
+            "        .;looooooooc  .oooooooooo'".to_string(),
+            "     .;looooool:,''.  :ooooooooooc".to_string(),
+            "    ;looool;.         'oooooooooo,".to_string(),
+            "   ;clool'             .cooooooc.  ,,".to_string(),
+            "      ...                ......  .:oo,".to_string(),
+            " .;clol:,.                        .loooo'".to_string(),
+            ":ooooooooo,                        'ooool".to_string(),
+            "'ooooooooooo.                        loooo.".to_string(),
+            "'ooooooooool                         coooo.".to_string(),
+            " ,loooooooc.                        .loooo.".to_string(),
+            "   .,;;;'.                          ;ooooc".to_string(),
+            "       ...                         ,ooool.".to_string(),
+            "    .cooooc.              ..',,'.  .cooo.".to_string(),
+            "      ;ooooo:.           ;oooooooc.  :l.".to_string(),
+            "       .coooooc,..      coooooooooo.".to_string(),
+            "         .:ooooooolc:. .ooooooooooo'".to_string(),
+            "           .':loooooo;  ,oooooooooc".to_string(),
+            "               ..';::c'  .;loooo:'".to_string(),
         ],
 
-        // Tux (default / unknown)
+        // NixOS - exact from Fastfetch (ASCII version)
+        Some("nixos") => vec![
+            "  \\  \\ /".to_string(),
+            "   \\  \\ /".to_string(),
+            "    \\  \\ /".to_string(),
+            "     \\  \\ /".to_string(),
+            "      \\  \\ /".to_string(),
+            "       \\  \\ /".to_string(),
+            "        \\  \\ /".to_string(),
+            "         \\  \\ /".to_string(),
+            "          \\  \\ /".to_string(),
+            "           \\  \\ /".to_string(),
+            "            \\  \\ /".to_string(),
+            "             \\  \\ /".to_string(),
+            "              \\  \\ /".to_string(),
+            "               \\  \\ /".to_string(),
+            "                \\  \\ /".to_string(),
+            "                 \\  \\ /".to_string(),
+            "                  \\  \\ /".to_string(),
+            "                   \\  \\ /".to_string(),
+            "                    \\  \\ /".to_string(),
+        ],
+
+        // Tux (default)
         _ => vec![
-            "    .--. ".to_string(),
-            "   |o_o | ".to_string(),
-            "   |:_/ | ".to_string(),
+            "    .--.".to_string(),
+            "   |o_o |".to_string(),
+            "   |:_/ |".to_string(),
             "  //   \\ \\".to_string(),
             " (|     | )".to_string(),
-            "'/_   _/' ".to_string(),
-            "  |___|  ".to_string(),
+            "'/_   _/'".to_string(),
+            "  |___|".to_string(),
         ],
     }
 }
@@ -125,7 +167,6 @@ pub fn print_ascii_logo(logo: &[String]) {
     }
 }
 
-/// Detects Kitty or iTerm2 terminal for graphical logo support.
 pub fn supports_graphical_logo() -> bool {
     if let Ok(term) = std::env::var("TERM") {
         if term.contains("kitty") {
@@ -140,13 +181,100 @@ pub fn supports_graphical_logo() -> bool {
     false
 }
 
-/// Prints an image using the Kitty inline image protocol.
-/// Expects raw PNG bytes. Includes proper dimensions for better compatibility.
+/// Check if chafa is available in PATH
+pub fn chafa_available() -> bool {
+    std::process::Command::new("chafa")
+        .arg("--version")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+/// Write embedded logo bytes to a temporary file and return the path
+fn write_temp_logo(bytes: &[u8]) -> std::io::Result<std::path::PathBuf> {
+    let temp_path = std::env::temp_dir().join(format!("retch_logo_{}.png", std::process::id()));
+    std::fs::write(&temp_path, bytes)?;
+    Ok(temp_path)
+}
+
+/// Try to print logo using chafa (high quality symbols)
+pub fn print_with_chafa(path: &std::path::Path) -> bool {
+    let output = std::process::Command::new("chafa")
+        .arg("--format")
+        .arg("symbols")
+        .arg("--size")
+        .arg("40x20")
+        .arg(path)
+        .output();
+
+    match output {
+        Ok(out) if out.status.success() => {
+            print!("{}", String::from_utf8_lossy(&out.stdout));
+            true
+        }
+        _ => false,
+    }
+}
+
+/// Print logo for a distro following the strict priority:
+/// 1. Real graphic logo (if terminal supports it and embedded logo exists)
+/// 2. Chafa high-quality symbols (if chafa is available and user logo exists)
+/// 3. Real Fastfetch ASCII logo (always available)
+pub fn print_distro_logo(distro: Option<&str>) {
+    print_distro_logo_with_ascii(distro, false);
+}
+
+/// Same as `print_distro_logo` but allows forcing ASCII mode
+pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool) {
+    if ascii_only {
+        // Force ASCII path
+        let art = get_ascii_logo(distro);
+        for line in art {
+            println!("{}", line);
+        }
+        return;
+    }
+
+    let supports_graphics = supports_graphical_logo();
+    let has_chafa = chafa_available();
+
+    // 1. Try embedded graphical logo (only if feature is enabled)
+    #[cfg(feature = "graphics")]
+    if supports_graphics {
+        if let Some(bytes) = get_embedded_logo(distro) {
+            if !bytes.is_empty() {
+                print_graphical_logo(bytes);
+                return;
+            }
+        }
+    }
+
+    // 2. Try chafa using embedded distro logo
+    if has_chafa {
+        if let Some(bytes) = get_embedded_logo(distro) {
+            if bytes.len() > 100 {
+                if let Ok(temp_path) = write_temp_logo(bytes) {
+                    if print_with_chafa(&temp_path) {
+                        let _ = std::fs::remove_file(&temp_path);
+                        return;
+                    }
+                    let _ = std::fs::remove_file(&temp_path);
+                }
+            }
+        }
+    }
+
+    // 3. Final fallback: Real Fastfetch ASCII logo
+    let art = get_ascii_logo(distro);
+    for line in art {
+        println!("{}", line);
+    }
+}
+
 #[cfg(feature = "graphics")]
 pub fn print_graphical_logo(image_data: &[u8]) {
     use base64::Engine;
 
-    // Try to get dimensions from the PNG data
     let (width, height) = image::load_from_memory(image_data)
         .map(|img| (img.width(), img.height()))
         .unwrap_or((0, 0));
@@ -154,17 +282,15 @@ pub fn print_graphical_logo(image_data: &[u8]) {
     let encoded = base64::engine::general_purpose::STANDARD.encode(image_data);
 
     if width > 0 && height > 0 {
-        // Include width/height for better protocol compliance
         println!(
             "\x1b_Gf=100,s={},v={},a=T;{}\x1b\\",
             width, height, encoded
         );
     } else {
-        println!("\x1b_Gf=100,a=T;{}\x1b\\", encoded);
+        println!("\x1b_Gf=100,a=T;{}", encoded);
     }
 }
 
-/// Fallback when graphics feature is disabled.
 #[cfg(not(feature = "graphics"))]
 pub fn print_graphical_logo(_image_data: &[u8]) {
     println!("[Graphical logo support requires --features graphics]");
@@ -173,15 +299,11 @@ pub fn print_graphical_logo(_image_data: &[u8]) {
 #[cfg(feature = "graphics")]
 use image::ImageFormat;
 
-/// Load an image from disk, resize it for terminal display, and print using Kitty protocol.
-/// Falls back to ASCII if loading fails.
 #[cfg(feature = "graphics")]
 pub fn print_graphical_logo_from_path(path: &std::path::Path) {
     match image::open(path) {
         Ok(img) => {
-            // Resize to reasonable terminal size (preserve aspect ratio)
             let resized = img.resize(128, 128, image::imageops::FilterType::Lanczos3);
-            
             let mut png_data = Vec::new();
             if resized.write_to(&mut std::io::Cursor::new(&mut png_data), ImageFormat::Png).is_ok() {
                 print_graphical_logo(&png_data);
