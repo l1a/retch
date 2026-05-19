@@ -25,6 +25,11 @@ fmt:
 lint:
     cargo clippy -- -D warnings
 
+# Run security audit (requires cargo-audit)
+audit:
+    cargo install cargo-audit
+    cargo audit || exit 1
+
 # Install the binary and man page
 install: install-man
     cargo install --path .
