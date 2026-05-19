@@ -1,7 +1,11 @@
 use clap::{Parser, ValueEnum};
 
 #[derive(Parser, Debug)]
-#[command(name = "retch", version, about = "A fast, feature-rich system information fetcher")]
+#[command(
+    name = "retch",
+    version,
+    about = "A fast, feature-rich system information fetcher"
+)]
 pub struct Cli {
     /// Output mode: short, long, or custom
     #[arg(short, long, value_enum, default_value = "long")]

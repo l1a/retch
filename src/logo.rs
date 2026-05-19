@@ -282,10 +282,7 @@ pub fn print_graphical_logo(image_data: &[u8]) {
     let encoded = base64::engine::general_purpose::STANDARD.encode(image_data);
 
     if width > 0 && height > 0 {
-        println!(
-            "\x1b_Gf=100,s={},v={},a=T;{}\x1b\\",
-            width, height, encoded
-        );
+        println!("\x1b_Gf=100,s={},v={},a=T;{}\x1b\\", width, height, encoded);
     } else {
         println!("\x1b_Gf=100,a=T;{}", encoded);
     }
@@ -305,7 +302,10 @@ pub fn print_graphical_logo_from_path(path: &std::path::Path) {
         Ok(img) => {
             let resized = img.resize(128, 128, image::imageops::FilterType::Lanczos3);
             let mut png_data = Vec::new();
-            if resized.write_to(&mut std::io::Cursor::new(&mut png_data), ImageFormat::Png).is_ok() {
+            if resized
+                .write_to(&mut std::io::Cursor::new(&mut png_data), ImageFormat::Png)
+                .is_ok()
+            {
                 print_graphical_logo(&png_data);
             } else {
                 println!("[Failed to encode logo as PNG]");

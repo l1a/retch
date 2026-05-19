@@ -87,3 +87,50 @@ Current focus areas:
 - Release preparation (versioning, changelog, packaging)
 
 I should be able to pick up from here using this file + the codebase.
+
+---
+
+## Session Update - May 2025
+
+### Progress Made
+
+- **Logo System Overhaul**
+  - Implemented strict priority rendering: Real graphic PNG → Chafa (high-quality symbols) → Real Fastfetch ASCII
+  - All supported distros (Arch, Debian, Fedora, NixOS, Ubuntu) + Tux now follow the same fallback chain
+  - Converted real SVG logos to high-resolution PNGs (384px) and embedded them via `include_bytes!`
+  - Original `.svg` files are preserved in `assets/logos/` for future use
+
+- **CLI Improvements**
+  - Added `--ascii-only` flag that forces ASCII logos (bypasses graphics and chafa)
+  - Renamed `--list-logos` → `--print-logos` (shows actual logos)
+  - Added `--list-distros` (simple list of known distros)
+  - Tux is now properly demonstrated in `--print-logos`
+
+- **Developer Experience**
+  - Created `Justfile` with common tasks:
+    - `just build`, `just test`, `just lint`, `just fmt`
+    - `just logos` — regenerates PNGs from SVGs
+    - `just install`, `just clean`, `just dev`
+
+- **Code Quality**
+  - Centralized logo logic in `print_distro_logo()` and `print_distro_logo_with_ascii()`
+  - All changes committed and pushed
+
+### Current State
+
+- Real embedded logos work in Kitty/iTerm2
+- Chafa integration works on other terminals when available
+- `--ascii-only` provides a reliable fallback
+- All distros (including unknown → Tux) follow the same rendering priority
+
+### Next Steps (Updated)
+
+1. **Enhanced theming** — Custom color overrides, more themes
+2. **Documentation & polish** — Improve README, examples, help text, man page
+3. **Release preparation** — Versioning, changelog, packaging, crates.io updates
+4. **Optional**: Explore colorful logo support or sixel protocol
+5. **Optional**: Add support for more distros in the embedded logo set
+
+---
+
+*End of update*

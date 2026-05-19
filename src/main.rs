@@ -60,9 +60,8 @@ fn main() -> anyhow::Result<()> {
     if let Some(maybe_path) = &cli.write_config {
         let path = match maybe_path {
             Some(p) => std::path::PathBuf::from(p),
-            None => retch_cli::config::Config::config_path().unwrap_or_else(|| {
-                std::path::PathBuf::from("retch-config.toml")
-            }),
+            None => retch_cli::config::Config::config_path()
+                .unwrap_or_else(|| std::path::PathBuf::from("retch-config.toml")),
         };
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -114,7 +113,8 @@ fn default_config_content() -> String {
 #     "disk", "temp", "net", "battery",
 #     "shell", "terminal", "desktop", "users", "packages"
 # ]
-"#.to_string()
+"#
+    .to_string()
 }
 
 fn print_default_config() {
@@ -133,8 +133,15 @@ fn merge_default_config() -> anyhow::Result<()> {
 
             // Check for each important setting
             let settings = [
-                "theme", "show_logo", "ascii_only", "fields",
-                "shell", "terminal", "desktop", "cpu freq", "users"
+                "theme",
+                "show_logo",
+                "ascii_only",
+                "fields",
+                "shell",
+                "terminal",
+                "desktop",
+                "cpu freq",
+                "users",
             ];
 
             for setting in &settings {

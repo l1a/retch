@@ -8,14 +8,20 @@ pub struct Theme {
     pub accent_color: Color,
 }
 
-impl Theme {
-    pub fn default() -> Self {
+impl Default for Theme {
+    fn default() -> Self {
         Self {
             name: "default".to_string(),
             label_color: Color::Cyan,
             value_color: Color::White,
             accent_color: Color::Green,
         }
+    }
+}
+
+impl Theme {
+    pub fn new_default() -> Self {
+        Self::default()
     }
 
     pub fn dark() -> Self {

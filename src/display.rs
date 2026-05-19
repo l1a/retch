@@ -9,7 +9,7 @@ impl SystemInfo {
         let theme_name = _config.theme.as_deref().or(cli.theme.as_deref());
         let theme = match theme_name {
             Some(name) => Theme::from_name(name),
-            None => Theme::default(),
+            None => Theme::new_default(),
         };
 
         let show_logo = _config.show_logo.unwrap_or(true) && !cli.no_logo;
@@ -23,8 +23,14 @@ impl SystemInfo {
                 // 1. Try user-provided custom logo first (config override)
                 let user_logo = if let Some(config_dir) = dirs::config_dir() {
                     let p = config_dir.join("retch").join("logo.png");
-                    if p.exists() { Some(p) } else { None }
-                } else { None };
+                    if p.exists() {
+                        Some(p)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
 
                 // 2. Graphics mode (Kitty / iTerm2)
                 #[cfg(feature = "graphics")]
@@ -63,9 +69,10 @@ impl SystemInfo {
         }
 
         // Determine which fields to show
-        let allowed_fields: Option<Vec<String>> = _config.fields.as_ref().map(|f| {
-            f.iter().map(|s| s.to_lowercase()).collect()
-        });
+        let allowed_fields: Option<Vec<String>> = _config
+            .fields
+            .as_ref()
+            .map(|f| f.iter().map(|s| s.to_lowercase()).collect());
 
         let should_show = |label: &str| -> bool {
             match &allowed_fields {
@@ -161,10 +168,7 @@ impl SystemInfo {
 
 fn format_uptime(uptime: &str) -> String {
     // Parse the uptime string (e.g. "45224s")
-    let seconds: u64 = uptime
-        .trim_end_matches('s')
-        .parse()
-        .unwrap_or(0);
+    let seconds: u64 = uptime.trim_end_matches('s').parse().unwrap_or(0);
 
     let years = seconds / (365 * 24 * 3600);
     let days = (seconds % (365 * 24 * 3600)) / (24 * 3600);

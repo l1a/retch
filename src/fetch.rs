@@ -38,7 +38,7 @@ impl SystemInfo {
         sys.refresh_all();
 
         let os = System::long_os_version()
-            .or_else(|| System::name())
+            .or_else(System::name)
             .unwrap_or_else(|| "Unknown".to_string());
 
         let kernel = System::kernel_version();
@@ -91,7 +91,10 @@ impl SystemInfo {
         let load_avg = {
             let avg = System::load_average();
             if avg.one > 0.0 || avg.five > 0.0 {
-                Some(format!("{:.2}, {:.2}, {:.2}", avg.one, avg.five, avg.fifteen))
+                Some(format!(
+                    "{:.2}, {:.2}, {:.2}",
+                    avg.one, avg.five, avg.fifteen
+                ))
             } else {
                 None
             }
@@ -201,11 +204,14 @@ fn detect_gpu() -> Option<String> {
 
     for path in &paths {
         if let Ok(vendor) = std::fs::read_to_string(path) {
-            if vendor.contains("0x10de") { // NVIDIA
+            if vendor.contains("0x10de") {
+                // NVIDIA
                 return Some("NVIDIA GPU".to_string());
-            } else if vendor.contains("0x1002") { // AMD
+            } else if vendor.contains("0x1002") {
+                // AMD
                 return Some("AMD GPU".to_string());
-            } else if vendor.contains("0x8086") { // Intel
+            } else if vendor.contains("0x8086") {
+                // Intel
                 return Some("Intel GPU".to_string());
             }
         }
@@ -237,11 +243,7 @@ fn detect_packages() -> Option<usize> {
     if let Ok(entries) = std::fs::read_dir("/var/lib/dpkg/info") {
         let count = entries
             .filter_map(|e| e.ok())
-            .filter(|e| {
-                e.path()
-                    .extension()
-                    .map_or(false, |ext| ext == "list")
-            })
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "list"))
             .count();
         if count > 0 {
             return Some(count);
@@ -254,7 +256,7 @@ fn detect_packages() -> Option<usize> {
             .filter_map(|e| e.ok())
             .map(|e| {
                 std::fs::read_dir(e.path())
-                    .map(|d| d.filter_map(|_| Some(1)).count())
+                    .map(|d| d.filter(|_| true).count())
                     .unwrap_or(0)
             })
             .sum();
@@ -267,7 +269,7 @@ fn detect_packages() -> Option<usize> {
     if let Ok(entries) = std::fs::read_dir("/var/db/xbps") {
         let count = entries
             .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension().map_or(false, |ext| ext == "plist"))
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "plist"))
             .count();
         if count > 0 {
             return Some(count);
@@ -278,11 +280,9 @@ fn detect_packages() -> Option<usize> {
     let rpm_db = "/var/lib/rpm/rpmdb.sqlite";
     if std::path::Path::new(rpm_db).exists() {
         if let Ok(conn) = rusqlite::Connection::open(rpm_db) {
-            if let Ok(count) = conn.query_row(
-                "SELECT COUNT(*) FROM Packages",
-                [],
-                |row| row.get::<_, i64>(0),
-            ) {
+            if let Ok(count) = conn.query_row("SELECT COUNT(*) FROM Packages", [], |row| {
+                row.get::<_, i64>(0)
+            }) {
                 if count > 0 {
                     return Some(count as usize);
                 }
