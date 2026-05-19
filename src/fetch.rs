@@ -1,7 +1,7 @@
 use crate::cli::Cli;
 use crate::config::Config;
 use chrono::TimeZone;
-use colored::Colorize;
+use owo_colors::OwoColorize;
 use sysinfo::{Components, Disks, Networks, System, Users};
 
 #[derive(Debug)]
