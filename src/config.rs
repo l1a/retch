@@ -8,6 +8,17 @@ pub struct Config {
     pub show_logo: Option<bool>,
     pub ascii_only: Option<bool>,
     pub fields: Option<Vec<String>>,
+    /// Custom theme color overrides
+    pub custom_theme: Option<CustomTheme>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+pub struct CustomTheme {
+    pub label_color: Option<String>,
+    pub value_color: Option<String>,
+    pub accent_color: Option<String>,
+    pub title_color: Option<String>,
+    pub separator_color: Option<String>,
 }
 
 impl Config {

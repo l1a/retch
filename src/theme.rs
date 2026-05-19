@@ -82,6 +82,39 @@ impl Theme {
         }
     }
 
+    /// Build a theme from a base theme + custom color overrides (from config)
+    pub fn with_custom_overrides(base: Self, custom: &crate::config::CustomTheme) -> Self {
+        let mut theme = base;
+
+        if let Some(color) = &custom.label_color {
+            if let Some(c) = parse_color(color) {
+                theme.label_color = c;
+            }
+        }
+        if let Some(color) = &custom.value_color {
+            if let Some(c) = parse_color(color) {
+                theme.value_color = c;
+            }
+        }
+        if let Some(color) = &custom.accent_color {
+            if let Some(c) = parse_color(color) {
+                theme.accent_color = c;
+            }
+        }
+        if let Some(color) = &custom.title_color {
+            if let Some(c) = parse_color(color) {
+                theme.title_color = c;
+            }
+        }
+        if let Some(color) = &custom.separator_color {
+            if let Some(c) = parse_color(color) {
+                theme.separator_color = c;
+            }
+        }
+
+        theme
+    }
+
     pub fn color_label(&self, text: &str) -> ColoredString {
         text.color(self.label_color)
     }

@@ -7,10 +7,15 @@ use crate::theme::Theme;
 impl SystemInfo {
     pub fn display(&self, cli: &Cli, _config: &Config) -> anyhow::Result<()> {
         let theme_name = _config.theme.as_deref().or(cli.theme.as_deref());
-        let theme = match theme_name {
+        let mut theme = match theme_name {
             Some(name) => Theme::from_name(name),
             None => Theme::new_default(),
         };
+
+        // Apply custom theme overrides from config if present
+        if let Some(custom) = &_config.custom_theme {
+            theme = Theme::with_custom_overrides(theme, custom);
+        }
 
         let show_logo = _config.show_logo.unwrap_or(true) && !cli.no_logo;
         if show_logo {
