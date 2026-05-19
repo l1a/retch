@@ -145,6 +145,10 @@ fn default_config_content() -> String {
 # Force ASCII-only output (even if graphical logos are supported)
 # ascii_only = false
 
+# Output modes (CLI only, but documented here for reference)
+# short = true     # OS, Kernel, Host, CPU, GPU, Memory, Disk
+# long = true      # Show all fields
+
 # List of fields to display (leave empty or omit to show all)
 # fields = [
 #     "os", "kernel", "host", "arch", "cpu", "cpu-freq", "gpu",
