@@ -9,7 +9,7 @@ fn main() -> anyhow::Result<()> {
     // Handle special CLI commands
     if cli.list_themes {
         println!("Built-in themes:");
-        println!("  default");
+        println!("  neutral (formerly default)");
         println!("  dark");
         println!("  light");
         println!("  catppuccin-latte");
@@ -106,7 +106,7 @@ fn default_config_content() -> String {
 # Uncomment and modify as needed.
 
 # Theme to use. Defaults to "auto" (follows system dark/light preference).
-# Other options: "dark", "light", "custom",
+# Other options: "neutral", "dark", "light", "custom",
 # or popular themes: "catppuccin-mocha", "solarized-dark", etc.
 # theme = "auto"
 

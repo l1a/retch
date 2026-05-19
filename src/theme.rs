@@ -37,7 +37,7 @@ pub struct Theme {
 impl Default for Theme {
     fn default() -> Self {
         Self {
-            name: "default".to_string(),
+            name: "neutral".to_string(),
             label_color: Rgb(0, 255, 255),      // Cyan
             value_color: Rgb(255, 255, 255),    // White
             accent_color: Rgb(0, 255, 0),       // Green
@@ -48,8 +48,13 @@ impl Default for Theme {
 }
 
 impl Theme {
-    pub fn new_default() -> Self {
+    pub fn neutral() -> Self {
         Self::default()
+    }
+
+    // Keep for backward compatibility
+    pub fn new_default() -> Self {
+        Self::neutral()
     }
 
     pub fn dark() -> Self {
@@ -152,6 +157,7 @@ impl Theme {
         match name.to_lowercase().replace('_', "-").as_str() {
             "dark" => Self::dark(),
             "light" => Self::light(),
+            "neutral" | "default" => Self::neutral(), // "default" kept for backward compat
             "custom" => Self::default(),
             "auto" => Self::detect_system_theme(),
             "catppuccin-latte" | "catppuccin_latte" | "latte" => Self::catppuccin_latte(),
@@ -242,9 +248,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_default_theme() {
-        let theme = Theme::default();
-        assert_eq!(theme.name, "default");
+    fn test_neutral_theme() {
+        let theme = Theme::neutral();
+        assert_eq!(theme.name, "neutral");
         assert_eq!(theme.label_color, Rgb(0, 255, 255));
         assert_eq!(theme.value_color, Rgb(255, 255, 255));
         assert_eq!(theme.accent_color, Rgb(0, 255, 0));
@@ -270,6 +276,6 @@ mod tests {
     #[test]
     fn test_new_default() {
         let theme = Theme::new_default();
-        assert_eq!(theme.name, "default");
+        assert_eq!(theme.name, "neutral");
     }
 }
