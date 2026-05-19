@@ -17,6 +17,7 @@
 - `dirs` — Config directory handling
 - `anyhow` — Error handling
 - `chrono = "0.4"` — Date/time formatting for boot time
+- `rusqlite` (bundled) — RPM package counting
 - Optional graphics support: `image` + `base64` (behind `graphics` feature)
 
 ### Module Structure
@@ -31,18 +32,23 @@
 
 ### Current Features Implemented
 - Rich system information:
-  - OS, Kernel, Hostname, Arch
-  - CPU (model + cores + frequency)
+  - OS, Kernel, Hostname, Arch, **Current User**
+  - CPU (model + cores + frequency) + **CPU Freq**
+  - **GPU** detection
   - Memory + Swap
-  - Uptime, Processes, Load Average
-  - Disks, Temperatures, Networks
+  - **Improved Uptime** (human-readable + ISO boot time)
+  - Processes, Load Average
+  - **Disks with filesystem type** (btrfs, ext4, etc.)
+  - Temperatures, **Networks** (Up/Down status + RX/TX volume + color)
   - Boot time (ISO + human-readable duration)
   - Battery, Shell, Terminal, Desktop Environment
-  - Users count
+  - **Interactive users count** (UID >= 1000)
+  - **Package count** (pacman, dpkg, RPM via SQLite)
 - Theming system (`default`, `dark`, `light`) with `--list-themes`
-- ASCII logo support with basic distro detection
+- **Improved ASCII logos** + `--list-logos` command
+- Graphical logo support (Kitty protocol + image loading via `chafa`-style)
 - Full config support (`~/.config/retch/config.toml`)
-- CLI options: `--fields`, `--generate-config`, `--write-config`, `--merge-config`
+- CLI options: `--fields`, `--generate-config`, `--write-config`, `--merge-config`, `--list-logos`
 - Field selection (config + CLI)
 - Smart config merging
 - Clean right-aligned formatted display
@@ -58,11 +64,10 @@
 
 ## Next Steps (Recommended Order)
 
-1. **Graphical logo support** — Kitty / iTerm inline image protocol
-2. **More system information** — GPU, Packages, more detailed hardware info
-3. **Enhanced theming** — Custom color overrides, more themes
-4. **Documentation & polish** — Improve README, examples, error messages
-5. **Release preparation** — Versioning, packaging, crates.io updates
+1. **Enhanced theming** — Custom color overrides, more themes
+2. **Documentation & polish** — Improve README, examples, help text, man page
+3. **Release preparation** — Versioning, changelog, packaging, crates.io updates
+4. **Optional**: Explore colorful logo support (chafa-style) for more visual appeal
 
 ## Important Notes
 
@@ -77,8 +82,8 @@ Just say something like:
 > "Continue working on retch"
 
 Current focus areas:
-- Graphical logo support (next major feature)
-- Additional system information fields
-- Polish and release preparation
+- Enhanced theming
+- Documentation & polish (README, examples, help)
+- Release preparation (versioning, changelog, packaging)
 
 I should be able to pick up from here using this file + the codebase.

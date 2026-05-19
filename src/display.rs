@@ -14,16 +14,34 @@ impl SystemInfo {
 
         let show_logo = _config.show_logo.unwrap_or(true) && !cli.no_logo;
         if show_logo {
-            let distro_hint = if self.os.to_lowercase().contains("fedora") {
-                Some("fedora")
-            } else {
-                None
-            };
-            let logo = logo::get_ascii_logo(distro_hint);
-            for line in &logo {
-                println!("{}", theme.color_accent(line));
+            #[cfg(feature = "graphics")]
+            let mut printed_logo = false;
+            #[cfg(not(feature = "graphics"))]
+            let printed_logo = false;
+
+            #[cfg(feature = "graphics")]
+            {
+                let use_graphics = !cli.ascii_only && logo::supports_graphical_logo();
+                if use_graphics {
+                    if let Some(config_dir) = dirs::config_dir() {
+                        let logo_path = config_dir.join("retch").join("logo.png");
+                        if logo_path.exists() {
+                            logo::print_graphical_logo_from_path(&logo_path);
+                            printed_logo = true;
+                        }
+                    }
+                }
             }
-            println!(); // spacing
+
+            if !printed_logo {
+                // ASCII fallback - use proper distro detection
+                let distro_hint = logo::detect_distro();
+                let logo = logo::get_ascii_logo(distro_hint.as_deref());
+                for line in &logo {
+                    println!("{}", theme.color_accent(line));
+                }
+            }
+            println!(); // spacing after logo
         }
 
         // Determine which fields to show
@@ -58,11 +76,19 @@ impl SystemInfo {
         if let Some(host) = &self.hostname {
             print_line("Host", host);
         }
+        if let Some(user) = &self.current_user {
+            print_line("User", user);
+        }
         print_line("Arch", &self.arch);
         print_line("CPU", &format!("{} ({} cores)", self.cpu, self.cpu_cores));
+        if let Some(freq) = &self.cpu_freq {
+            print_line("CPU Freq", freq);
+        }
+        if let Some(gpu) = &self.gpu {
+            print_line("GPU", gpu);
+        }
         print_line("Memory", &self.memory);
         print_line("Swap", &self.swap);
-        print_line("Uptime", &self.uptime);
         print_line("Procs", &self.processes.to_string());
         if let Some(load) = &self.load_avg {
             print_line("Load", load);
@@ -86,10 +112,10 @@ impl SystemInfo {
             }
         }
 
-        // Boot time: ISO datetime + human-readable time since boot
+        // Uptime: human duration first, then ISO boot time with timezone
         let uptime_str = format_uptime(&self.uptime);
-        let boot_display = format!("{} ({} ago)", self.boot_time, uptime_str);
-        print_line("Booted", &boot_display);
+        let boot_display = format!("{} since {}", uptime_str, self.boot_time);
+        print_line("Uptime", &boot_display);
 
         if let Some(bat) = &self.battery {
             print_line("Battery", bat);
@@ -104,10 +130,12 @@ impl SystemInfo {
         if let Some(de) = &self.desktop {
             print_line("Desktop", de);
         }
-        if let Some(freq) = &self.cpu_freq {
-            print_line("CPU Freq", freq);
-        }
         print_line("Users", &self.users.to_string());
+        if let Some(pkgs) = self.packages {
+            if pkgs > 0 {
+                print_line("Packages", &pkgs.to_string());
+            }
+        }
 
         Ok(())
     }

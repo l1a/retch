@@ -1,6 +1,7 @@
 use crate::cli::Cli;
 use crate::config::Config;
-use chrono::{DateTime, Utc};
+use chrono::TimeZone;
+use colored::Colorize;
 use sysinfo::{Components, Disks, Networks, System, Users};
 
 #[derive(Debug)]
@@ -26,6 +27,9 @@ pub struct SystemInfo {
     pub desktop: Option<String>,
     pub cpu_freq: Option<String>,
     pub users: usize,
+    pub gpu: Option<String>,
+    pub packages: Option<usize>,
+    pub current_user: Option<String>,
 }
 
 impl SystemInfo {
@@ -67,9 +71,11 @@ impl SystemInfo {
             .map(|d| {
                 let total = d.total_space() as f64 / 1024.0 / 1024.0 / 1024.0;
                 let avail = d.available_space() as f64 / 1024.0 / 1024.0 / 1024.0;
+                let fs = d.file_system().to_string_lossy();
                 format!(
-                    "{}: {:.1} GB free / {:.1} GB",
+                    "{} ({}): {:.1} GB free / {:.1} GB",
                     d.mount_point().display(),
+                    fs,
                     avail,
                     total
                 )
@@ -107,13 +113,22 @@ impl SystemInfo {
         let networks = Networks::new_with_refreshed_list()
             .iter()
             .map(|(name, data)| {
-                format!("{}: {} packets received", name, data.received())
+                let rx = format_bytes(data.total_received());
+                let tx = format_bytes(data.total_transmitted());
+                let status = if data.total_received() > 0 || data.total_transmitted() > 0 {
+                    "Up".green().to_string()
+                } else {
+                    "Down".red().to_string()
+                };
+                format!("{} [{}] RX: {} TX: {}", name, status, rx, tx)
             })
             .collect();
 
         let boot_timestamp = System::boot_time();
-        let boot_dt = DateTime::<Utc>::from_timestamp(boot_timestamp as i64, 0)
-            .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
+        let boot_dt = chrono::Local
+            .timestamp_opt(boot_timestamp as i64, 0)
+            .single()
+            .map(|dt| dt.format("%Y-%m-%dT%H:%M:%S%:z").to_string())
             .unwrap_or_else(|| boot_timestamp.to_string());
         let boot_time = boot_dt;
 
@@ -130,8 +145,22 @@ impl SystemInfo {
             .first()
             .map(|c| format!("{:.2} GHz", c.frequency() as f64 / 1000.0));
 
-        // Number of users
-        let users = Users::new_with_refreshed_list().len();
+        // Current logged in user
+        let current_user = std::env::var("USER").ok();
+
+        // Number of interactive users (UID >= 1000, excluding system accounts)
+        let users = Users::new_with_refreshed_list()
+            .iter()
+            .filter(|user| {
+                // UID is exposed via Display
+                let uid_str = user.id().to_string();
+                if let Ok(uid) = uid_str.parse::<u32>() {
+                    uid >= 1000
+                } else {
+                    false
+                }
+            })
+            .count();
 
         Ok(Self {
             os,
@@ -155,6 +184,128 @@ impl SystemInfo {
             desktop,
             cpu_freq,
             users,
+            gpu: detect_gpu(),
+            packages: detect_packages(),
+            current_user,
         })
+    }
+}
+
+/// Basic GPU detection (Linux-focused for now)
+fn detect_gpu() -> Option<String> {
+    // Try common locations for GPU info
+    let paths = [
+        "/sys/class/drm/card0/device/vendor",
+        "/sys/class/drm/renderD128/device/vendor",
+    ];
+
+    for path in &paths {
+        if let Ok(vendor) = std::fs::read_to_string(path) {
+            if vendor.contains("0x10de") { // NVIDIA
+                return Some("NVIDIA GPU".to_string());
+            } else if vendor.contains("0x1002") { // AMD
+                return Some("AMD GPU".to_string());
+            } else if vendor.contains("0x8086") { // Intel
+                return Some("Intel GPU".to_string());
+            }
+        }
+    }
+
+    // Fallback: try to read model name if available
+    if let Ok(model) = std::fs::read_to_string("/sys/class/drm/card0/device/model") {
+        let model = model.trim();
+        if !model.is_empty() {
+            return Some(model.to_string());
+        }
+    }
+
+    None
+}
+
+/// Count installed packages by inspecting package manager databases.
+/// Avoids calling any external tools.
+fn detect_packages() -> Option<usize> {
+    // Arch / Manjaro
+    if let Ok(entries) = std::fs::read_dir("/var/lib/pacman/local") {
+        let count = entries.filter_map(|e| e.ok()).count();
+        if count > 0 {
+            return Some(count);
+        }
+    }
+
+    // Debian / Ubuntu
+    if let Ok(entries) = std::fs::read_dir("/var/lib/dpkg/info") {
+        let count = entries
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.path()
+                    .extension()
+                    .map_or(false, |ext| ext == "list")
+            })
+            .count();
+        if count > 0 {
+            return Some(count);
+        }
+    }
+
+    // Gentoo
+    if let Ok(entries) = std::fs::read_dir("/var/db/pkg") {
+        let count: usize = entries
+            .filter_map(|e| e.ok())
+            .map(|e| {
+                std::fs::read_dir(e.path())
+                    .map(|d| d.filter_map(|_| Some(1)).count())
+                    .unwrap_or(0)
+            })
+            .sum();
+        if count > 0 {
+            return Some(count);
+        }
+    }
+
+    // Void Linux
+    if let Ok(entries) = std::fs::read_dir("/var/db/xbps") {
+        let count = entries
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().map_or(false, |ext| ext == "plist"))
+            .count();
+        if count > 0 {
+            return Some(count);
+        }
+    }
+
+    // Fedora / RHEL / openSUSE - read from RPM SQLite database
+    let rpm_db = "/var/lib/rpm/rpmdb.sqlite";
+    if std::path::Path::new(rpm_db).exists() {
+        if let Ok(conn) = rusqlite::Connection::open(rpm_db) {
+            if let Ok(count) = conn.query_row(
+                "SELECT COUNT(*) FROM Packages",
+                [],
+                |row| row.get::<_, i64>(0),
+            ) {
+                if count > 0 {
+                    return Some(count as usize);
+                }
+            }
+        }
+    }
+
+    None
+}
+
+/// Format bytes into human-readable form (KB, MB, GB, etc.)
+fn format_bytes(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    const GB: u64 = MB * 1024;
+
+    if bytes >= GB {
+        format!("{:.1} GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.1} MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.1} KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{} B", bytes)
     }
 }

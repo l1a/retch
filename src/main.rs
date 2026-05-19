@@ -15,6 +15,36 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
+    if cli.list_logos {
+        use retch_cli::logo;
+
+        println!("Available ASCII logos:\n");
+
+        let logos = [
+            ("arch", "Arch Linux"),
+            ("debian", "Debian"),
+            ("endeavouros", "EndeavourOS"),
+            ("fedora", "Fedora"),
+            ("linuxmint", "Linux Mint"),
+            ("manjaro", "Manjaro"),
+            ("nixos", "NixOS"),
+            ("pop", "Pop!_OS"),
+            ("ubuntu", "Ubuntu"),
+        ];
+
+        for (id, name) in logos {
+            println!("{}:", name);
+            let art = logo::get_ascii_logo(Some(id));
+            for line in art {
+                println!("  {}", line);
+            }
+            println!();
+        }
+
+        println!("(default fallback for unknown distros)");
+        return Ok(());
+    }
+
     if cli.generate_config {
         print_default_config();
         return Ok(());
@@ -72,10 +102,10 @@ fn default_config_content() -> String {
 
 # List of fields to display (leave empty or omit to show all)
 # fields = [
-#     "os", "kernel", "hostname", "arch", "cpu", "cpu freq",
+#     "os", "kernel", "host", "arch", "cpu", "cpu freq", "gpu",
 #     "memory", "swap", "uptime", "procs", "load",
-#     "disk", "temp", "net", "booted", "battery",
-#     "shell", "terminal", "desktop", "users"
+#     "disk", "temp", "net", "battery",
+#     "shell", "terminal", "desktop", "users", "packages"
 # ]
 "#.to_string()
 }

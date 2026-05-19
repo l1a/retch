@@ -26,7 +26,8 @@ anyhow = "1.0"
 owo-colors = "4.0"
 image = { version = "0.25", optional = true }
 base64 = { version = "0.22", optional = true }
+rusqlite = { version = "0.31", features = ["bundled"] }
 
 [features]
-default = []
+default = ["graphics"]
 graphics = ["image", "base64"]
