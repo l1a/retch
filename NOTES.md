@@ -316,57 +316,39 @@ From this point forward, we will follow a traditional git development flow:
 
 *End of update*
 
-## Session Update - May 2026
+## Session Update - May 20, 2026
 
 ### Progress Made
 
-- **Multi-GPU Support**
-  - Refactored `SystemInfo` to use `Vec<String>` for GPUs instead of `Option<String>`.
-  - Updated `detect_gpu` to scan `/sys/class/drm` for all unique graphics devices.
-  - Implemented device deduplication using `HashSet` and canonicalized sysfs paths.
+- **Multi-GPU Support & Improved Detection** (v0.1.2)
+  - Refactored `SystemInfo` to use `Vec<String>` for GPUs, enabling detection of multiple graphics cards.
+  - Updated `detect_gpu` to scan `/sys/class/drm` and deduplicate devices using `HashSet`.
+  - **PCI ID Lookup**: Implemented a manual parser for `/usr/share/hwdata/pci.ids` for accurate model naming (e.g., "Raptor Lake-P [Iris Xe Graphics]").
+  - **NVIDIA Enhancement**: Added high-quality model name extraction from `/proc/driver/nvidia/gpus/*/information`.
+  - **VRAM Detection**: Added best-effort VRAM size detection via sysfs for AMD.
 
-- **Improved GPU Identification**
-  - **PCI ID Lookup**: Added a manual parser for `/usr/share/hwdata/pci.ids` to map vendor/device IDs to specific model names (e.g., "Raptor Lake-P [Iris Xe Graphics]").
-  - **NVIDIA Enhancement**: Integrated extraction of high-quality model names from `/proc/driver/nvidia/gpus/*/information` when available.
-  - **VRAM Detection**: Added best-effort VRAM size detection via sysfs (`mem_info_vram_total`).
-
-- **Display Logic**
-  - Updated `src/display.rs` to iterate through and print all detected GPUs.
-  - Aligned multi-GPU output with existing field-filtering and theming logic.
-
-### Current State
-
-- The tool now correctly identifies and displays multiple GPUs (e.g., Integrated Intel + Discrete NVIDIA).
-- GPU model names are much more descriptive than simple vendor strings.
-- Implementation remains lightweight with no new external library dependencies.
-
-### Next Steps (Updated)
-
-1.  **More Distros**: Add support/logos for Pop!_OS, Manjaro, EndeavourOS, openSUSE, etc.
-2.  **Shell Completions**: Add Bash, Zsh, and Fish completions.
-3.  **Expand Testing**: Increase coverage for the new PCI ID lookup and GPU detection logic.
-
----
-
-*End of update*
-
-## Session Update - May 20, 2026 (Completions)
-
-### Progress Made
-
-- **Shell Completion Generation**
+- **Shell Completion Generation** (v0.1.3)
   - Added `clap_complete` and `clap_complete_nushell` dependencies.
-  - Implemented `--completions <SHELL>` flag (supports Bash, Zsh, Fish, PowerShell, Elvish, and Nushell).
-  - Integrated `CommandFactory` and custom shell mapping for dynamic completion script generation.
+  - Implemented `--completions <SHELL>` flag supporting Bash, Zsh, Fish, PowerShell, Elvish, and Nushell.
+  - Integrated `CommandFactory` for dynamic completion script generation.
+
+- **CI/CD Workflow Refinements**
+  - Enhanced the standard `build` job to run `cargo fmt --check` and `cargo clippy -- -D warnings` on every push to any branch.
+  - Scoped `pull_request` triggers to the `main` branch to prevent redundant runs while ensuring rigorous merge validation.
+  - Restricted `full-test` and `release` workflows strictly to version tags (`v*`).
 
 ### Current State
 
-- Users can now generate completion scripts for their preferred shell using `retch --completions <shell>`.
+- The tool accurately identifies multiple GPUs with descriptive model names.
+- Users can generate completion scripts for all major shells via the CLI.
+- CI/CD is more robust, catching lint and formatting issues early in the development cycle.
+- Released versions **v0.1.2** and **v0.1.3**.
 
 ### Next Steps (Updated)
 
 1.  **More Distros**: Add support/logos for Pop!_OS, Manjaro, EndeavourOS, openSUSE, etc.
-2.  **Expand Testing**: Increase coverage for the new completion logic and existing GPU detection.
+2.  **Expand Testing**: Increase coverage for the new PCI ID lookup, GPU detection, and completion logic.
+3.  **Documentation**: Update man pages and README to include the new `--completions` flag.
 
 ---
 
