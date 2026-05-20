@@ -7,7 +7,7 @@ pub fn parse_color(input: &str) -> Option<Rgb> {
 
     // Hex color support
     if s.starts_with('#') || s.len() == 6 {
-        let hex = if s.starts_with('#') { &s[1..] } else { s };
+        let hex = s.strip_prefix('#').unwrap_or(s);
         if hex.len() == 6 {
             if let (Ok(r), Ok(g), Ok(b)) = (
                 u8::from_str_radix(&hex[0..2], 16),
