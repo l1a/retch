@@ -342,7 +342,7 @@ From this point forward, we will follow a traditional git development flow:
 - The tool accurately identifies multiple GPUs with descriptive model names.
 - Users can generate completion scripts for all major shells via the CLI.
 - CI/CD is more robust, catching lint and formatting issues early in the development cycle.
-- Released versions **v0.1.2** and **v0.1.3**.
+- Released and published versions **v0.1.2** and **v0.1.3** to crates.io.
 
 ### Next Steps (Updated)
 
