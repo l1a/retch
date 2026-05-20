@@ -1,5 +1,15 @@
 use clap::{Parser, ValueEnum};
 
+#[derive(ValueEnum, Clone, Debug, PartialEq)]
+pub enum CompletionShell {
+    Bash,
+    Elvish,
+    Fish,
+    PowerShell,
+    Zsh,
+    Nushell,
+}
+
 #[derive(Parser, Debug)]
 #[command(
     name = "retch",
@@ -66,6 +76,10 @@ pub struct Cli {
     /// Fields to display (comma separated). Overrides config.
     #[arg(long, value_delimiter = ',')]
     pub fields: Option<Vec<String>>,
+
+    /// Generate shell completions
+    #[arg(long, value_enum)]
+    pub completions: Option<CompletionShell>,
 }
 
 #[derive(ValueEnum, Clone, Debug, PartialEq)]

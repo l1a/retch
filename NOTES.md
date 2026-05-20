@@ -349,3 +349,25 @@ From this point forward, we will follow a traditional git development flow:
 ---
 
 *End of update*
+
+## Session Update - May 20, 2026 (Completions)
+
+### Progress Made
+
+- **Shell Completion Generation**
+  - Added `clap_complete` and `clap_complete_nushell` dependencies.
+  - Implemented `--completions <SHELL>` flag (supports Bash, Zsh, Fish, PowerShell, Elvish, and Nushell).
+  - Integrated `CommandFactory` and custom shell mapping for dynamic completion script generation.
+
+### Current State
+
+- Users can now generate completion scripts for their preferred shell using `retch --completions <shell>`.
+
+### Next Steps (Updated)
+
+1.  **More Distros**: Add support/logos for Pop!_OS, Manjaro, EndeavourOS, openSUSE, etc.
+2.  **Expand Testing**: Increase coverage for the new completion logic and existing GPU detection.
+
+---
+
+*End of update*
