@@ -1,4 +1,5 @@
 use clap::{Parser, ValueEnum};
+use clap_complete::Shell;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -66,6 +67,10 @@ pub struct Cli {
     /// Fields to display (comma separated). Overrides config.
     #[arg(long, value_delimiter = ',')]
     pub fields: Option<Vec<String>>,
+
+    /// Generate shell completions
+    #[arg(long, value_enum)]
+    pub completions: Option<Shell>,
 }
 
 #[derive(ValueEnum, Clone, Debug, PartialEq)]

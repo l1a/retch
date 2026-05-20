@@ -1,4 +1,5 @@
-use clap::Parser;
+use clap::{CommandFactory, Parser};
+use clap_complete::generate;
 use retch_cli::cli::Cli;
 use retch_cli::config::Config;
 use retch_cli::fetch::SystemInfo;
@@ -7,6 +8,13 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     // Handle special CLI commands
+    if let Some(shell) = cli.completions {
+        let mut cmd = Cli::command();
+        let bin_name = cmd.get_name().to_string();
+        generate(shell, &mut cmd, bin_name, &mut std::io::stdout());
+        return Ok(());
+    }
+
     if cli.list_themes {
         println!("Built-in themes:");
         println!("  neutral (formerly default)");
