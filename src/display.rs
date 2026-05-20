@@ -141,8 +141,10 @@ impl SystemInfo {
         if let Some(freq) = &self.cpu_freq {
             print_line("CPU Freq", freq);
         }
-        if let Some(gpu) = &self.gpu {
-            print_line("GPU", gpu);
+        if should_show("GPU") {
+            for gpu in &self.gpu {
+                print_line("GPU", gpu);
+            }
         }
         print_line("Memory", &self.memory);
         print_line("Swap", &self.swap);
