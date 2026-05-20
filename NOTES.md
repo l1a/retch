@@ -269,3 +269,51 @@ The project is now in a **releasable state** with:
 ---
 
 *End of update*
+
+---
+
+## Latest Session - Release Polish & crates.io Preparation
+
+### Progress Made
+
+- **CI / Release Workflow Fixes**
+  - Fixed `full-test` job issues with Rust installation in containers (Fedora `$HOME` mismatch)
+  - Fixed release tarball creation bug (`tar: file changed as we read it`)
+  - Removed custom `retch-source.tar.gz` from release assets (GitHub now only provides source archives)
+  - Release workflow now cleanly produces only `retch` binary + `retch.1` man page
+
+- **crates.io Preparation**
+  - Improved `description` in `Cargo.toml`
+  - Added crate-level documentation in `src/lib.rs`
+  - Bumped version from `0.1.0` (placeholder) → `0.1.1`
+  - Ran full `cargo test --all-features` and `cargo publish --dry-run`
+  - All 7 existing unit tests pass
+
+- **GitHub Release**
+  - Successfully created `v0.1.1` release via automated workflow
+  - Confirmed release contains correct assets (`retch` + `retch.1`)
+
+- **Current crates.io State**
+  - `retch-cli` published as **v0.1.1** with improved description
+  - `v0.1.0` remains as a placeholder version
+
+### Next Steps (Updated)
+
+1. **More Distros** — Add logos and support for additional distributions
+2. **Shell Completions** — Add Bash/Zsh/Fish completions
+3. **Release Polish** — Multi-platform binaries (macOS, Windows), checksums
+4. **Expand Testing** — Increase coverage for config, theming, and CLI
+5. **Documentation** — Improve README examples and man page if needed
+
+### Development Workflow (New Policy)
+
+From this point forward, we will follow a traditional git development flow:
+
+- Use feature branches for new work (`feature/xyz`, `fix/abc`, etc.)
+- Keep `main` stable and only merge via pull requests
+- Tag releases from `main` after they pass CI
+- Avoid direct commits to `main` for anything beyond trivial fixes
+
+---
+
+*End of update*
