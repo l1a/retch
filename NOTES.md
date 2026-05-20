@@ -137,7 +137,71 @@ I should be able to pick up from here using this file + the codebase.
 
 ---
 
-## Session Update - Late May 2025 (Major Theming + Polish Phase)
+## Final Progress Summary (as of late May 2025)
+
+### Major Achievements
+
+**1. Theming System (Significantly Improved)**
+- Full custom theme support via config (`[custom_theme]`)
+- Hex color support (e.g. `#89b4fa`)
+- Automatic dark/light detection (`theme = "auto"`) — now the default
+- Added many community themes: Catppuccin (all 4 variants), Solarized Light/Dark
+- Renamed old "default" theme to "neutral" for clarity
+- Added `--list-themes` and `--print-theme-template` commands
+- Migrated from `colored` to `owo-colors` for truecolor/RGB support
+
+**2. Output Modes**
+- `--short`: OS, Kernel, Host, CPU, GPU, Memory, Disk
+- Default: OS, Kernel, Host, CPU, GPU, Memory, Swap, Load, Disk, Net, Uptime
+- `--long`: All fields
+
+**3. Documentation & Polish**
+- Major README overhaul with features, usage, and examples
+- Comprehensive man page (`retch.1`) with theming documentation
+- Default config template includes theme and output mode examples
+- Added lighthearted note about being "100% vibe coded with Grok"
+
+**4. Release & CI/CD Automation**
+- `full-test` job runs on version tags (`v*`) on both Ubuntu and Fedora
+- Includes: release build, all-features tests, clippy, fmt check, man page
+- `release` job automatically creates GitHub Releases with binary, man page, and source tarball
+- Added Dependabot + security audit workflow (`cargo audit`)
+
+**5. Developer Experience**
+- Rich Justfile with build, test, lint, logos, man page generation, install, audit, etc.
+- Basic unit tests for themes and logos
+
+**6. GitHub Repository Polish**
+- Updated "About" section and topics
+- Proper release permissions and naming
+
+### Current State
+
+The project is now in a **releasable state** with:
+- Mature theming system
+- Flexible output modes
+- Automated release process
+- Good documentation
+- Security and dependency management in place
+
+### Recommended Next Steps
+
+1. **More Distros** — Add support and logos for additional distributions (Pop!_OS, Manjaro, EndeavourOS, openSUSE, Arch derivatives, etc.)
+
+2. **Release Polish** — Multi-platform builds (macOS, Windows), better artifact naming, checksums, and changelog generation
+
+3. **Shell Completions** — Add Bash, Zsh, and Fish completions
+
+4. **Expand Testing** — More coverage, especially for config merging, theming overrides, and CLI flags
+
+5. **Optional / Future**
+   - Sixel graphical output support
+   - Better error messages and UX improvements
+   - Versioning strategy and changelog maintenance
+
+---
+
+*End of project notes*
 
 ### Progress Made
 

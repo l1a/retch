@@ -78,17 +78,30 @@ impl SystemInfo {
             None // show everything
         } else if cli.short {
             Some(vec![
-                "os".to_string(), "kernel".to_string(), "host".to_string(),
-                "cpu".to_string(), "gpu".to_string(), "memory".to_string(), "disk".to_string(),
+                "os".to_string(),
+                "kernel".to_string(),
+                "host".to_string(),
+                "cpu".to_string(),
+                "gpu".to_string(),
+                "memory".to_string(),
+                "disk".to_string(),
             ])
         } else if let Some(fields) = &_config.fields {
             Some(fields.iter().map(|s| s.to_lowercase()).collect())
         } else {
             // Default set
             Some(vec![
-                "os".to_string(), "kernel".to_string(), "host".to_string(),
-                "cpu".to_string(), "gpu".to_string(), "memory".to_string(), "swap".to_string(),
-                "load".to_string(), "disk".to_string(), "net".to_string(), "uptime".to_string(),
+                "os".to_string(),
+                "kernel".to_string(),
+                "host".to_string(),
+                "cpu".to_string(),
+                "gpu".to_string(),
+                "memory".to_string(),
+                "swap".to_string(),
+                "load".to_string(),
+                "disk".to_string(),
+                "net".to_string(),
+                "uptime".to_string(),
             ])
         };
 

@@ -38,7 +38,9 @@ fn main() -> anyhow::Result<()> {
         println!();
         println!("# Available color names or hex values:");
         println!("#   Names: black, red, green, yellow, blue, magenta, cyan, white,");
-        println!("#          bright_black, bright_red, bright_green, bright_yellow, bright_blue, ...");
+        println!(
+            "#          bright_black, bright_red, bright_green, bright_yellow, bright_blue, ..."
+        );
         println!("#   Hex:   \"#ff6432\", \"89b4fa\", etc.");
         return Ok(());
     }
