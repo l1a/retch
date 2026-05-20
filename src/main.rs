@@ -13,12 +13,42 @@ fn main() -> anyhow::Result<()> {
         let bin_name = cmd.get_name().to_string();
 
         match shell {
-            CompletionShell::Bash => generate(clap_complete::Shell::Bash, &mut cmd, bin_name, &mut std::io::stdout()),
-            CompletionShell::Elvish => generate(clap_complete::Shell::Elvish, &mut cmd, bin_name, &mut std::io::stdout()),
-            CompletionShell::Fish => generate(clap_complete::Shell::Fish, &mut cmd, bin_name, &mut std::io::stdout()),
-            CompletionShell::PowerShell => generate(clap_complete::Shell::PowerShell, &mut cmd, bin_name, &mut std::io::stdout()),
-            CompletionShell::Zsh => generate(clap_complete::Shell::Zsh, &mut cmd, bin_name, &mut std::io::stdout()),
-            CompletionShell::Nushell => generate(clap_complete_nushell::Nushell, &mut cmd, bin_name, &mut std::io::stdout()),
+            CompletionShell::Bash => generate(
+                clap_complete::Shell::Bash,
+                &mut cmd,
+                bin_name,
+                &mut std::io::stdout(),
+            ),
+            CompletionShell::Elvish => generate(
+                clap_complete::Shell::Elvish,
+                &mut cmd,
+                bin_name,
+                &mut std::io::stdout(),
+            ),
+            CompletionShell::Fish => generate(
+                clap_complete::Shell::Fish,
+                &mut cmd,
+                bin_name,
+                &mut std::io::stdout(),
+            ),
+            CompletionShell::PowerShell => generate(
+                clap_complete::Shell::PowerShell,
+                &mut cmd,
+                bin_name,
+                &mut std::io::stdout(),
+            ),
+            CompletionShell::Zsh => generate(
+                clap_complete::Shell::Zsh,
+                &mut cmd,
+                bin_name,
+                &mut std::io::stdout(),
+            ),
+            CompletionShell::Nushell => generate(
+                clap_complete_nushell::Nushell,
+                &mut cmd,
+                bin_name,
+                &mut std::io::stdout(),
+            ),
         }
         return Ok(());
     }
