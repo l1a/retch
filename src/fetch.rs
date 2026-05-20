@@ -51,11 +51,7 @@ fn lookup_pci_device(vendor_id: &str, device_id: &str) -> Option<String> {
 
                 if !line.starts_with('\t') {
                     // Vendor line: "vendor_id  Vendor Name"
-                    if line.starts_with(&vendor_id) {
-                        in_vendor = true;
-                    } else {
-                        in_vendor = false;
-                    }
+                    in_vendor = line.starts_with(&vendor_id);
                 } else if in_vendor && line.starts_with('\t') && !line.starts_with("\t\t") {
                     // Device line: "\tdevice_id  Device Name"
                     let trimmed = line.trim_start();
