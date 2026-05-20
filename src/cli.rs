@@ -1,5 +1,14 @@
 use clap::{Parser, ValueEnum};
-use clap_complete::Shell;
+
+#[derive(ValueEnum, Clone, Debug, PartialEq)]
+pub enum CompletionShell {
+    Bash,
+    Elvish,
+    Fish,
+    PowerShell,
+    Zsh,
+    Nushell,
+}
 
 #[derive(Parser, Debug)]
 #[command(
@@ -70,7 +79,7 @@ pub struct Cli {
 
     /// Generate shell completions
     #[arg(long, value_enum)]
-    pub completions: Option<Shell>,
+    pub completions: Option<CompletionShell>,
 }
 
 #[derive(ValueEnum, Clone, Debug, PartialEq)]

@@ -1,6 +1,6 @@
 use clap::{CommandFactory, Parser};
 use clap_complete::generate;
-use retch_cli::cli::Cli;
+use retch_cli::cli::{Cli, CompletionShell};
 use retch_cli::config::Config;
 use retch_cli::fetch::SystemInfo;
 
@@ -11,7 +11,15 @@ fn main() -> anyhow::Result<()> {
     if let Some(shell) = cli.completions {
         let mut cmd = Cli::command();
         let bin_name = cmd.get_name().to_string();
-        generate(shell, &mut cmd, bin_name, &mut std::io::stdout());
+
+        match shell {
+            CompletionShell::Bash => generate(clap_complete::Shell::Bash, &mut cmd, bin_name, &mut std::io::stdout()),
+            CompletionShell::Elvish => generate(clap_complete::Shell::Elvish, &mut cmd, bin_name, &mut std::io::stdout()),
+            CompletionShell::Fish => generate(clap_complete::Shell::Fish, &mut cmd, bin_name, &mut std::io::stdout()),
+            CompletionShell::PowerShell => generate(clap_complete::Shell::PowerShell, &mut cmd, bin_name, &mut std::io::stdout()),
+            CompletionShell::Zsh => generate(clap_complete::Shell::Zsh, &mut cmd, bin_name, &mut std::io::stdout()),
+            CompletionShell::Nushell => generate(clap_complete_nushell::Nushell, &mut cmd, bin_name, &mut std::io::stdout()),
+        }
         return Ok(());
     }
 

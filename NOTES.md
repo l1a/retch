@@ -355,9 +355,9 @@ From this point forward, we will follow a traditional git development flow:
 ### Progress Made
 
 - **Shell Completion Generation**
-  - Added `clap_complete` dependency.
-  - Implemented `--completions <SHELL>` flag (supports Bash, Zsh, Fish, PowerShell, Elvish).
-  - Integrated `CommandFactory` for dynamic completion script generation.
+  - Added `clap_complete` and `clap_complete_nushell` dependencies.
+  - Implemented `--completions <SHELL>` flag (supports Bash, Zsh, Fish, PowerShell, Elvish, and Nushell).
+  - Integrated `CommandFactory` and custom shell mapping for dynamic completion script generation.
 
 ### Current State
 
