@@ -89,7 +89,7 @@ jobs:
           mkdir -p release
           cp target/release/retch release/
           cp docs/retch.1 release/ || true
-          tar -czvf release/retch-source.tar.gz --exclude='.git' .
+          tar -czvf release/retch-source.tar.gz --exclude='.git' --exclude=release .
 
       - name: Create Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
