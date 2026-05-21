@@ -192,8 +192,22 @@ pub fn supports_sixel() -> bool {
     }
 
     if let Ok(prog) = std::env::var("TERM_PROGRAM") {
-        if prog == "WezTerm" || prog == "iTerm.app" || prog == "rio" || prog == "Ptyxis" {
+        if prog == "WezTerm" || prog == "iTerm.app" || prog == "rio" {
             return true;
+        }
+    }
+
+    // Ptyxis or modern VTE-based terminals
+    if std::env::var("PTYXIS_VERSION").is_ok() {
+        return true;
+    }
+
+    if let Ok(vte_ver) = std::env::var("VTE_VERSION") {
+        if let Ok(ver) = vte_ver.parse::<u32>() {
+            // VTE 0.71.0+ supports Sixel
+            if ver >= 7100 {
+                return true;
+            }
         }
     }
 
