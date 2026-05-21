@@ -25,10 +25,15 @@ fmt:
 lint:
     cargo clippy -- -D warnings
 
+# Run strict checks (formatting and linting) as done in CI
+check:
+    cargo fmt -- --check
+    cargo clippy -- -D warnings
+
 # Run security audit (requires cargo-audit)
 audit:
-    cargo install cargo-audit
-    cargo audit || exit 1
+    @command -v cargo-audit >/dev/null || cargo install cargo-audit
+    cargo audit
 
 # Install the binary and man page
 install: install-man
