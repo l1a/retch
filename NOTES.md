@@ -258,17 +258,16 @@ The project is now in a **releasable state** with:
 - Core CLI features are solid
 - Project is in a releasable state
 
-### Progress Made
-
-- **Sixel Graphical Support** (v0.1.4)
-  - Integrated `icy-sixel` (pure Rust) for high-performance Sixel rendering.
-  - Added heuristic Sixel detection supporting `foot`, `mlterm`, `WezTerm`, `iTerm2`, and `Windows Terminal`.
-  - Refactored logo priority chain: Kitty -> Sixel -> Chafa -> ASCII.
-  - Sixel support enabled for both embedded distro logos and custom user `logo.png`.
+- **Enhanced Graphical Support** (v0.1.4)
+  - **Sixel**: Integrated `icy-sixel` (pure Rust) for high-performance Sixel rendering.
+  - **iTerm2**: Implemented the iTerm2 Inline Image protocol (`OSC 1337`) for high-resolution graphics.
+  - **Heuristic Detection**: Added robust terminal detection for `foot`, `mlterm`, `WezTerm`, `iTerm2`, `Windows Terminal`, and `Rio`.
+  - **Priority Chain**: Refactored logo rendering to prioritize: Kitty -> iTerm2 -> Sixel -> Chafa -> ASCII.
+  - **Fixes**: Corrected `write_config_path` handling and enabled Chafa fallback for Ptyxis.
 
 - **Internal Quality**
-  - Renamed `supports_graphical_logo` to `supports_kitty` for clarity.
-  - Centralized image-to-Sixel conversion in `print_sixel_rgba`.
+  - Added strict `check` recipe to `Justfile` to match GitHub CI formatting/linting requirements.
+  - Renovated all internal source files with comprehensive Rustdoc comments.
 
 ---
 
