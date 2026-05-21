@@ -329,7 +329,10 @@ pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool) {
 pub fn print_iterm2_logo(image_data: &[u8]) {
     use base64::Engine;
     let encoded = base64::engine::general_purpose::STANDARD.encode(image_data);
-    print!("\x1b]1337;File=inline=1;preserveAspectRatio=1:{}\x07", encoded);
+    print!(
+        "\x1b]1337;File=inline=1;preserveAspectRatio=1:{}\x07",
+        encoded
+    );
     println!(); // iTerm2 typically needs a newline after the logo
 }
 
@@ -383,14 +386,12 @@ pub fn print_sixel_rgba(rgba: &[u8], width: u32, height: u32) {
     use icy_sixel::SixelImage;
 
     match SixelImage::try_from_rgba(rgba.to_vec(), width as usize, height as usize) {
-        Ok(sixel_img) => {
-            match sixel_img.encode() {
-                Ok(sixel_str) => {
-                    print!("{}", sixel_str);
-                }
-                Err(e) => eprintln!("[Sixel Encoding Error: {}]", e),
+        Ok(sixel_img) => match sixel_img.encode() {
+            Ok(sixel_str) => {
+                print!("{}", sixel_str);
             }
-        }
+            Err(e) => eprintln!("[Sixel Encoding Error: {}]", e),
+        },
         Err(e) => eprintln!("[Sixel Creation Error: {}]", e),
     }
 }
