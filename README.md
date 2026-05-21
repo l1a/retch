@@ -71,6 +71,23 @@ Show help:
 retch --help
 ```
 
+## Shell Completions
+
+Generate completion scripts for your shell:
+
+```sh
+# Bash
+retch --completions bash > ~/.local/share/bash-completion/completions/retch
+
+# Zsh
+retch --completions zsh > ~/.local/share/zsh/site-functions/_retch
+
+# Fish
+retch --completions fish > ~/.config/fish/completions/retch.fish
+```
+
+Supported shells: `bash`, `elvish`, `fish`, `power-shell`, `zsh`, `nushell`.
+
 ## Configuration
 
 retch looks for a configuration file at:
