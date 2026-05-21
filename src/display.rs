@@ -5,6 +5,11 @@ use crate::logo;
 use crate::theme::Theme;
 
 impl SystemInfo {
+    /// Renders the collected system information to the terminal.
+    ///
+    /// This method handles theme selection, logo rendering (including fallbacks
+    /// between graphics, Chafa, and ASCII), and field filtering based on
+    /// CLI flags and configuration.
     pub fn display(&self, cli: &Cli, _config: &Config) -> anyhow::Result<()> {
         let theme_name = _config.theme.as_deref().or(cli.theme.as_deref());
         let mut theme = match theme_name {
@@ -200,6 +205,9 @@ impl SystemInfo {
     }
 }
 
+/// Formats a raw uptime string (in seconds) into a human-readable duration.
+///
+/// Example: "45224s" -> "12h 33m 44s"
 fn format_uptime(uptime: &str) -> String {
     // Parse the uptime string (e.g. "45224s")
     let seconds: u64 = uptime.trim_end_matches('s').parse().unwrap_or(0);

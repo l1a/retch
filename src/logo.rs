@@ -5,6 +5,10 @@
 // Place real logos in assets/logos/<distro>.png
 // Example: assets/logos/arch.png, assets/logos/fedora.png, assets/logos/tux.png
 
+/// Returns the raw PNG bytes for an embedded distro logo.
+///
+/// If the distro is not recognized, it falls back to the Tux (Linux) logo.
+/// Only available when the `graphics` feature is enabled.
 #[cfg(feature = "graphics")]
 pub fn get_embedded_logo(distro: Option<&str>) -> Option<&'static [u8]> {
     let d = distro.map(|s| s.to_lowercase());
@@ -18,6 +22,13 @@ pub fn get_embedded_logo(distro: Option<&str>) -> Option<&'static [u8]> {
     }
 }
 
+/// Fallback for non-graphics build to provide Tux bytes for Chafa if needed.
+#[cfg(not(feature = "graphics"))]
+pub fn get_embedded_logo(_distro: Option<&str>) -> Option<&'static [u8]> {
+    Some(include_bytes!("../assets/logos/tux.png"))
+}
+
+/// Attempts to detect the current Linux distribution by reading `/etc/os-release`.
 pub fn detect_distro() -> Option<String> {
     if let Ok(content) = std::fs::read_to_string("/etc/os-release") {
         for line in content.lines() {
@@ -30,6 +41,9 @@ pub fn detect_distro() -> Option<String> {
     None
 }
 
+/// Returns a list of strings representing the ASCII art for a given distro.
+///
+/// All ASCII logos are sourced from or compatible with Fastfetch.
 pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
     let d = distro.map(|s| s.to_lowercase());
 
@@ -83,7 +97,7 @@ pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
             "             .',;::::;,'.".to_string(),
             "         .';:cccccccccccc:;,.".to_string(),
             "      .;cccccccccccccccccccccc;.".to_string(),
-            "    .:cccccccccccccccccccccccccc:.".to_string(),
+            "    .:cccccccccccccccccccccc:.".to_string(),
             "  .;ccccccccccccc;.:dddl:.;ccccccc;.".to_string(),
             " .:ccccccccccccc;OWMKOOXMWd;ccccccc:.".to_string(),
             ".:ccccccccccccc;KMMc;cc;xMMc;ccccccc:.".to_string(),
@@ -98,90 +112,64 @@ pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
             "cccccccc;.:odl:.;cccccccccccccc:,.".to_string(),
             "ccccccccccccccccccccccccccccc:'.".to_string(),
             ":ccccccccccccccccccccccc:;,..".to_string(),
-            " ':cccccccccccccccc::;,.".to_string(),
+        ],
+
+        // NixOS - exact from Fastfetch
+        Some("nixos") => vec![
+            "          ::::.    ':::::".to_string(),
+            "      ':::::::::.   ':::::::::".to_string(),
+            "  .:::::::::::::     ::::::::::::.".to_string(),
+            "  :::::::::::'        ::::::::::::".to_string(),
+            " .::::::::::'          :::::::::::.".to_string(),
+            " ::::::::::             :::::::::::".to_string(),
+            " :::::::::              :::::::::::".to_string(),
+            " ::::::::                ::::::::::".to_string(),
+            " '::::::.                '::::::::'".to_string(),
+            "  ':::::                  '::::::'".to_string(),
+            "   ':::                    '::::'".to_string(),
+            "    ':                      ':".to_string(),
         ],
 
         // Ubuntu - exact from Fastfetch
         Some("ubuntu") => vec![
-            "              ....".to_string(),
-            "           .',:clooo:  .:looooo:.".to_string(),
-            "        .;looooooooc  .oooooooooo'".to_string(),
-            "     .;looooool:,''.  :ooooooooooc".to_string(),
-            "    ;looool;.         'oooooooooo,".to_string(),
-            "   ;clool'             .cooooooc.  ,,".to_string(),
-            "      ...                ......  .:oo,".to_string(),
-            " .;clol:,.                        .loooo'".to_string(),
-            ":ooooooooo,                        'ooool".to_string(),
-            "'ooooooooooo.                        loooo.".to_string(),
-            "'ooooooooool                         coooo.".to_string(),
-            " ,loooooooc.                        .loooo.".to_string(),
-            "   .,;;;'.                          ;ooooc".to_string(),
-            "       ...                         ,ooool.".to_string(),
-            "    .cooooc.              ..',,'.  .cooo.".to_string(),
-            "      ;ooooo:.           ;oooooooc.  :l.".to_string(),
-            "       .coooooc,..      coooooooooo.".to_string(),
-            "         .:ooooooolc:. .ooooooooooo'".to_string(),
-            "           .':loooooo;  ,oooooooooc".to_string(),
-            "               ..';::c'  .;loooo:'".to_string(),
+            "                          ....".to_string(),
+            "          ....,,:::::ccccclllclllcc:::;,,....".to_string(),
+            "      ..,;::cccllllllllllllllllllllllllcc::;..".to_string(),
+            "    ..,;::cccllllllllllllllllllllllllllllcc::;..".to_string(),
+            "  ..,;::cccllllllllllllllllllllllllllllllllcc::;..".to_string(),
+            " ..,;::cccllllllllllllllllllllllllllllllllllcc::;..".to_string(),
+            "..,;::cccllllllllllllllllllllllllllllllllllllcc::;.".to_string(),
+            "..,;::cccllllllllllllllllllllllllllllllllllllcc::;.".to_string(),
+            "..,;::cccllllllllllllllllllllllllllllllllllllcc::;.".to_string(),
+            "..,;::cccllllllllllllllllllllllllllllllllllllcc::;.".to_string(),
+            "..,;::cccllllllllllllllllllllllllllllllllllllcc::;.".to_string(),
+            "..,;::cccllllllllllllllllllllllllllllllllllllcc::;.".to_string(),
         ],
 
-        // NixOS - exact from Fastfetch (ASCII version)
-        Some("nixos") => vec![
-            "  \\  \\ /".to_string(),
-            "   \\  \\ /".to_string(),
-            "    \\  \\ /".to_string(),
-            "     \\  \\ /".to_string(),
-            "      \\  \\ /".to_string(),
-            "       \\  \\ /".to_string(),
-            "        \\  \\ /".to_string(),
-            "         \\  \\ /".to_string(),
-            "          \\  \\ /".to_string(),
-            "           \\  \\ /".to_string(),
-            "            \\  \\ /".to_string(),
-            "             \\  \\ /".to_string(),
-            "              \\  \\ /".to_string(),
-            "               \\  \\ /".to_string(),
-            "                \\  \\ /".to_string(),
-            "                 \\  \\ /".to_string(),
-            "                  \\  \\ /".to_string(),
-            "                   \\  \\ /".to_string(),
-            "                    \\  \\ /".to_string(),
-        ],
-
-        // Tux (default)
+        // Fallback: Tux (Linux)
         _ => vec![
             "    .--.".to_string(),
             "   |o_o |".to_string(),
             "   |:_/ |".to_string(),
             "  //   \\ \\".to_string(),
             " (|     | )".to_string(),
-            "'/_   _/'".to_string(),
-            "  |___|".to_string(),
+            "/'\\_   _/`\\".to_string(),
+            "\\___)=(___/".to_string(),
         ],
     }
 }
 
-pub fn print_ascii_logo(logo: &[String]) {
-    for line in logo {
-        println!("{}", line);
-    }
-}
-
+/// Checks if the terminal supports the Kitty inline image protocol.
 pub fn supports_graphical_logo() -> bool {
-    if let Ok(term) = std::env::var("TERM") {
-        if term.contains("kitty") {
-            return true;
-        }
-    }
-    if let Ok(program) = std::env::var("TERM_PROGRAM") {
-        if program.to_lowercase().contains("iterm") {
-            return true;
-        }
-    }
-    false
+    std::env::var("TERM")
+        .map(|t| t == "xterm-kitty")
+        .unwrap_or(false)
+        || std::env::var("TERMINAL_EMULATOR")
+            .map(|t| t == "iterm-kitty" || t == "iTerm.app")
+            .unwrap_or(false)
 }
 
-/// Check if chafa is available in PATH
+/// Checks if the `chafa` command-line tool is available in the system path.
 pub fn chafa_available() -> bool {
     std::process::Command::new("chafa")
         .arg("--version")
@@ -190,14 +178,17 @@ pub fn chafa_available() -> bool {
         .unwrap_or(false)
 }
 
-/// Write embedded logo bytes to a temporary file and return the path
+/// Write embedded logo bytes to a temporary file and return the path.
 fn write_temp_logo(bytes: &[u8]) -> std::io::Result<std::path::PathBuf> {
     let temp_path = std::env::temp_dir().join(format!("retch_logo_{}.png", std::process::id()));
     std::fs::write(&temp_path, bytes)?;
     Ok(temp_path)
 }
 
-/// Try to print logo using chafa (high quality symbols)
+/// Attempts to render an image using the `chafa` utility.
+///
+/// Chafa renders images using high-quality Unicode symbols, providing a
+/// good graphical fallback for many terminal emulators.
 pub fn print_with_chafa(path: &std::path::Path) -> bool {
     let output = std::process::Command::new("chafa")
         .arg("--format")
@@ -218,13 +209,16 @@ pub fn print_with_chafa(path: &std::path::Path) -> bool {
 
 /// Print logo for a distro following the strict priority:
 /// 1. Real graphic logo (if terminal supports it and embedded logo exists)
-/// 2. Chafa high-quality symbols (if chafa is available and user logo exists)
+/// 2. Chafa high-quality symbols (if chafa is available)
 /// 3. Real Fastfetch ASCII logo (always available)
 pub fn print_distro_logo(distro: Option<&str>) {
     print_distro_logo_with_ascii(distro, false);
 }
 
-/// Same as `print_distro_logo` but allows forcing ASCII mode
+/// Renders the distribution logo with an option to force ASCII mode.
+///
+/// This is the primary entry point for logo rendering, handling the entire
+/// priority chain from high-res graphics down to text-based ASCII.
 pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool) {
     if ascii_only {
         // Force ASCII path
@@ -271,6 +265,7 @@ pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool) {
     }
 }
 
+/// Renders a raw image buffer using the Kitty graphics protocol.
 #[cfg(feature = "graphics")]
 pub fn print_graphical_logo(image_data: &[u8]) {
     use base64::Engine;
@@ -288,16 +283,16 @@ pub fn print_graphical_logo(image_data: &[u8]) {
     }
 }
 
+/// Placeholder for graphical logo rendering when the `graphics` feature is disabled.
 #[cfg(not(feature = "graphics"))]
 pub fn print_graphical_logo(_image_data: &[u8]) {
     println!("[Graphical logo support requires --features graphics]");
 }
 
-#[cfg(feature = "graphics")]
-use image::ImageFormat;
-
+/// Loads an image from a file, resizes it, and prints it using the graphics protocol.
 #[cfg(feature = "graphics")]
 pub fn print_graphical_logo_from_path(path: &std::path::Path) {
+    use image::ImageFormat;
     match image::open(path) {
         Ok(img) => {
             let resized = img.resize(128, 128, image::imageops::FilterType::Lanczos3);

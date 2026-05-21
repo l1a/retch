@@ -37,6 +37,9 @@ retch - a fast, feature-rich system information fetcher
 **--list-distros**
 :   List known supported distributions.
 
+**--completions** *SHELL*
+:   Generate shell completion scripts for the specified shell. Supported shells are: `bash`, `elvish`, `fish`, `power-shell`, `zsh`, `nushell`.
+
 **--generate-config**
 :   Print a default configuration file to stdout.
 

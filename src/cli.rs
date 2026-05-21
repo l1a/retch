@@ -1,25 +1,12 @@
 use clap::{Parser, ValueEnum};
 
-#[derive(ValueEnum, Clone, Debug, PartialEq)]
-pub enum CompletionShell {
-    Bash,
-    Elvish,
-    Fish,
-    PowerShell,
-    Zsh,
-    Nushell,
-}
-
+/// Command-line arguments for retch.
 #[derive(Parser, Debug)]
-#[command(
-    name = "retch",
-    version,
-    about = "A fast, feature-rich system information fetcher"
-)]
+#[command(author, version, about, long_about = None)]
 pub struct Cli {
     /// Output mode: short, long, or custom
-    #[arg(short, long, value_enum, default_value = "long")]
-    pub mode: OutputMode,
+    #[arg(short, long, default_value = "long")]
+    pub mode: Option<String>,
 
     /// Use a specific theme
     #[arg(short, long)]
@@ -66,25 +53,34 @@ pub struct Cli {
     pub generate_config: bool,
 
     /// Write default config to a file (uses default location if no path given)
-    #[arg(long, value_name = "PATH")]
-    pub write_config: Option<Option<String>>,
+    #[arg(long)]
+    pub write_config: bool,
+
+    /// Path to write the config file to
+    #[arg(trailing_var_arg = true)]
+    pub write_config_path: Option<String>,
 
     /// Merge default settings (as comments) into existing config
     #[arg(long)]
     pub merge_config: bool,
 
-    /// Fields to display (comma separated). Overrides config.
-    #[arg(long, value_delimiter = ',')]
-    pub fields: Option<Vec<String>>,
+    /// Fields to display (comma separated). Overrides config
+    #[arg(long)]
+    pub fields: Option<String>,
 
     /// Generate shell completions
     #[arg(long, value_enum)]
     pub completions: Option<CompletionShell>,
 }
 
-#[derive(ValueEnum, Clone, Debug, PartialEq)]
-pub enum OutputMode {
-    Short,
-    Long,
-    Custom,
+/// Supported shells for completion generation.
+#[derive(ValueEnum, Clone, Debug)]
+pub enum CompletionShell {
+    Bash,
+    Elvish,
+    Fish,
+    #[clap(name = "power-shell")]
+    PowerShell,
+    Zsh,
+    Nushell,
 }

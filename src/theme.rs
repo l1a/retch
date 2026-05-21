@@ -1,7 +1,9 @@
 use owo_colors::{OwoColorize, Rgb};
 
 /// Parse a color name or hex string into an RGB value.
-/// Supports named colors and hex values (e.g. "#ff6432" or "ff6432").
+///
+/// Supports named colors (e.g., "blue", "bright_red") and hex values
+/// (e.g., "#ff6432" or "ff6432").
 pub fn parse_color(input: &str) -> Option<Rgb> {
     let s = input.trim();
 
@@ -41,13 +43,23 @@ pub fn parse_color(input: &str) -> Option<Rgb> {
     }
 }
 
+/// A collection of colors used for terminal output.
+///
+/// Themes define how various parts of the system information fetch
+/// (labels, values, titles, etc.) are colored in the terminal.
 #[derive(Debug, Clone)]
 pub struct Theme {
+    /// The unique name of the theme.
     pub name: String,
+    /// Color for field labels (e.g., "OS", "CPU").
     pub label_color: Rgb,
+    /// Color for field values (e.g., "Fedora Linux", "Intel i7").
     pub value_color: Rgb,
+    /// Color for accents and highlights.
     pub accent_color: Rgb,
+    /// Color for the title/username line.
     pub title_color: Rgb,
+    /// Color for separators like ":" or "---".
     pub separator_color: Rgb,
 }
 
@@ -65,15 +77,17 @@ impl Default for Theme {
 }
 
 impl Theme {
+    /// Returns the built-in neutral theme.
     pub fn neutral() -> Self {
         Self::default()
     }
 
-    // Keep for backward compatibility
+    /// Alias for `neutral()` for backward compatibility.
     pub fn new_default() -> Self {
         Self::neutral()
     }
 
+    /// Returns the built-in dark theme.
     pub fn dark() -> Self {
         Self {
             name: "dark".to_string(),
@@ -85,6 +99,7 @@ impl Theme {
         }
     }
 
+    /// Returns the built-in light theme.
     pub fn light() -> Self {
         Self {
             name: "light".to_string(),
@@ -98,7 +113,7 @@ impl Theme {
 
     // === Popular Community Themes ===
 
-    // Catppuccin Latte (light)
+    /// Returns the Catppuccin Latte (light) theme.
     pub fn catppuccin_latte() -> Self {
         Self {
             name: "catppuccin-latte".to_string(),
@@ -110,7 +125,7 @@ impl Theme {
         }
     }
 
-    // Catppuccin Frappe
+    /// Returns the Catppuccin Frappe theme.
     pub fn catppuccin_frappe() -> Self {
         Self {
             name: "catppuccin-frappe".to_string(),
@@ -122,7 +137,7 @@ impl Theme {
         }
     }
 
-    // Catppuccin Macchiato
+    /// Returns the Catppuccin Macchiato theme.
     pub fn catppuccin_macchiato() -> Self {
         Self {
             name: "catppuccin-macchiato".to_string(),
@@ -134,7 +149,7 @@ impl Theme {
         }
     }
 
-    // Catppuccin Mocha (most popular dark variant)
+    /// Returns the Catppuccin Mocha theme.
     pub fn catppuccin_mocha() -> Self {
         Self {
             name: "catppuccin-mocha".to_string(),
@@ -146,7 +161,7 @@ impl Theme {
         }
     }
 
-    // Solarized Light
+    /// Returns the Solarized Light theme.
     pub fn solarized_light() -> Self {
         Self {
             name: "solarized-light".to_string(),
@@ -158,7 +173,7 @@ impl Theme {
         }
     }
 
-    // Solarized Dark
+    /// Returns the Solarized Dark theme.
     pub fn solarized_dark() -> Self {
         Self {
             name: "solarized-dark".to_string(),
@@ -170,6 +185,7 @@ impl Theme {
         }
     }
 
+    /// Look up a built-in theme by its name.
     pub fn from_name(name: &str) -> Self {
         match name.to_lowercase().replace('_', "-").as_str() {
             "dark" => Self::dark(),
@@ -189,7 +205,9 @@ impl Theme {
         }
     }
 
-    /// Detect system dark/light preference (basic implementation)
+    /// Detect system dark/light preference (currently supports GTK settings).
+    ///
+    /// Falls back to `Self::dark()` if detection fails.
     pub fn detect_system_theme() -> Self {
         // Try to read GTK settings
         if let Some(config_dir) = dirs::config_dir() {
@@ -212,7 +230,7 @@ impl Theme {
         Self::dark()
     }
 
-    /// Build a theme from a base theme + custom color overrides (from config)
+    /// Build a new theme by applying custom color overrides to an existing base theme.
     pub fn with_custom_overrides(base: Self, custom: &crate::config::CustomTheme) -> Self {
         let mut theme = base;
 
@@ -245,18 +263,22 @@ impl Theme {
         theme
     }
 
+    /// Apply the theme's label color to the given text.
     pub fn color_label(&self, text: &str) -> String {
         text.color(self.label_color).to_string()
     }
 
+    /// Apply the theme's value color to the given text.
     pub fn color_value(&self, text: &str) -> String {
         text.color(self.value_color).to_string()
     }
 
+    /// Apply the theme's accent color to the given text.
     pub fn color_accent(&self, text: &str) -> String {
         text.color(self.accent_color).to_string()
     }
 
+    /// Apply the theme's separator color to the given text.
     pub fn color_separator(&self, text: &str) -> String {
         text.color(self.separator_color).to_string()
     }

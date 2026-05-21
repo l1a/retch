@@ -133,8 +133,8 @@ fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    if let Some(maybe_path) = &cli.write_config {
-        let path = match maybe_path {
+    if cli.write_config {
+        let path = match &cli.write_config_path {
             Some(p) => std::path::PathBuf::from(p),
             None => retch_cli::config::Config::config_path()
                 .unwrap_or_else(|| std::path::PathBuf::from("retch-config.toml")),
