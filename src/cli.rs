@@ -57,8 +57,8 @@ pub struct Cli {
     pub write_config: bool,
 
     /// Path to write the config file to
-    #[arg(trailing_var_arg = true)]
-    pub write_config_path: Option<String>,
+    #[arg(trailing_var_arg = true, num_args = 0..)]
+    pub write_config_path: Vec<String>,
 
     /// Merge default settings (as comments) into existing config
     #[arg(long)]

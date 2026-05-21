@@ -172,6 +172,16 @@ pub fn supports_kitty() -> bool {
             .unwrap_or(false)
 }
 
+/// Checks if the terminal supports the iTerm2 inline image protocol.
+pub fn supports_iterm2() -> bool {
+    if let Ok(prog) = std::env::var("TERM_PROGRAM") {
+        if prog == "iTerm.app" || prog == "WezTerm" || prog == "rio" {
+            return true;
+        }
+    }
+    false
+}
+
 /// Checks if the terminal supports Sixel graphics (heuristic based on environment).
 pub fn supports_sixel() -> bool {
     if let Ok(term) = std::env::var("TERM") {
@@ -255,6 +265,7 @@ pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool) {
     }
 
     let supports_kitty = supports_kitty();
+    let supports_iterm2 = supports_iterm2();
     let supports_sixel = supports_sixel();
     let has_chafa = chafa_available();
 
@@ -269,7 +280,18 @@ pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool) {
         }
     }
 
-    // 2. Try embedded graphical logo (Sixel)
+    // 2. Try embedded graphical logo (iTerm2)
+    #[cfg(feature = "graphics")]
+    if supports_iterm2 {
+        if let Some(bytes) = get_embedded_logo(distro) {
+            if !bytes.is_empty() {
+                print_iterm2_logo(bytes);
+                return;
+            }
+        }
+    }
+
+    // 3. Try embedded graphical logo (Sixel)
     #[cfg(feature = "graphics")]
     if supports_sixel {
         if let Some(bytes) = get_embedded_logo(distro) {
@@ -300,6 +322,31 @@ pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool) {
     for line in art {
         println!("{}", line);
     }
+}
+
+/// Renders a raw image buffer using the iTerm2 inline image protocol.
+#[cfg(feature = "graphics")]
+pub fn print_iterm2_logo(image_data: &[u8]) {
+    use base64::Engine;
+    let encoded = base64::engine::general_purpose::STANDARD.encode(image_data);
+    print!("\x1b]1337;File=inline=1;preserveAspectRatio=1:{}\x07", encoded);
+    println!(); // iTerm2 typically needs a newline after the logo
+}
+
+/// Loads an image from a file and prints it using the iTerm2 protocol.
+#[cfg(feature = "graphics")]
+pub fn print_iterm2_logo_from_path(path: &std::path::Path) {
+    if let Ok(bytes) = std::fs::read(path) {
+        print_iterm2_logo(&bytes);
+    } else {
+        println!("[Could not read logo for iTerm2 from {}]", path.display());
+    }
+}
+
+/// Placeholder for iTerm2 logo rendering when the `graphics` feature is disabled.
+#[cfg(not(feature = "graphics"))]
+pub fn print_iterm2_logo(_image_data: &[u8]) {
+    println!("[iTerm2 logo support requires --features graphics]");
 }
 
 /// Renders a raw image buffer using the Kitty graphics protocol.

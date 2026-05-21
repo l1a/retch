@@ -56,6 +56,20 @@ impl SystemInfo {
                     }
                 }
 
+                // 2.3 iTerm2 mode
+                #[cfg(feature = "graphics")]
+                if !printed_logo && logo::supports_iterm2() {
+                    if let Some(path) = &user_logo {
+                        logo::print_iterm2_logo_from_path(path);
+                        printed_logo = true;
+                    } else if let Some(distro) = logo::detect_distro() {
+                        if let Some(bytes) = logo::get_embedded_logo(Some(&distro)) {
+                            logo::print_iterm2_logo(bytes);
+                            printed_logo = true;
+                        }
+                    }
+                }
+
                 // 2.5 Sixel mode
                 #[cfg(feature = "graphics")]
                 if !printed_logo && logo::supports_sixel() {

@@ -134,10 +134,11 @@ fn main() -> anyhow::Result<()> {
     }
 
     if cli.write_config {
-        let path = match &cli.write_config_path {
-            Some(p) => std::path::PathBuf::from(p),
-            None => retch_cli::config::Config::config_path()
-                .unwrap_or_else(|| std::path::PathBuf::from("retch-config.toml")),
+        let path = if !cli.write_config_path.is_empty() {
+            std::path::PathBuf::from(&cli.write_config_path[0])
+        } else {
+            retch_cli::config::Config::config_path()
+                .unwrap_or_else(|| std::path::PathBuf::from("retch-config.toml"))
         };
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
