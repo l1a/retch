@@ -42,15 +42,29 @@ impl SystemInfo {
                     None
                 };
 
-                // 2. Graphics mode (Kitty / iTerm2)
+                // 2. Kitty mode
                 #[cfg(feature = "graphics")]
-                if !printed_logo && logo::supports_graphical_logo() {
+                if !printed_logo && logo::supports_kitty() {
                     if let Some(path) = &user_logo {
                         logo::print_graphical_logo_from_path(path);
                         printed_logo = true;
                     } else if let Some(distro) = logo::detect_distro() {
                         if let Some(bytes) = logo::get_embedded_logo(Some(&distro)) {
                             logo::print_graphical_logo(bytes);
+                            printed_logo = true;
+                        }
+                    }
+                }
+
+                // 2.5 Sixel mode
+                #[cfg(feature = "graphics")]
+                if !printed_logo && logo::supports_sixel() {
+                    if let Some(path) = &user_logo {
+                        logo::print_sixel_logo_from_path(path);
+                        printed_logo = true;
+                    } else if let Some(distro) = logo::detect_distro() {
+                        if let Some(bytes) = logo::get_embedded_logo(Some(&distro)) {
+                            logo::print_sixel_logo(bytes);
                             printed_logo = true;
                         }
                     }

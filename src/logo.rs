@@ -160,13 +160,35 @@ pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
 }
 
 /// Checks if the terminal supports the Kitty inline image protocol.
-pub fn supports_graphical_logo() -> bool {
+pub fn supports_kitty() -> bool {
     std::env::var("TERM")
         .map(|t| t == "xterm-kitty")
         .unwrap_or(false)
         || std::env::var("TERMINAL_EMULATOR")
             .map(|t| t == "iterm-kitty" || t == "iTerm.app")
             .unwrap_or(false)
+}
+
+/// Checks if the terminal supports Sixel graphics (heuristic based on environment).
+pub fn supports_sixel() -> bool {
+    if let Ok(term) = std::env::var("TERM") {
+        let term = term.to_lowercase();
+        if term.contains("sixel") || term.contains("foot") || term.contains("mlterm") {
+            return true;
+        }
+    }
+
+    if let Ok(prog) = std::env::var("TERM_PROGRAM") {
+        if prog == "WezTerm" || prog == "iTerm.app" {
+            return true;
+        }
+    }
+
+    if std::env::var("WT_SESSION").is_ok() {
+        return true;
+    }
+
+    false
 }
 
 /// Checks if the `chafa` command-line tool is available in the system path.
@@ -229,12 +251,13 @@ pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool) {
         return;
     }
 
-    let supports_graphics = supports_graphical_logo();
+    let supports_kitty = supports_kitty();
+    let supports_sixel = supports_sixel();
     let has_chafa = chafa_available();
 
-    // 1. Try embedded graphical logo (only if feature is enabled)
+    // 1. Try embedded graphical logo (Kitty)
     #[cfg(feature = "graphics")]
-    if supports_graphics {
+    if supports_kitty {
         if let Some(bytes) = get_embedded_logo(distro) {
             if !bytes.is_empty() {
                 print_graphical_logo(bytes);
@@ -243,7 +266,18 @@ pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool) {
         }
     }
 
-    // 2. Try chafa using embedded distro logo
+    // 2. Try embedded graphical logo (Sixel)
+    #[cfg(feature = "graphics")]
+    if supports_sixel {
+        if let Some(bytes) = get_embedded_logo(distro) {
+            if !bytes.is_empty() {
+                print_sixel_logo(bytes);
+                return;
+            }
+        }
+    }
+
+    // 3. Try chafa using embedded distro logo
     if has_chafa {
         if let Some(bytes) = get_embedded_logo(distro) {
             if bytes.len() > 100 {
@@ -258,7 +292,7 @@ pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool) {
         }
     }
 
-    // 3. Final fallback: Real Fastfetch ASCII logo
+    // 4. Final fallback: Real Fastfetch ASCII logo
     let art = get_ascii_logo(distro);
     for line in art {
         println!("{}", line);
@@ -283,10 +317,44 @@ pub fn print_graphical_logo(image_data: &[u8]) {
     }
 }
 
+/// Renders a raw image buffer (e.g. PNG bytes) using the Sixel graphics protocol.
+#[cfg(feature = "graphics")]
+pub fn print_sixel_logo(image_data: &[u8]) {
+    if let Ok(img) = image::load_from_memory(image_data) {
+        let rgba = img.to_rgba8();
+        let (width, height) = rgba.dimensions();
+        print_sixel_rgba(rgba.as_raw(), width, height);
+    }
+}
+
+/// Renders raw RGBA pixels using the Sixel graphics protocol.
+#[cfg(feature = "graphics")]
+pub fn print_sixel_rgba(rgba: &[u8], width: u32, height: u32) {
+    use icy_sixel::SixelImage;
+
+    match SixelImage::try_from_rgba(rgba.to_vec(), width as usize, height as usize) {
+        Ok(sixel_img) => {
+            match sixel_img.encode() {
+                Ok(sixel_str) => {
+                    print!("{}", sixel_str);
+                }
+                Err(e) => eprintln!("[Sixel Encoding Error: {}]", e),
+            }
+        }
+        Err(e) => eprintln!("[Sixel Creation Error: {}]", e),
+    }
+}
+
 /// Placeholder for graphical logo rendering when the `graphics` feature is disabled.
 #[cfg(not(feature = "graphics"))]
 pub fn print_graphical_logo(_image_data: &[u8]) {
     println!("[Graphical logo support requires --features graphics]");
+}
+
+/// Placeholder for sixel logo rendering when the `graphics` feature is disabled.
+#[cfg(not(feature = "graphics"))]
+pub fn print_sixel_logo(_image_data: &[u8]) {
+    println!("[Sixel logo support requires --features graphics]");
 }
 
 /// Loads an image from a file, resizes it, and prints it using the graphics protocol.
@@ -308,6 +376,22 @@ pub fn print_graphical_logo_from_path(path: &std::path::Path) {
         }
         Err(_) => {
             println!("[Could not load graphical logo from {}]", path.display());
+        }
+    }
+}
+
+/// Loads an image from a file, resizes it, and prints it using the Sixel protocol.
+#[cfg(feature = "graphics")]
+pub fn print_sixel_logo_from_path(path: &std::path::Path) {
+    match image::open(path) {
+        Ok(img) => {
+            let resized = img.resize(128, 128, image::imageops::FilterType::Lanczos3);
+            let rgba = resized.to_rgba8();
+            let (width, height) = rgba.dimensions();
+            print_sixel_rgba(rgba.as_raw(), width, height);
+        }
+        Err(_) => {
+            println!("[Could not load logo for Sixel from {}]", path.display());
         }
     }
 }

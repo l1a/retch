@@ -258,13 +258,17 @@ The project is now in a **releasable state** with:
 - Core CLI features are solid
 - Project is in a releasable state
 
-### Next Steps (Updated Priority)
+### Progress Made
 
-1. **More Distros** — Add logos and support for additional distributions (Pop!_OS, Manjaro, EndeavourOS, openSUSE, etc.)
-2. **Release Polish** — Multi-platform binaries, better artifact naming, checksums, version handling
-3. **Shell Completions** — Add Bash/Zsh/Fish completions
-4. **Sixel Support** (optional) — Alternative graphical output method
-5. **Expand Testing** — More coverage, especially around config merging and theming
+- **Sixel Graphical Support** (v0.1.4)
+  - Integrated `icy-sixel` (pure Rust) for high-performance Sixel rendering.
+  - Added heuristic Sixel detection supporting `foot`, `mlterm`, `WezTerm`, `iTerm2`, and `Windows Terminal`.
+  - Refactored logo priority chain: Kitty -> Sixel -> Chafa -> ASCII.
+  - Sixel support enabled for both embedded distro logos and custom user `logo.png`.
+
+- **Internal Quality**
+  - Renamed `supports_graphical_logo` to `supports_kitty` for clarity.
+  - Centralized image-to-Sixel conversion in `print_sixel_rgba`.
 
 ---
 
