@@ -3,356 +3,62 @@
 ## Project Overview
 - **Name**: retch (published as `retch-cli` on crates.io)
 - **Goal**: A fast, feature-rich system information fetcher (Fastfetch-like) written in Rust
-- **Key Technologies**: sysinfo, clap, serde, toml, colored/owo-colors
+- **Key Technologies**: sysinfo, clap, serde, toml, owo-colors, icy_sixel
 - **License**: GPLv3
 - **Repository**: https://github.com/l1a/retch
 
-## Current State (as of latest session)
+## Current State (v0.1.4)
+- **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
+- **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
+- **Quality**: Strict `just check` (fmt + lint) and comprehensive unit tests.
+- **Documentation**: Full internal Rustdoc coverage and updated README/man pages.
+- **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
 
-### Dependencies (Cargo.toml)
-- `sysinfo = "0.33"` — System information gathering
-- `clap = { version = "4.5", features = ["derive"] }` — CLI argument parsing
+## Major Achievements
+
+### v0.1.4 - Enhanced Graphical Support (May 20, 2026)
+- **Sixel**: Integrated `icy-sixel` (pure Rust) for high-performance Sixel rendering.
+- **iTerm2**: Implemented the iTerm2 Inline Image protocol (`OSC 1337`).
+- **Detection**: Refined heuristics to prioritize Kitty -> iTerm2 -> Sixel -> Chafa -> ASCII.
+- **Quality**: Renovated all internal source files with comprehensive Rustdoc comments.
+- **Justfile**: Added strict `check` recipe to match GitHub CI requirements.
+
+### v0.1.3 - Shell Completions (May 20, 2026)
+- Added `clap_complete` and `clap_complete_nushell`.
+- Implemented `--completions <SHELL>` flag supporting all major shells.
+- Improved CI/CD with strict linting on every push.
+
+### v0.1.2 - Multi-GPU & PCI ID Lookup (May 20, 2026)
+- **Multi-GPU**: Refactored detection to support multiple graphics cards.
+- **PCI ID Lookup**: Implemented manual parser for `/usr/share/hwdata/pci.ids` for accurate naming.
+- **NVIDIA/AMD**: Added specific model extraction from `/proc` and VRAM detection.
+
+### v0.1.1 - crates.io Preparation (May 2025)
+- Released `retch-cli` v0.1.1 with improved crate descriptions.
+- Established automated GitHub Release workflow.
+
+### Initial Development (May 2025)
+- **Theming**: Major overhaul with hex color support, community themes (Catppuccin, Solarized), and "auto" system theme detection.
+- **Output Modes**: Added `--short` and `--long` modes.
+- **Logo System**: Implemented priority rendering: Real PNG -> Chafa -> ASCII.
+- **Core Info**: Implemented OS, Kernel, CPU (cores/freq), Memory, Swap, Uptime, Disks, Temps, Net, Packages.
+
+## Dependencies (Cargo.toml)
+- `sysinfo` — System information gathering
+- `clap` — CLI argument parsing
 - `serde` + `toml` — Configuration
-- `colored` + `owo-colors` — Terminal coloring
-- `dirs` — Config directory handling
-- `anyhow` — Error handling
-- `chrono = "0.4"` — Date/time formatting for boot time
-- `rusqlite` (bundled) — RPM package counting
-- Optional graphics support: `image` + `base64` (behind `graphics` feature)
+- `owo-colors` — Truecolor/RGB terminal coloring
+- `icy_sixel` — Pure Rust Sixel encoding
+- `image` + `base64` — Graphical logo processing
+- `rusqlite` — RPM package counting
+- `chrono` — Date/time formatting
 
-### Module Structure
-- `main.rs` — Entry point + CLI special commands
-- `lib.rs` — Module declarations
-- `cli.rs` — Full CLI with many options
-- `config.rs` — Config loading + CLI merge logic
-- `fetch.rs` — Rich SystemInfo struct
-- `display.rs` — Formatted + field-filtered display
-- `logo.rs` — ASCII logo support
-- `theme.rs` — Theming system
+## Next Steps
 
-### Current Features Implemented
-- Rich system information:
-  - OS, Kernel, Hostname, Arch, **Current User**
-  - CPU (model + cores + frequency) + **CPU Freq**
-  - **GPU** detection
-  - Memory + Swap
-  - **Improved Uptime** (human-readable + ISO boot time)
-  - Processes, Load Average
-  - **Disks with filesystem type** (btrfs, ext4, etc.)
-  - Temperatures, **Networks** (Up/Down status + RX/TX volume + color)
-  - Boot time (ISO + human-readable duration)
-  - Battery, Shell, Terminal, Desktop Environment
-  - **Interactive users count** (UID >= 1000)
-  - **Package count** (pacman, dpkg, RPM via SQLite)
-- Theming system (`default`, `dark`, `light`) with `--list-themes`
-- **Improved ASCII logos** + `--list-logos` command
-- Graphical logo support (Kitty protocol + image loading via `chafa`-style)
-- Full config support (`~/.config/retch/config.toml`)
-- CLI options: `--fields`, `--generate-config`, `--write-config`, `--merge-config`, `--list-logos`
-- Field selection (config + CLI)
-- Smart config merging
-- Clean right-aligned formatted display
-- Boot time formatted with `chrono`
-
-### Design Goals
-- Support **ASCII** and **graphical logos** (Kitty / iTerm inline image protocol)
-- Theming with several default themes
-- Config file support (`~/.config/retch/config.toml`)
-- Output modes: short, long, custom (via config)
-- Highly readable output
-- As feature-rich as Fastfetch
-
-## Next Steps (Recommended Order)
-
-1. **Enhanced theming** — Custom color overrides, more themes
-2. **Documentation & polish** — Improve README, examples, help text, man page
-3. **Release preparation** — Versioning, changelog, packaging, crates.io updates
-4. **Optional**: Explore colorful logo support (chafa-style) for more visual appeal
-
-## Important Notes
-
-- We chose `sysinfo` over `libmacchina` for broader data access (especially Swap, Network, Temperatures).
-- The original `retch` name was taken on crates.io, so the crate is published as `retch-cli`.
-- Users interact with the tool as `retch` (binary + config directory `~/.config/retch/`).
-- The project is in early development — currently a working skeleton.
-
-## How to Resume
-
-Just say something like:
-> "Continue working on retch"
-
-Current focus areas:
-- Enhanced theming
-- Documentation & polish (README, examples, help)
-- Release preparation (versioning, changelog, packaging)
-
-I should be able to pick up from here using this file + the codebase.
+1. **More Distros** — Add support and high-res logos for Pop!_OS, Manjaro, EndeavourOS, openSUSE, etc.
+2. **Expansion** — Explore support for other platforms (macOS, Windows).
+3. **Advanced Testing** — Increase coverage for config merging, theming overrides, and terminal detection logic.
+4. **UX Polish** — Refine error messages and configuration generation.
 
 ---
-
-## Session Update - May 2025
-
-### Progress Made
-
-- **Logo System Overhaul**
-  - Implemented strict priority rendering: Real graphic PNG → Chafa (high-quality symbols) → Real Fastfetch ASCII
-  - All supported distros (Arch, Debian, Fedora, NixOS, Ubuntu) + Tux now follow the same fallback chain
-  - Converted real SVG logos to high-resolution PNGs (384px) and embedded them via `include_bytes!`
-  - Original `.svg` files are preserved in `assets/logos/` for future use
-
-- **CLI Improvements**
-  - Added `--ascii-only` flag that forces ASCII logos (bypasses graphics and chafa)
-  - Renamed `--list-logos` → `--print-logos` (shows actual logos)
-  - Added `--list-distros` (simple list of known distros)
-  - Tux is now properly demonstrated in `--print-logos`
-
-- **Developer Experience**
-  - Created `Justfile` with common tasks:
-    - `just build`, `just test`, `just lint`, `just fmt`
-    - `just logos` — regenerates PNGs from SVGs
-    - `just install`, `just clean`, `just dev`
-
-- **Code Quality**
-  - Centralized logo logic in `print_distro_logo()` and `print_distro_logo_with_ascii()`
-  - All changes committed and pushed
-
-### Current State
-
-- Real embedded logos work in Kitty/iTerm2
-- Chafa integration works on other terminals when available
-- `--ascii-only` provides a reliable fallback
-- All distros (including unknown → Tux) follow the same rendering priority
-
-### Next Steps (Updated)
-
-1. **Enhanced theming** — Custom color overrides, more themes
-2. **Documentation & polish** — Improve README, examples, help text, man page
-3. **Release preparation** — Versioning, changelog, packaging, crates.io updates
-4. **Optional**: Explore colorful logo support or sixel protocol
-5. **Optional**: Add support for more distros in the embedded logo set
-
----
-
-*End of update*
-
----
-
-## Final Progress Summary (as of late May 2025)
-
-### Major Achievements
-
-**1. Theming System (Significantly Improved)**
-- Full custom theme support via config (`[custom_theme]`)
-- Hex color support (e.g. `#89b4fa`)
-- Automatic dark/light detection (`theme = "auto"`) — now the default
-- Added many community themes: Catppuccin (all 4 variants), Solarized Light/Dark
-- Renamed old "default" theme to "neutral" for clarity
-- Added `--list-themes` and `--print-theme-template` commands
-- Migrated from `colored` to `owo-colors` for truecolor/RGB support
-
-**2. Output Modes**
-- `--short`: OS, Kernel, Host, CPU, GPU, Memory, Disk
-- Default: OS, Kernel, Host, CPU, GPU, Memory, Swap, Load, Disk, Net, Uptime
-- `--long`: All fields
-
-**3. Documentation & Polish**
-- Major README overhaul with features, usage, and examples
-- Comprehensive man page (`retch.1`) with theming documentation
-- Default config template includes theme and output mode examples
-- Added lighthearted note about being "100% vibe coded with Grok"
-
-**4. Release & CI/CD Automation**
-- `full-test` job runs on version tags (`v*`) on both Ubuntu and Fedora
-- Includes: release build, all-features tests, clippy, fmt check, man page
-- `release` job automatically creates GitHub Releases with binary, man page, and source tarball
-- Added Dependabot + security audit workflow (`cargo audit`)
-
-**5. Developer Experience**
-- Rich Justfile with build, test, lint, logos, man page generation, install, audit, etc.
-- Basic unit tests for themes and logos
-
-**6. GitHub Repository Polish**
-- Updated "About" section and topics
-- Proper release permissions and naming
-
-### Current State
-
-The project is now in a **releasable state** with:
-- Mature theming system
-- Flexible output modes
-- Automated release process
-- Good documentation
-- Security and dependency management in place
-
-### Recommended Next Steps
-
-1. **More Distros** — Add support and logos for additional distributions (Pop!_OS, Manjaro, EndeavourOS, openSUSE, Arch derivatives, etc.)
-
-2. **Release Polish** — Multi-platform builds (macOS, Windows), better artifact naming, checksums, and changelog generation
-
-3. **Shell Completions** — Add Bash, Zsh, and Fish completions
-
-4. **Expand Testing** — More coverage, especially for config merging, theming overrides, and CLI flags
-
-5. **Optional / Future**
-   - Sixel graphical output support
-   - Better error messages and UX improvements
-   - Versioning strategy and changelog maintenance
-
----
-
-*End of project notes*
-
-### Progress Made
-
-- **Theming System Overhaul (Major Work)**
-  - Expanded `Theme` struct with `title_color` and `separator_color`
-  - Added `parse_color()` with support for named colors + hex values (e.g. `"#89b4fa"`)
-  - Added full support for custom themes via `[custom_theme]` section in config
-  - Implemented `Theme::with_custom_overrides()` and `detect_system_theme()`
-  - Added `theme = "auto"` to automatically follow system dark/light preference (via GTK settings)
-  - Made `auto` the default behavior when no theme is specified
-  - Added many new built-in themes:
-    - Catppuccin Latte, Frappe, Macchiato, Mocha
-    - Solarized Light and Dark
-  - Renamed the old "default" theme to `"neutral"` (kept backward compatibility)
-  - Added `--list-themes` command
-  - Added `--print-theme-template` to output a ready-to-use custom theme example
-
-- **CLI Improvements**
-  - Added `--short` and `--long` output modes with proper field filtering
-  - Short mode: OS, Kernel, Host, CPU, GPU, Memory, Disk
-  - Default mode: OS, Kernel, Host, CPU, GPU, Memory, Swap, Load, Disk, Net, Uptime
-  - Long mode: Everything
-  - `--ascii-only` flag now fully functional
-
-- **Documentation & Polish**
-  - Major README overhaul with better structure, features, installation, usage, and examples
-  - Added fun note: *"This project was 100% vibe coded using Grok. Real programmers are welcome."*
-  - Man page (`docs/retch.1.md`) significantly expanded with theming documentation
-  - Default config template updated with theme examples and output mode comments
-
-- **Release & CI Automation**
-  - Added `full-test` job that runs on version tags (`v*`)
-  - Full test runs on both **Ubuntu** and **Fedora** (via containers)
-  - Includes: Release build, `--all-features` tests, Clippy, Format check, Man page generation
-  - Added `release` job that automatically creates a GitHub Release with:
-    - Release binary
-    - Man page
-    - Source tarball
-    - Auto-generated release notes
-
-- **Testing**
-  - Added unit tests for `Theme` module (neutral, dark, light, etc.)
-  - Added unit tests for logo selection logic
-
-- **Developer Experience**
-  - Improved Justfile with man page generation and `install-man` support
-  - Better default config examples
-
-### Current State
-
-- Theming system is now quite mature and flexible
-- Release process is largely automated
-- Documentation is in good shape (README + Man page)
-- Core CLI features are solid
-- Project is in a releasable state
-
-- **Enhanced Graphical Support** (v0.1.4)
-  - **Sixel**: Integrated `icy-sixel` (pure Rust) for high-performance Sixel rendering.
-  - **iTerm2**: Implemented the iTerm2 Inline Image protocol (`OSC 1337`) for high-resolution graphics.
-  - **Heuristic Detection**: Added robust terminal detection for `foot`, `mlterm`, `WezTerm`, `iTerm2`, `Windows Terminal`, and `Rio`.
-  - **Priority Chain**: Refactored logo rendering to prioritize: Kitty -> iTerm2 -> Sixel -> Chafa -> ASCII.
-  - **Fixes**: Corrected `write_config_path` handling and enabled Chafa fallback for Ptyxis.
-
-- **Internal Quality**
-  - Added strict `check` recipe to `Justfile` to match GitHub CI formatting/linting requirements.
-  - Renovated all internal source files with comprehensive Rustdoc comments.
-
----
-
-*End of update*
-
----
-
-## Latest Session - Release Polish & crates.io Preparation
-
-### Progress Made
-
-- **CI / Release Workflow Fixes**
-  - Fixed `full-test` job issues with Rust installation in containers (Fedora `$HOME` mismatch)
-  - Fixed release tarball creation bug (`tar: file changed as we read it`)
-  - Removed custom `retch-source.tar.gz` from release assets (GitHub now only provides source archives)
-  - Release workflow now cleanly produces only `retch` binary + `retch.1` man page
-
-- **crates.io Preparation**
-  - Improved `description` in `Cargo.toml`
-  - Added crate-level documentation in `src/lib.rs`
-  - Bumped version from `0.1.0` (placeholder) → `0.1.1`
-  - Ran full `cargo test --all-features` and `cargo publish --dry-run`
-  - All 7 existing unit tests pass
-
-- **GitHub Release**
-  - Successfully created `v0.1.1` release via automated workflow
-  - Confirmed release contains correct assets (`retch` + `retch.1`)
-
-- **Current crates.io State**
-  - `retch-cli` published as **v0.1.1** with improved description
-  - `v0.1.0` remains as a placeholder version
-
-### Next Steps (Updated)
-
-1. **More Distros** — Add logos and support for additional distributions
-2. **Shell Completions** — Add Bash/Zsh/Fish completions
-3. **Release Polish** — Multi-platform binaries (macOS, Windows), checksums
-4. **Expand Testing** — Increase coverage for config, theming, and CLI
-5. **Documentation** — Improve README examples and man page if needed
-
-### Development Workflow (New Policy)
-
-From this point forward, we will follow a traditional git development flow:
-
-- Use feature branches for new work (`feature/xyz`, `fix/abc`, etc.)
-- Keep `main` stable and only merge via pull requests
-- Tag releases from `main` after they pass CI
----
-
-*End of update*
-
-## Session Update - May 20, 2026
-
-### Progress Made
-
-- **Multi-GPU Support & Improved Detection** (v0.1.2)
-  - Refactored `SystemInfo` to use `Vec<String>` for GPUs, enabling detection of multiple graphics cards.
-  - Updated `detect_gpu` to scan `/sys/class/drm` and deduplicate devices using `HashSet`.
-  - **PCI ID Lookup**: Implemented a manual parser for `/usr/share/hwdata/pci.ids` for accurate model naming (e.g., "Raptor Lake-P [Iris Xe Graphics]").
-  - **NVIDIA Enhancement**: Added high-quality model name extraction from `/proc/driver/nvidia/gpus/*/information`.
-  - **VRAM Detection**: Added best-effort VRAM size detection via sysfs for AMD.
-
-- **Shell Completion Generation** (v0.1.3)
-  - Added `clap_complete` and `clap_complete_nushell` dependencies.
-  - Implemented `--completions <SHELL>` flag supporting Bash, Zsh, Fish, PowerShell, Elvish, and Nushell.
-  - Integrated `CommandFactory` for dynamic completion script generation.
-
-- **CI/CD Workflow Refinements**
-  - Enhanced the standard `build` job to run `cargo fmt --check` and `cargo clippy -- -D warnings` on every push to any branch.
-  - Scoped `pull_request` triggers to the `main` branch to prevent redundant runs while ensuring rigorous merge validation.
-  - Restricted `full-test` and `release` workflows strictly to version tags (`v*`).
-
-### Current State
-
-- The tool accurately identifies multiple GPUs with descriptive model names.
-- Users can generate completion scripts for all major shells via the CLI.
-- CI/CD is more robust, catching lint and formatting issues early in the development cycle.
-- Released and published versions **v0.1.2** and **v0.1.3** to crates.io.
-
-### Next Steps (Updated)
-
-1.  **More Distros**: Add support/logos for Pop!_OS, Manjaro, EndeavourOS, openSUSE, etc.
-2.  **Expand Testing**: Increase coverage for the new PCI ID lookup, GPU detection, and completion logic.
-3.  **Documentation**: Update man pages and README to include the new `--completions` flag.
-
----
-
-*End of update*
+*Last updated: May 20, 2026*
