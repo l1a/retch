@@ -93,7 +93,7 @@ Example:
 retch supports both ASCII and graphical logos.
 
 - ASCII logos are adapted from Fastfetch.
-- Graphical logos are rendered using Chafa when available, or via the Kitty/iTerm2 inline image protocol.
+- Graphical logos are rendered using Chafa when available, or via the Kitty, iTerm2, or Sixel inline image protocols.
 
 Use `--ascii-only` to force text-only output.
 

@@ -16,7 +16,7 @@ retch is under active development with a working core, rich system information o
 
 - Rich system information (OS, CPU, GPU, Memory, Disks, Network, etc.)
 - High-quality ASCII logos (adapted from Fastfetch)
-- Graphical logo support via Kitty protocol and Sixel
+- Graphical logo support via Kitty protocol, iTerm2, and Sixel
 - Graphical fallback via Chafa (Unicode symbols)
 - Theming system (`default`, `dark`, `light`)
 - Full configuration file support (`~/.config/retch/config.toml`)

@@ -56,7 +56,7 @@ pub struct Cli {
     #[arg(long)]
     pub write_config: bool,
 
-    /// Path to write the config file to
+    /// Path(s) to write the config file to. Only the first value is used.
     #[arg(trailing_var_arg = true, num_args = 0..)]
     pub write_config_path: Vec<String>,
 
