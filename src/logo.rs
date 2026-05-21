@@ -161,7 +161,9 @@ pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
 
 /// Checks if the terminal supports the Kitty inline image protocol.
 pub fn supports_graphical_logo() -> bool {
-    std::env::var("TERM").map(|t| t == "xterm-kitty").unwrap_or(false)
+    std::env::var("TERM")
+        .map(|t| t == "xterm-kitty")
+        .unwrap_or(false)
         || std::env::var("TERMINAL_EMULATOR")
             .map(|t| t == "iterm-kitty" || t == "iTerm.app")
             .unwrap_or(false)
