@@ -167,6 +167,9 @@ pub fn supports_kitty() -> bool {
         || std::env::var("TERMINAL_EMULATOR")
             .map(|t| t == "iterm-kitty" || t == "iTerm.app")
             .unwrap_or(false)
+        || std::env::var("TERM_PROGRAM")
+            .map(|t| t == "rio")
+            .unwrap_or(false)
 }
 
 /// Checks if the terminal supports Sixel graphics (heuristic based on environment).
@@ -179,7 +182,7 @@ pub fn supports_sixel() -> bool {
     }
 
     if let Ok(prog) = std::env::var("TERM_PROGRAM") {
-        if prog == "WezTerm" || prog == "iTerm.app" {
+        if prog == "WezTerm" || prog == "iTerm.app" || prog == "rio" || prog == "Ptyxis" {
             return true;
         }
     }
