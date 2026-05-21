@@ -6,35 +6,65 @@ use std::collections::HashSet;
 use std::fs;
 use sysinfo::{Components, Disks, Networks, System, Users};
 
+/// Comprehensive system information data structure.
+///
+/// This struct holds all the metrics collected from the system,
+/// ranging from OS details to hardware specs and network status.
 #[derive(Debug)]
 pub struct SystemInfo {
+    /// Operating system name and version.
     pub os: String,
+    /// Kernel version.
     pub kernel: Option<String>,
+    /// System hostname.
     pub hostname: Option<String>,
+    /// CPU architecture (e.g., x86_64).
     pub arch: String,
+    /// CPU model brand string.
     pub cpu: String,
+    /// Total number of logical CPU cores.
     pub cpu_cores: usize,
+    /// Formatted memory usage (Used / Total).
     pub memory: String,
+    /// Formatted swap usage (Used / Total).
     pub swap: String,
+    /// System uptime formatted as a duration.
     pub uptime: String,
+    /// Number of currently running processes.
     pub processes: usize,
+    /// Load average (1, 5, 15 minutes).
     pub load_avg: Option<String>,
+    /// List of mounted disks with usage information.
     pub disks: Vec<String>,
+    /// Hardware component temperatures.
     pub temps: Vec<String>,
+    /// Network interface statistics and status.
     pub networks: Vec<String>,
+    /// System boot time in ISO 8601 format.
     pub boot_time: String,
+    /// Battery status (currently placeholder for future feature).
     pub battery: Option<String>,
+    /// Path to the current user's shell.
     pub shell: Option<String>,
+    /// Name of the terminal emulator in use.
     pub terminal: Option<String>,
+    /// Detected desktop environment or window manager.
     pub desktop: Option<String>,
+    /// Current CPU frequency (formatted).
     pub cpu_freq: Option<String>,
+    /// Number of interactive users (UID >= 1000).
     pub users: usize,
+    /// List of detected GPUs with model names.
     pub gpu: Vec<String>,
+    /// Total count of installed packages across supported managers.
     pub packages: Option<usize>,
+    /// Name of the user running the process.
     pub current_user: Option<String>,
 }
 
-/// Helper to lookup PCI device name in pci.ids
+/// Helper to lookup PCI device name in standard system pci.ids files.
+///
+/// Searches `/usr/share/hwdata/pci.ids` or `/usr/share/misc/pci.ids`.
 fn lookup_pci_device(vendor_id: &str, device_id: &str) -> Option<String> {
     let vendor_id = vendor_id.trim_start_matches("0x").to_lowercase();
     let device_id = device_id.trim_start_matches("0x").to_lowercase();
@@ -67,6 +97,10 @@ fn lookup_pci_device(vendor_id: &str, device_id: &str) -> Option<String> {
 }
 
 impl SystemInfo {
+    /// Collects system information using sysinfo and environment probes.
+    ///
+    /// This method aggregates data from the operating system, hardware,
+    /// and current user environment into a `SystemInfo` struct.
     pub fn collect(_cli: &Cli, _config: &Config) -> anyhow::Result<Self> {
         let mut sys = System::new_all();
         sys.refresh_all();
@@ -228,7 +262,10 @@ impl SystemInfo {
     }
 }
 
-/// Basic GPU detection (Linux-focused for now)
+/// Detects GPUs using sysfs and PCI database lookups.
+///
+/// Scans `/sys/class/drm` for graphics devices and attempts to extract
+/// model names and VRAM info (where supported).
 fn detect_gpu() -> Vec<String> {
     let mut gpus = Vec::new();
     let mut seen_devices = HashSet::new();
@@ -325,8 +362,9 @@ fn detect_gpu() -> Vec<String> {
     gpus
 }
 
-/// Count installed packages by inspecting package manager databases.
-/// Avoids calling any external tools.
+/// Count installed packages by inspecting package manager databases directly.
+///
+/// Supports Pacman (Arch), Dpkg (Debian), XBPS (Void), and RPM (Fedora/RHEL).
 fn detect_packages() -> Option<usize> {
     // Arch / Manjaro
     if let Ok(entries) = std::fs::read_dir("/var/lib/pacman/local") {
