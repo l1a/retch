@@ -197,20 +197,6 @@ pub fn supports_sixel() -> bool {
         }
     }
 
-    // Ptyxis or modern VTE-based terminals
-    if std::env::var("PTYXIS_VERSION").is_ok() {
-        return true;
-    }
-
-    if let Ok(vte_ver) = std::env::var("VTE_VERSION") {
-        if let Ok(ver) = vte_ver.parse::<u32>() {
-            // VTE 0.71.0+ supports Sixel
-            if ver >= 7100 {
-                return true;
-            }
-        }
-    }
-
     if std::env::var("WT_SESSION").is_ok() {
         return true;
     }
