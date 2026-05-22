@@ -11,6 +11,7 @@ impl SystemInfo {
     /// between graphics, Chafa, and ASCII), and field filtering based on
     /// CLI flags and configuration.
     pub fn display(&self, cli: &Cli, _config: &Config) -> anyhow::Result<()> {
+        println!();
         let theme_name = _config.theme.as_deref().or(cli.theme.as_deref());
         let mut theme = match theme_name {
             Some(name) => Theme::from_name(name),

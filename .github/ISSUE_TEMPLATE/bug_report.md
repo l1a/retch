@@ -12,8 +12,8 @@ A clear and concise description of what the bug is.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Run `retch --flag ...`
-2. See error ...
+1. Run '...'
+2. See error
 
 **Expected behavior**
 A clear and concise description of what you expected to happen.
@@ -24,7 +24,7 @@ If applicable, add screenshots to help explain your problem.
 **Environment (please complete the following information):**
  - OS: [e.g. Arch Linux]
  - Terminal: [e.g. Kitty, Alacritty]
- - `retch` version: [e.g. 0.1.4]
+ - `retch` version: [e.g. 0.1.5]
  - Desktop Environment/Window Manager: [e.g. GNOME, i3]
 
 **Additional context**
