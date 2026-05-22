@@ -17,8 +17,9 @@
 
 ## Major Achievements
 
-### v0.1.5 - UI Polish (May 22, 2026)
+### v0.1.5 - UI Polish & Hardware Detection (May 22, 2026)
 - **Output**: Added leading newline before logo or system info for better visual clarity.
+- **GPU**: Improved AMD GPU recognition by mapping codenames (e.g., Phoenix1, Rembrandt) to marketing names (e.g., Radeon 780M, 680M).
 
 ### v0.1.4 - Enhanced Graphical Support (May 20, 2026)
 - **Sixel**: Integrated `icy-sixel` (pure Rust) for high-performance Sixel rendering.
