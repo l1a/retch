@@ -1,9 +1,8 @@
 use crate::cli::Cli;
 use crate::config::Config;
+use crate::gpu;
 use chrono::TimeZone;
 use owo_colors::OwoColorize;
-use std::collections::HashSet;
-use std::fs;
 use sysinfo::{Components, Disks, Networks, System, Users};
 
 /// Comprehensive system information data structure.
@@ -60,40 +59,6 @@ pub struct SystemInfo {
     pub packages: Option<usize>,
     /// Name of the user running the process.
     pub current_user: Option<String>,
-}
-
-/// Helper to lookup PCI device name in standard system pci.ids files.
-///
-/// Searches `/usr/share/hwdata/pci.ids` or `/usr/share/misc/pci.ids`.
-fn lookup_pci_device(vendor_id: &str, device_id: &str) -> Option<String> {
-    let vendor_id = vendor_id.trim_start_matches("0x").to_lowercase();
-    let device_id = device_id.trim_start_matches("0x").to_lowercase();
-
-    let paths = ["/usr/share/hwdata/pci.ids", "/usr/share/misc/pci.ids"];
-
-    for path in &paths {
-        if let Ok(content) = fs::read_to_string(path) {
-            let mut in_vendor = false;
-            for line in content.lines() {
-                if line.starts_with('#') || line.is_empty() {
-                    continue;
-                }
-
-                if !line.starts_with('\t') {
-                    // Vendor line: "vendor_id  Vendor Name"
-                    in_vendor = line.starts_with(&vendor_id);
-                } else if in_vendor && line.starts_with('\t') && !line.starts_with("\t\t") {
-                    // Device line: "\tdevice_id  Device Name"
-                    let trimmed = line.trim_start();
-                    if trimmed.starts_with(&device_id) {
-                        let name = trimmed[device_id.len()..].trim();
-                        return Some(name.to_string());
-                    }
-                }
-            }
-        }
-    }
-    None
 }
 
 impl SystemInfo {
@@ -255,140 +220,11 @@ impl SystemInfo {
             desktop,
             cpu_freq,
             users,
-            gpu: detect_gpu(),
+            gpu: gpu::detect_gpus().into_iter().map(|g| g.format()).collect(),
             packages: detect_packages(),
             current_user,
         })
     }
-}
-
-/// Refines AMD GPU names by mapping codenames to marketing names.
-fn improve_amd_gpu_name(name: &str) -> String {
-    let codenames = [
-        ("Phoenix1", "Radeon 780M"),
-        ("Phoenix2", "Radeon 740M / 760M"),
-        ("Renoir", "Radeon Graphics (Renoir)"),
-        ("Lucienne", "Radeon Graphics (Lucienne)"),
-        ("Cezanne", "Radeon Graphics (Cezanne)"),
-        ("Barcelo", "Radeon Graphics (Barcelo)"),
-        ("Rembrandt", "Radeon 680M"),
-        ("Raphael", "Radeon Graphics (Raphael)"),
-        ("Mendocino", "Radeon 610M"),
-        ("Strix", "Radeon 880M / 890M"),
-    ];
-
-    for (codename, marketing) in codenames {
-        if name.contains(codename) {
-            return marketing.to_string();
-        }
-    }
-
-    name.to_string()
-}
-
-/// Detects GPUs using sysfs and PCI database lookups.
-///
-/// Scans `/sys/class/drm` for graphics devices and attempts to extract
-/// model names and VRAM info (where supported).
-fn detect_gpu() -> Vec<String> {
-    let mut gpus = Vec::new();
-    let mut seen_devices = HashSet::new();
-
-    // Scan /sys/class/drm for all card* and renderD* entries
-    if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
-        for entry in entries.flatten() {
-            let name = entry.file_name().into_string().unwrap_or_default();
-            if !name.starts_with("card") && !name.starts_with("renderD") {
-                continue;
-            }
-
-            let device_path = entry.path().join("device");
-            if let Ok(real_path) = std::fs::canonicalize(&device_path) {
-                if !seen_devices.insert(real_path) {
-                    continue;
-                }
-
-                // Try to identify vendor and model
-                let vendor_id = fs::read_to_string(device_path.join("vendor"))
-                    .unwrap_or_default()
-                    .trim()
-                    .to_string();
-                let device_id = fs::read_to_string(device_path.join("device"))
-                    .unwrap_or_default()
-                    .trim()
-                    .to_string();
-
-                if vendor_id.is_empty() || device_id.is_empty() {
-                    continue;
-                }
-
-                let mut gpu_name = lookup_pci_device(&vendor_id, &device_id).unwrap_or_else(|| {
-                    if vendor_id.contains("10de") {
-                        "NVIDIA GPU".to_string()
-                    } else if vendor_id.contains("1002") {
-                        "AMD GPU".to_string()
-                    } else if vendor_id.contains("8086") {
-                        "Intel GPU".to_string()
-                    } else {
-                        "Unknown GPU".to_string()
-                    }
-                });
-
-                // Refine AMD GPU names (codenames -> marketing names)
-                if vendor_id.contains("1002") {
-                    gpu_name = improve_amd_gpu_name(&gpu_name);
-                }
-
-                // NVIDIA special case: try /proc for even better name
-                if vendor_id.contains("10de") {
-                    if let Ok(pci_slot_path) = fs::read_link(&device_path) {
-                        if let Some(slot_name) = pci_slot_path.file_name() {
-                            let proc_info_path = format!(
-                                "/proc/driver/nvidia/gpus/{}/information",
-                                slot_name.to_string_lossy()
-                            );
-                            if let Ok(info) = fs::read_to_string(proc_info_path) {
-                                for line in info.lines() {
-                                    if line.starts_with("Model:") {
-                                        gpu_name = line.replace("Model:", "").trim().to_string();
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Try to get VRAM from common sysfs locations (mainly AMD)
-                let vram_path = device_path.join("mem_info_vram_total");
-                if let Ok(vram_str) = fs::read_to_string(vram_path) {
-                    if let Ok(vram_bytes) = vram_str.trim().parse::<u64>() {
-                        let vram_gb = vram_bytes as f64 / 1024.0 / 1024.0 / 1024.0;
-                        if vram_gb >= 1.0 {
-                            gpu_name = format!("{} ({:.0} GB)", gpu_name, vram_gb);
-                        } else {
-                            let vram_mb = vram_bytes / 1024 / 1024;
-                            gpu_name = format!("{} ({} MB)", gpu_name, vram_mb);
-                        }
-                    }
-                }
-
-                gpus.push(gpu_name);
-            }
-        }
-    }
-
-    if gpus.is_empty() {
-        // Fallback for non-standard setups or if /sys/class/drm is empty
-        if let Ok(model) = fs::read_to_string("/sys/class/drm/card0/device/model") {
-            let model = model.trim();
-            if !model.is_empty() {
-                gpus.push(model.to_string());
-            }
-        }
-    }
-
-    gpus
 }
 
 /// Count installed packages by inspecting package manager databases directly.

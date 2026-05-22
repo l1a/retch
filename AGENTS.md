@@ -7,7 +7,8 @@
 - **License**: GPLv3
 - **Repository**: https://github.com/l1a/retch
 
-## Current State (v0.1.5)
+## Current State (v0.1.6)
+- **Architecture**: Modularized GPU detection into a dedicated component.
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
 - **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
@@ -16,6 +17,9 @@
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
 
 ## Major Achievements
+
+### v0.1.6 - Refactoring & Modularity (May 22, 2026)
+- **Architecture**: Refactored GPU detection into a standalone `gpu` module for better maintainability and reusability.
 
 ### v0.1.5 - UI Polish & Hardware Detection (May 22, 2026)
 - **Output**: Added leading newline before logo or system info for better visual clarity.
