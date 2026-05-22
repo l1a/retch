@@ -262,6 +262,30 @@ impl SystemInfo {
     }
 }
 
+/// Refines AMD GPU names by mapping codenames to marketing names.
+fn improve_amd_gpu_name(name: &str) -> String {
+    let codenames = [
+        ("Phoenix1", "Radeon 780M"),
+        ("Phoenix2", "Radeon 740M / 760M"),
+        ("Renoir", "Radeon Graphics (Renoir)"),
+        ("Lucienne", "Radeon Graphics (Lucienne)"),
+        ("Cezanne", "Radeon Graphics (Cezanne)"),
+        ("Barcelo", "Radeon Graphics (Barcelo)"),
+        ("Rembrandt", "Radeon 680M"),
+        ("Raphael", "Radeon Graphics (Raphael)"),
+        ("Mendocino", "Radeon 610M"),
+        ("Strix", "Radeon 880M / 890M"),
+    ];
+
+    for (codename, marketing) in codenames {
+        if name.contains(codename) {
+            return marketing.to_string();
+        }
+    }
+
+    name.to_string()
+}
+
 /// Detects GPUs using sysfs and PCI database lookups.
 ///
 /// Scans `/sys/class/drm` for graphics devices and attempts to extract
@@ -309,6 +333,11 @@ fn detect_gpu() -> Vec<String> {
                         "Unknown GPU".to_string()
                     }
                 });
+
+                // Refine AMD GPU names (codenames -> marketing names)
+                if vendor_id.contains("1002") {
+                    gpu_name = improve_amd_gpu_name(&gpu_name);
+                }
 
                 // NVIDIA special case: try /proc for even better name
                 if vendor_id.contains("10de") {
