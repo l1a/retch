@@ -7,7 +7,8 @@
 - **License**: GPLv3
 - **Repository**: https://github.com/l1a/retch
 
-## Current State (v0.1.4)
+## Current State (v0.1.5)
+- **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
 - **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
 - **Quality**: Strict `just check` (fmt + lint) and comprehensive unit tests.
@@ -15,6 +16,9 @@
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
 
 ## Major Achievements
+
+### v0.1.5 - UI Polish (May 22, 2026)
+- **Output**: Added leading newline before logo or system info for better visual clarity.
 
 ### v0.1.4 - Enhanced Graphical Support (May 20, 2026)
 - **Sixel**: Integrated `icy-sixel` (pure Rust) for high-performance Sixel rendering.
