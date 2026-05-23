@@ -20,6 +20,7 @@
 
 ### v0.1.7 - Quality Assurance & Test Coverage (May 23, 2026)
 - **Testing**: Significantly increased unit test coverage across all core modules (GPU, Config, Fetch, Display, Logo, Theme), bringing the total to 19 passing tests.
+- **CI/CD**: Optimized GitHub Actions workflow to prevent redundant runs on Pull Requests, improving efficiency.
 
 ### v0.1.6 - Refactoring & Modularity (May 22, 2026)
 - **Architecture**: Refactored GPU detection into a standalone `gpu` module for better maintainability and reusability.
@@ -73,4 +74,4 @@
 4. **UX Polish** — Refine error messages and configuration generation.
 
 ---
-*Last updated: May 20, 2026*
+*Last updated: May 23, 2026*
