@@ -219,7 +219,10 @@ mod tests {
 
     #[test]
     fn test_improve_amd_gpu_name() {
-        assert_eq!(improve_amd_gpu_name("AMD Radeon Phoenix1 Graphics"), "Radeon 780M");
+        assert_eq!(
+            improve_amd_gpu_name("AMD Radeon Phoenix1 Graphics"),
+            "Radeon 780M"
+        );
         assert_eq!(improve_amd_gpu_name("AMD Rembrandt"), "Radeon 680M");
         assert_eq!(improve_amd_gpu_name("Unknown GPU"), "Unknown GPU");
     }
