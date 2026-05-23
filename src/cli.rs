@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 l1a
+
+//! Command-line interface definitions.
+//!
+//! Defines the CLI arguments, flags, and options using the `clap` crate.
+
 use clap::{Parser, ValueEnum};
 
 /// Command-line arguments for retch.

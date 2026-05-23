@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 l1a
+
+//! Formatting and display logic for terminal output.
+//!
+//! Handles text rendering, layout, and image/ASCII logo rendering.
+
 use crate::cli::Cli;
 use crate::config::Config;
 use crate::fetch::SystemInfo;

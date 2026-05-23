@@ -1,3 +1,11 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 l1a
+
+//! System information gathering.
+//!
+//! Uses the `sysinfo` crate and other heuristics to collect details
+//! about the OS, hardware, and environment.
+
 use crate::cli::Cli;
 use crate::config::Config;
 use crate::gpu;

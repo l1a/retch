@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 l1a
+
 # Justfile for retch
 # Run with: just <recipe>
 

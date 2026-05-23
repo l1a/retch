@@ -1,3 +1,11 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 l1a
+
+//! ASCII and graphical logo definitions and rendering.
+//!
+//! Contains embedded distro logos and logic for rendering them
+//! as text or images (e.g., Sixel, Kitty, iTerm).
+
 // Exact Fastfetch ASCII logos (intact, unmodified)
 // Source: https://github.com/fastfetch-cli/fastfetch/src/logo/ascii/
 
