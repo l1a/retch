@@ -1,3 +1,11 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 l1a
+
+//! Configuration management and parsing.
+//!
+//! This module handles loading, parsing, and merging of user-defined
+//! TOML configurations with the default settings.
+
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;

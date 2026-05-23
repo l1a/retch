@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 l1a
+
+//! Main entry point for the retch CLI.
+//!
+//! Handles CLI initialization, completion generation, and main execution flow.
+
 use clap::{CommandFactory, Parser};
 use clap_complete::generate;
 use retch_cli::cli::{Cli, CompletionShell};

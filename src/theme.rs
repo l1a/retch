@@ -1,3 +1,11 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 l1a
+
+//! Color theming and styling.
+//!
+//! Defines color palettes and provides functionality for applying
+//! colors to the output text.
+
 use owo_colors::{OwoColorize, Rgb};
 
 /// Parse a color name or hex string into an RGB value.

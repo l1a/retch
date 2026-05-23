@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 l1a
+
 //! # retch
 //!
 //! A fast, feature-rich system information fetcher written in Rust.

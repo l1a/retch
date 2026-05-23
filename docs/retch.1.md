@@ -1,6 +1,6 @@
 % RETCH(1) | System Information Fetcher
 % retch developers
-% May 2025
+% May 2026
 
 # NAME
 

@@ -1,3 +1,11 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 l1a
+
+//! GPU detection and identification.
+//!
+//! Handles parsing PCI IDs and querying the system for graphics card
+//! vendor and model information.
+
 use std::collections::HashSet;
 use std::fs;
 
