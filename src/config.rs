@@ -88,3 +88,48 @@ impl Config {
         merged
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cli::Cli;
+    use clap::Parser;
+
+    #[test]
+    fn test_config_merge_with_cli() {
+        let config = Config {
+            theme: Some("dark".to_string()),
+            show_logo: Some(true),
+            ascii_only: Some(false),
+            fields: Some(vec!["os".to_string(), "kernel".to_string()]),
+            ..Default::default()
+        };
+
+        // Test theme override
+        let cli = Cli::try_parse_from(&["retch", "--theme", "light"]).unwrap();
+        let merged = config.merge_with_cli(&cli);
+        assert_eq!(merged.theme, Some("light".to_string()));
+
+        // Test no-logo override
+        let cli = Cli::try_parse_from(&["retch", "--no-logo"]).unwrap();
+        let merged = config.merge_with_cli(&cli);
+        assert_eq!(merged.show_logo, Some(false));
+
+        // Test ascii-only override
+        let cli = Cli::try_parse_from(&["retch", "--ascii-only"]).unwrap();
+        let merged = config.merge_with_cli(&cli);
+        assert_eq!(merged.ascii_only, Some(true));
+
+        // Test fields override
+        let cli = Cli::try_parse_from(&["retch", "--fields", "cpu,gpu,memory"]).unwrap();
+        let merged = config.merge_with_cli(&cli);
+        assert_eq!(
+            merged.fields,
+            Some(vec![
+                "cpu".to_string(),
+                "gpu".to_string(),
+                "memory".to_string()
+            ])
+        );
+    }
+}

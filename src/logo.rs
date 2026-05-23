@@ -471,4 +471,36 @@ mod tests {
         let logo = get_ascii_logo(None);
         assert!(!logo.is_empty());
     }
+
+    #[test]
+    fn test_supports_kitty() {
+        std::env::set_var("TERM", "xterm-kitty");
+        assert!(supports_kitty());
+        std::env::set_var("TERM", "xterm");
+        assert!(!supports_kitty());
+    }
+
+    #[test]
+    fn test_supports_iterm2() {
+        std::env::set_var("TERM_PROGRAM", "iTerm.app");
+        assert!(supports_iterm2());
+        std::env::set_var("TERM_PROGRAM", "Apple_Terminal");
+        assert!(!supports_iterm2());
+    }
+
+    #[test]
+    fn test_supports_sixel() {
+        std::env::set_var("TERM", "xterm-sixel");
+        assert!(supports_sixel());
+        std::env::set_var("TERM", "xterm");
+        assert!(!supports_sixel());
+    }
+
+    #[test]
+    fn test_get_embedded_logo() {
+        let logo = get_embedded_logo(Some("arch"));
+        assert!(logo.is_some());
+        let logo = get_embedded_logo(None);
+        assert!(logo.is_some());
+    }
 }
