@@ -7,16 +7,19 @@
 - **License**: GPLv3
 - **Repository**: https://github.com/l1a/retch
 
-## Current State (v0.1.6)
+## Current State (v0.1.7)
 - **Architecture**: Modularized GPU detection into a dedicated component.
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
 - **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
-- **Quality**: Strict `just check` (fmt + lint) and comprehensive unit tests.
+- **Quality**: Strict `just check` (fmt + lint) and significantly improved unit test coverage (19 tests).
 - **Documentation**: Full internal Rustdoc coverage and updated README/man pages.
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
 
 ## Major Achievements
+
+### v0.1.7 - Quality Assurance & Test Coverage (May 23, 2026)
+- **Testing**: Significantly increased unit test coverage across all core modules (GPU, Config, Fetch, Display, Logo, Theme), bringing the total to 19 passing tests.
 
 ### v0.1.6 - Refactoring & Modularity (May 22, 2026)
 - **Architecture**: Refactored GPU detection into a standalone `gpu` module for better maintainability and reusability.
