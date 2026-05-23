@@ -185,3 +185,42 @@ pub fn detect_gpus() -> Vec<GpuInfo> {
 
     gpus
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gpu_info_format() {
+        let info = GpuInfo {
+            name: "NVIDIA GeForce RTX 4090".to_string(),
+            vram_bytes: Some(24 * 1024 * 1024 * 1024),
+        };
+        assert_eq!(info.format(), "NVIDIA GeForce RTX 4090 (24 GB)");
+
+        let info = GpuInfo {
+            name: "Intel Arc A770".to_string(),
+            vram_bytes: Some(16 * 1024 * 1024 * 1024),
+        };
+        assert_eq!(info.format(), "Intel Arc A770 (16 GB)");
+
+        let info = GpuInfo {
+            name: "Radeon 780M".to_string(),
+            vram_bytes: Some(512 * 1024 * 1024),
+        };
+        assert_eq!(info.format(), "Radeon 780M (512 MB)");
+
+        let info = GpuInfo {
+            name: "Generic GPU".to_string(),
+            vram_bytes: None,
+        };
+        assert_eq!(info.format(), "Generic GPU");
+    }
+
+    #[test]
+    fn test_improve_amd_gpu_name() {
+        assert_eq!(improve_amd_gpu_name("AMD Radeon Phoenix1 Graphics"), "Radeon 780M");
+        assert_eq!(improve_amd_gpu_name("AMD Rembrandt"), "Radeon 680M");
+        assert_eq!(improve_amd_gpu_name("Unknown GPU"), "Unknown GPU");
+    }
+}

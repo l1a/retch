@@ -266,3 +266,20 @@ fn format_uptime(uptime: &str) -> String {
 
     parts.join(" ")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_uptime() {
+        assert_eq!(format_uptime("60s"), "1m");
+        assert_eq!(format_uptime("3600s"), "1h");
+        assert_eq!(format_uptime("3661s"), "1h 1m 1s");
+        assert_eq!(format_uptime("86400s"), "1d");
+        assert_eq!(format_uptime("90061s"), "1d 1h 1m 1s");
+        assert_eq!(format_uptime("31536000s"), "1y");
+        assert_eq!(format_uptime("31626061s"), "1y 1d 1h 1m 1s");
+        assert_eq!(format_uptime("0s"), "0s");
+    }
+}

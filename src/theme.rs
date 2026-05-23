@@ -319,4 +319,31 @@ mod tests {
         let theme = Theme::new_default();
         assert_eq!(theme.name, "neutral");
     }
+
+    #[test]
+    fn test_parse_color() {
+        assert_eq!(parse_color("#ff0000"), Some(Rgb(255, 0, 0)));
+        assert_eq!(parse_color("00ff00"), Some(Rgb(0, 255, 0)));
+        assert_eq!(parse_color("blue"), Some(Rgb(0, 0, 255)));
+        assert_eq!(parse_color("invalid"), None);
+    }
+
+    #[test]
+    fn test_from_name() {
+        assert_eq!(Theme::from_name("dark").name, "dark");
+        assert_eq!(Theme::from_name("light").name, "light");
+        assert_eq!(Theme::from_name("mocha").name, "catppuccin-mocha");
+        assert_eq!(Theme::from_name("unknown").name, "neutral");
+    }
+
+    #[test]
+    fn test_with_custom_overrides() {
+        let base = Theme::neutral();
+        let custom = crate::config::CustomTheme {
+            label_color: Some("#123456".to_string()),
+            ..Default::default()
+        };
+        let theme = Theme::with_custom_overrides(base, &custom);
+        assert_eq!(theme.label_color, Rgb(18, 52, 86));
+    }
 }
