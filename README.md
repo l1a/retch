@@ -10,7 +10,7 @@ A fast, feature-rich system information fetcher written in Rust.
 **Active and usable.**  
 retch is under active development with a working core, rich system information output, theming, config support, and high-quality distro logos (ASCII + graphical via Chafa).
 
-> **Note**: This project was 100% vibe coded using Grok. Real programmers are welcome.
+> **Note**: This project was 100% vibe coded using Grok and Gemini. Real programmers are welcome.
 
 ## Features
 
