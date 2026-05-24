@@ -135,7 +135,7 @@ impl SystemInfo {
                     battery::State::Charging => "charging",
                     battery::State::Discharging => "discharging",
                     battery::State::Full => "full",
-                    _ => "unknown",
+                    _ => "not charging",
                 };
                 if health < 99.0 {
                     format!("{:.0}% ({}, {:.0}% health)", pct, state, health)
