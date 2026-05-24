@@ -211,12 +211,17 @@ impl SystemInfo {
             for net in &self.networks {
                 if let Some(ref active) = self.active_interface {
                     if net.contains(active) {
-                        println!("  {} {}", "Net".bold().bright_blue(), net.bold());
+                        // Highlight active interface with bold label + value
+                        println!("  {}: {}", "Net".bold().bright_blue(), net.bold());
                         continue;
                     }
                 }
                 print_line("Net", net);
             }
+        }
+
+        if let Some(ip) = &self.public_ip {
+            print_line("Public IP", ip);
         }
 
         // Uptime: human duration first, then ISO boot time with timezone
