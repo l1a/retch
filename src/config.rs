@@ -21,6 +21,8 @@ pub struct Config {
     pub show_logo: Option<bool>,
     /// Whether to force ASCII-only logo output.
     pub ascii_only: Option<bool>,
+    /// Force a specific distribution logo by name/ID.
+    pub logo: Option<String>,
     /// List of fields to display, in order.
     pub fields: Option<Vec<String>>,
     /// Custom theme color overrides.
@@ -83,6 +85,9 @@ impl Config {
         if cli.ascii_only {
             merged.ascii_only = Some(true);
         }
+        if let Some(logo) = &cli.logo {
+            merged.logo = Some(logo.clone());
+        }
         if let Some(fields_str) = &cli.fields {
             // Split comma-separated string into Vec<String>
             let fields = fields_str
@@ -127,6 +132,11 @@ mod tests {
         let cli = Cli::try_parse_from(&["retch", "--ascii-only"]).unwrap();
         let merged = config.merge_with_cli(&cli);
         assert_eq!(merged.ascii_only, Some(true));
+
+        // Test logo override
+        let cli = Cli::try_parse_from(&["retch", "--logo", "manjaro"]).unwrap();
+        let merged = config.merge_with_cli(&cli);
+        assert_eq!(merged.logo, Some("manjaro".to_string()));
 
         // Test fields override
         let cli = Cli::try_parse_from(&["retch", "--fields", "cpu,gpu,memory"]).unwrap();

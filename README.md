@@ -22,6 +22,7 @@ retch is under active development with a working core, rich system information o
 - Full configuration file support (`~/.config/retch/config.toml`)
 - Smart config + CLI merging
 - `--ascii-only` flag to force text-only output
+- `--logo` (`-l`) flag to override the distro logo
 - `--print-logos` and `--list-distros` commands
 
 ## Installation
@@ -52,6 +53,12 @@ Force ASCII-only output:
 
 ```sh
 retch --ascii-only
+```
+
+Override distribution logo:
+
+```sh
+retch --logo pop
 ```
 
 List available logos:

@@ -26,6 +26,12 @@ pub fn get_embedded_logo(distro: Option<&str>) -> Option<&'static [u8]> {
         Some("fedora") => Some(include_bytes!("../assets/logos/fedora.png")),
         Some("nixos") => Some(include_bytes!("../assets/logos/nixos.png")),
         Some("ubuntu") => Some(include_bytes!("../assets/logos/ubuntu.png")),
+        Some("pop") => Some(include_bytes!("../assets/logos/pop.png")),
+        Some("manjaro") => Some(include_bytes!("../assets/logos/manjaro.png")),
+        Some("endeavouros") => Some(include_bytes!("../assets/logos/endeavouros.png")),
+        Some("opensuse") | Some("opensuse-leap") | Some("opensuse-tumbleweed") => {
+            Some(include_bytes!("../assets/logos/opensuse.png"))
+        }
         _ => Some(include_bytes!("../assets/logos/tux.png")),
     }
 }
@@ -152,6 +158,87 @@ pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
             "..,;::cccllllllllllllllllllllllllllllllllllllcc::;.".to_string(),
             "..,;::cccllllllllllllllllllllllllllllllllllllcc::;.".to_string(),
             "..,;::cccllllllllllllllllllllllllllllllllllllcc::;.".to_string(),
+        ],
+
+        Some("pop") => vec![
+            "\x1b[37m             /////////////\x1b[0m".to_string(),
+            "\x1b[37m         /////////////////////\x1b[0m".to_string(),
+            "\x1b[37m      ///////\x1b[36m*767\x1b[37m////////////////\x1b[0m".to_string(),
+            "\x1b[37m    //////\x1b[36m7676767676*\x1b[37m//////////////\x1b[0m".to_string(),
+            "\x1b[37m   /////\x1b[36m76767\x1b[37m//\x1b[36m7676767\x1b[37m//////////////\x1b[0m".to_string(),
+            "\x1b[37m  /////\x1b[36m767676\x1b[37m///\x1b[36m*76767\x1b[37m///////////////\x1b[0m".to_string(),
+            "\x1b[37m ///////\x1b[36m767676\x1b[37m///\x1b[36m76767\x1b[37m.\x1b[36m///7676*\x1b[37m///////\x1b[0m".to_string(),
+            "\x1b[37m/////////\x1b[36m767676\x1b[37m//\x1b[36m76767\x1b[37m///\x1b[36m767676\x1b[37m////////\x1b[0m".to_string(),
+            "\x1b[37m//////////\x1b[36m767676767676\x1b[37m////\x1b[36m76767\x1b[37m/////////\x1b[0m".to_string(),
+            "\x1b[37m///////////\x1b[36m767676767\x1b[37m//////\x1b[36m7676\x1b[37m//////////\x1b[0m".to_string(),
+            "\x1b[37m////////////,\x1b[36m7676\x1b[37m,///////\x1b[36m767\x1b[37m///////////\x1b[0m".to_string(),
+            "\x1b[37m/////////////*\x1b[36m7676\x1b[37m///////\x1b[36m76\x1b[37m////////////\x1b[0m".to_string(),
+            "\x1b[37m///////////////\x1b[36m7676\x1b[37m////////////////////\x1b[0m".to_string(),
+            "\x1b[37m ///////////////\x1b[36m7676\x1b[37m///\x1b[36m767\x1b[37m////////////\x1b[0m".to_string(),
+            "\x1b[37m  //////////////////////\x1b[36m'\x1b[37m////////////\x1b[0m".to_string(),
+            "\x1b[37m   //////\x1b[36m.7676767676767676767,\x1b[37m//////\x1b[0m".to_string(),
+            "\x1b[37m    /////\x1b[36m767676767676767676767\x1b[37m/////\x1b[0m".to_string(),
+            "\x1b[37m      ///////////////////////////\x1b[0m".to_string(),
+            "\x1b[37m         /////////////////////\x1b[0m".to_string(),
+            "\x1b[37m             /////////////\x1b[0m".to_string(),
+        ],
+
+        Some("manjaro") => vec![
+            "\x1b[32m██████████████████  ████████\x1b[0m".to_string(),
+            "\x1b[32m██████████████████  ████████\x1b[0m".to_string(),
+            "\x1b[32m██████████████████  ████████\x1b[0m".to_string(),
+            "\x1b[32m██████████████████  ████████\x1b[0m".to_string(),
+            "\x1b[32m████████            ████████\x1b[0m".to_string(),
+            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
+            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
+            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
+            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
+            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
+            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
+            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
+            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
+            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
+            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
+        ],
+
+        Some("endeavouros") => vec![
+            "                     \x1b[35m./\x1b[31mo\x1b[34m.\x1b[0m".to_string(),
+            "                   \x1b[35m./\x1b[31msssso\x1b[34m-\x1b[0m".to_string(),
+            "                 \x1b[35m`:\x1b[31mosssssss+\x1b[34m-\x1b[0m".to_string(),
+            "               \x1b[35m`:+\x1b[31msssssssssso\x1b[34m/.\x1b[0m".to_string(),
+            "             \x1b[35m`-/o\x1b[31mssssssssssssso\x1b[34m/.\x1b[0m".to_string(),
+            "           \x1b[35m`-/+\x1b[31msssssssssssssssso\x1b[34m+:`\x1b[0m".to_string(),
+            "         \x1b[35m`-:/+\x1b[31msssssssssssssssssso\x1b[34m+/.\x1b[0m".to_string(),
+            "       \x1b[35m`.://o\x1b[31msssssssssssssssssssso\x1b[34m++-\x1b[0m".to_string(),
+            "      \x1b[35m.://+\x1b[31mssssssssssssssssssssssso\x1b[34m++:\x1b[0m".to_string(),
+            "    \x1b[35m.:///o\x1b[31mssssssssssssssssssssssssso\x1b[34m++:\x1b[0m".to_string(),
+            "  \x1b[35m`:////\x1b[31mssssssssssssssssssssssssssso\x1b[34m+++.\x1b[0m".to_string(),
+            "\x1b[35m`-////+\x1b[31mssssssssssssssssssssssssssso\x1b[34m++++-\x1b[0m".to_string(),
+            " \x1b[35m`..-+\x1b[31moosssssssssssssssssssssssso\x1b[34m+++++/`\x1b[0m".to_string(),
+            "   \x1b[34m./++++++++++++++++++++++++++++++/:.\x1b[0m".to_string(),
+            "  \x1b[34m`:::::::::::::::::::::::::------``\x1b[0m".to_string(),
+            "  \x1b[34m`:::::::::::::::::::::::::------``\x1b[0m".to_string(),
+        ],
+
+        Some("opensuse") | Some("opensuse-leap") | Some("opensuse-tumbleweed") => vec![
+            "\x1b[32m           .;ldkO0000Okdl;.\x1b[0m".to_string(),
+            "\x1b[32m       .;d00xl:^''''''^:ok00d;.\x1b[0m".to_string(),
+            "\x1b[32m     .d00l'                'o00d.\x1b[0m".to_string(),
+            "\x1b[32m   .d0Kd'\x1b[37m  Okxol:;,.          \x1b[32m:O0d\x1b[0m".to_string(),
+            "\x1b[32m  .OK\x1b[37mKKK0kOKKKKKKKKKKOxo:,\x1b[32m      lKO.\x1b[0m".to_string(),
+            "\x1b[32m ,0K\x1b[37mKKKKKKKKKKKKKKK0P^\x1b[32m,,,\x1b[37m^dx:\x1b[32m    ;00,\x1b[0m".to_string(),
+            "\x1b[32m.OK\x1b[37mKKKKKKKKKKKKKKKk'\x1b[32m.oOPPb.\x1b[37m'0k.\x1b[32m   cKO.\x1b[0m".to_string(),
+            "\x1b[32m:KK\x1b[37mKKKKKKKKKKKKKKK: \x1b[32mkKx..dd \x1b[37mlKd\x1b[32m   'OK:\x1b[0m".to_string(),
+            "\x1b[32mdKK\x1b[37mKKKKKKKKKOx0KKKd \x1b[32m^0KKKO' \x1b[37mkKKc\x1b[32m   dKd\x1b[0m".to_string(),
+            "\x1b[32mdKK\x1b[37mKKKKKKKKKK;.;oOKx,..\x1b[32m^\x1b[37m..;kKKK0.\x1b[32m  dKd\x1b[0m".to_string(),
+            "\x1b[32m:KK\x1b[37mKKKKKKKKKK0o;...^cdxxOK0O/^^'  \x1b[32m.0K:\x1b[0m".to_string(),
+            "\x1b[32m kKK\x1b[37mKKKKKKKKKKKKK0x;,,......,;od  \x1b[32mlKk\x1b[0m".to_string(),
+            "\x1b[32m '0K\x1b[37mKKKKKKKKKKKKKKKKKKKK00KKOo^  \x1b[32mc00'\x1b[0m".to_string(),
+            "\x1b[32m  'kK\x1b[37mKKOxddxkOO00000Okxoc;''   \x1b[32m.dKk'\x1b[0m".to_string(),
+            "\x1b[32m    l0Ko.                    .c00l'\x1b[0m".to_string(),
+            "\x1b[32m     'l0Kk:.              .;xK0l'\x1b[0m".to_string(),
+            "\x1b[32m        'lkK0xl:;,,,,;:ldO0kl'\x1b[0m".to_string(),
+            "\x1b[32m            '^:ldxkkkkxdl:^'\x1b[0m".to_string(),
         ],
 
         // Fallback: Tux (Linux)
@@ -508,7 +595,38 @@ mod tests {
     fn test_get_embedded_logo() {
         let logo = get_embedded_logo(Some("arch"));
         assert!(logo.is_some());
+        let logo = get_embedded_logo(Some("pop"));
+        assert!(logo.is_some());
+        let logo = get_embedded_logo(Some("manjaro"));
+        assert!(logo.is_some());
+        let logo = get_embedded_logo(Some("endeavouros"));
+        assert!(logo.is_some());
+        let logo = get_embedded_logo(Some("opensuse"));
+        assert!(logo.is_some());
+        let logo = get_embedded_logo(Some("opensuse-leap"));
+        assert!(logo.is_some());
+        let logo = get_embedded_logo(Some("opensuse-tumbleweed"));
+        assert!(logo.is_some());
         let logo = get_embedded_logo(None);
         assert!(logo.is_some());
+    }
+
+    #[test]
+    fn test_get_ascii_logo_new_distros() {
+        let pop = get_ascii_logo(Some("pop"));
+        assert!(!pop.is_empty());
+        assert!(pop.iter().any(|line| line.contains("767")));
+
+        let manjaro = get_ascii_logo(Some("manjaro"));
+        assert!(!manjaro.is_empty());
+        assert!(manjaro.iter().any(|line| line.contains("████████")));
+
+        let endeavouros = get_ascii_logo(Some("endeavouros"));
+        assert!(!endeavouros.is_empty());
+        assert!(endeavouros.iter().any(|line| line.contains("ssso")));
+
+        let opensuse = get_ascii_logo(Some("opensuse"));
+        assert!(!opensuse.is_empty());
+        assert!(opensuse.iter().any(|line| line.contains("O0000Ok")));
     }
 }

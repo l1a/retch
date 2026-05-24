@@ -105,6 +105,10 @@ fn main() -> anyhow::Result<()> {
         println!("  fedora");
         println!("  nixos");
         println!("  ubuntu");
+        println!("  pop (Pop!_OS)");
+        println!("  manjaro");
+        println!("  endeavouros");
+        println!("  opensuse");
         println!("  (others fall back to Tux)");
         return Ok(());
     }
@@ -120,6 +124,10 @@ fn main() -> anyhow::Result<()> {
             ("fedora", "Fedora"),
             ("nixos", "NixOS"),
             ("ubuntu", "Ubuntu"),
+            ("pop", "Pop!_OS"),
+            ("manjaro", "Manjaro"),
+            ("endeavouros", "EndeavourOS"),
+            ("opensuse", "openSUSE"),
         ];
 
         for (id, name) in logos {

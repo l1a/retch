@@ -23,6 +23,10 @@ pub struct Cli {
     #[arg(short, long)]
     pub config: Option<String>,
 
+    /// Force a specific distribution logo by name/ID
+    #[arg(short, long)]
+    pub logo: Option<String>,
+
     /// Disable logo
     #[arg(long)]
     pub no_logo: bool,
