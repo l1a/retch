@@ -19,11 +19,15 @@ jobs:
     if: github.ref_type != 'tag'
     strategy:
       matrix:
+        platform: [ubuntu, fedora, macos]
         include:
-          - os: ubuntu-latest
-          - os: ubuntu-latest
+          - platform: ubuntu
+            os: ubuntu-latest
+          - platform: fedora
+            os: ubuntu-latest
             container: fedora:latest
-          - os: macos-latest
+          - platform: macos
+            os: macos-latest
 
     steps:
     - name: Install dependencies (Fedora)
