@@ -110,6 +110,7 @@ fn main() -> anyhow::Result<()> {
         println!("  endeavouros");
         println!("  opensuse");
         println!("  macos (macOS / OS X)");
+        println!("  windows (Windows 10 / 11)");
         println!("  (others fall back to Tux)");
         return Ok(());
     }
@@ -130,6 +131,7 @@ fn main() -> anyhow::Result<()> {
             ("endeavouros", "EndeavourOS"),
             ("opensuse", "openSUSE"),
             ("macos", "macOS"),
+            ("windows", "Windows"),
         ];
 
         for (id, name) in logos {

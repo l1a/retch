@@ -270,7 +270,37 @@ fn detect_packages() -> Option<usize> {
         }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        let mut count = 0;
+
+        // Scoop
+        if let Some(home) = dirs::home_dir() {
+            let scoop_dir = std::env::var("SCOOP")
+                .map(std::path::PathBuf::from)
+                .unwrap_or_else(|_| home.join("scoop"));
+            let scoop_apps = scoop_dir.join("apps");
+            if let Ok(entries) = std::fs::read_dir(scoop_apps) {
+                count += entries.filter_map(|e| e.ok()).count();
+            }
+        }
+
+        // Chocolatey
+        let choco_install = std::env::var("ChocolateyInstall")
+            .unwrap_or_else(|_| "C:\\ProgramData\\chocolatey".to_string());
+        let choco_lib = std::path::Path::new(&choco_install).join("lib");
+        if let Ok(entries) = std::fs::read_dir(choco_lib) {
+            count += entries.filter_map(|e| e.ok()).count();
+        }
+
+        if count > 0 {
+            Some(count)
+        } else {
+            None
+        }
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         // Arch / Manjaro
         if let Ok(entries) = std::fs::read_dir("/var/lib/pacman/local") {

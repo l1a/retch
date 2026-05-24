@@ -7,17 +7,25 @@
 - **License**: GPLv3
 - **Repository**: https://github.com/l1a/retch
 
-## Current State (v0.2.0)
+## Current State (v0.2.1)
 - **Architecture**: Modularized GPU detection into a dedicated component.
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
 - **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
-- **Quality**: Strict `just check` (fmt + lint), unit test coverage (29 passing tests), and automated CLI integration test suite (6 tests).
-- **CI/CD**: Release binaries compiled in a Fedora container. Multi-platform testing on Linux and macOS via GitHub Actions CI.
+- **Quality**: Strict `just check` (fmt + lint), unit test coverage (31 passing tests), and automated CLI integration test suite (6 tests).
+- **CI/CD**: Release binaries compiled in a Fedora container. Multi-platform testing on Linux, macOS, and Windows via GitHub Actions CI.
 - **Documentation**: Full internal Rustdoc coverage and updated README/man pages.
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
 
 ## Major Achievements
+
+### v0.2.1 - Windows Support (May 24, 2026)
+- **Platforms**: Added native Windows support.
+- **Logos**: Added high-resolution transparent Windows PNG/SVG logos and modern block ASCII Windows logo.
+- **GPUs**: Implemented Windows-specific GPU/VRAM detection using `wmic` with `powershell` fallback.
+- **Packages**: Implemented Windows package counting for Scoop and Chocolatey.
+- **CI/CD**: Expanded GitHub Actions workflow matrix to test on Linux, macOS, and Windows-latest.
+- **Version**: Bumped version to `0.2.1` in `Cargo.toml` and `docs/retch.1`.
 
 ### v0.2.0 - macOS Support (May 24, 2026)
 - **Platforms**: Added native macOS support (Darwin).

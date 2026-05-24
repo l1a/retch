@@ -33,6 +33,7 @@ pub fn get_embedded_logo(distro: Option<&str>) -> Option<&'static [u8]> {
             Some(include_bytes!("../assets/logos/opensuse.png"))
         }
         Some("macos") => Some(include_bytes!("../assets/logos/macos.png")),
+        Some("windows") => Some(include_bytes!("../assets/logos/windows.png")),
         _ => Some(include_bytes!("../assets/logos/tux.png")),
     }
 }
@@ -49,7 +50,11 @@ pub fn detect_distro() -> Option<String> {
     {
         Some("macos".to_string())
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        Some("windows".to_string())
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         if let Ok(content) = std::fs::read_to_string("/etc/os-release") {
             for line in content.lines() {
@@ -267,6 +272,24 @@ pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
             "\x1b[34m    kMMMMMMMMMMMMMMMMMMMMMMd\x1b[0m".to_string(),
             "\x1b[34m     ;KMMMMMMMWXXWMMMMMMMk.\x1b[0m".to_string(),
             "\x1b[34m       \"cooc*\"    \"*coo'\"\x1b[0m".to_string(),
+        ],
+
+        Some("windows") => vec![
+            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
+            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
+            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
+            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
+            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
+            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
+            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
+            "".to_string(),
+            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
+            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
+            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
+            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
+            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
+            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
+            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
         ],
 
         // Fallback: Tux (Linux)
@@ -741,6 +764,8 @@ mod tests {
         assert!(logo.is_some());
         let logo = get_embedded_logo(Some("macos"));
         assert!(logo.is_some());
+        let logo = get_embedded_logo(Some("windows"));
+        assert!(logo.is_some());
         let logo = get_embedded_logo(None);
         assert!(logo.is_some());
     }
@@ -768,5 +793,11 @@ mod tests {
         assert!(macos
             .iter()
             .any(|line| line.contains("cKMMMMMMMMMMNWMMMMMMMMMM0")));
+
+        let windows = get_ascii_logo(Some("windows"));
+        assert!(!windows.is_empty());
+        assert!(windows
+            .iter()
+            .any(|line| line.contains("####################  ####################")));
     }
 }
