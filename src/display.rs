@@ -209,6 +209,13 @@ impl SystemInfo {
 
         if should_show("Net") {
             for net in &self.networks {
+                if let Some(ref active) = self.active_interface {
+                    if net.contains(active) {
+                        // Highlight active interface with color
+                        print_line("Net", &net.bright_blue().to_string());
+                        continue;
+                    }
+                }
                 print_line("Net", net);
             }
         }
