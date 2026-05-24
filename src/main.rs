@@ -229,42 +229,23 @@ fn print_default_config() {
 }
 
 fn merge_default_config() -> anyhow::Result<()> {
+    use retch_cli::config::Config;
     use std::fs;
 
-    if let Some(path) = retch_cli::config::Config::config_path() {
+    if let Some(path) = Config::config_path() {
         let defaults = default_config_content();
 
         if path.exists() {
             let existing = fs::read_to_string(&path)?;
-            let mut additions = Vec::new();
-
-            // Check for each important setting
-            let settings = [
-                "theme",
-                "show_logo",
-                "ascii_only",
-                "fields",
-                "shell",
-                "terminal",
-                "desktop",
-                "cpu freq",
-                "users",
-            ];
-
-            for setting in &settings {
-                if !existing.to_lowercase().contains(&setting.to_lowercase()) {
-                    additions.push(*setting);
-                }
-            }
+            let (new_content, additions) = Config::merge_defaults(&existing);
 
             if !additions.is_empty() {
-                let mut new_content = existing.clone();
-                new_content.push_str("\n\n# --- Missing default options (commented) ---\n");
-                for setting in additions {
-                    new_content.push_str(&format!("# {} = <value>\n", setting));
-                }
                 fs::write(&path, new_content)?;
-                println!("Merged missing options into {}", path.display());
+                println!(
+                    "Merged missing options ({}) into {}",
+                    additions.join(", "),
+                    path.display()
+                );
             } else {
                 println!("Config already contains all default options.");
             }

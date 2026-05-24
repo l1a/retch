@@ -7,17 +7,24 @@
 - **License**: GPLv3
 - **Repository**: https://github.com/l1a/retch
 
-## Current State (v0.1.9)
+## Current State (v0.1.10)
 - **Architecture**: Modularized GPU detection into a dedicated component.
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
 - **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
-- **Quality**: Strict `just check` (fmt + lint) and expanded unit test coverage to 25 passing tests (with thread-safe environment mocking).
+- **Quality**: Strict `just check` (fmt + lint) and expanded unit test coverage to 28 passing tests (with thread-safe environment mocking).
 - **CI/CD**: Release binaries compiled in a Fedora container.
 - **Documentation**: Full internal Rustdoc coverage and updated README/man pages.
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
 
 ## Major Achievements
+
+### v0.1.10 - Refined Config Merging & Formatting (May 23, 2026)
+- **Refactoring**: Extracted config merge logic into a pure, fully unit-testable function `Config::merge_defaults` inside [config.rs](file:///home/ktobias/git/retch/src/config.rs).
+- **Bugfixes**: Resolved merge option bugs where subfields (e.g. `shell`, `terminal`, `desktop`) were incorrectly validated as top-level keys.
+- **Formatting**: Replaced raw key-value merged overrides with clean, fully documented default TOML blocks.
+- **Testing**: Added unit tests covering all merging configurations (complete configs, partially completed files, and fully commented-out keys).
+- **Version**: Bumped version to `0.1.10` in `Cargo.toml` and `docs/retch.1`.
 
 ### v0.1.9 - Advanced Testing & Fedora Release Build (May 23, 2026)
 - **Testing**: Added unit tests for isolated TOML configuration loading, full custom theme overrides, and hex parsing variants. Implemented a thread-safe environment variable mocking helper (`EnvGuard`) using a static mutex for terminal detection heuristic tests.
@@ -81,7 +88,7 @@
 ## Next Steps
 
 1. **Expansion** — Explore support for other platforms (macOS, Windows).
-2. **UX Polish** — Refine error messages and configuration generation.
+2. **UX Polish** — Refine error messages.
 3. **Integration Testing** — Add automated CLI and config generation integration tests.
 
 ---
