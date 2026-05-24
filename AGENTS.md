@@ -7,16 +7,22 @@
 - **License**: GPLv3
 - **Repository**: https://github.com/l1a/retch
 
-## Current State (v0.1.8)
+## Current State (v0.1.9)
 - **Architecture**: Modularized GPU detection into a dedicated component.
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
 - **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
-- **Quality**: Strict `just check` (fmt + lint) and significantly improved unit test coverage (19 tests).
+- **Quality**: Strict `just check` (fmt + lint) and expanded unit test coverage to 25 passing tests (with thread-safe environment mocking).
+- **CI/CD**: Release binaries compiled in a Fedora container.
 - **Documentation**: Full internal Rustdoc coverage and updated README/man pages.
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
 
 ## Major Achievements
+
+### v0.1.9 - Advanced Testing & Fedora Release Build (May 23, 2026)
+- **Testing**: Added unit tests for isolated TOML configuration loading, full custom theme overrides, and hex parsing variants. Implemented a thread-safe environment variable mocking helper (`EnvGuard`) using a static mutex for terminal detection heuristic tests.
+- **CI/CD**: Split the release building process in `.github/workflows/rust.yml` to compile the release binary inside a `fedora:latest` container and publish it natively from the host runner.
+- **Version**: Bumped project version to `0.1.9` in `Cargo.toml` and `docs/retch.1`.
 
 ### v0.1.8 - New Distro Logos & CLI Option (May 23, 2026)
 - **Logos**: Sourced and converted SVG/PNG assets and defined colored ASCII art for Pop!_OS, Manjaro, EndeavourOS, and openSUSE.
@@ -75,8 +81,8 @@
 ## Next Steps
 
 1. **Expansion** — Explore support for other platforms (macOS, Windows).
-2. **Advanced Testing** — Increase coverage for config merging, theming overrides, and terminal detection logic.
-3. **UX Polish** — Refine error messages and configuration generation.
+2. **UX Polish** — Refine error messages and configuration generation.
+3. **Integration Testing** — Add automated CLI and config generation integration tests.
 
 ---
 *Last updated: May 23, 2026*
