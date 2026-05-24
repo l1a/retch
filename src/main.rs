@@ -170,7 +170,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Load config and merge CLI overrides
-    let config = Config::load()?;
+    let config = Config::load(cli.config.as_deref())?;
     let config = config.merge_with_cli(&cli);
 
     // Collect system information

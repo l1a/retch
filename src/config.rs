@@ -50,8 +50,14 @@ impl Config {
     /// Loads the configuration from the default system path.
     ///
     /// Typically looks in `~/.config/retch/config.toml`.
-    pub fn load() -> anyhow::Result<Self> {
-        if let Some(path) = Self::config_path() {
+    pub fn load(custom_path: Option<&str>) -> anyhow::Result<Self> {
+        let path = if let Some(p) = custom_path {
+            Some(PathBuf::from(p))
+        } else {
+            Self::config_path()
+        };
+
+        if let Some(path) = path {
             if path.exists() {
                 let contents = fs::read_to_string(&path)?;
                 let config: Config = toml::from_str(&contents)?;
@@ -119,27 +125,27 @@ mod tests {
         };
 
         // Test theme override
-        let cli = Cli::try_parse_from(&["retch", "--theme", "light"]).unwrap();
+        let cli = Cli::try_parse_from(["retch", "--theme", "light"]).unwrap();
         let merged = config.merge_with_cli(&cli);
         assert_eq!(merged.theme, Some("light".to_string()));
 
         // Test no-logo override
-        let cli = Cli::try_parse_from(&["retch", "--no-logo"]).unwrap();
+        let cli = Cli::try_parse_from(["retch", "--no-logo"]).unwrap();
         let merged = config.merge_with_cli(&cli);
         assert_eq!(merged.show_logo, Some(false));
 
         // Test ascii-only override
-        let cli = Cli::try_parse_from(&["retch", "--ascii-only"]).unwrap();
+        let cli = Cli::try_parse_from(["retch", "--ascii-only"]).unwrap();
         let merged = config.merge_with_cli(&cli);
         assert_eq!(merged.ascii_only, Some(true));
 
         // Test logo override
-        let cli = Cli::try_parse_from(&["retch", "--logo", "manjaro"]).unwrap();
+        let cli = Cli::try_parse_from(["retch", "--logo", "manjaro"]).unwrap();
         let merged = config.merge_with_cli(&cli);
         assert_eq!(merged.logo, Some("manjaro".to_string()));
 
         // Test fields override
-        let cli = Cli::try_parse_from(&["retch", "--fields", "cpu,gpu,memory"]).unwrap();
+        let cli = Cli::try_parse_from(["retch", "--fields", "cpu,gpu,memory"]).unwrap();
         let merged = config.merge_with_cli(&cli);
         assert_eq!(
             merged.fields,
@@ -149,5 +155,44 @@ mod tests {
                 "memory".to_string()
             ])
         );
+        // Test fields edge case (spaces, empty values)
+        let cli = Cli::try_parse_from(["retch", "--fields", "  cpu , , gpu "]).unwrap();
+        let merged = config.merge_with_cli(&cli);
+        assert_eq!(
+            merged.fields,
+            Some(vec!["cpu".to_string(), "gpu".to_string()])
+        );
+    }
+
+    #[test]
+    fn test_config_load_valid() {
+        let temp_dir = std::env::temp_dir();
+        let file_path = temp_dir.join("valid_config.toml");
+        std::fs::write(&file_path, "theme = \"dark\"\nshow_logo = true\n").unwrap();
+
+        let config = Config::load(Some(file_path.to_str().unwrap())).unwrap();
+        assert_eq!(config.theme, Some("dark".to_string()));
+        assert_eq!(config.show_logo, Some(true));
+
+        let _ = std::fs::remove_file(file_path);
+    }
+
+    #[test]
+    fn test_config_load_invalid() {
+        let temp_dir = std::env::temp_dir();
+        let file_path = temp_dir.join("invalid_config.toml");
+        std::fs::write(&file_path, "theme = dark\n").unwrap(); // Missing quotes makes it invalid TOML
+
+        let config = Config::load(Some(file_path.to_str().unwrap()));
+        assert!(config.is_err());
+
+        let _ = std::fs::remove_file(file_path);
+    }
+
+    #[test]
+    fn test_config_load_missing() {
+        let config = Config::load(Some("non_existent_file.toml")).unwrap();
+        assert_eq!(config.theme, None);
+        assert_eq!(config.show_logo, None);
     }
 }

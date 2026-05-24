@@ -567,28 +567,132 @@ mod tests {
         assert!(!logo.is_empty());
     }
 
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    struct EnvGuard {
+        _mutex_guard: std::sync::MutexGuard<'static, ()>,
+        old_vars: std::collections::HashMap<&'static str, Option<String>>,
+    }
+
+    impl EnvGuard {
+        fn new(vars_to_mock: &[&'static str]) -> Self {
+            let guard = ENV_LOCK.lock().unwrap();
+            let mut old_vars = std::collections::HashMap::new();
+            for var in vars_to_mock {
+                old_vars.insert(*var, std::env::var(var).ok());
+            }
+            EnvGuard {
+                _mutex_guard: guard,
+                old_vars,
+            }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            for (var, value) in &self.old_vars {
+                if let Some(val) = value {
+                    std::env::set_var(var, val);
+                } else {
+                    std::env::remove_var(var);
+                }
+            }
+        }
+    }
+
     #[test]
-    fn test_supports_kitty() {
+    fn test_supports_kitty_heuristics() {
+        let _guard = EnvGuard::new(&["TERM", "TERMINAL_EMULATOR", "TERM_PROGRAM"]);
+
+        // Test TERM=xterm-kitty
         std::env::set_var("TERM", "xterm-kitty");
+        std::env::remove_var("TERMINAL_EMULATOR");
+        std::env::remove_var("TERM_PROGRAM");
         assert!(supports_kitty());
-        std::env::set_var("TERM", "xterm");
+
+        // Test TERMINAL_EMULATOR=iterm-kitty
+        std::env::remove_var("TERM");
+        std::env::set_var("TERMINAL_EMULATOR", "iterm-kitty");
+        assert!(supports_kitty());
+
+        // Test TERMINAL_EMULATOR=iTerm.app
+        std::env::set_var("TERMINAL_EMULATOR", "iTerm.app");
+        assert!(supports_kitty());
+
+        // Test TERM_PROGRAM=rio
+        std::env::remove_var("TERMINAL_EMULATOR");
+        std::env::set_var("TERM_PROGRAM", "rio");
+        assert!(supports_kitty());
+
+        // Test clear env -> false
+        std::env::remove_var("TERM_PROGRAM");
         assert!(!supports_kitty());
     }
 
     #[test]
-    fn test_supports_iterm2() {
+    fn test_supports_iterm2_heuristics() {
+        let _guard = EnvGuard::new(&["TERM_PROGRAM"]);
+
+        // Test TERM_PROGRAM=iTerm.app
         std::env::set_var("TERM_PROGRAM", "iTerm.app");
         assert!(supports_iterm2());
+
+        // Test TERM_PROGRAM=WezTerm
+        std::env::set_var("TERM_PROGRAM", "WezTerm");
+        assert!(supports_iterm2());
+
+        // Test TERM_PROGRAM=rio
+        std::env::set_var("TERM_PROGRAM", "rio");
+        assert!(supports_iterm2());
+
+        // Test TERM_PROGRAM=Apple_Terminal
         std::env::set_var("TERM_PROGRAM", "Apple_Terminal");
+        assert!(!supports_iterm2());
+
+        // Test clear env -> false
+        std::env::remove_var("TERM_PROGRAM");
         assert!(!supports_iterm2());
     }
 
     #[test]
-    fn test_supports_sixel() {
+    fn test_supports_sixel_heuristics() {
+        let _guard = EnvGuard::new(&["TERM", "TERM_PROGRAM", "WT_SESSION"]);
+
+        // Clear all to start fresh
+        std::env::remove_var("TERM");
+        std::env::remove_var("TERM_PROGRAM");
+        std::env::remove_var("WT_SESSION");
+        assert!(!supports_sixel());
+
+        // Test TERM=xterm-sixel
         std::env::set_var("TERM", "xterm-sixel");
         assert!(supports_sixel());
-        std::env::set_var("TERM", "xterm");
-        assert!(!supports_sixel());
+
+        // Test TERM=foot
+        std::env::set_var("TERM", "foot");
+        assert!(supports_sixel());
+
+        // Test TERM=mlterm (case variations)
+        std::env::set_var("TERM", "MLTerm");
+        assert!(supports_sixel());
+
+        // Reset TERM, test TERM_PROGRAM=WezTerm
+        std::env::remove_var("TERM");
+        std::env::set_var("TERM_PROGRAM", "WezTerm");
+        assert!(supports_sixel());
+
+        // Test TERM_PROGRAM=iTerm.app
+        std::env::set_var("TERM_PROGRAM", "iTerm.app");
+        assert!(supports_sixel());
+
+        // Test TERM_PROGRAM=rio
+        std::env::set_var("TERM_PROGRAM", "rio");
+        assert!(supports_sixel());
+
+        // Reset TERM_PROGRAM, test WT_SESSION
+        std::env::remove_var("TERM_PROGRAM");
+        std::env::set_var("WT_SESSION", "active");
+        assert!(supports_sixel());
     }
 
     #[test]
