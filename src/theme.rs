@@ -345,13 +345,59 @@ mod tests {
     }
 
     #[test]
-    fn test_with_custom_overrides() {
+    fn test_with_custom_overrides_all_fields() {
         let base = Theme::neutral();
         let custom = crate::config::CustomTheme {
             label_color: Some("#123456".to_string()),
-            ..Default::default()
+            value_color: Some("blue".to_string()),
+            accent_color: Some("#ff00ff".to_string()),
+            title_color: Some("green".to_string()),
+            separator_color: Some("#00ff00".to_string()),
         };
         let theme = Theme::with_custom_overrides(base, &custom);
         assert_eq!(theme.label_color, Rgb(18, 52, 86));
+        assert_eq!(theme.value_color, Rgb(0, 0, 255));
+        assert_eq!(theme.accent_color, Rgb(255, 0, 255));
+        assert_eq!(theme.title_color, Rgb(0, 255, 0));
+        assert_eq!(theme.separator_color, Rgb(0, 255, 0));
+    }
+
+    #[test]
+    fn test_with_custom_overrides_invalid() {
+        let base = Theme::neutral();
+        let custom = crate::config::CustomTheme {
+            label_color: Some("invalid_color".to_string()),
+            value_color: Some("#123".to_string()), // invalid hex length
+            accent_color: Some("".to_string()),
+            title_color: None,
+            separator_color: Some("#ffg000".to_string()), // invalid hex char
+        };
+        let theme = Theme::with_custom_overrides(base.clone(), &custom);
+        // Should fallback to base theme colors
+        assert_eq!(theme.label_color, base.label_color);
+        assert_eq!(theme.value_color, base.value_color);
+        assert_eq!(theme.accent_color, base.accent_color);
+        assert_eq!(theme.title_color, base.title_color);
+        assert_eq!(theme.separator_color, base.separator_color);
+    }
+
+    #[test]
+    fn test_parse_color_hex_variants() {
+        // Upper case hex
+        assert_eq!(parse_color("#FF6432"), Some(Rgb(255, 100, 50)));
+        // Lower case hex
+        assert_eq!(parse_color("#ff6432"), Some(Rgb(255, 100, 50)));
+        // Mixed case hex
+        assert_eq!(parse_color("#Ff6432"), Some(Rgb(255, 100, 50)));
+        // Hex without # prefix
+        assert_eq!(parse_color("FF6432"), Some(Rgb(255, 100, 50)));
+        // Space padded hex
+        assert_eq!(parse_color("  #FF6432  "), Some(Rgb(255, 100, 50)));
+        // Invalid hex lengths
+        assert_eq!(parse_color("#fff"), None);
+        assert_eq!(parse_color("fff"), None);
+        assert_eq!(parse_color("#fffffff"), None);
+        // Invalid hex chars
+        assert_eq!(parse_color("#ff643g"), None);
     }
 }
