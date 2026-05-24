@@ -108,8 +108,8 @@
 
 ## Next Steps
 
-1. **Expansion** — Explore support for other platforms (Windows).
-2. **UX Polish** — Refine error messages.
+1. **Expansion** — Explore support for other platforms (e.g., BSDs, Android/Termux).
+2. **UX Polish** — Refine error messages and performance of slow platform queries.
 
 ---
 *Last updated: May 24, 2026*
