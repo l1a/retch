@@ -32,6 +32,7 @@ impl SystemInfo {
 
         let show_logo = _config.show_logo.unwrap_or(true) && !cli.no_logo;
         if show_logo {
+            let distro_hint = _config.logo.clone().or_else(logo::detect_distro);
             #[cfg(feature = "graphics")]
             let mut printed_logo = false;
             #[cfg(not(feature = "graphics"))]
@@ -56,8 +57,8 @@ impl SystemInfo {
                     if let Some(path) = &user_logo {
                         logo::print_graphical_logo_from_path(path);
                         printed_logo = true;
-                    } else if let Some(distro) = logo::detect_distro() {
-                        if let Some(bytes) = logo::get_embedded_logo(Some(&distro)) {
+                    } else if let Some(distro) = &distro_hint {
+                        if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
                             logo::print_graphical_logo(bytes);
                             printed_logo = true;
                         }
@@ -70,8 +71,8 @@ impl SystemInfo {
                     if let Some(path) = &user_logo {
                         logo::print_iterm2_logo_from_path(path);
                         printed_logo = true;
-                    } else if let Some(distro) = logo::detect_distro() {
-                        if let Some(bytes) = logo::get_embedded_logo(Some(&distro)) {
+                    } else if let Some(distro) = &distro_hint {
+                        if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
                             logo::print_iterm2_logo(bytes);
                             printed_logo = true;
                         }
@@ -84,8 +85,8 @@ impl SystemInfo {
                     if let Some(path) = &user_logo {
                         logo::print_sixel_logo_from_path(path);
                         printed_logo = true;
-                    } else if let Some(distro) = logo::detect_distro() {
-                        if let Some(bytes) = logo::get_embedded_logo(Some(&distro)) {
+                    } else if let Some(distro) = &distro_hint {
+                        if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
                             logo::print_sixel_logo(bytes);
                             printed_logo = true;
                         }
@@ -98,7 +99,7 @@ impl SystemInfo {
                         if logo::print_with_chafa(path) {
                             printed_logo = true;
                         }
-                    } else if logo::detect_distro().is_some() {
+                    } else if distro_hint.is_some() {
                         // For chafa we need a file, so we skip embedded for now
                         // (user can provide logo.png for chafa path)
                     }
@@ -107,7 +108,6 @@ impl SystemInfo {
 
             // 3. Final fallback: Real Fastfetch ASCII logo
             if !printed_logo {
-                let distro_hint = logo::detect_distro();
                 // Use the unified priority logic (graphic -> chafa -> ASCII)
                 logo::print_distro_logo_with_ascii(distro_hint.as_deref(), cli.ascii_only);
             }

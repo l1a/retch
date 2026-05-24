@@ -7,7 +7,7 @@
 - **License**: GPLv3
 - **Repository**: https://github.com/l1a/retch
 
-## Current State (v0.1.7)
+## Current State (v0.1.8)
 - **Architecture**: Modularized GPU detection into a dedicated component.
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
@@ -17,6 +17,12 @@
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
 
 ## Major Achievements
+
+### v0.1.8 - New Distro Logos & CLI Option (May 23, 2026)
+- **Logos**: Sourced and converted SVG/PNG assets and defined colored ASCII art for Pop!_OS, Manjaro, EndeavourOS, and openSUSE.
+- **CLI Flag**: Implemented the `--logo` (`-l`) CLI argument and configuration setting to override the detected distro.
+- **Documentation**: Updated manual pages (`retch.1`), `README.md`, and project development notes.
+- **Testing**: Added unit test coverage for the `--logo` configuration override and the new distro logo definitions.
 
 ### v0.1.7 - Quality Assurance & Test Coverage (May 23, 2026)
 - **Testing**: Significantly increased unit test coverage across all core modules (GPU, Config, Fetch, Display, Logo, Theme), bringing the total to 19 passing tests.
@@ -68,10 +74,9 @@
 
 ## Next Steps
 
-1. **More Distros** — Add support and high-res logos for Pop!_OS, Manjaro, EndeavourOS, openSUSE, etc.
-2. **Expansion** — Explore support for other platforms (macOS, Windows).
-3. **Advanced Testing** — Increase coverage for config merging, theming overrides, and terminal detection logic.
-4. **UX Polish** — Refine error messages and configuration generation.
+1. **Expansion** — Explore support for other platforms (macOS, Windows).
+2. **Advanced Testing** — Increase coverage for config merging, theming overrides, and terminal detection logic.
+3. **UX Polish** — Refine error messages and configuration generation.
 
 ---
 *Last updated: May 23, 2026*

@@ -28,6 +28,9 @@ retch - a fast, feature-rich system information fetcher
 **--no-logo**
 :   Disable the logo entirely.
 
+**-l, --logo** *LOGO*
+:   Force a specific distribution logo by name/ID (e.g. `pop`, `manjaro`, `endeavouros`, `opensuse`).
+
 **--theme** *THEME*
 :   Use a specific theme (`default`, `dark`, or `light`).
 
