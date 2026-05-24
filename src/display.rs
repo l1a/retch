@@ -209,20 +209,6 @@ impl SystemInfo {
 
         if should_show("Net") {
             for net in &self.networks {
-                if let Some(ref active) = self.active_interface {
-                    if net.contains(active) {
-                        // Highlight active (primary) interface with color only
-                        let label_width = 10;
-                        println!(
-                            "{:>width$}{} {}",
-                            "Net".bright_blue(),
-                            ":".bright_blue(),
-                            net.bright_blue(),
-                            width = label_width
-                        );
-                        continue;
-                    }
-                }
                 print_line("Net", net);
             }
         }
