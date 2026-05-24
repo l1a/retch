@@ -123,7 +123,35 @@ impl SystemInfo {
             })
             .collect();
 
-        let battery: Option<String> = None; // Requires sysinfo "battery" feature
+        let battery = battery::Manager::new()
+            .ok()
+            .and_then(|manager| manager.batteries().ok())
+            .and_then(|mut batteries| batteries.next())
+            .and_then(|result| result.ok())
+            .map(|bat| {
+                let pct = bat.state_of_charge().value * 100.0;
+                let health = bat.state_of_health().value * 100.0;
+                let state = match bat.state() {
+                    battery::State::Charging => "charging",
+                    battery::State::Discharging => "discharging",
+                    battery::State::Full => "full",
+                    _ => "not charging",
+                };
+                let vendor = bat.vendor().map(|s| s.to_string());
+                let model = bat.model().map(|s| s.to_string());
+
+                let base = if health < 99.0 {
+                    format!("{:.0}% ({}, {:.0}% health)", pct, state, health)
+                } else {
+                    format!("{:.0}% ({})", pct, state)
+                };
+
+                match (vendor, model) {
+                    (Some(v), Some(m)) => format!("{} [{} {}]", base, v, m),
+                    (Some(v), None) => format!("{} [{}]", base, v),
+                    _ => base,
+                }
+            });
 
         let arch = System::cpu_arch();
 

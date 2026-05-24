@@ -332,4 +332,9 @@ mod tests {
         assert!(merged.contains("fields = ["));
         assert!(merged.contains("[custom_theme]"));
     }
+
+    #[test]
+    fn test_default_fields_include_battery() {
+        assert!(DEFAULT_FIELDS_BLOCK.contains("battery"));
+    }
 }
