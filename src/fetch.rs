@@ -242,6 +242,11 @@ impl SystemInfo {
                 } else {
                     "Down".red().to_string()
                 };
+                if let (Some(ref active), Some(ref ip)) = (&active_interface, &local_ip) {
+                    if name == active {
+                        return format!("{} ({}) [{}] RX: {} TX: {}", name, ip, status, rx, tx);
+                    }
+                }
                 format!("{} [{}] RX: {} TX: {}", name, status, rx, tx)
             })
             .collect();
@@ -322,7 +327,50 @@ impl SystemInfo {
                 .and_then(|o| String::from_utf8(o.stdout).ok())
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty()),
-            active_interface: None, // Will be populated below
+            active_interface: {
+                #[cfg(target_os = "linux")]
+                {
+                    std::process::Command::new("ip")
+                        .args(["route", "show", "default"])
+                        .output()
+                        .ok()
+                        .and_then(|o| String::from_utf8(o.stdout).ok())
+                        .and_then(|s| {
+                            s.split_whitespace()
+                                .position(|w| w == "dev")
+                                .and_then(|i| s.split_whitespace().nth(i + 1))
+                                .map(|s| s.to_string())
+                        })
+                }
+                #[cfg(target_os = "macos")]
+                {
+                    std::process::Command::new("route")
+                        .args(["-n", "get", "default"])
+                        .output()
+                        .ok()
+                        .and_then(|o| String::from_utf8(o.stdout).ok())
+                        .and_then(|s| {
+                            s.lines()
+                                .find(|l| l.contains("interface:"))
+                                .and_then(|l| l.split_whitespace().last())
+                                .map(|s| s.to_string())
+                        })
+                }
+                #[cfg(target_os = "windows")]
+                {
+                    std::process::Command::new("powershell")
+                        .args(["-Command", "Get-NetRoute -DestinationPrefix 0.0.0.0/0 | Select-Object -First 1 -ExpandProperty InterfaceAlias"])
+                        .output()
+                        .ok()
+                        .and_then(|o| String::from_utf8(o.stdout).ok())
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                }
+                #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+                {
+                    None
+                }
+            },
         })
     }
 }
