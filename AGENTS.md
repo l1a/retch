@@ -7,17 +7,22 @@
 - **License**: GPLv3
 - **Repository**: https://github.com/l1a/retch
 
-## Current State (v0.1.10)
+## Current State (v0.1.11)
 - **Architecture**: Modularized GPU detection into a dedicated component.
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
 - **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
-- **Quality**: Strict `just check` (fmt + lint) and expanded unit test coverage to 28 passing tests (with thread-safe environment mocking).
+- **Quality**: Strict `just check` (fmt + lint), unit test coverage (28 passing tests), and automated CLI integration test suite (6 tests).
 - **CI/CD**: Release binaries compiled in a Fedora container.
 - **Documentation**: Full internal Rustdoc coverage and updated README/man pages.
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
 
 ## Major Achievements
+
+### v0.1.11 - CLI Integration Testing (May 23, 2026)
+- **Testing**: Added an automated CLI integration test suite in [tests/cli_tests.rs](file:///home/ktobias/git/retch/tests/cli_tests.rs) running the compiled binary.
+- **Coverage**: Verified exit statuses and stdout text structures for `--help`, `--version`, `--list-themes`, `--print-logos`, `--generate-config`, and custom path configuration writing `--write-config <temp_file>`.
+- **Version**: Bumped version to `0.1.11` in `Cargo.toml` and `docs/retch.1`.
 
 ### v0.1.10 - Refined Config Merging & Formatting (May 23, 2026)
 - **Refactoring**: Extracted config merge logic into a pure, fully unit-testable function `Config::merge_defaults` inside [config.rs](file:///home/ktobias/git/retch/src/config.rs).
@@ -89,7 +94,6 @@
 
 1. **Expansion** — Explore support for other platforms (macOS, Windows).
 2. **UX Polish** — Refine error messages.
-3. **Integration Testing** — Add automated CLI and config generation integration tests.
 
 ---
 *Last updated: May 23, 2026*
