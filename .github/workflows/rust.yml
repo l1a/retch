@@ -74,8 +74,42 @@ jobs:
     - name: Generate man page
       run: just man || echo "Man page generation skipped (just may not be installed)"
 
-  release:
+  build-release:
     needs: full-test
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Install system dependencies (Fedora)
+        run: |
+          dnf install -y git curl gcc make pandoc sqlite-devel
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Install Rust toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Build release binary
+        run: |
+          $HOME/.cargo/bin/cargo build --release --verbose
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          cp target/release/retch release/
+          cp docs/retch.1 release/ || true
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: release/
+
+  release:
+    needs: build-release
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
 
@@ -83,16 +117,11 @@ jobs:
       contents: write   # Required to create GitHub Releases
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-
-      - name: Build release binary
-        run: cargo build --release
-
-      - name: Prepare release assets
-        run: |
-          mkdir -p release
-          cp target/release/retch release/
-          cp docs/retch.1 release/ || true
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: release
 
       - name: Create Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
