@@ -123,21 +123,15 @@ impl SystemInfo {
             })
             .collect();
 
-        let battery = {
-            let components = Components::new_with_refreshed_list();
-            components
-                .iter()
-                .find(|c| c.label().to_lowercase().contains("battery"))
-                .and_then(|c| c.temperature())
-                .map(|t| format!("{:.0}°C", t))
-                .or_else(|| {
-                    // Fallback: some systems expose battery % via components
-                    components
-                        .iter()
-                        .find(|c| c.label().to_lowercase().contains("battery"))
-                        .map(|c| c.label().to_string())
-                })
-        };
+        let battery = battery::Manager::new()
+            .ok()
+            .and_then(|manager| manager.batteries().ok())
+            .and_then(|mut batteries| batteries.next())
+            .and_then(|result| result.ok())
+            .map(|battery| {
+                let percentage = battery.state_of_charge().value * 100.0;
+                format!("{:.0}%", percentage)
+            });
 
         let arch = System::cpu_arch();
 
