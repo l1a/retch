@@ -137,10 +137,19 @@ impl SystemInfo {
                     battery::State::Full => "full",
                     _ => "not charging",
                 };
-                if health < 99.0 {
+                let vendor = bat.vendor().map(|s| s.to_string());
+                let model = bat.model().map(|s| s.to_string());
+
+                let base = if health < 99.0 {
                     format!("{:.0}% ({}, {:.0}% health)", pct, state, health)
                 } else {
                     format!("{:.0}% ({})", pct, state)
+                };
+
+                match (vendor, model) {
+                    (Some(v), Some(m)) => format!("{} [{} {}]", base, v, m),
+                    (Some(v), None) => format!("{} [{}]", base, v),
+                    _ => base,
                 }
             });
 
