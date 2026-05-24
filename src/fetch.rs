@@ -10,7 +10,7 @@ use crate::cli::Cli;
 use crate::config::Config;
 use crate::gpu;
 use chrono::TimeZone;
-use owo_colors::OwoColorize;
+
 use sysinfo::{Components, Disks, Networks, System, Users};
 
 /// Comprehensive system information data structure.
@@ -299,12 +299,12 @@ impl SystemInfo {
                 let rx = format_bytes(data.total_received());
                 let tx = format_bytes(data.total_transmitted());
                 let status = if data.total_received() > 0 || data.total_transmitted() > 0 {
-                    "Up".green().to_string()
+                    "Up".to_string()
                 } else {
-                    "Down".red().to_string()
+                    "Down".to_string()
                 };
-                if let Some(ref ip) = local_ip {
-                    if status == "Up".green().to_string() {
+                if let (Some(ref active), Some(ref ip)) = (&active_interface, &local_ip) {
+                    if name == active {
                         return format!("{} ({}) [{}] RX: {} TX: {}", name, ip, status, rx, tx);
                     }
                 }
