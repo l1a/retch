@@ -146,11 +146,29 @@ impl SystemInfo {
                     format!("{:.0}% ({})", pct, state)
                 };
 
-                match (vendor, model) {
+                let time_info = match bat.state() {
+                    battery::State::Charging => bat.time_to_full().map(|d| {
+                        let mins = (d.value / 60.0) as u32;
+                        format!("{}m until full", mins)
+                    }),
+                    battery::State::Discharging => bat.time_to_empty().map(|d| {
+                        let mins = (d.value / 60.0) as u32;
+                        format!("{}m remaining", mins)
+                    }),
+                    _ => None,
+                };
+
+                let mut result = match (vendor, model) {
                     (Some(v), Some(m)) => format!("{} [{} {}]", base, v, m),
                     (Some(v), None) => format!("{} [{}]", base, v),
                     _ => base,
+                };
+
+                if let Some(t) = time_info {
+                    result.push_str(&format!(" ({})", t));
                 }
+
+                result
             });
 
         let arch = System::cpu_arch();
@@ -174,7 +192,7 @@ impl SystemInfo {
             .filter_map(|c| {
                 c.temperature().and_then(|t| {
                     if t > 0.0 {
-                        Some(format!("{}: {:.1}°C", c.label(), t))
+                        Some(format!("{}: {:.0}°C", c.label(), t))
                     } else {
                         None
                     }
