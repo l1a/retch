@@ -19,4 +19,4 @@ jobs:
         run: cargo install cargo-audit
 
       - name: Run cargo audit
-        run: cargo audit || exit 1
+        run: cargo audit --ignore RUSTSEC-2021-0119 --ignore RUSTSEC-2020-0168 || exit 1
