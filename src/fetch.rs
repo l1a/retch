@@ -303,8 +303,8 @@ impl SystemInfo {
                 } else {
                     "Down".red().to_string()
                 };
-                if let (Some(ref active), Some(ref ip)) = (&active_interface, &local_ip) {
-                    if name == active {
+                if let Some(ref ip) = local_ip {
+                    if status == "Up".green().to_string() {
                         return format!("{} ({}) [{}] RX: {} TX: {}", name, ip, status, rx, tx);
                     }
                 }

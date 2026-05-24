@@ -211,7 +211,7 @@ impl SystemInfo {
             for net in &self.networks {
                 if let Some(ref active) = self.active_interface {
                     if net.contains(active) {
-                        // Highlight active interface with bold label + value
+                        // Highlight active (primary) interface
                         println!("  {}: {}", "Net".bold().bright_blue(), net.bold());
                         continue;
                     }
