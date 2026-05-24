@@ -237,68 +237,102 @@ impl SystemInfo {
 
 /// Count installed packages by inspecting package manager databases directly.
 ///
-/// Supports Pacman (Arch), Dpkg (Debian), XBPS (Void), and RPM (Fedora/RHEL).
+/// Supports Pacman (Arch), Dpkg (Debian), XBPS (Void), RPM (Fedora/RHEL) on Linux,
+/// and Homebrew (Formulae and Casks) and MacPorts on macOS.
 fn detect_packages() -> Option<usize> {
-    // Arch / Manjaro
-    if let Ok(entries) = std::fs::read_dir("/var/lib/pacman/local") {
-        let count = entries.filter_map(|e| e.ok()).count();
+    #[cfg(target_os = "macos")]
+    {
+        let mut count = 0;
+
+        // Homebrew Cellar (Formulae)
+        for cellar_path in &["/opt/homebrew/Cellar", "/usr/local/Cellar"] {
+            if let Ok(entries) = std::fs::read_dir(cellar_path) {
+                count += entries.filter_map(|e| e.ok()).count();
+            }
+        }
+
+        // Homebrew Caskroom (Casks)
+        for cask_path in &["/opt/homebrew/Caskroom", "/usr/local/Caskroom"] {
+            if let Ok(entries) = std::fs::read_dir(cask_path) {
+                count += entries.filter_map(|e| e.ok()).count();
+            }
+        }
+
+        // MacPorts
+        if let Ok(entries) = std::fs::read_dir("/opt/local/var/macports/software") {
+            count += entries.filter_map(|e| e.ok()).count();
+        }
+
         if count > 0 {
-            return Some(count);
+            Some(count)
+        } else {
+            None
         }
     }
 
-    // Debian / Ubuntu
-    if let Ok(entries) = std::fs::read_dir("/var/lib/dpkg/info") {
-        let count = entries
-            .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension().is_some_and(|ext| ext == "list"))
-            .count();
-        if count > 0 {
-            return Some(count);
+    #[cfg(not(target_os = "macos"))]
+    {
+        // Arch / Manjaro
+        if let Ok(entries) = std::fs::read_dir("/var/lib/pacman/local") {
+            let count = entries.filter_map(|e| e.ok()).count();
+            if count > 0 {
+                return Some(count);
+            }
         }
-    }
 
-    // Gentoo
-    if let Ok(entries) = std::fs::read_dir("/var/db/pkg") {
-        let count: usize = entries
-            .filter_map(|e| e.ok())
-            .map(|e| {
-                std::fs::read_dir(e.path())
-                    .map(|d| d.filter(|_| true).count())
-                    .unwrap_or(0)
-            })
-            .sum();
-        if count > 0 {
-            return Some(count);
+        // Debian / Ubuntu
+        if let Ok(entries) = std::fs::read_dir("/var/lib/dpkg/info") {
+            let count = entries
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().extension().is_some_and(|ext| ext == "list"))
+                .count();
+            if count > 0 {
+                return Some(count);
+            }
         }
-    }
 
-    // Void Linux
-    if let Ok(entries) = std::fs::read_dir("/var/db/xbps") {
-        let count = entries
-            .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension().is_some_and(|ext| ext == "plist"))
-            .count();
-        if count > 0 {
-            return Some(count);
+        // Gentoo
+        if let Ok(entries) = std::fs::read_dir("/var/db/pkg") {
+            let count: usize = entries
+                .filter_map(|e| e.ok())
+                .map(|e| {
+                    std::fs::read_dir(e.path())
+                        .map(|d| d.filter(|_| true).count())
+                        .unwrap_or(0)
+                })
+                .sum();
+            if count > 0 {
+                return Some(count);
+            }
         }
-    }
 
-    // Fedora / RHEL / openSUSE - read from RPM SQLite database
-    let rpm_db = "/var/lib/rpm/rpmdb.sqlite";
-    if std::path::Path::new(rpm_db).exists() {
-        if let Ok(conn) = rusqlite::Connection::open(rpm_db) {
-            if let Ok(count) = conn.query_row("SELECT COUNT(*) FROM Packages", [], |row| {
-                row.get::<_, i64>(0)
-            }) {
-                if count > 0 {
-                    return Some(count as usize);
+        // Void Linux
+        if let Ok(entries) = std::fs::read_dir("/var/db/xbps") {
+            let count = entries
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().extension().is_some_and(|ext| ext == "plist"))
+                .count();
+            if count > 0 {
+                return Some(count);
+            }
+        }
+
+        // Fedora / RHEL / openSUSE - read from RPM SQLite database
+        let rpm_db = "/var/lib/rpm/rpmdb.sqlite";
+        if std::path::Path::new(rpm_db).exists() {
+            if let Ok(conn) = rusqlite::Connection::open(rpm_db) {
+                if let Ok(count) = conn.query_row("SELECT COUNT(*) FROM Packages", [], |row| {
+                    row.get::<_, i64>(0)
+                }) {
+                    if count > 0 {
+                        return Some(count as usize);
+                    }
                 }
             }
         }
-    }
 
-    None
+        None
+    }
 }
 
 /// Format bytes into human-readable form (KB, MB, GB, etc.)

@@ -6,6 +6,7 @@
 //! Handles parsing PCI IDs and querying the system for graphics card
 //! vendor and model information.
 
+#[cfg(not(target_os = "macos"))]
 use std::collections::HashSet;
 use std::fs;
 
@@ -80,8 +81,8 @@ pub fn lookup_pci_device(vendor_id: &str, device_id: &str) -> Option<String> {
                 } else if in_vendor && line.starts_with('\t') && !line.starts_with("\t\t") {
                     // Device line: "\tdevice_id  Device Name"
                     let trimmed = line.trim_start();
-                    if trimmed.starts_with(&device_id) {
-                        let name = trimmed[device_id.len()..].trim();
+                    if let Some(stripped) = trimmed.strip_prefix(&device_id) {
+                        let name = stripped.trim();
                         return Some(name.to_string());
                     }
                 }
@@ -91,107 +92,180 @@ pub fn lookup_pci_device(vendor_id: &str, device_id: &str) -> Option<String> {
     None
 }
 
-/// Detects GPUs using sysfs and PCI database lookups.
-pub fn detect_gpus() -> Vec<GpuInfo> {
-    let mut gpus = Vec::new();
-    let mut seen_devices = HashSet::new();
-
-    // Scan /sys/class/drm for all card* and renderD* entries
-    if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
-        for entry in entries.flatten() {
-            let name = entry.file_name().into_string().unwrap_or_default();
-            if !name.starts_with("card") && !name.starts_with("renderD") {
-                continue;
+/// Parses VRAM string (e.g. "8 GB", "1536 MB") into bytes.
+pub fn parse_vram_str(s: &str) -> Option<u64> {
+    let parts: Vec<&str> = s.split_whitespace().collect();
+    if parts.len() >= 2 {
+        if let Ok(val) = parts[0].parse::<f64>() {
+            let unit = parts[1].to_uppercase();
+            if unit.starts_with("GB") {
+                return Some((val * 1024.0 * 1024.0 * 1024.0) as u64);
+            } else if unit.starts_with("MB") {
+                return Some((val * 1024.0 * 1024.0) as u64);
+            } else if unit.starts_with("KB") {
+                return Some((val * 1024.0) as u64);
             }
+        }
+    }
+    None
+}
 
-            let device_path = entry.path().join("device");
-            if let Ok(real_path) = std::fs::canonicalize(&device_path) {
-                if !seen_devices.insert(real_path) {
+/// Parses the output of `system_profiler SPDisplaysDataType` on macOS.
+pub fn parse_system_profiler_displays(stdout: &str) -> Vec<GpuInfo> {
+    let mut gpus = Vec::new();
+    let mut current_gpu = None;
+    for line in stdout.lines() {
+        let trimmed = line.trim();
+        if let Some(stripped) = trimmed.strip_prefix("Chipset Model:") {
+            if let Some(gpu) = current_gpu.take() {
+                gpus.push(gpu);
+            }
+            let name = stripped.trim().to_string();
+            current_gpu = Some(GpuInfo {
+                name,
+                vram_bytes: None,
+            });
+        } else if let Some(stripped) = trimmed.strip_prefix("VRAM (Total):") {
+            if let Some(ref mut gpu) = current_gpu {
+                let vram_str = stripped.trim();
+                gpu.vram_bytes = parse_vram_str(vram_str);
+            }
+        } else if let Some(stripped) = trimmed.strip_prefix("VRAM (Dynamic, Max):") {
+            if let Some(ref mut gpu) = current_gpu {
+                let vram_str = stripped.trim();
+                gpu.vram_bytes = parse_vram_str(vram_str);
+            }
+        } else if trimmed.starts_with("Displays:") {
+            if let Some(gpu) = current_gpu.take() {
+                gpus.push(gpu);
+            }
+        }
+    }
+    if let Some(gpu) = current_gpu {
+        gpus.push(gpu);
+    }
+    gpus
+}
+
+/// Detects GPUs using system APIs or profiles.
+pub fn detect_gpus() -> Vec<GpuInfo> {
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(output) = std::process::Command::new("system_profiler")
+            .arg("SPDisplaysDataType")
+            .output()
+        {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                return parse_system_profiler_displays(&stdout);
+            }
+        }
+        Vec::new()
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let mut gpus = Vec::new();
+        let mut seen_devices = HashSet::new();
+
+        // Scan /sys/class/drm for all card* and renderD* entries
+        if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
+            for entry in entries.flatten() {
+                let name = entry.file_name().into_string().unwrap_or_default();
+                if !name.starts_with("card") && !name.starts_with("renderD") {
                     continue;
                 }
 
-                // Try to identify vendor and model
-                let vendor_id = fs::read_to_string(device_path.join("vendor"))
-                    .unwrap_or_default()
-                    .trim()
-                    .to_string();
-                let device_id = fs::read_to_string(device_path.join("device"))
-                    .unwrap_or_default()
-                    .trim()
-                    .to_string();
-
-                if vendor_id.is_empty() || device_id.is_empty() {
-                    continue;
-                }
-
-                let mut gpu_name = lookup_pci_device(&vendor_id, &device_id).unwrap_or_else(|| {
-                    if vendor_id.contains("10de") {
-                        "NVIDIA GPU".to_string()
-                    } else if vendor_id.contains("1002") {
-                        "AMD GPU".to_string()
-                    } else if vendor_id.contains("8086") {
-                        "Intel GPU".to_string()
-                    } else {
-                        "Unknown GPU".to_string()
+                let device_path = entry.path().join("device");
+                if let Ok(real_path) = std::fs::canonicalize(&device_path) {
+                    if !seen_devices.insert(real_path) {
+                        continue;
                     }
-                });
 
-                // Refine AMD GPU names
-                if vendor_id.contains("1002") {
-                    gpu_name = improve_amd_gpu_name(&gpu_name);
-                }
+                    // Try to identify vendor and model
+                    let vendor_id = fs::read_to_string(device_path.join("vendor"))
+                        .unwrap_or_default()
+                        .trim()
+                        .to_string();
+                    let device_id = fs::read_to_string(device_path.join("device"))
+                        .unwrap_or_default()
+                        .trim()
+                        .to_string();
 
-                // NVIDIA special case: try /proc for even better name
-                if vendor_id.contains("10de") {
-                    if let Ok(pci_slot_path) = fs::read_link(&device_path) {
-                        if let Some(slot_name) = pci_slot_path.file_name() {
-                            let proc_info_path = format!(
-                                "/proc/driver/nvidia/gpus/{}/information",
-                                slot_name.to_string_lossy()
-                            );
-                            if let Ok(info) = fs::read_to_string(proc_info_path) {
-                                for line in info.lines() {
-                                    if line.starts_with("Model:") {
-                                        gpu_name = line.replace("Model:", "").trim().to_string();
-                                        break;
+                    if vendor_id.is_empty() || device_id.is_empty() {
+                        continue;
+                    }
+
+                    let mut gpu_name =
+                        lookup_pci_device(&vendor_id, &device_id).unwrap_or_else(|| {
+                            if vendor_id.contains("10de") {
+                                "NVIDIA GPU".to_string()
+                            } else if vendor_id.contains("1002") {
+                                "AMD GPU".to_string()
+                            } else if vendor_id.contains("8086") {
+                                "Intel GPU".to_string()
+                            } else {
+                                "Unknown GPU".to_string()
+                            }
+                        });
+
+                    // Refine AMD GPU names
+                    if vendor_id.contains("1002") {
+                        gpu_name = improve_amd_gpu_name(&gpu_name);
+                    }
+
+                    // NVIDIA special case: try /proc for even better name
+                    if vendor_id.contains("10de") {
+                        if let Ok(pci_slot_path) = fs::read_link(&device_path) {
+                            if let Some(slot_name) = pci_slot_path.file_name() {
+                                let proc_info_path = format!(
+                                    "/proc/driver/nvidia/gpus/{}/information",
+                                    slot_name.to_string_lossy()
+                                );
+                                if let Ok(info) = fs::read_to_string(proc_info_path) {
+                                    for line in info.lines() {
+                                        if line.starts_with("Model:") {
+                                            gpu_name =
+                                                line.replace("Model:", "").trim().to_string();
+                                            break;
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
 
-                let mut vram_bytes = None;
-                // Try to get VRAM from common sysfs locations (mainly AMD)
-                let vram_path = device_path.join("mem_info_vram_total");
-                if let Ok(vram_str) = fs::read_to_string(vram_path) {
-                    if let Ok(v) = vram_str.trim().parse::<u64>() {
-                        vram_bytes = Some(v);
+                    let mut vram_bytes = None;
+                    // Try to get VRAM from common sysfs locations (mainly AMD)
+                    let vram_path = device_path.join("mem_info_vram_total");
+                    if let Ok(vram_str) = fs::read_to_string(vram_path) {
+                        if let Ok(v) = vram_str.trim().parse::<u64>() {
+                            vram_bytes = Some(v);
+                        }
                     }
+
+                    gpus.push(GpuInfo {
+                        name: gpu_name,
+                        vram_bytes,
+                    });
                 }
-
-                gpus.push(GpuInfo {
-                    name: gpu_name,
-                    vram_bytes,
-                });
             }
         }
-    }
 
-    if gpus.is_empty() {
-        // Fallback for non-standard setups or if /sys/class/drm is empty
-        if let Ok(model) = fs::read_to_string("/sys/class/drm/card0/device/model") {
-            let model = model.trim();
-            if !model.is_empty() {
-                gpus.push(GpuInfo {
-                    name: model.to_string(),
-                    vram_bytes: None,
-                });
+        if gpus.is_empty() {
+            // Fallback for non-standard setups or if /sys/class/drm is empty
+            if let Ok(model) = fs::read_to_string("/sys/class/drm/card0/device/model") {
+                let model = model.trim();
+                if !model.is_empty() {
+                    gpus.push(GpuInfo {
+                        name: model.to_string(),
+                        vram_bytes: None,
+                    });
+                }
             }
         }
-    }
 
-    gpus
+        gpus
+    }
 }
 
 #[cfg(test)]
@@ -233,5 +307,49 @@ mod tests {
         );
         assert_eq!(improve_amd_gpu_name("AMD Rembrandt"), "Radeon 680M");
         assert_eq!(improve_amd_gpu_name("Unknown GPU"), "Unknown GPU");
+    }
+
+    #[test]
+    fn test_parse_vram_str() {
+        assert_eq!(parse_vram_str("8 GB"), Some(8 * 1024 * 1024 * 1024));
+        assert_eq!(parse_vram_str("1536 MB"), Some(1536 * 1024 * 1024));
+        assert_eq!(parse_vram_str("512 MB"), Some(512 * 1024 * 1024));
+        assert_eq!(parse_vram_str("1024 KB"), Some(1024 * 1024));
+        assert_eq!(parse_vram_str("invalid"), None);
+        assert_eq!(parse_vram_str("8"), None);
+    }
+
+    #[test]
+    fn test_parse_system_profiler_displays() {
+        let mock_output = r#"
+Graphics/Displays:
+
+    Apple M1 Max:
+
+      Chipset Model: Apple M1 Max
+      Type: GPU
+      Bus: Built-In
+      Total Number of Cores: 32
+      Vendor: Apple (0x106b)
+      Metal Support: Metal 3
+      VRAM (Dynamic, Max): 8192 MB
+      Displays:
+        Color LCD:
+          Display Type: Built-In Retina LCD
+
+    Intel UHD Graphics 630:
+
+      Chipset Model: Intel UHD Graphics 630
+      Type: GPU
+      Bus: Built-In
+      VRAM (Total): 1536 MB
+      Vendor: Intel (0x8086)
+"#;
+        let gpus = parse_system_profiler_displays(mock_output);
+        assert_eq!(gpus.len(), 2);
+        assert_eq!(gpus[0].name, "Apple M1 Max");
+        assert_eq!(gpus[0].vram_bytes, Some(8192 * 1024 * 1024));
+        assert_eq!(gpus[1].name, "Intel UHD Graphics 630");
+        assert_eq!(gpus[1].vram_bytes, Some(1536 * 1024 * 1024));
     }
 }

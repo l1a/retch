@@ -7,17 +7,25 @@
 - **License**: GPLv3
 - **Repository**: https://github.com/l1a/retch
 
-## Current State (v0.1.11)
+## Current State (v0.2.0)
 - **Architecture**: Modularized GPU detection into a dedicated component.
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
 - **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
-- **Quality**: Strict `just check` (fmt + lint), unit test coverage (28 passing tests), and automated CLI integration test suite (6 tests).
-- **CI/CD**: Release binaries compiled in a Fedora container.
+- **Quality**: Strict `just check` (fmt + lint), unit test coverage (29 passing tests), and automated CLI integration test suite (6 tests).
+- **CI/CD**: Release binaries compiled in a Fedora container. Multi-platform testing on Linux and macOS via GitHub Actions CI.
 - **Documentation**: Full internal Rustdoc coverage and updated README/man pages.
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
 
 ## Major Achievements
+
+### v0.2.0 - macOS Support (May 24, 2026)
+- **Platforms**: Added native macOS support (Darwin).
+- **Logos**: Added high-resolution transparent white PNG and multi-colored ASCII Apple logos for macOS.
+- **GPUs**: Implemented macOS-specific GPU detection using `system_profiler SPDisplaysDataType` alongside a VRAM size parser.
+- **Packages**: Implemented macOS package counting for Homebrew (formulae and casks) and MacPorts.
+- **CI/CD**: Expanded GitHub Actions workflow to run the build, clippy, formatting, and test suites on both Linux and macOS.
+- **Version**: Bumped version to `0.2.0` in `Cargo.toml` and `docs/retch.1`.
 
 ### v0.1.11 - CLI Integration Testing (May 23, 2026)
 - **Testing**: Added an automated CLI integration test suite in [tests/cli_tests.rs](file:///home/ktobias/git/retch/tests/cli_tests.rs) running the compiled binary.
@@ -92,8 +100,8 @@
 
 ## Next Steps
 
-1. **Expansion** — Explore support for other platforms (macOS, Windows).
+1. **Expansion** — Explore support for other platforms (Windows).
 2. **UX Polish** — Refine error messages.
 
 ---
-*Last updated: May 23, 2026*
+*Last updated: May 24, 2026*
