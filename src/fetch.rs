@@ -212,6 +212,67 @@ impl SystemInfo {
             }
         };
 
+        // Compute IP-related values early so they are available for network formatting
+        let local_ip: Option<String> = std::net::UdpSocket::bind("0.0.0.0:0")
+            .ok()
+            .and_then(|socket| {
+                socket.connect("8.8.8.8:53").ok()?;
+                socket.local_addr().ok().map(|addr| addr.ip().to_string())
+            });
+
+        let public_ip: Option<String> = std::process::Command::new("curl")
+            .args(["-s", "--max-time", "2", "https://api.ipify.org"])
+            .output()
+            .ok()
+            .and_then(|o| String::from_utf8(o.stdout).ok())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        let active_interface: Option<String> = {
+            #[cfg(target_os = "linux")]
+            {
+                std::process::Command::new("ip")
+                    .args(["route", "show", "default"])
+                    .output()
+                    .ok()
+                    .and_then(|o| String::from_utf8(o.stdout).ok())
+                    .and_then(|s| {
+                        s.split_whitespace()
+                            .position(|w| w == "dev")
+                            .and_then(|i| s.split_whitespace().nth(i + 1))
+                            .map(|s| s.to_string())
+                    })
+            }
+            #[cfg(target_os = "macos")]
+            {
+                std::process::Command::new("route")
+                    .args(["-n", "get", "default"])
+                    .output()
+                    .ok()
+                    .and_then(|o| String::from_utf8(o.stdout).ok())
+                    .and_then(|s| {
+                        s.lines()
+                            .find(|l| l.contains("interface:"))
+                            .and_then(|l| l.split_whitespace().last())
+                            .map(|s| s.to_string())
+                    })
+            }
+            #[cfg(target_os = "windows")]
+            {
+                std::process::Command::new("powershell")
+                    .args(["-Command", "Get-NetRoute -DestinationPrefix 0.0.0.0/0 | Select-Object -First 1 -ExpandProperty InterfaceAlias"])
+                    .output()
+                    .ok()
+                    .and_then(|o| String::from_utf8(o.stdout).ok())
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+            }
+            #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+            {
+                None
+            }
+        };
+
         let mut temps: Vec<String> = Components::new_with_refreshed_list()
             .iter()
             .filter_map(|c| {
@@ -314,63 +375,9 @@ impl SystemInfo {
             gpu: gpu::detect_gpus().into_iter().map(|g| g.format()).collect(),
             packages: detect_packages(),
             current_user,
-            local_ip: std::net::UdpSocket::bind("0.0.0.0:0")
-                .ok()
-                .and_then(|socket| {
-                    socket.connect("8.8.8.8:53").ok()?;
-                    socket.local_addr().ok().map(|addr| addr.ip().to_string())
-                }),
-            public_ip: std::process::Command::new("curl")
-                .args(["-s", "--max-time", "2", "https://api.ipify.org"])
-                .output()
-                .ok()
-                .and_then(|o| String::from_utf8(o.stdout).ok())
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty()),
-            active_interface: {
-                #[cfg(target_os = "linux")]
-                {
-                    std::process::Command::new("ip")
-                        .args(["route", "show", "default"])
-                        .output()
-                        .ok()
-                        .and_then(|o| String::from_utf8(o.stdout).ok())
-                        .and_then(|s| {
-                            s.split_whitespace()
-                                .position(|w| w == "dev")
-                                .and_then(|i| s.split_whitespace().nth(i + 1))
-                                .map(|s| s.to_string())
-                        })
-                }
-                #[cfg(target_os = "macos")]
-                {
-                    std::process::Command::new("route")
-                        .args(["-n", "get", "default"])
-                        .output()
-                        .ok()
-                        .and_then(|o| String::from_utf8(o.stdout).ok())
-                        .and_then(|s| {
-                            s.lines()
-                                .find(|l| l.contains("interface:"))
-                                .and_then(|l| l.split_whitespace().last())
-                                .map(|s| s.to_string())
-                        })
-                }
-                #[cfg(target_os = "windows")]
-                {
-                    std::process::Command::new("powershell")
-                        .args(["-Command", "Get-NetRoute -DestinationPrefix 0.0.0.0/0 | Select-Object -First 1 -ExpandProperty InterfaceAlias"])
-                        .output()
-                        .ok()
-                        .and_then(|o| String::from_utf8(o.stdout).ok())
-                        .map(|s| s.trim().to_string())
-                        .filter(|s| !s.is_empty())
-                }
-                #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
-                {
-                    None
-                }
-            },
+            local_ip,
+            public_ip,
+            active_interface,
         })
     }
 }

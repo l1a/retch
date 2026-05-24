@@ -8,6 +8,7 @@
 use crate::cli::Cli;
 use crate::config::Config;
 use crate::fetch::SystemInfo;
+use owo_colors::OwoColorize;
 use crate::logo;
 use crate::theme::Theme;
 
@@ -208,6 +209,12 @@ impl SystemInfo {
 
         if should_show("Net") {
             for net in &self.networks {
+                if let Some(ref active) = self.active_interface {
+                    if net.contains(active) {
+                        println!("  {} {}", "Net".bold().bright_blue(), net.bold());
+                        continue;
+                    }
+                }
                 print_line("Net", net);
             }
         }
