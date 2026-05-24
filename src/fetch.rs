@@ -123,7 +123,21 @@ impl SystemInfo {
             })
             .collect();
 
-        let battery: Option<String> = None; // Requires sysinfo "battery" feature
+        let battery = {
+            let components = Components::new_with_refreshed_list();
+            components
+                .iter()
+                .find(|c| c.label().to_lowercase().contains("battery"))
+                .and_then(|c| c.temperature())
+                .map(|t| format!("{:.0}°C", t))
+                .or_else(|| {
+                    // Fallback: some systems expose battery % via components
+                    components
+                        .iter()
+                        .find(|c| c.label().to_lowercase().contains("battery"))
+                        .map(|c| c.label().to_string())
+                })
+        };
 
         let arch = System::cpu_arch();
 
