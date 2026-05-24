@@ -6,7 +6,7 @@
 //! Handles parsing PCI IDs and querying the system for graphics card
 //! vendor and model information.
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 use std::collections::HashSet;
 use std::fs;
 
@@ -147,6 +147,61 @@ pub fn parse_system_profiler_displays(stdout: &str) -> Vec<GpuInfo> {
     gpus
 }
 
+/// Parses the output of `wmic path win32_VideoController` or PowerShell CIM query for GPU information.
+pub fn parse_wmi_videocontroller(output: &str) -> Vec<GpuInfo> {
+    let mut gpus = Vec::new();
+    let mut name = String::new();
+    let mut vram = None;
+
+    for line in output.lines() {
+        let trimmed = line.trim();
+        let parts: Vec<&str> = if trimmed.contains('=') {
+            trimmed.splitn(2, '=').collect()
+        } else if trimmed.contains(':') {
+            trimmed.splitn(2, ':').collect()
+        } else {
+            continue;
+        };
+
+        if parts.len() == 2 {
+            let key = parts[0].trim().to_lowercase();
+            let val = parts[1].trim();
+
+            if key == "name" {
+                if !name.is_empty() {
+                    gpus.push(GpuInfo {
+                        name: name.clone(),
+                        vram_bytes: vram,
+                    });
+                    vram = None;
+                }
+                name = val.to_string();
+            } else if key == "adapterram" {
+                if vram.is_some() && !name.is_empty() {
+                    gpus.push(GpuInfo {
+                        name: name.clone(),
+                        vram_bytes: vram,
+                    });
+                    name = String::new();
+                    vram = None;
+                }
+                if let Ok(bytes) = val.parse::<u64>() {
+                    vram = Some(bytes);
+                }
+            }
+        }
+    }
+
+    if !name.is_empty() {
+        gpus.push(GpuInfo {
+            name,
+            vram_bytes: vram,
+        });
+    }
+
+    gpus
+}
+
 /// Detects GPUs using system APIs or profiles.
 pub fn detect_gpus() -> Vec<GpuInfo> {
     #[cfg(target_os = "macos")]
@@ -162,7 +217,41 @@ pub fn detect_gpus() -> Vec<GpuInfo> {
         Vec::new()
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        // Try WMIC first
+        if let Ok(output) = std::process::Command::new("wmic")
+            .args([
+                "path",
+                "win32_VideoController",
+                "get",
+                "Name,AdapterRAM",
+                "/value",
+            ])
+            .output()
+        {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                let gpus = parse_wmi_videocontroller(&stdout);
+                if !gpus.is_empty() {
+                    return gpus;
+                }
+            }
+        }
+
+        // Fallback to PowerShell
+        if let Ok(output) = std::process::Command::new("powershell")
+            .args(["-Command", "Get-CimInstance Win32_VideoController | Select-Object Name, AdapterRAM | Format-List"])
+            .output()
+        {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                return parse_wmi_videocontroller(&stdout);
+            }
+        }
+
+        Vec::new()
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         let mut gpus = Vec::new();
         let mut seen_devices = HashSet::new();
@@ -351,5 +440,36 @@ Graphics/Displays:
         assert_eq!(gpus[0].vram_bytes, Some(8192 * 1024 * 1024));
         assert_eq!(gpus[1].name, "Intel UHD Graphics 630");
         assert_eq!(gpus[1].vram_bytes, Some(1536 * 1024 * 1024));
+    }
+
+    #[test]
+    fn test_parse_wmi_videocontroller() {
+        let wmic_output = r#"
+AdapterRAM=4294967296
+Name=NVIDIA GeForce RTX 4090
+
+AdapterRAM=2147483648
+Name=Intel(R) UHD Graphics 770
+"#;
+        let gpus = parse_wmi_videocontroller(wmic_output);
+        assert_eq!(gpus.len(), 2);
+        assert_eq!(gpus[0].name, "NVIDIA GeForce RTX 4090");
+        assert_eq!(gpus[0].vram_bytes, Some(4294967296));
+        assert_eq!(gpus[1].name, "Intel(R) UHD Graphics 770");
+        assert_eq!(gpus[1].vram_bytes, Some(2147483648));
+
+        let powershell_output = r#"
+Name       : NVIDIA GeForce RTX 4090
+AdapterRAM : 4294967296
+
+Name       : Intel(R) UHD Graphics 770
+AdapterRAM : 2147483648
+"#;
+        let gpus = parse_wmi_videocontroller(powershell_output);
+        assert_eq!(gpus.len(), 2);
+        assert_eq!(gpus[0].name, "NVIDIA GeForce RTX 4090");
+        assert_eq!(gpus[0].vram_bytes, Some(4294967296));
+        assert_eq!(gpus[1].name, "Intel(R) UHD Graphics 770");
+        assert_eq!(gpus[1].vram_bytes, Some(2147483648));
     }
 }

@@ -19,7 +19,7 @@ jobs:
     if: github.ref_type != 'tag'
     strategy:
       matrix:
-        platform: [ubuntu, fedora, macos]
+        platform: [ubuntu, fedora, macos, windows]
         include:
           - platform: ubuntu
             os: ubuntu-latest
@@ -28,6 +28,8 @@ jobs:
             container: fedora:latest
           - platform: macos
             os: macos-latest
+          - platform: windows
+            os: windows-latest
 
     steps:
     - name: Install dependencies (Fedora)
@@ -47,7 +49,7 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
     - name: Run fetcher (dry run)
-      run: ./target/debug/retch --long
+      run: cargo run -- --long
     - name: Print system_profiler SPDisplaysDataType (macOS)
       if: matrix.os == 'macos-latest'
       run: system_profiler SPDisplaysDataType

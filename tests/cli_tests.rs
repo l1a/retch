@@ -56,6 +56,8 @@ fn test_cli_print_logos() {
     assert!(stdout.contains("Arch"));
     assert!(stdout.contains("Debian"));
     assert!(stdout.contains("Fedora"));
+    assert!(stdout.contains("macOS"));
+    assert!(stdout.contains("Windows"));
     assert!(stdout.contains("Tux"));
 }
 
