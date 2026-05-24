@@ -6,6 +6,7 @@
 //! Handles parsing PCI IDs and querying the system for graphics card
 //! vendor and model information.
 
+#[cfg(not(target_os = "macos"))]
 use std::collections::HashSet;
 use std::fs;
 
