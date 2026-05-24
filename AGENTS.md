@@ -7,7 +7,7 @@
 - **License**: GPLv3
 - **Repository**: https://github.com/l1a/retch
 
-## Current State (v0.2.1)
+## Current State (v0.2.2)
 - **Architecture**: Modularized GPU detection into a dedicated component.
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
@@ -16,6 +16,7 @@
 - **CI/CD**: Release binaries compiled in a Fedora container. Multi-platform testing on Linux, macOS, and Windows via GitHub Actions CI.
 - **Documentation**: Full internal Rustdoc coverage and updated README/man pages.
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
+- **UX**: Improved error visibility for slow external queries (GPU detection, RPM packages, chafa).
 
 ## Major Achievements
 
