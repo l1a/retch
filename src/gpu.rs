@@ -80,8 +80,8 @@ pub fn lookup_pci_device(vendor_id: &str, device_id: &str) -> Option<String> {
                 } else if in_vendor && line.starts_with('\t') && !line.starts_with("\t\t") {
                     // Device line: "\tdevice_id  Device Name"
                     let trimmed = line.trim_start();
-                    if trimmed.starts_with(&device_id) {
-                        let name = trimmed[device_id.len()..].trim();
+                    if let Some(stripped) = trimmed.strip_prefix(&device_id) {
+                        let name = stripped.trim();
                         return Some(name.to_string());
                     }
                 }
@@ -115,23 +115,23 @@ pub fn parse_system_profiler_displays(stdout: &str) -> Vec<GpuInfo> {
     let mut current_gpu = None;
     for line in stdout.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with("Chipset Model:") {
+        if let Some(stripped) = trimmed.strip_prefix("Chipset Model:") {
             if let Some(gpu) = current_gpu.take() {
                 gpus.push(gpu);
             }
-            let name = trimmed["Chipset Model:".len()..].trim().to_string();
+            let name = stripped.trim().to_string();
             current_gpu = Some(GpuInfo {
                 name,
                 vram_bytes: None,
             });
-        } else if trimmed.starts_with("VRAM (Total):") {
+        } else if let Some(stripped) = trimmed.strip_prefix("VRAM (Total):") {
             if let Some(ref mut gpu) = current_gpu {
-                let vram_str = trimmed["VRAM (Total):".len()..].trim();
+                let vram_str = stripped.trim();
                 gpu.vram_bytes = parse_vram_str(vram_str);
             }
-        } else if trimmed.starts_with("VRAM (Dynamic, Max):") {
+        } else if let Some(stripped) = trimmed.strip_prefix("VRAM (Dynamic, Max):") {
             if let Some(ref mut gpu) = current_gpu {
-                let vram_str = trimmed["VRAM (Dynamic, Max):".len()..].trim();
+                let vram_str = stripped.trim();
                 gpu.vram_bytes = parse_vram_str(vram_str);
             }
         } else if trimmed.starts_with("Displays:") {
