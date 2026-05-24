@@ -106,6 +106,111 @@ impl Config {
 
         merged
     }
+
+    /// Merges missing default options as commented blocks into the existing configuration string.
+    ///
+    /// Returns the updated configuration content and a vector of the names of settings that were added.
+    pub fn merge_defaults(existing: &str) -> (String, Vec<&'static str>) {
+        let mut new_content = existing.trim_end().to_string();
+        let mut additions = Vec::new();
+
+        let checks = [
+            ("theme", DEFAULT_THEME_BLOCK),
+            ("show_logo", DEFAULT_SHOW_LOGO_BLOCK),
+            ("ascii_only", DEFAULT_ASCII_ONLY_BLOCK),
+            ("logo", DEFAULT_LOGO_BLOCK),
+            ("fields", DEFAULT_FIELDS_BLOCK),
+        ];
+
+        for &(key, block) in &checks {
+            if !contains_key_line(existing, key) {
+                if !new_content.is_empty() {
+                    new_content.push_str("\n\n");
+                }
+                new_content.push_str(block);
+                additions.push(key);
+            }
+        }
+
+        if !contains_custom_theme(existing) {
+            if !new_content.is_empty() {
+                new_content.push_str("\n\n");
+            }
+            new_content.push_str(DEFAULT_CUSTOM_THEME_BLOCK);
+            additions.push("custom_theme");
+        }
+
+        if !new_content.is_empty() && !new_content.ends_with('\n') {
+            new_content.push('\n');
+        }
+
+        (new_content, additions)
+    }
+}
+
+const DEFAULT_THEME_BLOCK: &str = r##"# Theme to use. Defaults to "auto" (follows system dark/light preference).
+# Other options: "neutral", "dark", "light", "custom",
+# or popular themes: "catppuccin-mocha", "solarized-dark", etc.
+# theme = "auto""##;
+
+const DEFAULT_CUSTOM_THEME_BLOCK: &str = r##"# Custom theme color overrides (used when theme = "custom" or when partial overrides are provided)
+# Colors can be named (e.g. "bright_cyan") or hex (e.g. "#89b4fa")
+# [custom_theme]
+# label_color = "bright_cyan"
+# value_color = "white"
+# accent_color = "bright_green"
+# title_color = "bright_yellow"
+# separator_color = "bright_black""##;
+
+const DEFAULT_SHOW_LOGO_BLOCK: &str = r##"# Whether to show the ASCII logo
+# show_logo = true"##;
+
+const DEFAULT_ASCII_ONLY_BLOCK: &str = r##"# Force ASCII-only output (even if graphical logos are supported)
+# ascii_only = false"##;
+
+const DEFAULT_LOGO_BLOCK: &str = r##"# Force a specific distribution logo by name/ID
+# logo = "arch""##;
+
+const DEFAULT_FIELDS_BLOCK: &str = r##"# List of fields to display (leave empty or omit to show all)
+# fields = [
+#     "os", "kernel", "host", "arch", "cpu", "cpu-freq", "gpu",
+#     "memory", "swap", "uptime", "procs", "load",
+#     "disk", "temp", "net", "battery",
+#     "shell", "terminal", "desktop", "users", "packages"
+# ]"##;
+
+fn contains_key_line(content: &str, key: &str) -> bool {
+    for line in content.lines() {
+        let trimmed = line.trim();
+        let without_comment = trimmed
+            .strip_prefix('#')
+            .map(|s| s.trim())
+            .unwrap_or(trimmed);
+
+        if let Some(rest) = without_comment.strip_prefix(key) {
+            let rest = rest.trim();
+            if rest.starts_with('=') {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn contains_custom_theme(content: &str) -> bool {
+    for line in content.lines() {
+        let trimmed = line.trim();
+        let without_comment = trimmed
+            .strip_prefix('#')
+            .map(|s| s.trim())
+            .unwrap_or(trimmed);
+
+        let cleaned = without_comment.replace(' ', "");
+        if cleaned.contains("[custom_theme]") {
+            return true;
+        }
+    }
+    false
 }
 
 #[cfg(test)]
@@ -194,5 +299,37 @@ mod tests {
         let config = Config::load(Some("non_existent_file.toml")).unwrap();
         assert_eq!(config.theme, None);
         assert_eq!(config.show_logo, None);
+    }
+
+    #[test]
+    fn test_merge_defaults_all_present() {
+        let existing = "theme = \"dark\"\nshow_logo = true\nascii_only = false\nlogo = \"fedora\"\nfields = [\"os\"]\n[custom_theme]\nlabel_color = \"red\"\n";
+        let (merged, additions) = Config::merge_defaults(existing);
+        assert!(additions.is_empty());
+        assert_eq!(merged.trim(), existing.trim());
+    }
+
+    #[test]
+    fn test_merge_defaults_commented_ignored() {
+        let existing = "# theme = \"auto\"\n# show_logo = true\n# ascii_only = false\n# logo = \"arch\"\n# fields = []\n# [custom_theme]\n";
+        let (merged, additions) = Config::merge_defaults(existing);
+        assert!(additions.is_empty());
+        assert_eq!(merged.trim(), existing.trim());
+    }
+
+    #[test]
+    fn test_merge_defaults_missing_some() {
+        let existing = "theme = \"light\"\n";
+        let (merged, additions) = Config::merge_defaults(existing);
+        assert_eq!(
+            additions,
+            vec!["show_logo", "ascii_only", "logo", "fields", "custom_theme"]
+        );
+        assert!(merged.contains("theme = \"light\""));
+        assert!(merged.contains("show_logo = true"));
+        assert!(merged.contains("ascii_only = false"));
+        assert!(merged.contains("logo = \"arch\""));
+        assert!(merged.contains("fields = ["));
+        assert!(merged.contains("[custom_theme]"));
     }
 }
