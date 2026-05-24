@@ -32,6 +32,7 @@ pub fn get_embedded_logo(distro: Option<&str>) -> Option<&'static [u8]> {
         Some("opensuse") | Some("opensuse-leap") | Some("opensuse-tumbleweed") => {
             Some(include_bytes!("../assets/logos/opensuse.png"))
         }
+        Some("macos") => Some(include_bytes!("../assets/logos/macos.png")),
         _ => Some(include_bytes!("../assets/logos/tux.png")),
     }
 }
@@ -42,17 +43,24 @@ pub fn get_embedded_logo(_distro: Option<&str>) -> Option<&'static [u8]> {
     Some(include_bytes!("../assets/logos/tux.png"))
 }
 
-/// Attempts to detect the current Linux distribution by reading `/etc/os-release`.
+/// Attempts to detect the current operating system distribution.
 pub fn detect_distro() -> Option<String> {
-    if let Ok(content) = std::fs::read_to_string("/etc/os-release") {
-        for line in content.lines() {
-            if line.starts_with("ID=") {
-                let id = line.trim_start_matches("ID=").trim_matches('"');
-                return Some(id.to_string());
+    #[cfg(target_os = "macos")]
+    {
+        Some("macos".to_string())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        if let Ok(content) = std::fs::read_to_string("/etc/os-release") {
+            for line in content.lines() {
+                if line.starts_with("ID=") {
+                    let id = line.trim_start_matches("ID=").trim_matches('"');
+                    return Some(id.to_string());
+                }
             }
         }
+        None
     }
-    None
 }
 
 /// Returns a list of strings representing the ASCII art for a given distro.
@@ -239,6 +247,26 @@ pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
             "\x1b[32m     'l0Kk:.              .;xK0l'\x1b[0m".to_string(),
             "\x1b[32m        'lkK0xl:;,,,,;:ldO0kl'\x1b[0m".to_string(),
             "\x1b[32m            '^:ldxkkkkxdl:^'\x1b[0m".to_string(),
+        ],
+
+        Some("macos") => vec![
+            "\x1b[32m                    c.'\x1b[0m".to_string(),
+            "\x1b[32m                 ,xNMM.\x1b[0m".to_string(),
+            "\x1b[32m               .OMMMMo\x1b[0m".to_string(),
+            "\x1b[32m               lMM\"\x1b[0m".to_string(),
+            "\x1b[32m     .;loddo:.  .olloddol;.\x1b[0m".to_string(),
+            "\x1b[32m   cKMMMMMMMMMMNWMMMMMMMMMM0:\x1b[0m".to_string(),
+            "\x1b[33m .KMMMMMMMMMMMMMMMMMMMMMMMWd.\x1b[0m".to_string(),
+            "\x1b[33m XMMMMMMMMMMMMMMMMMMMMMMMX.\x1b[0m".to_string(),
+            "\x1b[31m;MMMMMMMMMMMMMMMMMMMMMMMM:\x1b[0m".to_string(),
+            "\x1b[31m:MMMMMMMMMMMMMMMMMMMMMMMM:\x1b[0m".to_string(),
+            "\x1b[31m.MMMMMMMMMMMMMMMMMMMMMMMMX.\x1b[0m".to_string(),
+            "\x1b[31m kMMMMMMMMMMMMMMMMMMMMMMMMWd.\x1b[0m".to_string(),
+            "\x1b[35m'XMMMMMMMMMMMMMMMMMMMMMMMMMMk\x1b[0m".to_string(),
+            "\x1b[35m 'XMMMMMMMMMMMMMMMMMMMMMMMMK.\x1b[0m".to_string(),
+            "\x1b[34m    kMMMMMMMMMMMMMMMMMMMMMMd\x1b[0m".to_string(),
+            "\x1b[34m     ;KMMMMMMMWXXWMMMMMMMk.\x1b[0m".to_string(),
+            "\x1b[34m       \"cooc*\"    \"*coo'\"\x1b[0m".to_string(),
         ],
 
         // Fallback: Tux (Linux)
@@ -711,6 +739,8 @@ mod tests {
         assert!(logo.is_some());
         let logo = get_embedded_logo(Some("opensuse-tumbleweed"));
         assert!(logo.is_some());
+        let logo = get_embedded_logo(Some("macos"));
+        assert!(logo.is_some());
         let logo = get_embedded_logo(None);
         assert!(logo.is_some());
     }
@@ -732,5 +762,11 @@ mod tests {
         let opensuse = get_ascii_logo(Some("opensuse"));
         assert!(!opensuse.is_empty());
         assert!(opensuse.iter().any(|line| line.contains("O0000Ok")));
+
+        let macos = get_ascii_logo(Some("macos"));
+        assert!(!macos.is_empty());
+        assert!(macos
+            .iter()
+            .any(|line| line.contains("cKMMMMMMMMMMNWMMMMMMMMMM0")));
     }
 }
