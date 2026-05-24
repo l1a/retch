@@ -67,6 +67,12 @@ pub struct SystemInfo {
     pub packages: Option<usize>,
     /// Name of the user running the process.
     pub current_user: Option<String>,
+    /// Primary local IP address.
+    pub local_ip: Option<String>,
+    /// Public IP address (best effort).
+    pub public_ip: Option<String>,
+    /// Name of the active/default network interface.
+    pub active_interface: Option<String>,
 }
 
 impl SystemInfo {
@@ -206,7 +212,7 @@ impl SystemInfo {
             }
         };
 
-        let temps = Components::new_with_refreshed_list()
+        let mut temps: Vec<String> = Components::new_with_refreshed_list()
             .iter()
             .filter_map(|c| {
                 c.temperature().and_then(|t| {
@@ -218,6 +224,13 @@ impl SystemInfo {
                 })
             })
             .collect();
+
+        // Sort so CPU temperatures appear first
+        temps.sort_by(|a, b| {
+            let a_cpu = a.to_lowercase().contains("cpu") || a.to_lowercase().contains("core");
+            let b_cpu = b.to_lowercase().contains("cpu") || b.to_lowercase().contains("core");
+            b_cpu.cmp(&a_cpu)
+        });
 
         let networks = Networks::new_with_refreshed_list()
             .iter()
@@ -296,6 +309,20 @@ impl SystemInfo {
             gpu: gpu::detect_gpus().into_iter().map(|g| g.format()).collect(),
             packages: detect_packages(),
             current_user,
+            local_ip: std::net::UdpSocket::bind("0.0.0.0:0")
+                .ok()
+                .and_then(|socket| {
+                    socket.connect("8.8.8.8:53").ok()?;
+                    socket.local_addr().ok().map(|addr| addr.ip().to_string())
+                }),
+            public_ip: std::process::Command::new("curl")
+                .args(["-s", "--max-time", "2", "https://api.ipify.org"])
+                .output()
+                .ok()
+                .and_then(|o| String::from_utf8(o.stdout).ok())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty()),
+            active_interface: None, // Will be populated below
         })
     }
 }
