@@ -43,7 +43,10 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
     - name: Run fetcher (dry run)
-      run: ./target/debug/retch
+      run: ./target/debug/retch --long
+    - name: Print system_profiler SPDisplaysDataType (macOS)
+      if: matrix.os == 'macos-latest'
+      run: system_profiler SPDisplaysDataType
 
   full-test:
     runs-on: ubuntu-latest
