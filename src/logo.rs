@@ -384,7 +384,14 @@ pub fn print_with_chafa(path: &std::path::Path) -> bool {
             print!("{}", String::from_utf8_lossy(&out.stdout));
             true
         }
-        _ => false,
+        Ok(out) => {
+            eprintln!("warning: chafa failed with status: {}", out.status);
+            false
+        }
+        Err(e) => {
+            eprintln!("warning: failed to execute chafa: {}", e);
+            false
+        }
     }
 }
 

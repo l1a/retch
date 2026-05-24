@@ -350,13 +350,18 @@ fn detect_packages() -> Option<usize> {
         // Fedora / RHEL / openSUSE - read from RPM SQLite database
         let rpm_db = "/var/lib/rpm/rpmdb.sqlite";
         if std::path::Path::new(rpm_db).exists() {
-            if let Ok(conn) = rusqlite::Connection::open(rpm_db) {
-                if let Ok(count) = conn.query_row("SELECT COUNT(*) FROM Packages", [], |row| {
-                    row.get::<_, i64>(0)
-                }) {
-                    if count > 0 {
-                        return Some(count as usize);
+            match rusqlite::Connection::open(rpm_db) {
+                Ok(conn) => {
+                    if let Ok(count) = conn.query_row("SELECT COUNT(*) FROM Packages", [], |row| {
+                        row.get::<_, i64>(0)
+                    }) {
+                        if count > 0 {
+                            return Some(count as usize);
+                        }
                     }
+                }
+                Err(e) => {
+                    eprintln!("warning: failed to open RPM database at {}: {}", rpm_db, e);
                 }
             }
         }

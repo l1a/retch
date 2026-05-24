@@ -206,12 +206,19 @@ pub fn parse_wmi_videocontroller(output: &str) -> Vec<GpuInfo> {
 pub fn detect_gpus() -> Vec<GpuInfo> {
     #[cfg(target_os = "macos")]
     {
-        if let Ok(output) = std::process::Command::new("system_profiler")
+        match std::process::Command::new("system_profiler")
             .arg("SPDisplaysDataType")
             .output()
         {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                return parse_system_profiler_displays(&stdout);
+            Ok(output) => {
+                if let Ok(stdout) = String::from_utf8(output.stdout) {
+                    return parse_system_profiler_displays(&stdout);
+                } else {
+                    eprintln!("warning: system_profiler output was not valid UTF-8");
+                }
+            }
+            Err(e) => {
+                eprintln!("warning: failed to run system_profiler SPDisplaysDataType: {} (GPU detection skipped)", e);
             }
         }
         Vec::new()
@@ -220,7 +227,8 @@ pub fn detect_gpus() -> Vec<GpuInfo> {
     #[cfg(target_os = "windows")]
     {
         // Try WMIC first
-        if let Ok(output) = std::process::Command::new("wmic")
+        let mut wmic_ok = false;
+        match std::process::Command::new("wmic")
             .args([
                 "path",
                 "win32_VideoController",
@@ -230,21 +238,36 @@ pub fn detect_gpus() -> Vec<GpuInfo> {
             ])
             .output()
         {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                let gpus = parse_wmi_videocontroller(&stdout);
-                if !gpus.is_empty() {
-                    return gpus;
+            Ok(output) => {
+                if let Ok(stdout) = String::from_utf8(output.stdout) {
+                    let gpus = parse_wmi_videocontroller(&stdout);
+                    if !gpus.is_empty() {
+                        return gpus;
+                    }
+                    wmic_ok = true;
                 }
+            }
+            Err(e) => {
+                eprintln!("warning: wmic failed: {} (trying PowerShell fallback)", e);
             }
         }
 
         // Fallback to PowerShell
-        if let Ok(output) = std::process::Command::new("powershell")
-            .args(["-Command", "Get-CimInstance Win32_VideoController | Select-Object Name, AdapterRAM | Format-List"])
-            .output()
-        {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                return parse_wmi_videocontroller(&stdout);
+        if !wmic_ok {
+            match std::process::Command::new("powershell")
+                .args(["-Command", "Get-CimInstance Win32_VideoController | Select-Object Name, AdapterRAM | Format-List"])
+                .output()
+            {
+                Ok(output) => {
+                    if let Ok(stdout) = String::from_utf8(output.stdout) {
+                        return parse_wmi_videocontroller(&stdout);
+                    } else {
+                        eprintln!("warning: powershell output was not valid UTF-8");
+                    }
+                }
+                Err(e) => {
+                    eprintln!("warning: powershell failed: {} (GPU detection skipped)", e);
+                }
             }
         }
 
