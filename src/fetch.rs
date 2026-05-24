@@ -140,35 +140,54 @@ impl SystemInfo {
                 let vendor = bat.vendor().map(|s| s.to_string());
                 let model = bat.model().map(|s| s.to_string());
 
-                let base = if health < 99.0 {
-                    format!("{:.0}% ({}, {:.0}% health)", pct, state, health)
-                } else {
-                    format!("{:.0}% ({})", pct, state)
-                };
-
-                let time_info = match bat.state() {
+                // Format time remaining as "Xh Ym" or "Xd Yh"
+                let time_str = match bat.state() {
                     battery::State::Charging => bat.time_to_full().map(|d| {
-                        let mins = (d.value / 60.0) as u32;
-                        format!("{}m until full", mins)
+                        let total_mins = (d.value / 60.0) as u32;
+                        let hours = total_mins / 60;
+                        let mins = total_mins % 60;
+                        if hours >= 24 {
+                            let days = hours / 24;
+                            let rem_hours = hours % 24;
+                            format!("{}d {}h until full", days, rem_hours)
+                        } else if hours > 0 {
+                            format!("{}h {}m until full", hours, mins)
+                        } else {
+                            format!("{}m until full", mins)
+                        }
                     }),
                     battery::State::Discharging => bat.time_to_empty().map(|d| {
-                        let mins = (d.value / 60.0) as u32;
-                        format!("{}m remaining", mins)
+                        let total_mins = (d.value / 60.0) as u32;
+                        let hours = total_mins / 60;
+                        let mins = total_mins % 60;
+                        if hours >= 24 {
+                            let days = hours / 24;
+                            let rem_hours = hours % 24;
+                            format!("{}d {}h remaining", days, rem_hours)
+                        } else if hours > 0 {
+                            format!("{}h {}m remaining", hours, mins)
+                        } else {
+                            format!("{}m remaining", mins)
+                        }
                     }),
                     _ => None,
                 };
 
-                let mut result = match (vendor, model) {
+                let mut parts = vec![state.to_string()];
+                if let Some(t) = time_str {
+                    parts.insert(0, t);
+                }
+                if health < 99.0 {
+                    parts.push(format!("{:.0}% health", health));
+                }
+
+                let base = format!("{:.0}% ({})", pct, parts.join(", "));
+
+                match (vendor, model) {
                     (Some(v), Some(m)) => format!("{} [{} {}]", base, v, m),
                     (Some(v), None) => format!("{} [{}]", base, v),
                     _ => base,
-                };
-
-                if let Some(t) = time_info {
-                    result.push_str(&format!(" ({})", t));
                 }
-
-                result
             });
 
         let arch = System::cpu_arch();
