@@ -129,6 +129,7 @@ jobs:
       run: cargo fmt -- --check
 
     - name: Generate man page
+      shell: bash
       run: just man || echo "Man page generation skipped (just may not be installed)"
 
   build-release:
