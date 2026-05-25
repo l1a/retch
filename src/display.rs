@@ -10,6 +10,7 @@ use crate::config::Config;
 use crate::fetch::SystemInfo;
 use crate::logo;
 use crate::theme::Theme;
+use owo_colors::OwoColorize;
 
 impl SystemInfo {
     /// Renders the collected system information to the terminal.
@@ -208,8 +209,19 @@ impl SystemInfo {
 
         if should_show("Net") {
             for net in &self.networks {
+                if let Some(ref active) = self.active_interface {
+                    if net.contains(active) {
+                        // Highlight active interface by coloring the value
+                        print_line("Net", &net.bright_blue().to_string());
+                        continue;
+                    }
+                }
                 print_line("Net", net);
             }
+        }
+
+        if let Some(ip) = &self.public_ip {
+            print_line("Public IP", ip);
         }
 
         // Uptime: human duration first, then ISO boot time with timezone
