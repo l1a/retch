@@ -19,25 +19,36 @@ jobs:
     if: github.ref_type != 'tag'
     strategy:
       matrix:
-        platform: [ubuntu, fedora, macos, windows]
+        platform: [ubuntu-x64, ubuntu-arm, fedora-x64, fedora-arm, macos, windows-x64, windows-arm]
         include:
-          - platform: ubuntu
+          - platform: ubuntu-x64
             os: ubuntu-latest
-          - platform: fedora
+          - platform: ubuntu-arm
+            os: ubuntu-24.04-arm
+          - platform: fedora-x64
             os: ubuntu-latest
+            container: fedora:latest
+          - platform: fedora-arm
+            os: ubuntu-24.04-arm
             container: fedora:latest
           - platform: macos
             os: macos-latest
-          - platform: windows
+          - platform: windows-x64
             os: windows-latest
+          - platform: windows-arm
+            os: windows-11-arm
 
     steps:
     - name: Install dependencies (Fedora)
-      if: matrix.container == 'fedora:latest'
+      if: startsWith(matrix.platform, 'fedora')
       run: |
         dnf install -y git curl gcc make sqlite-devel
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Install Rust toolchain (Host)
+      if: ${{ !matrix.container }}
+      uses: dtolnay/rust-toolchain@stable
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
     - name: Format check
@@ -51,39 +62,59 @@ jobs:
     - name: Run fetcher (dry run)
       run: cargo run -- --long
     - name: Print system_profiler SPDisplaysDataType (macOS)
-      if: matrix.os == 'macos-latest'
+      if: runner.os == 'macOS'
       run: system_profiler SPDisplaysDataType
 
   full-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     # Only run on version tags pushed to main
     if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
 
     strategy:
       matrix:
-        container: 
-          - ubuntu:latest
-          - fedora:latest
-
-    container: ${{ matrix.container }}
+        platform: [ubuntu-x64, ubuntu-arm, fedora-x64, fedora-arm, macos, windows-x64, windows-arm]
+        include:
+          - platform: ubuntu-x64
+            os: ubuntu-latest
+            container: ubuntu:latest
+          - platform: ubuntu-arm
+            os: ubuntu-24.04-arm
+            container: ubuntu:latest
+          - platform: fedora-x64
+            os: ubuntu-latest
+            container: fedora:latest
+          - platform: fedora-arm
+            os: ubuntu-24.04-arm
+            container: fedora:latest
+          - platform: macos
+            os: macos-latest
+          - platform: windows-x64
+            os: windows-latest
+          - platform: windows-arm
+            os: windows-11-arm
 
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
-    - name: Install Rust toolchain (Ubuntu)
-      if: matrix.container == 'ubuntu:latest'
+    - name: Install Rust toolchain (Ubuntu Container)
+      if: startsWith(matrix.platform, 'ubuntu')
       run: |
         apt-get update
-        apt-get install -y curl build-essential pandoc
+        apt-get install -y curl build-essential pandoc sqlite3 libsqlite3-dev
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-    - name: Install Rust toolchain (Fedora)
-      if: matrix.container == 'fedora:latest'
+    - name: Install Rust toolchain (Fedora Container)
+      if: startsWith(matrix.platform, 'fedora')
       run: |
-        dnf install -y curl gcc make pandoc
+        dnf install -y curl gcc make pandoc sqlite-devel
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Install Rust toolchain (Host)
+      if: ${{ !matrix.container }}
+      uses: dtolnay/rust-toolchain@stable
 
     - name: Build (release)
       run: cargo build --release --verbose
@@ -98,40 +129,87 @@ jobs:
       run: cargo fmt -- --check
 
     - name: Generate man page
+      shell: bash
       run: just man || echo "Man page generation skipped (just may not be installed)"
 
   build-release:
     needs: full-test
-    runs-on: ubuntu-latest
-    container: fedora:latest
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
+
+    strategy:
+      matrix:
+        platform: [fedora-x64, fedora-arm, macos, windows-x64, windows-arm]
+        include:
+          - platform: fedora-x64
+            os: ubuntu-latest
+            container: fedora:latest
+            artifact_name: release-assets-linux-x86_64
+          - platform: fedora-arm
+            os: ubuntu-24.04-arm
+            container: fedora:latest
+            artifact_name: release-assets-linux-arm64
+          - platform: macos
+            os: macos-latest
+            artifact_name: release-assets-macos-arm64
+          - platform: windows-x64
+            os: windows-latest
+            artifact_name: release-assets-windows-x86_64
+          - platform: windows-arm
+            os: windows-11-arm
+            artifact_name: release-assets-windows-arm64
 
     steps:
       - name: Install system dependencies (Fedora)
+        if: startsWith(matrix.platform, 'fedora')
         run: |
           dnf install -y git curl gcc make pandoc sqlite-devel
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
-      - name: Install Rust toolchain
+      - name: Install Rust toolchain (Fedora)
+        if: startsWith(matrix.platform, 'fedora')
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Build release binary
+      - name: Install Rust toolchain (Host)
+        if: ${{ !matrix.container }}
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release binary (Fedora)
+        if: startsWith(matrix.platform, 'fedora')
         run: |
           $HOME/.cargo/bin/cargo build --release --verbose
 
+      - name: Build release binary (Non-Fedora)
+        if: ${{ !startsWith(matrix.platform, 'fedora') }}
+        run: |
+          cargo build --release --verbose
+
       - name: Prepare release assets
+        shell: bash
         run: |
           mkdir -p release
-          cp target/release/retch release/
-          cp docs/retch.1 release/ || true
+          if [ "${{ matrix.platform }}" = "fedora-x64" ]; then
+            cp target/release/retch release/retch-linux-x86_64
+            cp docs/retch.1 release/ || true
+          elif [ "${{ matrix.platform }}" = "fedora-arm" ]; then
+            cp target/release/retch release/retch-linux-arm64
+            cp docs/retch.1 release/ || true
+          elif [ "${{ matrix.platform }}" = "macos" ]; then
+            cp target/release/retch release/retch-macos-arm64
+          elif [ "${{ matrix.platform }}" = "windows-x64" ]; then
+            cp target/release/retch.exe release/retch-windows-x86_64.exe
+          elif [ "${{ matrix.platform }}" = "windows-arm" ]; then
+            cp target/release/retch.exe release/retch-windows-arm64.exe
+          fi
 
       - name: Upload release assets
         uses: actions/upload-artifact@v4
         with:
-          name: release-assets
+          name: ${{ matrix.artifact_name }}
           path: release/
 
   release:
@@ -146,8 +224,9 @@ jobs:
       - name: Download release assets
         uses: actions/download-artifact@v4
         with:
-          name: release-assets
           path: release
+          pattern: release-assets-*
+          merge-multiple: true
 
       - name: Create Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
@@ -157,6 +236,10 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            release/retch
+            release/retch-linux-x86_64
+            release/retch-linux-arm64
+            release/retch-macos-arm64
+            release/retch-windows-x86_64.exe
+            release/retch-windows-arm64.exe
             release/retch.1
           generate_release_notes: true
