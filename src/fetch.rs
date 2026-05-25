@@ -214,12 +214,13 @@ impl SystemInfo {
         };
 
         // Compute IP-related values early so they are available for network formatting
-        let local_ip: Option<String> = std::net::UdpSocket::bind("0.0.0.0:0")
-            .ok()
-            .and_then(|socket| {
-                socket.connect("8.8.8.8:53").ok()?;
-                socket.local_addr().ok().map(|addr| addr.ip().to_string())
-            });
+        let local_ip: Option<String> =
+            std::net::UdpSocket::bind("0.0.0.0:0")
+                .ok()
+                .and_then(|socket| {
+                    socket.connect("8.8.8.8:53").ok()?;
+                    socket.local_addr().ok().map(|addr| addr.ip().to_string())
+                });
 
         let public_ip: Option<String> = std::process::Command::new("curl")
             .args(["-s", "--max-time", "2", "https://api.ipify.org"])

@@ -8,9 +8,9 @@
 use crate::cli::Cli;
 use crate::config::Config;
 use crate::fetch::SystemInfo;
-use owo_colors::OwoColorize;
 use crate::logo;
 use crate::theme::Theme;
+use owo_colors::OwoColorize;
 
 impl SystemInfo {
     /// Renders the collected system information to the terminal.
