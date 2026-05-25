@@ -7,13 +7,13 @@
 - **License**: GPLv3
 - **Repository**: https://github.com/l1a/retch
 
-## Current State (v0.2.3)
+## Current State (v0.2.4)
 - **Architecture**: Modularized GPU detection into a dedicated component.
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
 - **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
 - **Quality**: Strict `just check` (fmt + lint), unit test coverage (31 passing tests), and automated CLI integration test suite (6 tests).
-- **CI/CD**: Release binaries compiled in a Fedora container. Multi-platform testing on Linux, macOS, and Windows via GitHub Actions CI.
+- **CI/CD**: Multi-platform build/testing on Linux (Fedora & Ubuntu), macOS, and Windows. Releases compiled for Fedora (x86_64/ARM), macOS (ARM), and Windows (x86_64/ARM) on native host/container runner environments.
 - **Documentation**: Full internal Rustdoc coverage and updated README/man pages.
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
 - **UX**: Improved error visibility for slow external queries (GPU detection, RPM packages, chafa).
@@ -21,6 +21,12 @@
 - **Network**: Added local IPv4 and larger-scoped IPv6 address display for all "Up" interfaces with loopback and link-local filtering.
 
 ## Major Achievements
+
+### v0.2.4 - Multi-Arch CI/CD and Release (May 25, 2026)
+- **CI/CD Matrix**: Expanded GitHub Actions workflow to run debug builds and tests across 7 platform architectures: Ubuntu x86_64/ARM, Fedora x86_64/ARM, macOS ARM, and Windows x86_64/ARM.
+- **Toolchain Updates**: Integrated `dtolnay/rust-toolchain` to dynamically resolve latest stable compilers across all host environments.
+- **Releases**: Optimized release compilation pipeline to package and publish 5 targeted binary assets (`retch-linux-x86_64`, `retch-linux-arm64`, `retch-macos-arm64`, `retch-windows-x86_64.exe`, and `retch-windows-arm64.exe`) directly into GitHub Releases.
+- **Version**: Bumped version to `0.2.4` in `Cargo.toml`, `docs/retch.1`, and documentation.
 
 ### v0.2.1 - Windows Support (May 24, 2026)
 - **Platforms**: Added native Windows support.
