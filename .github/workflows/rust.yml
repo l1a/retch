@@ -19,10 +19,17 @@ jobs:
     if: github.ref_type != 'tag'
     strategy:
       matrix:
-        platform: [fedora, macos, windows-x64, windows-arm]
+        platform: [ubuntu-x64, ubuntu-arm, fedora-x64, fedora-arm, macos, windows-x64, windows-arm]
         include:
-          - platform: fedora
+          - platform: ubuntu-x64
             os: ubuntu-latest
+          - platform: ubuntu-arm
+            os: ubuntu-24.04-arm
+          - platform: fedora-x64
+            os: ubuntu-latest
+            container: fedora:latest
+          - platform: fedora-arm
+            os: ubuntu-24.04-arm
             container: fedora:latest
           - platform: macos
             os: macos-latest
@@ -33,7 +40,7 @@ jobs:
 
     steps:
     - name: Install dependencies (Fedora)
-      if: matrix.platform == 'fedora'
+      if: startsWith(matrix.platform, 'fedora')
       run: |
         dnf install -y git curl gcc make sqlite-devel
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -62,10 +69,19 @@ jobs:
 
     strategy:
       matrix:
-        platform: [fedora, macos, windows-x64, windows-arm]
+        platform: [ubuntu-x64, ubuntu-arm, fedora-x64, fedora-arm, macos, windows-x64, windows-arm]
         include:
-          - platform: fedora
+          - platform: ubuntu-x64
             os: ubuntu-latest
+            container: ubuntu:latest
+          - platform: ubuntu-arm
+            os: ubuntu-24.04-arm
+            container: ubuntu:latest
+          - platform: fedora-x64
+            os: ubuntu-latest
+            container: fedora:latest
+          - platform: fedora-arm
+            os: ubuntu-24.04-arm
             container: fedora:latest
           - platform: macos
             os: macos-latest
@@ -77,8 +93,16 @@ jobs:
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
+    - name: Install Rust toolchain (Ubuntu)
+      if: startsWith(matrix.platform, 'ubuntu')
+      run: |
+        apt-get update
+        apt-get install -y curl build-essential pandoc sqlite3 libsqlite3-dev
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
     - name: Install Rust toolchain (Fedora)
-      if: matrix.platform == 'fedora'
+      if: startsWith(matrix.platform, 'fedora')
       run: |
         dnf install -y curl gcc make pandoc sqlite-devel
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -107,12 +131,16 @@ jobs:
 
     strategy:
       matrix:
-        platform: [fedora, macos, windows-x64, windows-arm]
+        platform: [fedora-x64, fedora-arm, macos, windows-x64, windows-arm]
         include:
-          - platform: fedora
+          - platform: fedora-x64
             os: ubuntu-latest
             container: fedora:latest
-            artifact_name: release-assets-fedora
+            artifact_name: release-assets-fedora-x86_64
+          - platform: fedora-arm
+            os: ubuntu-24.04-arm
+            container: fedora:latest
+            artifact_name: release-assets-fedora-arm64
           - platform: macos
             os: macos-latest
             artifact_name: release-assets-macos-arm64
@@ -125,25 +153,25 @@ jobs:
 
     steps:
       - name: Install system dependencies (Fedora)
-        if: matrix.platform == 'fedora'
+        if: startsWith(matrix.platform, 'fedora')
         run: |
           dnf install -y git curl gcc make pandoc sqlite-devel
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Install Rust toolchain (Fedora)
-        if: matrix.platform == 'fedora'
+        if: startsWith(matrix.platform, 'fedora')
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Build release binary (Fedora)
-        if: matrix.platform == 'fedora'
+        if: startsWith(matrix.platform, 'fedora')
         run: |
           $HOME/.cargo/bin/cargo build --release --verbose
 
       - name: Build release binary (Non-Fedora)
-        if: matrix.platform != 'fedora'
+        if: !startsWith(matrix.platform, 'fedora')
         run: |
           cargo build --release --verbose
 
@@ -151,8 +179,11 @@ jobs:
         shell: bash
         run: |
           mkdir -p release
-          if [ "${{ matrix.platform }}" = "fedora" ]; then
+          if [ "${{ matrix.platform }}" = "fedora-x64" ]; then
             cp target/release/retch release/retch-fedora-x86_64
+            cp docs/retch.1 release/ || true
+          elif [ "${{ matrix.platform }}" = "fedora-arm" ]; then
+            cp target/release/retch release/retch-fedora-arm64
             cp docs/retch.1 release/ || true
           elif [ "${{ matrix.platform }}" = "macos" ]; then
             cp target/release/retch release/retch-macos-arm64
@@ -193,6 +224,7 @@ jobs:
           prerelease: false
           files: |
             release/retch-fedora-x86_64
+            release/retch-fedora-arm64
             release/retch-macos-arm64
             release/retch-windows-x86_64.exe
             release/retch-windows-arm64.exe
