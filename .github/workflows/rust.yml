@@ -145,11 +145,11 @@ jobs:
           - platform: fedora-x64
             os: ubuntu-latest
             container: fedora:latest
-            artifact_name: release-assets-fedora-x86_64
+            artifact_name: release-assets-linux-x86_64
           - platform: fedora-arm
             os: ubuntu-24.04-arm
             container: fedora:latest
-            artifact_name: release-assets-fedora-arm64
+            artifact_name: release-assets-linux-arm64
           - platform: macos
             os: macos-latest
             artifact_name: release-assets-macos-arm64
@@ -193,10 +193,10 @@ jobs:
         run: |
           mkdir -p release
           if [ "${{ matrix.platform }}" = "fedora-x64" ]; then
-            cp target/release/retch release/retch-fedora-x86_64
+            cp target/release/retch release/retch-linux-x86_64
             cp docs/retch.1 release/ || true
           elif [ "${{ matrix.platform }}" = "fedora-arm" ]; then
-            cp target/release/retch release/retch-fedora-arm64
+            cp target/release/retch release/retch-linux-arm64
             cp docs/retch.1 release/ || true
           elif [ "${{ matrix.platform }}" = "macos" ]; then
             cp target/release/retch release/retch-macos-arm64
@@ -236,8 +236,8 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            release/retch-fedora-x86_64
-            release/retch-fedora-arm64
+            release/retch-linux-x86_64
+            release/retch-linux-arm64
             release/retch-macos-arm64
             release/retch-windows-x86_64.exe
             release/retch-windows-arm64.exe
