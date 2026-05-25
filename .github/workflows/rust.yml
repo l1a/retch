@@ -47,7 +47,7 @@ jobs:
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
     - name: Install Rust toolchain (Host)
-      if: !matrix.container
+      if: ${{ !matrix.container }}
       uses: dtolnay/rust-toolchain@stable
 
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -113,7 +113,7 @@ jobs:
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
     - name: Install Rust toolchain (Host)
-      if: !matrix.container
+      if: ${{ !matrix.container }}
       uses: dtolnay/rust-toolchain@stable
 
     - name: Build (release)
@@ -174,7 +174,7 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install Rust toolchain (Host)
-        if: !matrix.container
+        if: ${{ !matrix.container }}
         uses: dtolnay/rust-toolchain@stable
 
       - name: Build release binary (Fedora)
