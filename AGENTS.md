@@ -18,6 +18,7 @@
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
 - **UX**: Improved error visibility for slow external queries (GPU detection, RPM packages, chafa).
 - **Battery**: Added time remaining, health, vendor/model, and improved formatting.
+- **Network**: Added local IPv4 and larger-scoped IPv6 address display for all "Up" interfaces with loopback and link-local filtering.
 
 ## Major Achievements
 
