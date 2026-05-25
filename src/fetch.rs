@@ -300,17 +300,63 @@ impl SystemInfo {
             .map(|(name, data)| {
                 let rx = format_bytes(data.total_received());
                 let tx = format_bytes(data.total_transmitted());
-                let status = if data.total_received() > 0 || data.total_transmitted() > 0 {
+                let is_up = data.operational_state() == sysinfo::InterfaceOperationalState::Up
+                    || data.total_received() > 0
+                    || data.total_transmitted() > 0;
+                let status = if is_up {
                     "Up".green().to_string()
                 } else {
                     "Down".red().to_string()
                 };
-                if let (Some(ref active), Some(ref ip)) = (&active_interface, &local_ip) {
-                    if name == active {
-                        return format!("{} ({}) [{}] RX: {} TX: {}", name, ip, status, rx, tx);
+
+                let mut ipv4_addresses = Vec::new();
+                let mut ipv6_addresses = Vec::new();
+
+                if is_up {
+                    for ip_net in data.ip_networks() {
+                        let ip = ip_net.addr;
+                        let name_lower = name.to_lowercase();
+                        let is_loopback_iface =
+                            name_lower.starts_with("lo") || name_lower.contains("loopback");
+                        if ip.is_loopback() && !is_loopback_iface {
+                            continue;
+                        }
+                        match ip {
+                            std::net::IpAddr::V4(v4) => {
+                                ipv4_addresses.push(v4.to_string());
+                            }
+                            std::net::IpAddr::V6(v6) => {
+                                if !v6.is_unicast_link_local() {
+                                    ipv6_addresses.push(v6.to_string());
+                                }
+                            }
+                        }
+                    }
+
+                    // Fallback to active interface UDP-resolved local IP if no IPs detected by sysinfo
+                    if ipv4_addresses.is_empty() && ipv6_addresses.is_empty() {
+                        if let (Some(ref active), Some(ref ip)) = (&active_interface, &local_ip) {
+                            if name == active {
+                                ipv4_addresses.push(ip.clone());
+                            }
+                        }
                     }
                 }
-                format!("{} [{}] RX: {} TX: {}", name, status, rx, tx)
+
+                let ip_str = if !ipv4_addresses.is_empty() || !ipv6_addresses.is_empty() {
+                    let mut combined = Vec::new();
+                    if !ipv4_addresses.is_empty() {
+                        combined.push(ipv4_addresses.join(", "));
+                    }
+                    if !ipv6_addresses.is_empty() {
+                        combined.push(ipv6_addresses.join(", "));
+                    }
+                    format!(" ({})", combined.join(", "))
+                } else {
+                    String::new()
+                };
+
+                format!("{}{} [{}] RX: {} TX: {}", name, ip_str, status, rx, tx)
             })
             .collect();
 
