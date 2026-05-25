@@ -46,6 +46,10 @@ jobs:
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
+    - name: Install Rust toolchain (Host)
+      if: !matrix.container
+      uses: dtolnay/rust-toolchain@stable
+
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
     - name: Format check
       run: cargo fmt -- --check
@@ -93,7 +97,7 @@ jobs:
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
-    - name: Install Rust toolchain (Ubuntu)
+    - name: Install Rust toolchain (Ubuntu Container)
       if: startsWith(matrix.platform, 'ubuntu')
       run: |
         apt-get update
@@ -101,12 +105,16 @@ jobs:
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-    - name: Install Rust toolchain (Fedora)
+    - name: Install Rust toolchain (Fedora Container)
       if: startsWith(matrix.platform, 'fedora')
       run: |
         dnf install -y curl gcc make pandoc sqlite-devel
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Install Rust toolchain (Host)
+      if: !matrix.container
+      uses: dtolnay/rust-toolchain@stable
 
     - name: Build (release)
       run: cargo build --release --verbose
@@ -164,6 +172,10 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install Rust toolchain (Host)
+        if: !matrix.container
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Build release binary (Fedora)
         if: startsWith(matrix.platform, 'fedora')
