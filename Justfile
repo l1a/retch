@@ -69,6 +69,25 @@ logos:
     done
     @echo "Logo conversion complete."
 
+# Run criterion micro-benchmarks
+bench:
+    cargo bench
+
+# Benchmark the release binary with hyperfine (requires: hyperfine)
+bench-cli:
+    @command -v hyperfine > /dev/null || { echo "Error: hyperfine is not installed. Install it with: cargo install hyperfine"; exit 1; }
+    cargo build --release
+    hyperfine --warmup 3 --runs 10 './target/release/retch'
+
+# Compare retch against fastfetch and neofetch (requires: hyperfine)
+bench-compare:
+    @command -v hyperfine > /dev/null || { echo "Error: hyperfine is not installed. Install it with: cargo install hyperfine"; exit 1; }
+    cargo build --release
+    @CMDS="'./target/release/retch'"; \
+    if command -v fastfetch > /dev/null; then CMDS="$CMDS 'fastfetch'"; fi; \
+    if command -v neofetch > /dev/null; then CMDS="$CMDS 'neofetch --off'"; fi; \
+    eval hyperfine --warmup 3 --runs 10 $CMDS
+
 # Full development setup
 dev: fmt lint test build
     @echo "Development build complete."

@@ -94,3 +94,17 @@ fn test_cli_write_config_temp() {
     // Clean up
     let _ = fs::remove_file(&temp_file);
 }
+
+#[test]
+fn test_bench_compiles() {
+    let output = Command::new("cargo")
+        .args(["bench", "--no-run"])
+        .output()
+        .expect("Failed to run cargo bench --no-run");
+
+    assert!(
+        output.status.success(),
+        "Benchmark harness failed to compile: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
