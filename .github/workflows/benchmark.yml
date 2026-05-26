@@ -21,13 +21,15 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Run benchmarks
-        run: cargo bench | tee output.txt
+        run: |
+          cargo bench
+          python3 scripts/parse_criterion.py
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          tool: 'cargo'
-          output-file-path: output.txt
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark_result.json
 
           # GitHub Pages publishing
           github-token: ${{ secrets.GITHUB_TOKEN }}
