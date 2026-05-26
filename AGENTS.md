@@ -16,6 +16,7 @@
   3. Default configuration templates (like `default_config_content()` in `src/main.rs`) and comment lists are fully updated with new options.
 - **Command Redundancy**: Avoid running `just check && cargo test` sequentially since both build and check the project profiles, causing redundant background compilation cycles. Prefer `cargo test` during iteration and a final check before staging.
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
+- **Releases & Tagging**: Always tag releases locally and push them via git (`git tag -a v<version> -m "Version <version>" && git push origin v<version>`) instead of using `gh release create` directly. Pushing the tag via git triggers the full suite of CI actions (security audit, code quality, multi-arch builds, full-test, and the release packaging flow), whereas `gh release create` runs significantly fewer CI workflows.
 
 ## Current State (v0.2.8)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays) concurrently using scoped threads.
