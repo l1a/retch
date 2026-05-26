@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779828226838,
+  "lastUpdate": 1779833021483,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -121,6 +121,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2351704.5231943275,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2e76cdb68e75db431899633d8f48890c04b2b51a",
+          "message": "Merge pull request #43 from l1a/feature/hardware-specs\n\nAdd motherboard, bios, and display detection",
+          "timestamp": "2026-05-26T14:59:50-07:00",
+          "tree_id": "92e8fb7c07a9eff8292844e0d7adffa0fca63639",
+          "url": "https://github.com/l1a/retch/commit/2e76cdb68e75db431899633d8f48890c04b2b51a"
+        },
+        "date": 1779833021174,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 11211916.24,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 90398987.44,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 86906197.40566751,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2586147.3306980086,
             "unit": "ns"
           }
         ]
