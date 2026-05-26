@@ -20,9 +20,18 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install fastfetch and hyperfine
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fastfetch hyperfine
+
+      - name: Build release binary
+        run: cargo build --release
+
       - name: Run benchmarks
         run: |
           cargo bench
+          hyperfine --warmup 3 --runs 10 './target/release/retch' 'fastfetch' --export-json hyperfine_result.json
           python3 scripts/parse_criterion.py
 
       - name: Store benchmark result
