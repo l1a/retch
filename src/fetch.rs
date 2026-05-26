@@ -614,4 +614,16 @@ mod tests {
         assert_eq!(format_bytes(1024 * 1024 * 1024), "1.0 GB");
         assert_eq!(format_bytes(1536), "1.5 KB");
     }
+
+    #[test]
+    fn test_system_info_collect() {
+        use clap::Parser;
+        let cli = Cli::try_parse_from(["retch"]).unwrap();
+        let config = Config::default();
+        let res = SystemInfo::collect(&cli, &config);
+        assert!(res.is_ok());
+        let info = res.unwrap();
+        assert!(!info.os.is_empty());
+        assert!(info.cpu_cores > 0);
+    }
 }

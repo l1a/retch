@@ -7,7 +7,12 @@
 - **License**: GPLv3
 - **Repository**: https://github.com/l1a/retch
 
-## Current State (v0.2.4)
+## Development Guidelines
+- **Man Pages**: Do NOT edit `docs/retch.1` directly. It is generated from `docs/retch.1.md` using pandoc via the `just man` command. The version number in the man page is dynamically extracted from `Cargo.toml`. Always run `just man` after updating the package version.
+- **Quality & Linting**: Use `just check` to run formatting (`cargo fmt -- --check`) and linting (`cargo clippy -- -D warnings`) checks locally before committing. This matches the checks performed in the CI/CD pipeline.
+
+## Current State (v0.2.5)
+- **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated component.
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
@@ -21,6 +26,11 @@
 - **Network**: Added local IPv4 and larger-scoped IPv6 address display for all "Up" interfaces with loopback and link-local filtering.
 
 ## Major Achievements
+
+### v0.2.5 - Concurrent System Info Fetching (May 26, 2026)
+- **Parallelization**: Refactored the core system info fetching pipeline to execute slow external processes and queries (GPU detection, package counting, local/public IP resolving, and active network interface detection) concurrently using scoped threads (`std::thread::scope`).
+- **Performance**: Boosted CLI responsiveness, reducing overall rendering blockages from sequential external calls.
+- **Version**: Bumped version to `0.2.5` in `Cargo.toml`, `docs/retch.1`, and `AGENTS.md`.
 
 ### v0.2.4 - Multi-Arch CI/CD and Release (May 25, 2026)
 - **CI/CD Matrix**: Expanded GitHub Actions workflow to run debug builds and tests across 7 platform architectures: Ubuntu x86_64/ARM, Fedora x86_64/ARM, macOS ARM, and Windows x86_64/ARM.
@@ -121,4 +131,4 @@
 2. **UX Polish** — Refine error messages and performance of slow platform queries.
 
 ---
-*Last updated: May 24, 2026*
+*Last updated: May 26, 2026*
