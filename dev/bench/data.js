@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779827456287,
+  "lastUpdate": 1779828226838,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -77,6 +77,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2346709.3797579617,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c858cd2aa603af4ca157d74c6a04bce861cb3fab",
+          "message": "Merge pull request #42 from l1a/chore/update-agents-md\n\nUpdate AGENTS.md achievements for v0.2.6",
+          "timestamp": "2026-05-26T13:40:00-07:00",
+          "tree_id": "1fabb7a41d3cfe7afa7ce47ca76cc0257ef6d9b5",
+          "url": "https://github.com/l1a/retch/commit/c858cd2aa603af4ca157d74c6a04bce861cb3fab"
+        },
+        "date": 1779828225987,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 11041775.799999999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 162226244.60000005,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 159557624.725,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2351704.5231943275,
             "unit": "ns"
           }
         ]
