@@ -30,8 +30,8 @@
 ## Major Achievements
 
 ### v0.2.6 - Benchmarking Infrastructure (May 26, 2026)
-- **Benchmarking**: Integrated criterion micro-benchmarks for core subsystems and hyperfine CLI benchmarking recipes.
-- **CI/CD**: Established continuous benchmarking workflow with GitHub Actions and automated GitHub Pages dashboard hosting.
+- **Benchmarking**: Integrated criterion micro-benchmarks for core subsystems, hyperfine CLI benchmarking recipes, and fastfetch execution speed comparisons.
+- **CI/CD**: Established continuous benchmarking workflow with GitHub Actions and automated GitHub Pages dashboard hosting, incorporating live CLI comparison tracking against fastfetch.
 - **Version**: Bumped version to `0.2.6` in `Cargo.toml`, `docs/retch.1`, and documentation.
 
 ### v0.2.5 - Concurrent System Info Fetching (May 26, 2026)
