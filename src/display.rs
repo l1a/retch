@@ -223,25 +223,14 @@ impl SystemInfo {
         }
 
         if should_show("Net") {
-            let mut shown_active = false;
-            for net in &self.networks {
-                if let Some(ref active) = self.active_interface {
-                    if net.contains(active) {
-                        print_line("Net", &net.bright_blue().to_string());
-                        shown_active = true;
-                    }
-                }
-            }
-            if cli.short {
-                if !shown_active {
-                    for net in &self.networks {
-                        if net.contains("[Up]") {
-                            print_line("Net", net);
-                            break;
+            if cli.long {
+                for net in &self.networks {
+                    if let Some(ref active) = self.active_interface {
+                        if net.contains(active) {
+                            print_line("Net", &net.bright_blue().to_string());
                         }
                     }
                 }
-            } else {
                 for net in &self.networks {
                     if let Some(ref active) = self.active_interface {
                         if net.contains(active) {
@@ -249,6 +238,25 @@ impl SystemInfo {
                         }
                     }
                     print_line("Net", net);
+                }
+            } else {
+                let mut printed = false;
+                if let Some(ref active) = self.active_interface {
+                    for net in &self.networks {
+                        if net.contains(active) {
+                            print_line("Net", net);
+                            printed = true;
+                            break;
+                        }
+                    }
+                }
+                if !printed {
+                    for net in &self.networks {
+                        if net.contains("[Up]") {
+                            print_line("Net", net);
+                            break;
+                        }
+                    }
                 }
             }
         }

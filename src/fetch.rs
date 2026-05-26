@@ -121,7 +121,7 @@ impl SystemInfo {
         let uptime = format!("{}s", System::uptime());
 
         let disks_list = Disks::new_with_refreshed_list();
-        let disks: Vec<String> = if _cli.short {
+        let disks: Vec<String> = if !_cli.long {
             let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("/"));
             let mut best_match: Option<&sysinfo::Disk> = None;
             for disk in disks_list.iter() {
