@@ -174,6 +174,7 @@ const DEFAULT_LOGO_BLOCK: &str = r##"# Force a specific distribution logo by nam
 const DEFAULT_FIELDS_BLOCK: &str = r##"# List of fields to display (leave empty or omit to show all)
 # fields = [
 #     "os", "kernel", "host", "arch", "cpu", "cpu-freq", "gpu",
+#     "motherboard", "bios", "display",
 #     "memory", "swap", "uptime", "procs", "load",
 #     "disk", "temp", "net", "battery",
 #     "shell", "terminal", "desktop", "users", "packages"
