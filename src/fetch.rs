@@ -74,6 +74,12 @@ pub struct SystemInfo {
     pub public_ip: Option<String>,
     /// Name of the active/default network interface.
     pub active_interface: Option<String>,
+    /// Detected motherboard name and manufacturer.
+    pub motherboard: Option<String>,
+    /// Detected BIOS details.
+    pub bios: Option<String>,
+    /// List of connected display resolutions and refresh rates.
+    pub displays: Vec<String>,
 }
 
 impl SystemInfo {
@@ -214,24 +220,25 @@ impl SystemInfo {
         };
 
         // Compute slow system queries concurrently in parallel threads
-        let (gpu, packages, public_ip, (local_ip, active_interface)) = std::thread::scope(|s| {
-            let gpu_handle = s.spawn(|| {
-                gpu::detect_gpus()
-                    .into_iter()
-                    .map(|g| g.format())
-                    .collect::<Vec<String>>()
-            });
-            let packages_handle = s.spawn(detect_packages);
-            let public_ip_handle = s.spawn(|| {
-                std::process::Command::new("curl")
-                    .args(["-s", "--max-time", "2", "https://api.ipify.org"])
-                    .output()
-                    .ok()
-                    .and_then(|o| String::from_utf8(o.stdout).ok())
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty())
-            });
-            let network_ips_handle = s.spawn(|| {
+        let (gpu, packages, public_ip, (local_ip, active_interface), motherboard, bios, displays) =
+            std::thread::scope(|s| {
+                let gpu_handle = s.spawn(|| {
+                    gpu::detect_gpus()
+                        .into_iter()
+                        .map(|g| g.format())
+                        .collect::<Vec<String>>()
+                });
+                let packages_handle = s.spawn(detect_packages);
+                let public_ip_handle = s.spawn(|| {
+                    std::process::Command::new("curl")
+                        .args(["-s", "--max-time", "2", "https://api.ipify.org"])
+                        .output()
+                        .ok()
+                        .and_then(|o| String::from_utf8(o.stdout).ok())
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                });
+                let network_ips_handle = s.spawn(|| {
                 let local_ip = std::net::UdpSocket::bind("0.0.0.0:0")
                     .ok()
                     .and_then(|socket| {
@@ -286,14 +293,20 @@ impl SystemInfo {
 
                 (local_ip, active_interface)
             });
+                let motherboard_handle = s.spawn(detect_motherboard);
+                let bios_handle = s.spawn(detect_bios);
+                let displays_handle = s.spawn(detect_displays);
 
-            (
-                gpu_handle.join().unwrap_or_default(),
-                packages_handle.join().ok().flatten(),
-                public_ip_handle.join().ok().flatten(),
-                network_ips_handle.join().unwrap_or((None, None)),
-            )
-        });
+                (
+                    gpu_handle.join().unwrap_or_default(),
+                    packages_handle.join().ok().flatten(),
+                    public_ip_handle.join().ok().flatten(),
+                    network_ips_handle.join().unwrap_or((None, None)),
+                    motherboard_handle.join().ok().flatten(),
+                    bios_handle.join().ok().flatten(),
+                    displays_handle.join().unwrap_or_default(),
+                )
+            });
 
         let mut temps: Vec<String> = Components::new_with_refreshed_list()
             .iter()
@@ -446,6 +459,9 @@ impl SystemInfo {
             local_ip,
             public_ip,
             active_interface,
+            motherboard,
+            bios,
+            displays,
         })
     }
 }
@@ -585,6 +601,582 @@ fn detect_packages() -> Option<usize> {
     }
 }
 
+fn detect_motherboard() -> Option<String> {
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(output) = std::process::Command::new("sysctl")
+            .args(["-n", "hw.model"])
+            .output()
+        {
+            if let Ok(model) = String::from_utf8(output.stdout) {
+                let trimmed = model.trim();
+                if !trimmed.is_empty() {
+                    return Some(trimmed.to_string());
+                }
+            }
+        }
+        None
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(output) = std::process::Command::new("wmic")
+            .args(["baseboard", "get", "manufacturer,product", "/value"])
+            .output()
+        {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                let mut manufacturer = String::new();
+                let mut product = String::new();
+                for line in stdout.lines() {
+                    let line = line.trim();
+                    if line.starts_with("Manufacturer=") {
+                        manufacturer = line
+                            .strip_prefix("Manufacturer=")
+                            .unwrap_or("")
+                            .trim()
+                            .to_string();
+                    } else if line.starts_with("Product=") {
+                        product = line
+                            .strip_prefix("Product=")
+                            .unwrap_or("")
+                            .trim()
+                            .to_string();
+                    }
+                }
+                if !manufacturer.is_empty() && !product.is_empty() {
+                    return Some(format!("{} {}", manufacturer, product));
+                } else if !product.is_empty() {
+                    return Some(product);
+                } else if !manufacturer.is_empty() {
+                    return Some(manufacturer);
+                }
+            }
+        }
+        None
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let vendor = std::fs::read_to_string("/sys/class/dmi/id/board_vendor")
+            .map(|s| s.trim().to_string())
+            .ok();
+        let name = std::fs::read_to_string("/sys/class/dmi/id/board_name")
+            .map(|s| s.trim().to_string())
+            .ok();
+
+        match (vendor, name) {
+            (Some(v), Some(n)) if !v.is_empty() && !n.is_empty() => {
+                if n.starts_with(&v) {
+                    Some(n)
+                } else {
+                    Some(format!("{} {}", v, n))
+                }
+            }
+            (Some(v), _) if !v.is_empty() => Some(v),
+            (_, Some(n)) if !n.is_empty() => Some(n),
+            _ => None,
+        }
+    }
+}
+
+fn detect_bios() -> Option<String> {
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(output) = std::process::Command::new("system_profiler")
+            .arg("SPHardwareDataType")
+            .output()
+        {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                for line in stdout.lines() {
+                    let line = line.trim();
+                    if line.starts_with("System Firmware Version:")
+                        || line.starts_with("Boot ROM Version:")
+                    {
+                        if let Some(val) = line.split(':').nth(1) {
+                            return Some(val.trim().to_string());
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(output) = std::process::Command::new("wmic")
+            .args([
+                "bios",
+                "get",
+                "manufacturer,smbiosbiosversion,releasedate",
+                "/value",
+            ])
+            .output()
+        {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                let mut manufacturer = String::new();
+                let mut version = String::new();
+                let mut date = String::new();
+                for line in stdout.lines() {
+                    let line = line.trim();
+                    if line.starts_with("Manufacturer=") {
+                        manufacturer = line
+                            .strip_prefix("Manufacturer=")
+                            .unwrap_or("")
+                            .trim()
+                            .to_string();
+                    } else if line.starts_with("SMBIOSBIOSVersion=") {
+                        version = line
+                            .strip_prefix("SMBIOSBIOSVersion=")
+                            .unwrap_or("")
+                            .trim()
+                            .to_string();
+                    } else if line.starts_with("ReleaseDate=") {
+                        let raw_date = line.strip_prefix("ReleaseDate=").unwrap_or("").trim();
+                        if raw_date.len() >= 8 {
+                            let year = &raw_date[0..4];
+                            let month = &raw_date[4..6];
+                            let day = &raw_date[6..8];
+                            date = format!("{}/{}/{}", month, day, year);
+                        } else {
+                            date = raw_date.to_string();
+                        }
+                    }
+                }
+
+                let mut parts = Vec::new();
+                if !manufacturer.is_empty() {
+                    parts.push(manufacturer);
+                }
+                if !version.is_empty() {
+                    parts.push(version);
+                }
+                let mut res = parts.join(" ");
+                if !date.is_empty() {
+                    if res.is_empty() {
+                        res = date;
+                    } else {
+                        res = format!("{} ({})", res, date);
+                    }
+                }
+                if !res.is_empty() {
+                    return Some(res);
+                }
+            }
+        }
+        None
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let vendor = std::fs::read_to_string("/sys/class/dmi/id/bios_vendor")
+            .map(|s| s.trim().to_string())
+            .ok();
+        let version = std::fs::read_to_string("/sys/class/dmi/id/bios_version")
+            .map(|s| s.trim().to_string())
+            .ok();
+        let date = std::fs::read_to_string("/sys/class/dmi/id/bios_date")
+            .map(|s| s.trim().to_string())
+            .ok();
+
+        let mut parts = Vec::new();
+        if let Some(v) = vendor {
+            if !v.is_empty() {
+                parts.push(v);
+            }
+        }
+        if let Some(ver) = version {
+            let mut ver_cleaned = ver;
+            while ver_cleaned.contains(" )") {
+                ver_cleaned = ver_cleaned.replace(" )", ")");
+            }
+            let ver_cleaned = ver_cleaned.trim().to_string();
+            if !ver_cleaned.is_empty() {
+                parts.push(ver_cleaned);
+            }
+        }
+        let mut res = parts.join(" ");
+        if let Some(d) = date {
+            if !d.is_empty() {
+                if res.is_empty() {
+                    res = d;
+                } else {
+                    res = format!("{} ({})", res, d);
+                }
+            }
+        }
+        if !res.is_empty() {
+            Some(res)
+        } else {
+            None
+        }
+    }
+}
+
+#[allow(dead_code)]
+fn parse_monitor_name_from_edid(edid: &[u8]) -> Option<String> {
+    if edid.len() < 128 {
+        return None;
+    }
+    let offsets = [54, 72, 90, 108];
+    for &offset in &offsets {
+        if offset + 18 <= edid.len() {
+            let block = &edid[offset..offset + 18];
+            if block[0] == 0x00 && block[1] == 0x00 && block[2] == 0x00 && block[3] == 0xFC {
+                let name_bytes = &block[4..17];
+                let name = String::from_utf8_lossy(name_bytes);
+                let cleaned = name.trim().replace('\0', "").to_string();
+                if !cleaned.is_empty() {
+                    return Some(cleaned);
+                }
+            }
+        }
+    }
+    None
+}
+
+#[allow(dead_code)]
+fn parse_refresh_rate_from_edid(edid: &[u8]) -> Option<f64> {
+    if edid.len() < 72 {
+        return None;
+    }
+    let block = &edid[54..72];
+    let pixel_clock = ((block[1] as u32) << 8) | (block[0] as u32);
+    if pixel_clock == 0 {
+        return None;
+    }
+    let pixel_clock_hz = pixel_clock * 10_000;
+    let h_active = (block[2] as u32) | (((block[4] as u32) & 0xF0) << 4);
+    let h_blanking = (block[3] as u32) | (((block[4] as u32) & 0x0F) << 8);
+    let v_active = (block[5] as u32) | (((block[7] as u32) & 0xF0) << 4);
+    let v_blanking = (block[6] as u32) | (((block[7] as u32) & 0x0F) << 8);
+
+    let h_total = h_active + h_blanking;
+    let v_total = v_active + v_blanking;
+    if h_total == 0 || v_total == 0 {
+        return None;
+    }
+
+    let refresh = (pixel_clock_hz as f64) / ((h_total * v_total) as f64);
+    Some((refresh * 100.0).round() / 100.0)
+}
+
+#[allow(dead_code)]
+fn format_refresh_rate(refresh: f64) -> String {
+    if (refresh - refresh.round()).abs() < 0.01 {
+        format!("{:.0}", refresh)
+    } else {
+        format!("{:.2}", refresh)
+    }
+}
+
+#[allow(dead_code)]
+fn parse_serial_number_from_edid(edid: &[u8]) -> Option<String> {
+    if edid.len() < 128 {
+        return None;
+    }
+    // 1. Try finding ASCII Serial Number descriptor block (tag 0xFF)
+    let offsets = [54, 72, 90, 108];
+    for &offset in &offsets {
+        if offset + 18 <= edid.len() {
+            let block = &edid[offset..offset + 18];
+            if block[0] == 0x00 && block[1] == 0x00 && block[2] == 0x00 && block[3] == 0xFF {
+                let serial_bytes = &block[4..17];
+                let serial = String::from_utf8_lossy(serial_bytes);
+                let cleaned = serial.trim().replace('\0', "").to_string();
+                if !cleaned.is_empty() {
+                    return Some(cleaned);
+                }
+            }
+        }
+    }
+
+    // 2. Fallback to the 32-bit numeric serial number at offset 12-15
+    let serial_num = ((edid[15] as u32) << 24)
+        | ((edid[14] as u32) << 16)
+        | ((edid[13] as u32) << 8)
+        | (edid[12] as u32);
+    if serial_num != 0 && serial_num != 0xFFFFFFFF {
+        return Some(serial_num.to_string());
+    }
+
+    None
+}
+
+#[allow(dead_code)]
+fn get_monitor_name_for_port(port: &str) -> Option<String> {
+    if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.ends_with(port) {
+                let edid_path = entry.path().join("edid");
+                if edid_path.exists() {
+                    if let Ok(edid_bytes) = std::fs::read(&edid_path) {
+                        if let Some(monitor_name) = parse_monitor_name_from_edid(&edid_bytes) {
+                            return Some(monitor_name);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn detect_displays() -> Vec<String> {
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(output) = std::process::Command::new("system_profiler")
+            .arg("SPDisplaysDataType")
+            .output()
+        {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                return parse_macos_displays(&stdout);
+            }
+        }
+        Vec::new()
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let mut displays = Vec::new();
+        if let Ok(output) = std::process::Command::new("wmic")
+            .args([
+                "path",
+                "Win32_VideoController",
+                "get",
+                "Name,CurrentHorizontalResolution,CurrentVerticalResolution,CurrentRefreshRate",
+                "/value",
+            ])
+            .output()
+        {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                let mut name = String::new();
+                let mut width = String::new();
+                let mut height = String::new();
+                let mut refresh = String::new();
+                for line in stdout.lines() {
+                    let line = line.trim();
+                    if line.starts_with("Name=") {
+                        name = line.strip_prefix("Name=").unwrap_or("").trim().to_string();
+                    } else if line.starts_with("CurrentHorizontalResolution=") {
+                        width = line
+                            .strip_prefix("CurrentHorizontalResolution=")
+                            .unwrap_or("")
+                            .trim()
+                            .to_string();
+                    } else if line.starts_with("CurrentVerticalResolution=") {
+                        height = line
+                            .strip_prefix("CurrentVerticalResolution=")
+                            .unwrap_or("")
+                            .trim()
+                            .to_string();
+                    } else if line.starts_with("CurrentRefreshRate=") {
+                        refresh = line
+                            .strip_prefix("CurrentRefreshRate=")
+                            .unwrap_or("")
+                            .trim()
+                            .to_string();
+                    }
+
+                    if !name.is_empty()
+                        && !width.is_empty()
+                        && !height.is_empty()
+                        && !refresh.is_empty()
+                    {
+                        displays.push(format!("{} ({}x{} @ {}Hz)", name, width, height, refresh));
+                        name.clear();
+                        width.clear();
+                        height.clear();
+                        refresh.clear();
+                    }
+                }
+                if !name.is_empty() && !width.is_empty() && !height.is_empty() {
+                    displays.push(format!("{} ({}x{})", name, width, height));
+                }
+            }
+        }
+        displays
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let mut displays = Vec::new();
+
+        if let Ok(output) = std::process::Command::new("xrandr")
+            .arg("--current")
+            .output()
+        {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                displays = parse_xrandr_displays(&stdout);
+            }
+        }
+
+        if displays.is_empty() {
+            if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let path = entry.path();
+                    let status_path = path.join("status");
+                    let modes_path = path.join("modes");
+                    let edid_path = path.join("edid");
+                    if status_path.exists() && modes_path.exists() {
+                        if let Ok(status) = std::fs::read_to_string(&status_path) {
+                            if status.trim() == "connected" {
+                                if let Ok(modes) = std::fs::read_to_string(&modes_path) {
+                                    if let Some(first_mode) = modes.lines().next() {
+                                        let res = first_mode.trim().to_string();
+                                        let port = entry.file_name().to_string_lossy().to_string();
+                                        let clean_port = if let Some(idx) = port.find('-') {
+                                            port[idx + 1..].to_string()
+                                        } else {
+                                            port
+                                        };
+
+                                        let edid_bytes = if edid_path.exists() {
+                                            std::fs::read(&edid_path).ok()
+                                        } else {
+                                            None
+                                        };
+
+                                        let name = edid_bytes
+                                            .as_ref()
+                                            .and_then(|bytes| parse_monitor_name_from_edid(bytes))
+                                            .unwrap_or(clean_port);
+
+                                        let refresh = edid_bytes
+                                            .as_ref()
+                                            .and_then(|bytes| parse_refresh_rate_from_edid(bytes));
+
+                                        let serial = edid_bytes
+                                            .as_ref()
+                                            .and_then(|bytes| parse_serial_number_from_edid(bytes));
+
+                                        let display_name = if let Some(ref s) = serial {
+                                            format!("{} #{}", name, s)
+                                        } else {
+                                            name
+                                        };
+
+                                        if let Some(r) = refresh {
+                                            displays.push(format!(
+                                                "{} ({} @ {}Hz)",
+                                                display_name,
+                                                res,
+                                                format_refresh_rate(r)
+                                            ));
+                                        } else {
+                                            displays.push(format!("{} ({})", display_name, res));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        displays
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn parse_macos_displays(stdout: &str) -> Vec<String> {
+    let mut displays = Vec::new();
+    let mut current_name = None;
+    let mut current_res = None;
+    let mut in_displays = false;
+
+    for line in stdout.lines() {
+        let trimmed = line.trim();
+        let indent = line.len() - line.trim_start().len();
+
+        if trimmed.starts_with("Displays:") {
+            in_displays = true;
+            continue;
+        }
+
+        if in_displays {
+            if indent < 8 && !trimmed.is_empty() && !trimmed.starts_with("Displays:") {
+                in_displays = false;
+                continue;
+            }
+
+            if trimmed.ends_with(':') && !trimmed.starts_with("UI Looks like:") {
+                let name = trimmed.trim_end_matches(':').trim().to_string();
+                current_name = Some(name);
+            } else if trimmed.starts_with("Resolution:") {
+                let res = trimmed.strip_prefix("Resolution:").unwrap_or("").trim();
+                let cleaned = res.replace(" ", "");
+                current_res = Some(cleaned);
+            } else if trimmed.starts_with("UI Looks like:") {
+                if let Some(res) = current_res.take() {
+                    let name_str = current_name.take().unwrap_or_else(|| "Display".to_string());
+                    if let Some(idx) = trimmed.find('@') {
+                        let freq = trimmed[idx..].trim();
+                        let freq_clean = freq.replace(" ", "").replace(".00", "");
+                        displays.push(format!(
+                            "{} ({} @ {})",
+                            name_str,
+                            res,
+                            freq_clean.trim_start_matches('@')
+                        ));
+                    } else {
+                        displays.push(format!("{} ({})", name_str, res));
+                    }
+                }
+            }
+        }
+    }
+    if let Some(res) = current_res {
+        let name_str = current_name.unwrap_or_else(|| "Display".to_string());
+        displays.push(format!("{} ({})", name_str, res));
+    }
+    displays
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn parse_xrandr_displays(stdout: &str) -> Vec<String> {
+    let mut displays = Vec::new();
+    let mut current_display = None;
+    let mut current_port = None;
+    for line in stdout.lines() {
+        let line = line.trim();
+        if line.contains(" connected ") {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if let Some(&port) = parts.first() {
+                current_port = Some(port.to_string());
+            }
+            for part in parts {
+                if part.contains('x') && part.contains('+') {
+                    if let Some(res) = part.split('+').next() {
+                        current_display = Some(res.to_string());
+                    }
+                }
+            }
+        } else if line.contains('*') {
+            if let Some(res) = current_display.take() {
+                let port = current_port.take().unwrap_or_default();
+                let name = get_monitor_name_for_port(&port).unwrap_or_else(|| port.clone());
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                let mut added = false;
+                for part in parts {
+                    if part.contains('*') {
+                        let freq = part.trim_end_matches(['*', '+']);
+                        displays.push(format!("{} ({} @ {}Hz)", name, res, freq));
+                        added = true;
+                        break;
+                    }
+                }
+                if !added {
+                    displays.push(format!("{} ({})", name, res));
+                }
+            }
+        }
+    }
+    displays
+}
+
 /// Format bytes into human-readable form (KB, MB, GB, etc.)
 fn format_bytes(bytes: u64) -> String {
     const KB: u64 = 1024;
@@ -625,5 +1217,78 @@ mod tests {
         let info = res.unwrap();
         assert!(!info.os.is_empty());
         assert!(info.cpu_cores > 0);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_parse_macos_displays() {
+        let sample = "Graphics/Displays:\n\n    Apple M2:\n\n      Chipset Model: Apple M2\n      Displays:\n        Color LCD:\n          Resolution: 3024 x 1964\n          UI Looks like: 1512 x 982 @ 60.00Hz\n";
+        let parsed = parse_macos_displays(sample);
+        assert_eq!(parsed, vec!["Color LCD (3024x1964 @ 60Hz)".to_string()]);
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    #[test]
+    fn test_parse_xrandr_displays() {
+        let sample = "Screen 0: minimum 320 x 200, current 2560 x 1440\nDP-1 connected primary 2560x1440+0+0\n   2560x1440     143.97*+\n   1920x1080     60.00\n";
+        let parsed = parse_xrandr_displays(sample);
+        assert_eq!(parsed, vec!["DP-1 (2560x1440 @ 143.97Hz)".to_string()]);
+    }
+
+    #[test]
+    fn test_parse_refresh_rate_from_edid() {
+        // Construct a mock EDID block with a DTD at byte 54
+        let mut edid = vec![0u8; 128];
+        // Pixel clock = 14850 -> 0x3A02 (in 10 kHz units -> 148.5 MHz)
+        edid[54] = 0x02;
+        edid[55] = 0x3A;
+        // H Active = 1920 (0x780), H Blanking = 280 (0x118)
+        edid[56] = 0x80; // Low 8 bits of H Active
+        edid[57] = 0x18; // Low 8 bits of H Blanking
+        edid[58] = 0x71; // High 4 bits: H Active (7), H Blanking (1)
+                         // V Active = 1080 (0x438), V Blanking = 45 (0x2D)
+        edid[59] = 0x38; // Low 8 bits of V Active
+        edid[60] = 0x2D; // Low 8 bits of V Blanking
+        edid[61] = 0x40; // High 4 bits: V Active (4), V Blanking (0)
+
+        let refresh = parse_refresh_rate_from_edid(&edid);
+        assert!(refresh.is_some());
+        // 148,500,000 / ((1920 + 280) * (1080 + 45)) = 60 Hz
+        assert_eq!(refresh.unwrap(), 60.0);
+    }
+
+    #[test]
+    fn test_format_refresh_rate() {
+        assert_eq!(format_refresh_rate(60.0), "60");
+        assert_eq!(format_refresh_rate(59.94), "59.94");
+        assert_eq!(format_refresh_rate(143.971), "143.97");
+    }
+
+    #[test]
+    fn test_parse_serial_number_from_edid() {
+        let mut edid = vec![0u8; 128];
+        // 1. Test fallback 32-bit numeric serial
+        edid[12] = 0x78;
+        edid[13] = 0x56;
+        edid[14] = 0x34;
+        edid[15] = 0x12; // 0x12345678 = 305419896
+        assert_eq!(
+            parse_serial_number_from_edid(&edid),
+            Some("305419896".to_string())
+        );
+
+        // 2. Test ASCII Monitor Serial Number descriptor block (tag 0xFF) at offset 72
+        edid[72] = 0x00;
+        edid[73] = 0x00;
+        edid[74] = 0x00;
+        edid[75] = 0xFF; // ASCII Serial Number descriptor tag
+        let serial_str = b"CN0123456789\n";
+        for i in 0..serial_str.len() {
+            edid[76 + i] = serial_str[i];
+        }
+        assert_eq!(
+            parse_serial_number_from_edid(&edid),
+            Some("CN0123456789".to_string())
+        );
     }
 }

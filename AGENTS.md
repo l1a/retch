@@ -10,10 +10,15 @@
 ## Development Guidelines
 - **Man Pages**: Do NOT edit `docs/retch.1` directly. It is generated from `docs/retch.1.md` using pandoc via the `just man` command. The version number in the man page is dynamically extracted from `Cargo.toml`. Always run `just man` after updating the package version.
 - **Quality & Linting**: Use `just check` to run formatting (`cargo fmt -- --check`) and linting (`cargo clippy -- -D warnings`) checks locally before committing. This matches the checks performed in the CI/CD pipeline.
+- **Verification Routine**: Before proposing a push or Pull Request, always verify:
+  1. All new and existing unit/integration tests cover changes.
+  2. All documentation (including `README.md` and man files) matches the current features.
+  3. Default configuration templates (like `default_config_content()` in `src/main.rs`) and comment lists are fully updated with new options.
+- **Command Redundancy**: Avoid running `just check && cargo test` sequentially since both build and check the project profiles, causing redundant background compilation cycles. Prefer `cargo test` during iteration and a final check before staging.
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 
-## Current State (v0.2.6)
-- **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface) concurrently using scoped threads.
+## Current State (v0.2.7)
+- **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays) concurrently using scoped threads.
 - **Benchmarking**: Criterion micro-benchmarks for core subsystems, hyperfine CLI recipes for cross-tool comparison, and continuous benchmarking CI with GitHub Pages dashboard.
 - **Architecture**: Modularized GPU detection into a dedicated component.
 - **Visuals**: Added leading newline to output for better separation.
@@ -28,6 +33,13 @@
 - **Network**: Added local IPv4 and larger-scoped IPv6 address display for all "Up" interfaces with loopback and link-local filtering.
 
 ## Major Achievements
+
+### v0.2.7 - Motherboard, BIOS, and Display Support (May 26, 2026)
+- **Hardware Info**: Integrated Motherboard, BIOS, and connected Display queries into the parallel fetching pipeline.
+- **BIOS Formatting**: Cleans whitespace formatting for BIOS version strings (e.g. `R2FET68W (1.48 )` -> `R2FET68W (1.48)`).
+- **Display Resolution & Refresh Rates**: Implemented a raw EDID parser to read monitor names, preferred resolutions, and compute refresh rates natively from the Detailed Timing Descriptor (DTD) block on Linux.
+- **Unique Identification**: Display outputs differentiate multiple monitors of the same model by appending unique serial numbers parsed from EDID (e.g. `DELL S3422DW #HXZ50M3`).
+- **Version**: Bumped version to `0.2.7` in `Cargo.toml`, `docs/retch.1`, and documentation.
 
 ### v0.2.6 - Benchmarking Infrastructure (May 26, 2026)
 - **Benchmarking**: Integrated criterion micro-benchmarks for core subsystems, hyperfine CLI benchmarking recipes, and fastfetch execution speed comparisons.
@@ -131,6 +143,26 @@
 - `image` + `base64` — Graphical logo processing
 - `rusqlite` — RPM package counting
 - `chrono` — Date/time formatting
+
+## Feature Gap with Fastfetch
+
+Below is a comparison of information gathered by `fastfetch` that is currently missing in `retch`:
+
+### Hardware & Hardware Specs
+- **Motherboard**: Vendor, model name, and version (e.g., `ASUS ROG STRIX B550-F`).
+- **BIOS**: Vendor, version, and release date.
+- **Display / Screens**: Connected display resolutions, refresh rates, and screen sizes (e.g., `2560x1440 @ 144Hz`).
+- **Camera / Webcam**: Connected webcam names.
+- **Gamepad / Controllers**: Connected controller/input device names.
+- **Audio / Sound card**: Active audio drivers and devices (e.g., PipeWire/PulseAudio/ALSA).
+
+### Network
+- **Wi-Fi SSID & Bluetooth**: Wi-Fi network SSID, speeds, and Bluetooth status/connected devices.
+
+### Desktop Environment & UI
+- **Shell Version**: Shell version number (e.g., `bash 5.2.15` instead of `/bin/bash`).
+- **UI Theme & Fonts**: GTK/Qt themes, icon themes, cursor themes, and system fonts.
+- **Terminal Font**: Font name and size configured in the terminal emulator.
 
 ## Next Steps
 

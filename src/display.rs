@@ -137,7 +137,10 @@ impl SystemInfo {
                 "kernel".to_string(),
                 "host".to_string(),
                 "cpu".to_string(),
+                "motherboard".to_string(),
+                "bios".to_string(),
                 "gpu".to_string(),
+                "display".to_string(),
                 "memory".to_string(),
                 "swap".to_string(),
                 "load".to_string(),
@@ -183,9 +186,20 @@ impl SystemInfo {
         if let Some(freq) = &self.cpu_freq {
             print_line("CPU Freq", freq);
         }
+        if let Some(motherboard) = &self.motherboard {
+            print_line("Motherboard", motherboard);
+        }
+        if let Some(bios) = &self.bios {
+            print_line("BIOS", bios);
+        }
         if should_show("GPU") {
             for gpu in &self.gpu {
                 print_line("GPU", gpu);
+            }
+        }
+        if should_show("Display") {
+            for display in &self.displays {
+                print_line("Display", display);
             }
         }
         print_line("Memory", &self.memory);
