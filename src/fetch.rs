@@ -120,21 +120,61 @@ impl SystemInfo {
 
         let uptime = format!("{}s", System::uptime());
 
-        let disks = Disks::new_with_refreshed_list()
-            .iter()
-            .map(|d| {
-                let total = d.total_space() as f64 / 1024.0 / 1024.0 / 1024.0;
-                let avail = d.available_space() as f64 / 1024.0 / 1024.0 / 1024.0;
-                let fs = d.file_system().to_string_lossy();
-                format!(
-                    "{} ({}): {:.1} GB free / {:.1} GB",
-                    d.mount_point().display(),
-                    fs,
-                    avail,
-                    total
-                )
-            })
-            .collect();
+        let disks_list = Disks::new_with_refreshed_list();
+        let disks: Vec<String> = if !_cli.long {
+            let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("/"));
+            let mut best_match: Option<&sysinfo::Disk> = None;
+            for disk in disks_list.iter() {
+                if home.starts_with(disk.mount_point()) {
+                    if let Some(best) = best_match {
+                        if disk.mount_point().components().count()
+                            > best.mount_point().components().count()
+                        {
+                            best_match = Some(disk);
+                        }
+                    } else {
+                        best_match = Some(disk);
+                    }
+                }
+            }
+            let selected_disks = if let Some(best) = best_match {
+                vec![best]
+            } else {
+                disks_list.iter().collect::<Vec<_>>()
+            };
+
+            selected_disks
+                .iter()
+                .map(|d| {
+                    let total = d.total_space() as f64 / 1024.0 / 1024.0 / 1024.0;
+                    let avail = d.available_space() as f64 / 1024.0 / 1024.0 / 1024.0;
+                    let fs = d.file_system().to_string_lossy();
+                    format!(
+                        "{} ({}): {:.1} GB free / {:.1} GB",
+                        d.mount_point().display(),
+                        fs,
+                        avail,
+                        total
+                    )
+                })
+                .collect()
+        } else {
+            disks_list
+                .iter()
+                .map(|d| {
+                    let total = d.total_space() as f64 / 1024.0 / 1024.0 / 1024.0;
+                    let avail = d.available_space() as f64 / 1024.0 / 1024.0 / 1024.0;
+                    let fs = d.file_system().to_string_lossy();
+                    format!(
+                        "{} ({}): {:.1} GB free / {:.1} GB",
+                        d.mount_point().display(),
+                        fs,
+                        avail,
+                        total
+                    )
+                })
+                .collect()
+        };
 
         let battery = battery::Manager::new()
             .ok()

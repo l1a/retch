@@ -127,6 +127,7 @@ impl SystemInfo {
                 "gpu".to_string(),
                 "memory".to_string(),
                 "disk".to_string(),
+                "net".to_string(),
             ])
         } else if let Some(fields) = &_config.fields {
             Some(fields.iter().map(|s| s.to_lowercase()).collect())
@@ -222,15 +223,41 @@ impl SystemInfo {
         }
 
         if should_show("Net") {
-            for net in &self.networks {
-                if let Some(ref active) = self.active_interface {
-                    if net.contains(active) {
-                        // Highlight active interface by coloring the value
-                        print_line("Net", &net.bright_blue().to_string());
-                        continue;
+            if cli.long {
+                for net in &self.networks {
+                    if let Some(ref active) = self.active_interface {
+                        if net.contains(active) {
+                            print_line("Net", &net.bright_blue().to_string());
+                        }
                     }
                 }
-                print_line("Net", net);
+                for net in &self.networks {
+                    if let Some(ref active) = self.active_interface {
+                        if net.contains(active) {
+                            continue;
+                        }
+                    }
+                    print_line("Net", net);
+                }
+            } else {
+                let mut printed = false;
+                if let Some(ref active) = self.active_interface {
+                    for net in &self.networks {
+                        if net.contains(active) {
+                            print_line("Net", net);
+                            printed = true;
+                            break;
+                        }
+                    }
+                }
+                if !printed {
+                    for net in &self.networks {
+                        if net.contains("[Up]") {
+                            print_line("Net", net);
+                            break;
+                        }
+                    }
+                }
             }
         }
 
