@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779833021483,
+  "lastUpdate": 1779835683230,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -165,6 +165,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2586147.3306980086,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "06eb56fea9214c9dabd49f010dc3494284fa03de",
+          "message": "Merge pull request #44 from l1a/feature/short-mode-refinement\n\nRefine short display option for disk and network",
+          "timestamp": "2026-05-26T15:44:26-07:00",
+          "tree_id": "8de64dff1d476ebeff11f3164090bc5d4074e3d5",
+          "url": "https://github.com/l1a/retch/commit/06eb56fea9214c9dabd49f010dc3494284fa03de"
+        },
+        "date": 1779835682719,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 11673084.12,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 135929184.02,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 132574546.325,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2507414.1972738644,
             "unit": "ns"
           }
         ]
