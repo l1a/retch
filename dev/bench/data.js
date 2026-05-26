@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779835683230,
+  "lastUpdate": 1779837232813,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -209,6 +209,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2507414.1972738644,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "56c4fa6f5fe9d61587993f4c1cd11ed0364c12e2",
+          "message": "Update AGENTS.md with tagging guideline",
+          "timestamp": "2026-05-26T16:10:03-07:00",
+          "tree_id": "f2b2807bee878e22fa1c7ec8c76abd85cb1c62b1",
+          "url": "https://github.com/l1a/retch/commit/56c4fa6f5fe9d61587993f4c1cd11ed0364c12e2"
+        },
+        "date": 1779837232037,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 11178821.46,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 155202417.66000003,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 151979790.8875,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2543744.362172957,
             "unit": "ns"
           }
         ]
