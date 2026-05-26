@@ -689,11 +689,9 @@ fn detect_bios() -> Option<String> {
             if let Ok(stdout) = String::from_utf8(output.stdout) {
                 for line in stdout.lines() {
                     let line = line.trim();
-                    if line.starts_with("System Firmware Version:") {
-                        if let Some(val) = line.split(':').nth(1) {
-                            return Some(val.trim().to_string());
-                        }
-                    } else if line.starts_with("Boot ROM Version:") {
+                    if line.starts_with("System Firmware Version:")
+                        || line.starts_with("Boot ROM Version:")
+                    {
                         if let Some(val) = line.split(':').nth(1) {
                             return Some(val.trim().to_string());
                         }
@@ -815,6 +813,7 @@ fn detect_bios() -> Option<String> {
     }
 }
 
+#[allow(dead_code)]
 fn parse_monitor_name_from_edid(edid: &[u8]) -> Option<String> {
     if edid.len() < 128 {
         return None;
@@ -836,6 +835,7 @@ fn parse_monitor_name_from_edid(edid: &[u8]) -> Option<String> {
     None
 }
 
+#[allow(dead_code)]
 fn parse_refresh_rate_from_edid(edid: &[u8]) -> Option<f64> {
     if edid.len() < 72 {
         return None;
@@ -861,6 +861,7 @@ fn parse_refresh_rate_from_edid(edid: &[u8]) -> Option<f64> {
     Some((refresh * 100.0).round() / 100.0)
 }
 
+#[allow(dead_code)]
 fn format_refresh_rate(refresh: f64) -> String {
     if (refresh - refresh.round()).abs() < 0.01 {
         format!("{:.0}", refresh)
@@ -869,6 +870,7 @@ fn format_refresh_rate(refresh: f64) -> String {
     }
 }
 
+#[allow(dead_code)]
 fn parse_serial_number_from_edid(edid: &[u8]) -> Option<String> {
     if edid.len() < 128 {
         return None;
@@ -901,6 +903,7 @@ fn parse_serial_number_from_edid(edid: &[u8]) -> Option<String> {
     None
 }
 
+#[allow(dead_code)]
 fn get_monitor_name_for_port(port: &str) -> Option<String> {
     if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
         for entry in entries.filter_map(|e| e.ok()) {
