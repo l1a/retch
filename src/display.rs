@@ -127,6 +127,7 @@ impl SystemInfo {
                 "gpu".to_string(),
                 "memory".to_string(),
                 "disk".to_string(),
+                "net".to_string(),
             ])
         } else if let Some(fields) = &_config.fields {
             Some(fields.iter().map(|s| s.to_lowercase()).collect())
@@ -222,15 +223,33 @@ impl SystemInfo {
         }
 
         if should_show("Net") {
+            let mut shown_active = false;
             for net in &self.networks {
                 if let Some(ref active) = self.active_interface {
                     if net.contains(active) {
-                        // Highlight active interface by coloring the value
                         print_line("Net", &net.bright_blue().to_string());
-                        continue;
+                        shown_active = true;
                     }
                 }
-                print_line("Net", net);
+            }
+            if cli.short {
+                if !shown_active {
+                    for net in &self.networks {
+                        if net.contains("[Up]") {
+                            print_line("Net", net);
+                            break;
+                        }
+                    }
+                }
+            } else {
+                for net in &self.networks {
+                    if let Some(ref active) = self.active_interface {
+                        if net.contains(active) {
+                            continue;
+                        }
+                    }
+                    print_line("Net", net);
+                }
             }
         }
 
