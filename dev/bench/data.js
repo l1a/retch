@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779858632914,
+  "lastUpdate": 1779859318289,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -297,6 +297,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2317031.784972074,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0762a0f89acac8e76a50d4326ed6e61ad7aace72",
+          "message": "Merge pull request #46 from l1a/dependabot/github_actions/actions/download-artifact-8\n\nci(deps): bump actions/download-artifact from 4 to 8",
+          "timestamp": "2026-05-26T22:17:54-07:00",
+          "tree_id": "06260cfba2edb3f4efa7a05fe08f7ad00d031072",
+          "url": "https://github.com/l1a/retch/commit/0762a0f89acac8e76a50d4326ed6e61ad7aace72"
+        },
+        "date": 1779859317888,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 10171637.42,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 93321615.42000002,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 92200753.28017905,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2309296.3467873754,
             "unit": "ns"
           }
         ]
