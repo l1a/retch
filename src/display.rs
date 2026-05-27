@@ -154,7 +154,14 @@ impl SystemInfo {
 
         let should_show = |label: &str| -> bool {
             match &allowed_fields {
-                Some(fields) => fields.contains(&label.to_lowercase()),
+                Some(fields) => {
+                    let norm_label = label.to_lowercase().replace(['-', '_'], " ");
+                    let norm_label_no_spaces = norm_label.replace(' ', "");
+                    fields.iter().any(|f| {
+                        let norm_f = f.to_lowercase().replace(['-', '_'], " ");
+                        norm_f == norm_label || norm_f.replace(' ', "") == norm_label_no_spaces
+                    })
+                }
                 None => true,
             }
         };
@@ -267,6 +274,14 @@ impl SystemInfo {
 
         if let Some(ip) = &self.public_ip {
             print_line("Public IP", ip);
+        }
+
+        if let Some(wifi) = &self.wifi {
+            print_line("Wi-Fi", wifi);
+        }
+
+        if let Some(bt) = &self.bluetooth {
+            print_line("Bluetooth", bt);
         }
 
         // Uptime: human duration first, then ISO boot time with timezone

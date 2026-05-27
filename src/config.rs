@@ -177,7 +177,8 @@ const DEFAULT_FIELDS_BLOCK: &str = r##"# List of fields to display (leave empty 
 #     "motherboard", "bios", "display", "audio",
 #     "memory", "swap", "uptime", "procs", "load",
 #     "disk", "temp", "net", "battery",
-#     "shell", "terminal", "desktop", "users", "packages"
+#     "shell", "terminal", "desktop", "users", "packages",
+#     "wifi", "bluetooth"
 # ]"##;
 
 fn contains_key_line(content: &str, key: &str) -> bool {
