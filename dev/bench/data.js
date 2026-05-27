@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779837232813,
+  "lastUpdate": 1779858632914,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -253,6 +253,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2543744.362172957,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7e4adb3de7e56f613968290325f370d24d449f15",
+          "message": "Merge pull request #45 from l1a/dependabot/github_actions/actions/upload-artifact-7\n\nci(deps): bump actions/upload-artifact from 4 to 7",
+          "timestamp": "2026-05-26T22:06:37-07:00",
+          "tree_id": "0dbaca8013b648f1172e5504da508f0154e841f6",
+          "url": "https://github.com/l1a/retch/commit/7e4adb3de7e56f613968290325f370d24d449f15"
+        },
+        "date": 1779858632081,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 11229028.280000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 157393419.78,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 141707272.7625,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2317031.784972074,
             "unit": "ns"
           }
         ]
