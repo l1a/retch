@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779907288968,
+  "lastUpdate": 1779909969819,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -561,6 +561,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2626098.449087761,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8679a744bb733c02da9714d2cb5b115cfb35ad76",
+          "message": "Merge pull request #50 from l1a/fix/completions-command-name\n\nFix generated shell completions command name (v0.2.11)",
+          "timestamp": "2026-05-27T12:21:58-07:00",
+          "tree_id": "dca7fc0df0f8c499adcf64338d774eab88e88494",
+          "url": "https://github.com/l1a/retch/commit/8679a744bb733c02da9714d2cb5b115cfb35ad76"
+        },
+        "date": 1779909969317,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 12458944.3,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 106385921.3,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 104485316.61000001,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2584039.877587325,
             "unit": "ns"
           }
         ]
