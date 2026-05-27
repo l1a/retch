@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779902670497,
+  "lastUpdate": 1779907288968,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -517,6 +517,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2586758.2717733188,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0a531d969223551fe2259720d21129b0bef3dec",
+          "message": "Merge pull request #49 from l1a/feature/wifi-bluetooth\n\nAdd Wi-Fi and Bluetooth detection support (v0.2.10)",
+          "timestamp": "2026-05-27T11:37:15-07:00",
+          "tree_id": "5b71592314bf3d1ebc313ab1af9a622e1aab6413",
+          "url": "https://github.com/l1a/retch/commit/e0a531d969223551fe2259720d21129b0bef3dec"
+        },
+        "date": 1779907288655,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 12668731.34,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 101805884.84,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 90423202.74392019,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2626098.449087761,
             "unit": "ns"
           }
         ]
