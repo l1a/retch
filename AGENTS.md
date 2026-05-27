@@ -159,12 +159,8 @@
 Below is a comparison of information gathered by `fastfetch` that is currently missing in `retch`:
 
 ### Hardware & Hardware Specs
-- **Motherboard**: Vendor, model name, and version (e.g., `ASUS ROG STRIX B550-F`).
-- **BIOS**: Vendor, version, and release date.
-- **Display / Screens**: Connected display resolutions, refresh rates, and screen sizes (e.g., `2560x1440 @ 144Hz`).
 - **Camera / Webcam**: Connected webcam names.
 - **Gamepad / Controllers**: Connected controller/input device names.
-- **Audio / Sound card**: Active audio drivers and devices (e.g., PipeWire/PulseAudio/ALSA).
 
 ### Network
 - **Wi-Fi SSID & Bluetooth**: Wi-Fi network SSID, speeds, and Bluetooth status/connected devices.
