@@ -9,7 +9,7 @@ use clap::{Parser, ValueEnum};
 
 /// Command-line arguments for retch.
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(name = "retch", author, version, about, long_about = None)]
 pub struct Cli {
     /// Output mode: short, long, or custom
     #[arg(short, long, default_value = "long")]
