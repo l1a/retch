@@ -18,8 +18,8 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 - **Releases & Tagging**: Always tag releases locally and push them via git (`git tag -a v<version> -m "Version <version>" && git push origin v<version>`) instead of using `gh release create` directly. Pushing the tag via git triggers the full suite of CI actions (security audit, code quality, multi-arch builds, full-test, and the release packaging flow), whereas `gh release create` runs significantly fewer CI workflows.
 
-## Current State (v0.2.8)
-- **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays) concurrently using scoped threads.
+## Current State (v0.2.9)
+- **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio) concurrently using scoped threads.
 - **Benchmarking**: Criterion micro-benchmarks for core subsystems, hyperfine CLI recipes for cross-tool comparison, and continuous benchmarking CI with GitHub Pages dashboard.
 - **Architecture**: Modularized GPU detection into a dedicated component.
 - **Visuals**: Added leading newline to output for better separation.
@@ -34,6 +34,10 @@
 - **Network**: Added local IPv4 and larger-scoped IPv6 address display for all "Up" interfaces with loopback and link-local filtering.
 
 ## Major Achievements
+
+### v0.2.9 - Audio Support (May 26, 2026)
+- **Audio Detection**: Implemented audio/sound card and active server detection (PipeWire/PulseAudio/ALSA on Linux, CoreAudio on macOS, and Windows Audio on Windows) inside the concurrent fetching pipeline.
+- **Version**: Bumped version to `0.2.9` in `Cargo.toml`, `docs/retch.1`, and documentation.
 
 ### v0.2.8 - Short and Default Mode Refinement (May 26, 2026)
 - **Disk & Network Filtering**: Restricts default layout and `--short` output modes to display only the `/home` filesystem mount (or its parent) and the primary active network interface.

@@ -142,6 +142,7 @@ impl SystemInfo {
                 "bios".to_string(),
                 "gpu".to_string(),
                 "display".to_string(),
+                "audio".to_string(),
                 "memory".to_string(),
                 "swap".to_string(),
                 "load".to_string(),
@@ -202,6 +203,9 @@ impl SystemInfo {
             for display in &self.displays {
                 print_line("Display", display);
             }
+        }
+        if let Some(audio) = &self.audio {
+            print_line("Audio", audio);
         }
         print_line("Memory", &self.memory);
         print_line("Swap", &self.swap);
