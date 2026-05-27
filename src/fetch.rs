@@ -834,7 +834,11 @@ fn detect_wifi() -> Option<String> {
     }
 }
 
-#[allow(clippy::manual_is_multiple_of, clippy::manual_range_contains)]
+#[allow(
+    clippy::manual_is_multiple_of,
+    clippy::manual_range_contains,
+    dead_code
+)]
 fn freq_to_channel(freq_mhz: f64) -> Option<u32> {
     let freq = freq_mhz.round() as u32;
     if freq >= 2412 && freq <= 2472 {
