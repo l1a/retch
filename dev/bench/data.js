@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779865393575,
+  "lastUpdate": 1779902670497,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -473,6 +473,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2591676.0502533787,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "bd28a6fd0403f5decd1c1f8abb56146bbf5acc2b",
+          "message": "docs: remove implemented features from fastfetch feature gap list in AGENTS.md",
+          "timestamp": "2026-05-27T10:20:19-07:00",
+          "tree_id": "8a1a38259b9be6adc975e1b6f5e0c0f3e0bc3bb5",
+          "url": "https://github.com/l1a/retch/commit/bd28a6fd0403f5decd1c1f8abb56146bbf5acc2b"
+        },
+        "date": 1779902669749,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 11174881.860000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 155892515.26,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 155195689.475,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2586758.2717733188,
             "unit": "ns"
           }
         ]
