@@ -654,12 +654,12 @@ fn detect_packages() -> Option<usize> {
     }
 }
 
-fn detect_audio(sys: &sysinfo::System) -> Option<String> {
+fn detect_audio(_sys: &sysinfo::System) -> Option<String> {
     #[cfg(target_os = "linux")]
     {
         // 1. Detect audio server
         let mut server = None;
-        for process in sys.processes().values() {
+        for process in _sys.processes().values() {
             let name = process.name().to_string_lossy().to_lowercase();
             if name.contains("pipewire") {
                 server = Some("PipeWire");
@@ -755,6 +755,7 @@ fn detect_audio(sys: &sysinfo::System) -> Option<String> {
     }
 }
 
+#[allow(dead_code)]
 fn parse_asound_cards(content: &str, asound_dir: &str) -> Vec<String> {
     let mut devices = Vec::new();
     if let Ok(entries) = std::fs::read_dir(asound_dir) {
