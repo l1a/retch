@@ -1,0 +1,13 @@
+# cargo-audit configuration file
+
+[advisories]
+ignore = [
+    # nix 0.19.1: Out-of-bounds write in nix::unistd::getgrouplist.
+    # Transitive dependency via the battery crate (latest version 0.7.8).
+    # retch does not call getgrouplist, so there is no runtime exposure.
+    "RUSTSEC-2021-0119",
+
+    # mach 0.3.2: mach is unmaintained.
+    # Transitive dependency via the battery crate.
+    "RUSTSEC-2020-0168",
+]

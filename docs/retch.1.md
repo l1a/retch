@@ -12,7 +12,7 @@ retch - a fast, feature-rich system information fetcher
 
 # DESCRIPTION
 
-**retch** is a fast system information tool written in Rust. It displays detailed information about your system including OS, CPU, memory, disks, network, and more, with support for high-quality ASCII and graphical logos.
+**retch** is a fast system information tool written in Rust. It displays detailed information about your system including OS, CPU, memory, audio, disks, network, and more, with support for high-quality ASCII and graphical logos.
 
 # OPTIONS
 
