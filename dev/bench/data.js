@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779909969819,
+  "lastUpdate": 1779919815658,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -605,6 +605,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2584039.877587325,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2abce7b551ed49a9c8e4e23aa3b5d3b2be68c12e",
+          "message": "Merge pull request #51 from l1a/feature/shell-version\n\nAdd active shell version detection",
+          "timestamp": "2026-05-27T15:05:54-07:00",
+          "tree_id": "c9fb38f976c8ac86b6a28625a3b004bcffcbac68",
+          "url": "https://github.com/l1a/retch/commit/2abce7b551ed49a9c8e4e23aa3b5d3b2be68c12e"
+        },
+        "date": 1779919815252,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 11442005.959999999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 101406512.96,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 97367419.83000001,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2575505.5587249203,
             "unit": "ns"
           }
         ]
