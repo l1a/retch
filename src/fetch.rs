@@ -82,6 +82,10 @@ pub struct SystemInfo {
     pub displays: Vec<String>,
     /// Detected active audio driver/server and devices.
     pub audio: Option<String>,
+    /// Connected Wi-Fi SSID and speed.
+    pub wifi: Option<String>,
+    /// Bluetooth power status.
+    pub bluetooth: Option<String>,
 }
 
 impl SystemInfo {
@@ -271,6 +275,8 @@ impl SystemInfo {
             bios,
             displays,
             audio,
+            wifi,
+            bluetooth,
         ) = std::thread::scope(|s| {
             let gpu_handle = s.spawn(|| {
                 gpu::detect_gpus()
@@ -347,6 +353,8 @@ impl SystemInfo {
             let bios_handle = s.spawn(detect_bios);
             let displays_handle = s.spawn(detect_displays);
             let audio_handle = s.spawn(|| detect_audio(&sys));
+            let wifi_handle = s.spawn(detect_wifi);
+            let bluetooth_handle = s.spawn(detect_bluetooth);
 
             (
                 gpu_handle.join().unwrap_or_default(),
@@ -357,6 +365,8 @@ impl SystemInfo {
                 bios_handle.join().ok().flatten(),
                 displays_handle.join().unwrap_or_default(),
                 audio_handle.join().ok().flatten(),
+                wifi_handle.join().ok().flatten(),
+                bluetooth_handle.join().ok().flatten(),
             )
         });
 
@@ -515,6 +525,8 @@ impl SystemInfo {
             bios,
             displays,
             audio,
+            wifi,
+            bluetooth,
         })
     }
 }
@@ -650,6 +662,744 @@ fn detect_packages() -> Option<usize> {
             }
         }
 
+        None
+    }
+}
+
+fn detect_wifi() -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        let mut wifi_interface = None;
+        if let Ok(entries) = std::fs::read_dir("/sys/class/net") {
+            for entry in entries.filter_map(|e| e.ok()) {
+                let path = entry.path();
+                if path.join("wireless").exists() || path.join("phy80211").exists() {
+                    wifi_interface = Some(entry.file_name().to_string_lossy().to_string());
+                    break;
+                }
+            }
+        }
+
+        if let Some(ref iface) = wifi_interface {
+            if let Ok(output) = std::process::Command::new("iw")
+                .args(["dev", iface, "link"])
+                .output()
+            {
+                if let Ok(stdout) = String::from_utf8(output.stdout) {
+                    let (ssid, links) = parse_iw_link_output(&stdout);
+                    if let Some(s) = ssid {
+                        let card_model = get_wifi_card_model(iface);
+                        let prefix = if let Some(m) = card_model {
+                            format!("{} [{}] - ", m, iface)
+                        } else {
+                            format!("[{}] - ", iface)
+                        };
+
+                        if !links.is_empty() {
+                            let mut link_strs = Vec::new();
+                            for link in links {
+                                let freq_str = link.freq.map(|f| {
+                                    let ghz_mhz = if f >= 1000.0 {
+                                        format!("{:.1} GHz", f / 1000.0)
+                                    } else {
+                                        format!("{} MHz", f)
+                                    };
+                                    if let Some(ch) = freq_to_channel(f) {
+                                        format!("{} ch{}", ghz_mhz, ch)
+                                    } else {
+                                        ghz_mhz
+                                    }
+                                });
+
+                                let mut rx_tx = Vec::new();
+                                if let Some(rx) = link.rx_rate {
+                                    if rx != "0"
+                                        && !rx.starts_with("0 ")
+                                        && rx != "0 Mbps"
+                                        && rx != "0 MBit/s"
+                                    {
+                                        rx_tx.push(format!("↓{}", clean_rate(&rx)));
+                                    }
+                                }
+                                if let Some(tx) = link.tx_rate {
+                                    if tx != "0"
+                                        && !tx.starts_with("0 ")
+                                        && tx != "0 Mbps"
+                                        && tx != "0 MBit/s"
+                                    {
+                                        rx_tx.push(format!("↑{}", clean_rate(&tx)));
+                                    }
+                                }
+
+                                match (freq_str, rx_tx.is_empty()) {
+                                    (Some(f), false) => {
+                                        link_strs.push(format!("{} [{}]", f, rx_tx.join(" ")))
+                                    }
+                                    (Some(f), true) => link_strs.push(f),
+                                    (None, false) => link_strs.push(rx_tx.join(" ")),
+                                    _ => {}
+                                }
+                            }
+                            if !link_strs.is_empty() {
+                                return Some(format!(
+                                    "{}{}{} ({})",
+                                    prefix,
+                                    s,
+                                    "",
+                                    link_strs.join(", ")
+                                ));
+                            } else {
+                                return Some(format!("{}{}", prefix, s));
+                            }
+                        }
+                        return Some(format!("{}{}", prefix, s));
+                    }
+                }
+            }
+        }
+
+        // Fallback to nmcli
+        if let Ok(output) = std::process::Command::new("nmcli")
+            .args(["-t", "-f", "active,ssid,rate", "dev", "wifi"])
+            .output()
+        {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                for line in stdout.lines() {
+                    let line = line.trim();
+                    if let Some(rest) = line.strip_prefix("yes:") {
+                        if let Some(colon_idx) = rest.rfind(':') {
+                            let ssid = &rest[..colon_idx];
+                            let rate = rest[colon_idx + 1..].trim();
+                            if !ssid.is_empty() {
+                                if !rate.is_empty()
+                                    && rate != "0"
+                                    && !rate.starts_with("0 ")
+                                    && rate != "0 Mbit/s"
+                                    && rate != "0 Mbps"
+                                {
+                                    return Some(format!("{} ({})", ssid, clean_rate(rate)));
+                                } else {
+                                    return Some(ssid.to_string());
+                                }
+                            }
+                        } else if !rest.is_empty() {
+                            return Some(rest.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback to iwgetid
+        if let Ok(output) = std::process::Command::new("iwgetid").arg("-r").output() {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                let ssid = stdout.trim();
+                if !ssid.is_empty() {
+                    return Some(ssid.to_string());
+                }
+            }
+        }
+        None
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(output) = std::process::Command::new("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport")
+            .arg("-I")
+            .output()
+        {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                return parse_airport_output(&stdout);
+            }
+        }
+        None
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(output) = std::process::Command::new("netsh")
+            .args(["wlan", "show", "interfaces"])
+            .output()
+        {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                return parse_netsh_output(&stdout);
+            }
+        }
+        None
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    {
+        None
+    }
+}
+
+#[allow(
+    clippy::manual_is_multiple_of,
+    clippy::manual_range_contains,
+    dead_code
+)]
+fn freq_to_channel(freq_mhz: f64) -> Option<u32> {
+    let freq = freq_mhz.round() as u32;
+    if freq >= 2412 && freq <= 2472 {
+        Some((freq - 2407) / 5)
+    } else if freq == 2484 {
+        Some(14)
+    } else if freq >= 5160 && freq <= 5885 {
+        if (freq - 5000) % 5 == 0 {
+            Some((freq - 5000) / 5)
+        } else {
+            None
+        }
+    } else if freq >= 5955 && freq <= 7115 {
+        if (freq - 5950) % 5 == 0 {
+            Some((freq - 5950) / 5)
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+#[allow(dead_code)]
+fn lookup_pci_vendor(vendor_id: &str) -> Option<String> {
+    let vendor_id = vendor_id.trim_start_matches("0x").to_lowercase();
+    let paths = ["/usr/share/hwdata/pci.ids", "/usr/share/misc/pci.ids"];
+    for path in &paths {
+        if let Ok(content) = std::fs::read_to_string(path) {
+            for line in content.lines() {
+                if line.starts_with('#') || line.is_empty() {
+                    continue;
+                }
+                if !line.starts_with('\t') {
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    if parts.len() >= 2 && parts[0].to_lowercase() == vendor_id {
+                        let name = line.strip_prefix(parts[0]).unwrap().trim();
+                        return Some(name.to_string());
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+#[allow(dead_code)]
+fn get_wifi_card_model(iface: &str) -> Option<String> {
+    let vendor = std::fs::read_to_string(format!("/sys/class/net/{}/device/vendor", iface)).ok()?;
+    let device = std::fs::read_to_string(format!("/sys/class/net/{}/device/device", iface)).ok()?;
+    let vendor_clean = vendor.trim().trim_start_matches("0x").to_lowercase();
+    let device_clean = device.trim().trim_start_matches("0x").to_lowercase();
+
+    let vendor_name = lookup_pci_vendor(&vendor_clean);
+    let model_name = crate::gpu::lookup_pci_device(&vendor_clean, &device_clean);
+
+    match (vendor_name, model_name) {
+        (Some(v), Some(m)) => {
+            let v_clean = v.replace(", Inc.", "").replace(" Corporation", "");
+            if m.to_lowercase().contains(&v_clean.to_lowercase())
+                || m.to_lowercase().contains(
+                    &v_clean
+                        .split_whitespace()
+                        .next()
+                        .unwrap_or("")
+                        .to_lowercase(),
+                )
+            {
+                Some(m)
+            } else {
+                Some(format!("{} {}", v_clean, m))
+            }
+        }
+        (None, Some(m)) => Some(m),
+        _ => None,
+    }
+}
+
+#[allow(dead_code)]
+fn clean_rate(rate: &str) -> String {
+    rate.replace("MBit/s", "Mbps")
+        .replace("GBit/s", "Gbps")
+        .replace("Bit/s", "bps")
+}
+
+#[derive(Debug, Clone)]
+struct WifiLink {
+    freq: Option<f64>,
+    rx_rate: Option<String>,
+    tx_rate: Option<String>,
+}
+
+#[allow(dead_code)]
+fn parse_iw_link_output(stdout: &str) -> (Option<String>, Vec<WifiLink>) {
+    let mut ssid = None;
+    let mut links = Vec::new();
+    let mut current_link = None;
+
+    for line in stdout.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("Connected to") || trimmed.starts_with("link") {
+            if let Some(link) = current_link.take() {
+                links.push(link);
+            }
+            current_link = Some(WifiLink {
+                freq: None,
+                rx_rate: None,
+                tx_rate: None,
+            });
+        } else if trimmed.starts_with("SSID:") {
+            ssid = Some(trimmed.strip_prefix("SSID:").unwrap().trim().to_string());
+        } else if trimmed.starts_with("freq:") {
+            if let Some(ref mut link) = current_link {
+                let freq_str = trimmed.strip_prefix("freq:").unwrap().trim();
+                link.freq = freq_str.parse::<f64>().ok();
+            }
+        } else if trimmed.starts_with("rx bitrate:") {
+            if let Some(ref mut link) = current_link {
+                let rx_str = trimmed.strip_prefix("rx bitrate:").unwrap().trim();
+                let rate = rx_str
+                    .split_whitespace()
+                    .take(2)
+                    .collect::<Vec<&str>>()
+                    .join(" ");
+                link.rx_rate = Some(rate);
+            }
+        } else if trimmed.starts_with("tx bitrate:") {
+            if let Some(ref mut link) = current_link {
+                let tx_str = trimmed.strip_prefix("tx bitrate:").unwrap().trim();
+                let rate = tx_str
+                    .split_whitespace()
+                    .take(2)
+                    .collect::<Vec<&str>>()
+                    .join(" ");
+                link.tx_rate = Some(rate);
+            }
+        }
+    }
+    if let Some(link) = current_link {
+        links.push(link);
+    }
+    (ssid, links)
+}
+
+#[allow(dead_code)]
+fn parse_airport_output(stdout: &str) -> Option<String> {
+    let mut ssid = None;
+    let mut rate = None;
+    for line in stdout.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("SSID:") {
+            let val = trimmed.strip_prefix("SSID:").unwrap().trim().to_string();
+            if !val.is_empty() {
+                ssid = Some(val);
+            }
+        } else if trimmed.starts_with("lastTxRate:") {
+            let val = trimmed
+                .strip_prefix("lastTxRate:")
+                .unwrap()
+                .trim()
+                .to_string();
+            if !val.is_empty() {
+                rate = Some(val);
+            }
+        }
+    }
+    match (ssid, rate) {
+        (Some(s), Some(r)) => {
+            if r != "0" && !r.starts_with("0 ") && r != "0 Mbps" && r != "0 Mbit/s" {
+                Some(format!("{} (↑{} Mbps)", s, r))
+            } else {
+                Some(s)
+            }
+        }
+        (Some(s), None) => Some(s),
+        _ => None,
+    }
+}
+
+#[allow(dead_code)]
+fn parse_netsh_output(stdout: &str) -> Option<String> {
+    let mut ssid = None;
+    let mut rx = None;
+    let mut tx = None;
+    let mut band = None;
+    for line in stdout.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("SSID") {
+            if let Some(idx) = trimmed.find(':') {
+                let val = trimmed[idx + 1..].trim().to_string();
+                if !val.is_empty() {
+                    ssid = Some(val);
+                }
+            }
+        } else if trimmed.starts_with("Receive rate (Mbps)") {
+            if let Some(idx) = trimmed.find(':') {
+                let val = trimmed[idx + 1..].trim().to_string();
+                if !val.is_empty() {
+                    rx = Some(val);
+                }
+            }
+        } else if trimmed.starts_with("Transmit rate (Mbps)") {
+            if let Some(idx) = trimmed.find(':') {
+                let val = trimmed[idx + 1..].trim().to_string();
+                if !val.is_empty() {
+                    tx = Some(val);
+                }
+            }
+        } else if trimmed.starts_with("Band") {
+            if let Some(idx) = trimmed.find(':') {
+                let val = trimmed[idx + 1..].trim().to_string();
+                if !val.is_empty() {
+                    band = Some(val);
+                }
+            }
+        }
+    }
+    if let Some(s) = ssid {
+        let mut rate_strs = Vec::new();
+        if let Some(rx_val) = rx {
+            if rx_val != "0" {
+                rate_strs.push(format!("↓{} Mbps", rx_val));
+            }
+        }
+        if let Some(tx_val) = tx {
+            if tx_val != "0" {
+                rate_strs.push(format!("↑{} Mbps", tx_val));
+            }
+        }
+        let info = match (band, rate_strs.is_empty()) {
+            (Some(b), false) => format!("{} [{}]", b, rate_strs.join(" ")),
+            (Some(b), true) => b,
+            (None, false) => rate_strs.join(" "),
+            _ => String::new(),
+        };
+        if !info.is_empty() {
+            Some(format!("{} ({})", s, info))
+        } else {
+            Some(s)
+        }
+    } else {
+        None
+    }
+}
+
+#[allow(dead_code)]
+fn lookup_usb_vendor(vendor_id: &str) -> Option<String> {
+    let vendor_id = vendor_id.trim_start_matches("0x").to_lowercase();
+    let paths = ["/usr/share/hwdata/usb.ids", "/usr/share/misc/usb.ids"];
+    for path in &paths {
+        if let Ok(content) = std::fs::read_to_string(path) {
+            for line in content.lines() {
+                if line.starts_with('#') || line.is_empty() {
+                    continue;
+                }
+                if !line.starts_with('\t') {
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    if parts.len() >= 2 && parts[0].to_lowercase() == vendor_id {
+                        let name = line.strip_prefix(parts[0]).unwrap().trim();
+                        return Some(name.to_string());
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+#[allow(dead_code)]
+fn lookup_usb_device(vendor_id: &str, product_id: &str) -> Option<String> {
+    let vendor_id = vendor_id.trim_start_matches("0x").to_lowercase();
+    let product_id = product_id.trim_start_matches("0x").to_lowercase();
+    let paths = ["/usr/share/hwdata/usb.ids", "/usr/share/misc/usb.ids"];
+    for path in &paths {
+        if let Ok(content) = std::fs::read_to_string(path) {
+            let mut in_vendor = false;
+            for line in content.lines() {
+                if line.starts_with('#') || line.is_empty() {
+                    continue;
+                }
+                if !line.starts_with('\t') {
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    in_vendor = parts.len() >= 2 && parts[0].to_lowercase() == vendor_id;
+                } else if in_vendor && line.starts_with('\t') && !line.starts_with("\t\t") {
+                    let trimmed = line.trim_start();
+                    if let Some(stripped) = trimmed.strip_prefix(&product_id) {
+                        let name = stripped.trim();
+                        return Some(name.to_string());
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+#[allow(dead_code)]
+fn parse_macos_bluetooth(stdout: &str) -> Option<String> {
+    let mut state = "Off";
+    let mut connected_names = Vec::new();
+    let mut chipset = None;
+    let mut current_device = None;
+
+    for line in stdout.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("Bluetooth Power:") {
+            if trimmed.contains("On") {
+                state = "On";
+            }
+        } else if trimmed.starts_with("Chipset:") {
+            chipset = Some(trimmed.strip_prefix("Chipset:").unwrap().trim().to_string());
+        } else if line.starts_with("          ") && !trimmed.is_empty() && trimmed.ends_with(':') {
+            current_device = Some(trimmed.trim_end_matches(':').trim().to_string());
+        } else if (trimmed.starts_with("Connected:") || trimmed.starts_with("Connection:"))
+            && trimmed.contains("Yes")
+        {
+            if let Some(ref dev) = current_device {
+                connected_names.push(dev.clone());
+            }
+        }
+    }
+
+    let mut info_str = state.to_string();
+    if let Some(ch) = chipset {
+        info_str.push_str(&format!(" (Apple {})", ch));
+    } else {
+        info_str.push_str(" (Apple Bluetooth)");
+    }
+
+    if state == "On" {
+        info_str.push_str(&format!(" - {} connected", connected_names.len()));
+        if !connected_names.is_empty() {
+            info_str.push_str(&format!(" ({})", connected_names.join(", ")));
+        }
+    }
+    Some(info_str)
+}
+
+#[allow(dead_code)]
+fn parse_windows_bluetooth_output(stdout: &str) -> Option<String> {
+    let parts: Vec<&str> = stdout.trim().split('|').collect();
+    if parts.len() < 3 {
+        return None;
+    }
+    let status_str = parts[0].trim();
+    let adapter_str = parts[1].trim();
+    let devices_str = parts[2]
+        .trim()
+        .trim_start_matches('(')
+        .trim_end_matches(')');
+
+    let state = if status_str.eq_ignore_ascii_case("running") {
+        "On"
+    } else {
+        "Off"
+    };
+
+    let mut info_str = state.to_string();
+    if !adapter_str.is_empty() {
+        info_str.push_str(&format!(" ({})", adapter_str));
+    }
+
+    if state == "On" {
+        let connected_names: Vec<String> = if devices_str.is_empty() {
+            Vec::new()
+        } else {
+            devices_str
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        };
+
+        info_str.push_str(&format!(" - {} connected", connected_names.len()));
+        if !connected_names.is_empty() {
+            info_str.push_str(&format!(" ({})", connected_names.join(", ")));
+        }
+    }
+    Some(info_str)
+}
+
+fn detect_bluetooth() -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        if let Ok(entries) = std::fs::read_dir("/sys/class/bluetooth") {
+            let mut hcis = Vec::new();
+            for entry in entries.filter_map(|e| e.ok()) {
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name.starts_with("hci") {
+                    hcis.push(name);
+                }
+            }
+            hcis.sort();
+
+            if !hcis.is_empty() {
+                let hci = &hcis[0];
+                let mut state = "Off";
+                if let Ok(subdirs) = std::fs::read_dir(format!("/sys/class/bluetooth/{}", hci)) {
+                    for sub in subdirs.filter_map(|e| e.ok()) {
+                        let sub_name = sub.file_name().to_string_lossy().to_string();
+                        if sub_name.starts_with("rfkill") {
+                            if let Ok(st) = std::fs::read_to_string(sub.path().join("state")) {
+                                if st.trim() == "1" || st.trim() == "3" {
+                                    state = "On";
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let mut hw_info = None;
+                if let Ok(canonical_device) =
+                    std::fs::canonicalize(format!("/sys/class/bluetooth/{}/device", hci))
+                {
+                    let mut current = Some(canonical_device);
+                    while let Some(path) = current {
+                        let id_vendor = path.join("idVendor");
+                        let id_product = path.join("idProduct");
+                        let pci_vendor = path.join("vendor");
+                        let pci_device = path.join("device");
+
+                        if id_vendor.exists() && id_product.exists() {
+                            if let (Ok(v), Ok(p)) = (
+                                std::fs::read_to_string(id_vendor),
+                                std::fs::read_to_string(id_product),
+                            ) {
+                                let v_clean = v.trim();
+                                let p_clean = p.trim();
+                                let vendor_name = lookup_usb_vendor(v_clean);
+                                let product_name = lookup_usb_device(v_clean, p_clean);
+                                match (vendor_name, product_name) {
+                                    (Some(v_name), Some(p_name)) => {
+                                        let v_disp = v_name
+                                            .replace(", Inc.", "")
+                                            .replace(" Corporation", "")
+                                            .replace(" Co., Ltd.", "")
+                                            .replace(" Co., Ltd", "");
+                                        hw_info = Some(format!("{} {}", v_disp, p_name));
+                                    }
+                                    (Some(v_name), None) => {
+                                        let v_disp = v_name
+                                            .replace(", Inc.", "")
+                                            .replace(" Corporation", "")
+                                            .replace(" Co., Ltd.", "")
+                                            .replace(" Co., Ltd", "");
+                                        hw_info = Some(v_disp);
+                                    }
+                                    _ => {}
+                                }
+                                break;
+                            }
+                        } else if pci_vendor.exists()
+                            && pci_device.exists()
+                            && !pci_vendor.is_dir()
+                            && !pci_device.is_dir()
+                        {
+                            if let (Ok(v), Ok(d)) = (
+                                std::fs::read_to_string(pci_vendor),
+                                std::fs::read_to_string(pci_device),
+                            ) {
+                                let v_clean = v.trim().trim_start_matches("0x").to_lowercase();
+                                let d_clean = d.trim().trim_start_matches("0x").to_lowercase();
+                                let vendor_name = lookup_pci_vendor(&v_clean);
+                                let product_name =
+                                    crate::gpu::lookup_pci_device(&v_clean, &d_clean);
+                                match (vendor_name, product_name) {
+                                    (Some(v_name), Some(p_name)) => {
+                                        let v_disp = v_name
+                                            .replace(", Inc.", "")
+                                            .replace(" Corporation", "")
+                                            .replace(" Co., Ltd.", "")
+                                            .replace(" Co., Ltd", "");
+                                        hw_info = Some(format!("{} {}", v_disp, p_name));
+                                    }
+                                    (Some(v_name), None) => {
+                                        let v_disp = v_name
+                                            .replace(", Inc.", "")
+                                            .replace(" Corporation", "")
+                                            .replace(" Co., Ltd.", "")
+                                            .replace(" Co., Ltd", "");
+                                        hw_info = Some(v_disp);
+                                    }
+                                    _ => {}
+                                }
+                                break;
+                            }
+                        }
+                        current = path.parent().map(|p| p.to_path_buf());
+                    }
+                }
+
+                let mut connected_names = Vec::new();
+                if let Ok(output) = std::process::Command::new("bluetoothctl")
+                    .args(["devices", "Connected"])
+                    .output()
+                {
+                    if let Ok(stdout) = String::from_utf8(output.stdout) {
+                        for line in stdout.lines() {
+                            let trimmed = line.trim();
+                            if trimmed.starts_with("Device ") {
+                                let parts: Vec<&str> = trimmed.split_whitespace().collect();
+                                if parts.len() >= 3 {
+                                    let name = parts[2..].join(" ");
+                                    connected_names.push(name);
+                                }
+                            }
+                        }
+                    }
+                }
+                let mut info_str = state.to_string();
+                info_str.push_str(&format!(" [{}]", hci));
+                if let Some(hw) = hw_info {
+                    info_str.push_str(&format!(" ({})", hw));
+                }
+
+                if state == "On" {
+                    info_str.push_str(&format!(" - {} connected", connected_names.len()));
+                    if !connected_names.is_empty() {
+                        info_str.push_str(&format!(" ({})", connected_names.join(", ")));
+                    }
+                }
+
+                return Some(info_str);
+            }
+        }
+        None
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(output) = std::process::Command::new("system_profiler")
+            .arg("SPBluetoothDataType")
+            .output()
+        {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                return parse_macos_bluetooth(&stdout);
+            }
+        }
+        None
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let cmd = "$state = (Get-Service -Name bthserv -ErrorAction SilentlyContinue).Status; \
+                   $adapter = (Get-PnpDevice -Class Bluetooth -ErrorAction SilentlyContinue | Where-Object {$_.FriendlyName -match 'Adapter|Controller|Radio|Intel|Realtek|Broadcom'} | Select-Object -First 1 -ExpandProperty FriendlyName); \
+                   $devices = (Get-PnpDevice -Class Bluetooth -Status OK -ErrorAction SilentlyContinue | Where-Object {$_.FriendlyName -notmatch 'Adapter|Enumerator|Controller|LE Device|RFCOMM|Module|Service|Generic|Computer|Protocol|Phone|Device'} | Select-Object -ExpandProperty FriendlyName); \
+                   Write-Output \"$state|$adapter|($($devices -join ','))\"";
+
+        if let Ok(output) = std::process::Command::new("powershell")
+            .args(["-Command", cmd])
+            .output()
+        {
+            if let Ok(stdout) = String::from_utf8(output.stdout) {
+                return parse_windows_bluetooth_output(&stdout);
+            }
+        }
+        None
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    {
         None
     }
 }
@@ -1509,6 +2259,83 @@ mod tests {
                 "HDA NVIDIA HDMI".to_string(),
                 "sof-hda-dsp".to_string()
             ]
+        );
+    }
+
+    #[test]
+    fn test_parse_airport_output() {
+        let sample = "     agrCtlRSSI: -45\n     lastTxRate: 866\n           SSID: MyHomeWiFi\n";
+        assert_eq!(
+            parse_airport_output(sample),
+            Some("MyHomeWiFi (↑866 Mbps)".to_string())
+        );
+
+        let sample_no_rate = "     agrCtlRSSI: -45\n           SSID: GuestNetwork\n";
+        assert_eq!(
+            parse_airport_output(sample_no_rate),
+            Some("GuestNetwork".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_netsh_output() {
+        let sample = "    Name                   : Wi-Fi\n    State                  : connected\n    SSID                   : Office_Wi-Fi\n    Receive rate (Mbps)    : 433\n    Transmit rate (Mbps)   : 866\n    Band                   : 5 GHz\n";
+        assert_eq!(
+            parse_netsh_output(sample),
+            Some("Office_Wi-Fi (5 GHz [↓433 Mbps ↑866 Mbps])".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_iw_link_output() {
+        let sample = "Connected to 84:78:48:dc:97:23 (on wlp2s0)\n        SSID: OfficeNet\n        freq: 6135.0\n        rx bitrate: 6.0 MBit/s\n        tx bitrate: 864.6 MBit/s 160MHz HE-MCS 4\n";
+        let (ssid, links) = parse_iw_link_output(sample);
+        assert_eq!(ssid, Some("OfficeNet".to_string()));
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].freq, Some(6135.0));
+        assert_eq!(links[0].rx_rate, Some("6.0 MBit/s".to_string()));
+        assert_eq!(links[0].tx_rate, Some("864.6 MBit/s".to_string()));
+
+        // MLO multi-link mock output
+        let sample_mlo = "Connected to aa:bb:cc:dd:ee:ff (on wlan0)\n        SSID: HomeWiFi\n        freq: 5180.0\n        rx bitrate: 866.0 MBit/s\n        tx bitrate: 866.0 MBit/s\nConnected to aa:bb:cc:dd:ee:01 (on wlan0)\n        freq: 6135.0\n        rx bitrate: 1200.0 MBit/s\n        tx bitrate: 1200.0 MBit/s\n";
+        let (ssid_mlo, links_mlo) = parse_iw_link_output(sample_mlo);
+        assert_eq!(ssid_mlo, Some("HomeWiFi".to_string()));
+        assert_eq!(links_mlo.len(), 2);
+        assert_eq!(links_mlo[0].freq, Some(5180.0));
+        assert_eq!(links_mlo[1].freq, Some(6135.0));
+    }
+
+    #[test]
+    fn test_parse_macos_bluetooth() {
+        let sample = "Bluetooth:\n\n      Bluetooth Power: On\n      Chipset: BCM4350\n      Devices (Connected):\n          Sony WH-1000XM4:\n              Address: AA-BB-CC\n              Connected: Yes\n          Logitech MX Master:\n              Address: DD-EE-FF\n              Connected: Yes\n";
+        assert_eq!(
+            parse_macos_bluetooth(sample),
+            Some(
+                "On (Apple BCM4350) - 2 connected (Sony WH-1000XM4, Logitech MX Master)"
+                    .to_string()
+            )
+        );
+
+        let sample_off = "Bluetooth:\n\n      Bluetooth Power: Off\n";
+        assert_eq!(
+            parse_macos_bluetooth(sample_off),
+            Some("Off (Apple Bluetooth)".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_windows_bluetooth_output() {
+        let sample =
+            "Running | Intel(R) Wireless Bluetooth(R) | (Sony WH-1000XM4,Logitech MX Master)\n";
+        assert_eq!(
+            parse_windows_bluetooth_output(sample),
+            Some("On (Intel(R) Wireless Bluetooth(R)) - 2 connected (Sony WH-1000XM4, Logitech MX Master)".to_string())
+        );
+
+        let sample_off = "Stopped | | ()\n";
+        assert_eq!(
+            parse_windows_bluetooth_output(sample_off),
+            Some("Off".to_string())
         );
     }
 }

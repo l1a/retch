@@ -222,7 +222,7 @@ fn default_config_content() -> String {
 #     "os", "kernel", "host", "arch", "cpu", "cpu-freq", "gpu",
 #     "motherboard", "bios", "display", "audio",
 #     "memory", "swap", "uptime", "procs", "load",
-#     "disk", "temp", "net", "battery",
+#     "disk", "temp", "net", "wifi", "bluetooth", "battery",
 #     "shell", "terminal", "desktop", "users", "packages"
 # ]
 "##

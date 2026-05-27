@@ -14,7 +14,7 @@ retch is under active development with a working core, rich system information o
 
 ## Features
 
-- Rich system information (OS, CPU, Motherboard, BIOS, GPU, Display, Audio, Memory, Disks, Network, etc.)
+- Rich system information (OS, CPU, Motherboard, BIOS, GPU, Display, Audio, Memory, Disks, Network, Wi-Fi, Bluetooth, etc.)
 - High-quality ASCII logos (adapted from Fastfetch)
 - Graphical logo support via Kitty protocol, iTerm2, and Sixel
 - Graphical fallback via Chafa (Unicode symbols)
