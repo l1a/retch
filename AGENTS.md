@@ -18,7 +18,7 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.2.11)
+## Current State (v0.2.12)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth) concurrently using scoped threads.
 - **Benchmarking**: Criterion micro-benchmarks for core subsystems, hyperfine CLI recipes for cross-tool comparison, and continuous benchmarking CI with GitHub Pages dashboard.
 - **Architecture**: Modularized GPU detection into a dedicated component.
@@ -35,6 +35,10 @@
 - **WiFi & Bluetooth**: Integrated detailed connection parameters, link rates, MLO bands, adapter hardware names, power states, and connected Bluetooth device profiles.
 
 ## Major Achievements
+
+### v0.2.12 - Active Shell Version Detection (May 27, 2026)
+- **Shell Version**: Implemented active shell detection and version parsing supporting `bash`, `zsh`, `fish`, `nu`, `pwsh`, `powershell`, `elvish`, and `tcsh`.
+- **Version**: Bumped version to `0.2.12` in `Cargo.toml`, `docs/retch.1`, and documentation.
 
 ### v0.2.11 - Fix shell completions command name (May 27, 2026)
 - **Shell Completions**: Fixed generated shell completions using the binary name `retch` instead of package name `retch-cli`.
