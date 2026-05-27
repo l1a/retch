@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779859318289,
+  "lastUpdate": 1779860014279,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -341,6 +341,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2309296.3467873754,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2b4ac0925239ee472061c5cf45eb7cbdbf365426",
+          "message": "Merge pull request #47 from l1a/dependabot/cargo/cargo-dependencies-dcb5127494\n\ndeps(deps): bump the cargo-dependencies group with 2 updates",
+          "timestamp": "2026-05-26T22:29:14-07:00",
+          "tree_id": "f346dc777edffbaa0d3c8cdc6cfd6bbae07fddcd",
+          "url": "https://github.com/l1a/retch/commit/2b4ac0925239ee472061c5cf45eb7cbdbf365426"
+        },
+        "date": 1779860013837,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 11398798.86,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 97769179.25999999,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 94178429.51836054,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2441825.3754644534,
             "unit": "ns"
           }
         ]
