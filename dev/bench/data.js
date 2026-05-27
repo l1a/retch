@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779860014279,
+  "lastUpdate": 1779864900218,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -385,6 +385,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2441825.3754644534,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "356b0f924d86fbbb9116e968875418083c3b8a53",
+          "message": "Merge pull request #48 from l1a/feature/audio-detection\n\nfeat: add audio detection and bump to 0.2.9",
+          "timestamp": "2026-05-26T23:50:35-07:00",
+          "tree_id": "d69806093e908675f579edc336b278bc846f3eff",
+          "url": "https://github.com/l1a/retch/commit/356b0f924d86fbbb9116e968875418083c3b8a53"
+        },
+        "date": 1779864899926,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 12626169.66,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 92478218.86,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 86721797.48851813,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2402194.823732333,
             "unit": "ns"
           }
         ]
