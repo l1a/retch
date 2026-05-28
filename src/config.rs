@@ -177,7 +177,7 @@ const DEFAULT_FIELDS_BLOCK: &str = r##"# List of fields to display (leave empty 
 #     "motherboard", "bios", "display", "audio",
 #     "memory", "swap", "uptime", "procs", "load",
 #     "disk", "temp", "net", "battery",
-#     "shell", "terminal", "desktop", "users", "packages",
+#     "shell", "terminal", "desktop", "theme", "icons", "cursor", "font", "users", "packages",
 #     "wifi", "bluetooth"
 # ]"##;
 
