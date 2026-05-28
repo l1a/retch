@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779948514734,
+  "lastUpdate": 1779951159233,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -693,6 +693,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2570127.94986033,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1d3cfe49de5f6dbd921a4c1b7d8628846a197231",
+          "message": "Merge pull request #52 from l1a/feature/ui-theme-fonts\n\nv0.2.13: UI Theme and Fonts Support",
+          "timestamp": "2026-05-27T23:48:29-07:00",
+          "tree_id": "56c96228531f1aa1912b630f764f63c8625ade91",
+          "url": "https://github.com/l1a/retch/commit/1d3cfe49de5f6dbd921a4c1b7d8628846a197231"
+        },
+        "date": 1779951158926,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 11719788.040000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 99160275.03999999,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 194835939.38333336,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2545691.9067060063,
             "unit": "ns"
           }
         ]
