@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779919815658,
+  "lastUpdate": 1779948514734,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -649,6 +649,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2575505.5587249203,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "b24b7cad1e6382ee8d8f05b00136240449fa98a3",
+          "message": "Update .gitignore for antigravity",
+          "timestamp": "2026-05-27T23:04:18-07:00",
+          "tree_id": "160baabc2902c115e0149283eb72dc66a311e4d1",
+          "url": "https://github.com/l1a/retch/commit/b24b7cad1e6382ee8d8f05b00136240449fa98a3"
+        },
+        "date": 1779948514333,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 11307815.52,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 120150896.82,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 98565970.71000001,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2570127.94986033,
             "unit": "ns"
           }
         ]
