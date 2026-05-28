@@ -86,6 +86,14 @@ pub struct SystemInfo {
     pub wifi: Option<String>,
     /// Bluetooth power status.
     pub bluetooth: Option<String>,
+    /// UI Theme (GTK, Qt, macOS, Windows).
+    pub ui_theme: Option<String>,
+    /// Icon theme (GTK/Qt).
+    pub icons: Option<String>,
+    /// Cursor theme (GTK/Qt).
+    pub cursor: Option<String>,
+    /// System Font.
+    pub font: Option<String>,
 }
 
 impl SystemInfo {
@@ -277,6 +285,7 @@ impl SystemInfo {
             audio,
             wifi,
             bluetooth,
+            (ui_theme, icons, cursor, font),
         ) = std::thread::scope(|s| {
             let gpu_handle = s.spawn(|| {
                 gpu::detect_gpus()
@@ -355,6 +364,7 @@ impl SystemInfo {
             let audio_handle = s.spawn(|| detect_audio(&sys));
             let wifi_handle = s.spawn(detect_wifi);
             let bluetooth_handle = s.spawn(detect_bluetooth);
+            let ui_theme_and_fonts_handle = s.spawn(detect_ui_theme_and_fonts);
 
             (
                 gpu_handle.join().unwrap_or_default(),
@@ -367,6 +377,9 @@ impl SystemInfo {
                 audio_handle.join().ok().flatten(),
                 wifi_handle.join().ok().flatten(),
                 bluetooth_handle.join().ok().flatten(),
+                ui_theme_and_fonts_handle
+                    .join()
+                    .unwrap_or((None, None, None, None)),
             )
         });
 
@@ -527,6 +540,10 @@ impl SystemInfo {
             audio,
             wifi,
             bluetooth,
+            ui_theme,
+            icons,
+            cursor,
+            font,
         })
     }
 }
@@ -2369,6 +2386,286 @@ fn parse_shell_version(shell_name: &str, output: &str) -> Option<String> {
     None
 }
 
+#[allow(dead_code)]
+fn parse_ini_key(content: &str, key: &str) -> Option<String> {
+    for line in content.lines() {
+        let line = line.trim();
+        if line.starts_with('#') || line.starts_with(';') {
+            continue;
+        }
+        if let Some(pos) = line.find('=') {
+            let k = line[..pos].trim();
+            if k == key {
+                let v = line[pos + 1..].trim();
+                let v = if (v.starts_with('"') && v.ends_with('"'))
+                    || (v.starts_with('\'') && v.ends_with('\''))
+                {
+                    if v.len() >= 2 {
+                        v[1..v.len() - 1].to_string()
+                    } else {
+                        v.to_string()
+                    }
+                } else {
+                    v.to_string()
+                };
+                if !v.is_empty() {
+                    return Some(v);
+                }
+            }
+        }
+    }
+    None
+}
+
+#[cfg(target_os = "linux")]
+fn get_gtk_setting(key: &str) -> Option<String> {
+    let home = dirs::home_dir()?;
+    let paths = [
+        home.join(".config/gtk-4.0/settings.ini"),
+        home.join(".config/gtk-3.0/settings.ini"),
+        home.join(".config/gtk-2.0/settings.ini"),
+        home.join(".gtkrc-2.0"),
+    ];
+
+    for path in &paths {
+        if path.exists() {
+            if let Ok(contents) = std::fs::read_to_string(path) {
+                if let Some(val) = parse_ini_key(&contents, key) {
+                    return Some(val);
+                }
+            }
+        }
+    }
+    None
+}
+
+#[cfg(target_os = "linux")]
+fn query_gsettings(schema: &str, key: &str) -> Option<String> {
+    let output = std::process::Command::new("gsettings")
+        .args(["get", schema, key])
+        .output()
+        .ok()?;
+    if output.status.success() {
+        let val = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let val = val.trim_matches('\'').trim_matches('"').to_string();
+        if !val.is_empty() && val != "''" && val != "\"\"" {
+            return Some(val);
+        }
+    }
+    None
+}
+
+#[cfg(target_os = "linux")]
+fn get_kde_setting(key: &str) -> Option<String> {
+    let home = dirs::home_dir()?;
+    let path = home.join(".config/kdeglobals");
+    if path.exists() {
+        if let Ok(contents) = std::fs::read_to_string(path) {
+            return parse_ini_key(&contents, key);
+        }
+    }
+    None
+}
+
+#[cfg(target_os = "linux")]
+fn detect_ui_theme_and_fonts() -> (
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+) {
+    // GTK Settings
+    let gtk_theme = get_gtk_setting("gtk-theme-name")
+        .or_else(|| query_gsettings("org.gnome.desktop.interface", "gtk-theme"));
+    let gtk_icons = get_gtk_setting("gtk-icon-theme-name")
+        .or_else(|| query_gsettings("org.gnome.desktop.interface", "icon-theme"));
+    let gtk_cursor = get_gtk_setting("gtk-cursor-theme-name")
+        .or_else(|| query_gsettings("org.gnome.desktop.interface", "cursor-theme"));
+    let gtk_font = get_gtk_setting("gtk-font-name")
+        .or_else(|| query_gsettings("org.gnome.desktop.interface", "font-name"));
+
+    // KDE/Qt Settings
+    let qt_theme = get_kde_setting("widgetStyle").or_else(|| get_kde_setting("ColorScheme"));
+    let qt_icons = get_kde_setting("iconTheme");
+    let qt_cursor = {
+        let home = dirs::home_dir();
+        home.and_then(|h| {
+            let path = h.join(".config/kcminputrc");
+            if path.exists() {
+                std::fs::read_to_string(path)
+                    .ok()
+                    .and_then(|contents| parse_ini_key(&contents, "theme"))
+            } else {
+                None
+            }
+        })
+    };
+    let qt_font = get_kde_setting("font").map(|f| {
+        let parts: Vec<&str> = f.split(',').collect();
+        if parts.len() >= 2 {
+            let name = parts[0].trim();
+            let size = parts[1].trim();
+            format!("{} ({}pt)", name, size)
+        } else {
+            f
+        }
+    });
+
+    // Check which desktop environment is in use to prioritize formatting
+    let de = std::env::var("XDG_CURRENT_DESKTOP")
+        .or_else(|_| std::env::var("DESKTOP_SESSION"))
+        .unwrap_or_default()
+        .to_lowercase();
+
+    let is_kde = de.contains("kde") || de.contains("plasma");
+
+    let theme = if is_kde {
+        match (qt_theme, gtk_theme) {
+            (Some(qt), Some(gt)) => Some(format!("{} [Qt], {} [GTK]", qt, gt)),
+            (Some(qt), None) => Some(format!("{} [Qt]", qt)),
+            (None, Some(gt)) => Some(format!("{} [GTK]", gt)),
+            (None, None) => None,
+        }
+    } else {
+        match (gtk_theme, qt_theme) {
+            (Some(gt), Some(qt)) => Some(format!("{} [GTK], {} [Qt]", gt, qt)),
+            (Some(gt), None) => Some(format!("{} [GTK]", gt)),
+            (None, Some(qt)) => Some(format!("{} [Qt]", qt)),
+            (None, None) => None,
+        }
+    };
+
+    let icons = if is_kde {
+        match (qt_icons, gtk_icons) {
+            (Some(qi), Some(gi)) => Some(format!("{} [Qt], {} [GTK]", qi, gi)),
+            (Some(qi), None) => Some(format!("{} [Qt]", qi)),
+            (None, Some(gi)) => Some(format!("{} [GTK]", gi)),
+            (None, None) => None,
+        }
+    } else {
+        match (gtk_icons, qt_icons) {
+            (Some(gi), Some(qi)) => Some(format!("{} [GTK], {} [Qt]", gi, qi)),
+            (Some(gi), None) => Some(format!("{} [GTK]", gi)),
+            (None, Some(qi)) => Some(format!("{} [Qt]", qi)),
+            (None, None) => None,
+        }
+    };
+
+    let cursor = if is_kde {
+        match (qt_cursor, gtk_cursor) {
+            (Some(qc), Some(gc)) => Some(format!("{} [Qt], {} [GTK]", qc, gc)),
+            (Some(qc), None) => Some(format!("{} [Qt]", qc)),
+            (None, Some(gc)) => Some(format!("{} [GTK]", gc)),
+            (None, None) => None,
+        }
+    } else {
+        match (gtk_cursor, qt_cursor) {
+            (Some(gc), Some(qc)) => Some(format!("{} [GTK], {} [Qt]", gc, qc)),
+            (Some(gc), None) => Some(format!("{} [GTK]", gc)),
+            (None, Some(qc)) => Some(format!("{} [Qt]", qc)),
+            (None, None) => None,
+        }
+    };
+
+    let font = if is_kde {
+        match (qt_font, gtk_font) {
+            (Some(qf), Some(gf)) => Some(format!("{} [Qt], {} [GTK]", qf, gf)),
+            (Some(qf), None) => Some(format!("{} [Qt]", qf)),
+            (None, Some(gf)) => Some(format!("{} [GTK]", gf)),
+            (None, None) => None,
+        }
+    } else {
+        match (gtk_font, qt_font) {
+            (Some(gf), Some(qf)) => Some(format!("{} [GTK], {} [Qt]", gf, qf)),
+            (Some(gf), None) => Some(format!("{} [GTK]", gf)),
+            (None, Some(qf)) => Some(format!("{} [Qt]", qf)),
+            (None, None) => None,
+        }
+    };
+
+    (theme, icons, cursor, font)
+}
+
+#[cfg(target_os = "macos")]
+fn detect_ui_theme_and_fonts() -> (
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+) {
+    let interface_style = std::process::Command::new("defaults")
+        .args(["read", "-g", "AppleInterfaceStyle"])
+        .output()
+        .ok()
+        .and_then(|o| {
+            if o.status.success() {
+                Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
+            } else {
+                None
+            }
+        });
+
+    let theme = match interface_style {
+        Some(style) => Some(format!("Aqua ({})", style)),
+        None => Some("Aqua (Light)".to_string()),
+    };
+
+    (theme, None, None, Some("San Francisco".to_string()))
+}
+
+#[cfg(target_os = "windows")]
+fn detect_ui_theme_and_fonts() -> (
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+) {
+    let theme = {
+        let output = std::process::Command::new("reg")
+            .args([
+                "query",
+                r"HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+                "/v",
+                "AppsUseLightTheme",
+            ])
+            .output()
+            .ok();
+
+        let apps_dark = output.and_then(|o| {
+            if o.status.success() {
+                let s = String::from_utf8_lossy(&o.stdout);
+                if s.contains("0x0") {
+                    Some(true) // Dark theme
+                } else if s.contains("0x1") {
+                    Some(false) // Light theme
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        });
+
+        match apps_dark {
+            Some(true) => Some("Dark".to_string()),
+            Some(false) => Some("Light".to_string()),
+            None => Some("Unknown".to_string()),
+        }
+    };
+
+    (theme, None, None, Some("Segoe UI".to_string()))
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+fn detect_ui_theme_and_fonts() -> (
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+) {
+    (None, None, None, None)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2380,6 +2677,34 @@ mod tests {
         assert_eq!(format_bytes(1024 * 1024), "1.0 MB");
         assert_eq!(format_bytes(1024 * 1024 * 1024), "1.0 GB");
         assert_eq!(format_bytes(1536), "1.5 KB");
+    }
+
+    #[test]
+    fn test_parse_ini_key() {
+        let sample = r#"[Settings]
+gtk-theme-name=Adwaita-dark
+# Comment line
+  ; Another comment
+gtk-icon-theme-name = "Adwaita"
+gtk-font-name='Cantarell 11'
+invalid_line_no_equal
+empty_value = 
+"#;
+        assert_eq!(
+            parse_ini_key(sample, "gtk-theme-name"),
+            Some("Adwaita-dark".to_string())
+        );
+        assert_eq!(
+            parse_ini_key(sample, "gtk-icon-theme-name"),
+            Some("Adwaita".to_string())
+        );
+        assert_eq!(
+            parse_ini_key(sample, "gtk-font-name"),
+            Some("Cantarell 11".to_string())
+        );
+        assert_eq!(parse_ini_key(sample, "invalid_line_no_equal"), None);
+        assert_eq!(parse_ini_key(sample, "empty_value"), None);
+        assert_eq!(parse_ini_key(sample, "nonexistent"), None);
     }
 
     #[test]

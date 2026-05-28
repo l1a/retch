@@ -18,8 +18,8 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.2.12)
-- **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth) concurrently using scoped threads.
+## Current State (v0.2.13)
+- **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts) concurrently using scoped threads.
 - **Benchmarking**: Criterion micro-benchmarks for core subsystems, hyperfine CLI recipes for cross-tool comparison, and continuous benchmarking CI with GitHub Pages dashboard.
 - **Architecture**: Modularized GPU detection into a dedicated component.
 - **Visuals**: Added leading newline to output for better separation.
@@ -35,6 +35,10 @@
 - **WiFi & Bluetooth**: Integrated detailed connection parameters, link rates, MLO bands, adapter hardware names, power states, and connected Bluetooth device profiles.
 
 ## Major Achievements
+
+### v0.2.13 - UI Theme and Fonts Support (May 27, 2026)
+- **UI Theme & Fonts**: Implemented cross-platform concurrent detection of UI Theme, Icons, Cursor, and Font, supporting Linux (GTK 2/3/4, KDE/Qt global settings, with gsettings fallback), macOS (Aqua theme light/dark detection), and Windows (AppsUseLightTheme registry parsing).
+- **Version**: Bumped version to `0.2.13` in `Cargo.toml`, `docs/retch.1`, and documentation.
 
 ### v0.2.12 - Active Shell Version Detection (May 27, 2026)
 - **Shell Version**: Implemented active shell detection and version parsing supporting `bash`, `zsh`, `fish`, `nu`, `pwsh`, `powershell`, `elvish`, and `tcsh`.
@@ -180,8 +184,6 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - **Wi-Fi SSID & Bluetooth**: Wi-Fi network SSID, speeds, and Bluetooth status/connected devices.
 
 ### Desktop Environment & UI
-- **Shell Version**: Shell version number (e.g., `bash 5.2.15` instead of `/bin/bash`).
-- **UI Theme & Fonts**: GTK/Qt themes, icon themes, cursor themes, and system fonts.
 - **Terminal Font**: Font name and size configured in the terminal emulator.
 
 ## Next Steps
@@ -190,4 +192,4 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 2. **UX Polish** — Refine error messages and performance of slow platform queries.
 
 ---
-*Last updated: May 26, 2026*
+*Last updated: May 27, 2026*

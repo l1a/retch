@@ -302,6 +302,18 @@ impl SystemInfo {
         if let Some(de) = &self.desktop {
             print_line("Desktop", de);
         }
+        if let Some(ui_theme) = &self.ui_theme {
+            print_line("Theme", ui_theme);
+        }
+        if let Some(icons) = &self.icons {
+            print_line("Icons", icons);
+        }
+        if let Some(cursor) = &self.cursor {
+            print_line("Cursor", cursor);
+        }
+        if let Some(font) = &self.font {
+            print_line("Font", font);
+        }
         print_line("Users", &self.users.to_string());
         if let Some(pkgs) = self.packages {
             if pkgs > 0 {

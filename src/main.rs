@@ -223,7 +223,7 @@ fn default_config_content() -> String {
 #     "motherboard", "bios", "display", "audio",
 #     "memory", "swap", "uptime", "procs", "load",
 #     "disk", "temp", "net", "wifi", "bluetooth", "battery",
-#     "shell", "terminal", "desktop", "users", "packages"
+#     "shell", "terminal", "desktop", "theme", "icons", "cursor", "font", "users", "packages"
 # ]
 "##
     .to_string()
