@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1779951159233,
+  "lastUpdate": 1780263067524,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -737,6 +737,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2545691.9067060063,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f106a228fe6626f5775b1c83eb2252ba42981efc",
+          "message": "Merge pull request #53 from l1a/fix/memory-swap-units\n\nFix memory/swap unit format and bump to 0.2.14",
+          "timestamp": "2026-05-31T14:27:10-07:00",
+          "tree_id": "88dcf7dabdc9e4dc4c0da593338a5871d06a47d1",
+          "url": "https://github.com/l1a/retch/commit/f106a228fe6626f5775b1c83eb2252ba42981efc"
+        },
+        "date": 1780263066913,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 8274804.819999998,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 126406923.01999998,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 122160102.55999997,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2611574.0500220098,
             "unit": "ns"
           }
         ]
