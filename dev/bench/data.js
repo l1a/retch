@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780266687001,
+  "lastUpdate": 1780269649989,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -957,6 +957,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2288658.161914204,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5aca98590255f074f8018499f573090b2aa29453",
+          "message": "Merge pull request #57 from l1a/feature/native-battery\n\nImplement native battery fetching and remove battery crate",
+          "timestamp": "2026-05-31T16:16:58-07:00",
+          "tree_id": "08ce93c81722fd3c8254ca233e93dc8083a7c2e9",
+          "url": "https://github.com/l1a/retch/commit/5aca98590255f074f8018499f573090b2aa29453"
+        },
+        "date": 1780269649188,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 7453007.2,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 147797727.50000003,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 153830447.8625,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2588068.2842045976,
             "unit": "ns"
           }
         ]
