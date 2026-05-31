@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780265853778,
+  "lastUpdate": 1780266040742,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -869,6 +869,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2597698.890083856,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "8097478a69b0bbe655ccca53300a936dba0acad8",
+          "message": "Revert \"Merge pull request #55 from l1a/chore/update-roadmap\"\n\nThis reverts commit aedbd996719989a0126a68b33c76cbdb9cafb648, reversing\nchanges made to 2035c4fb9bca9ab8a0363cc7f08362ff4e751883.",
+          "timestamp": "2026-05-31T15:15:49-07:00",
+          "tree_id": "26f6483ac82824525228dd75c151e17a525e4aa4",
+          "url": "https://github.com/l1a/retch/commit/8097478a69b0bbe655ccca53300a936dba0acad8"
+        },
+        "date": 1780266040468,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 11228436.100000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 91510253.70000002,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 87356323.70442139,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2283341.080110509,
             "unit": "ns"
           }
         ]
