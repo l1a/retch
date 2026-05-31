@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780266040742,
+  "lastUpdate": 1780266687001,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -913,6 +913,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2283341.080110509,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b56f0bf167fa8f71a58353a3fe86b8f5d4cb1d3a",
+          "message": "Merge pull request #56 from l1a/chore/update-roadmap-v2\n\nUpdate roadmap and bump to 0.2.16 (Take 2)",
+          "timestamp": "2026-05-31T15:27:41-07:00",
+          "tree_id": "84fe35fe7c83e706db08ba7760df5ceb39cfc078",
+          "url": "https://github.com/l1a/retch/commit/b56f0bf167fa8f71a58353a3fe86b8f5d4cb1d3a"
+        },
+        "date": 1780266686557,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 10450091.4,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 95756410.2,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 95079575,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2288658.161914204,
             "unit": "ns"
           }
         ]
