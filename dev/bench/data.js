@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780263067524,
+  "lastUpdate": 1780264742343,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -781,6 +781,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2611574.0500220098,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2035c4fb9bca9ab8a0363cc7f08362ff4e751883",
+          "message": "Merge pull request #54 from l1a/feature/workflow-permissions\n\nRestrict GITHUB_TOKEN permissions to read-only",
+          "timestamp": "2026-05-31T14:54:43-07:00",
+          "tree_id": "26f6483ac82824525228dd75c151e17a525e4aa4",
+          "url": "https://github.com/l1a/retch/commit/2035c4fb9bca9ab8a0363cc7f08362ff4e751883"
+        },
+        "date": 1780264741532,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 12402009.460000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 174709086.76000002,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 168671756.4666667,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2530744.2840000535,
             "unit": "ns"
           }
         ]
