@@ -22,6 +22,12 @@ retch - a fast, feature-rich system information fetcher
 **-V, --version**
 :   Print version information.
 
+**-m, --mode** *MODE*
+:   Select output mode (`short`, `long`, or `custom`). Default is `long`.
+
+**-c, --config** *FILE*
+:   Path to a custom configuration file instead of the default.
+
 **--ascii-only**
 :   Force ASCII-only output, disabling graphical and Chafa rendering.
 
@@ -29,10 +35,16 @@ retch - a fast, feature-rich system information fetcher
 :   Disable the logo entirely.
 
 **-l, --logo** *LOGO*
-:   Force a specific distribution logo by name/ID (e.g. `pop`, `manjaro`, `endeavouros`, `opensuse`).
+:   Force a specific distribution logo by name/ID (e.g. `pop`, `manjaro`, `endeavouros`, `opensuse`, `ubuntu`, `fedora`, `macos`, `windows`).
 
 **--theme** *THEME*
-:   Use a specific theme (`default`, `dark`, or `light`).
+:   Use a specific theme (e.g. `default`, `dark`, `light`, or community themes).
+
+**--list-themes**
+:   List all available built-in themes.
+
+**--print-theme-template**
+:   Print an example custom theme template to stdout.
 
 **--print-logos**
 :   Print all available logos.
@@ -49,11 +61,17 @@ retch - a fast, feature-rich system information fetcher
 **--write-config** [*PATH*]
 :   Write the default configuration to a file (uses `~/.config/retch/config.toml` if no path is given).
 
+**--merge-config**
+:   Merge default configuration settings (as comments) into an existing config file at the default path (or custom path if `--config` is supplied).
+
+**--fields** *FIELDS*
+:   Comma-separated list of fields to display, overriding the config file's default list.
+
 **--short**
-:   Short output mode. Shows: OS, Kernel, Host, CPU, GPU, Memory, Disk.
+:   Short output mode. Equivalent to `--mode short`. Shows: OS, Kernel, Host, CPU, GPU, Memory, Disk.
 
 **--long**
-:   Long output mode. Shows all available fields.
+:   Long output mode. Equivalent to `--mode long`. Shows all available fields.
 
 # CONFIGURATION
 
@@ -68,6 +86,45 @@ or
 You can generate a starting configuration with:
 
     retch --generate-config > ~/.config/retch/config.toml
+
+## Available Configuration Keys
+
+- **theme**: Theme name to use. (default: `"auto"`).
+- **show_logo**: Boolean indicating whether to show the logo (default: `true`).
+- **ascii_only**: Boolean indicating whether to restrict logo to ASCII representation.
+- **logo**: Distro name/ID to force override logo detection.
+- **fields**: Array of strings representing active fields and their display order. Available fields are:
+  - `os`: Operating system name.
+  - `kernel`: Kernel version.
+  - `host`: System host/product name.
+  - `arch`: System architecture.
+  - `cpu`: CPU model name.
+  - `cpu-freq`: CPU current/max/min frequencies.
+  - `gpu`: GPU model(s) and VRAM.
+  - `motherboard`: Motherboard manufacturer and model.
+  - `bios`: BIOS vendor and version.
+  - `display`: Connected monitor displays with refresh rates and resolution.
+  - `audio`: Audio card controller and active sound servers (PipeWire, PulseAudio, ALSA, CoreAudio, Windows Audio).
+  - `memory`: System RAM usage and capacity.
+  - `swap`: System SWAP usage and capacity.
+  - `uptime`: System uptime.
+  - `procs`: Active process count.
+  - `load`: Average system load.
+  - `disk`: Mounted disk capacity, usage, and mountpoint.
+  - `temp`: System temperature sensors.
+  - `net`: Active network interfaces and local/public IP addresses.
+  - `wifi`: Active Wi-Fi SSID, band frequency, channel, and link rates.
+  - `bluetooth`: Bluetooth adapter details and connected device count/names.
+  - `battery`: Battery capacity, vendor/model, time remaining, and health.
+  - `shell`: Shell name and version (e.g. bash, zsh, fish, nu).
+  - `terminal`: Terminal emulator name and version.
+  - `desktop`: Desktop environment or window manager.
+  - `theme`: UI Theme settings.
+  - `icons`: UI icon pack.
+  - `cursor`: UI mouse cursor settings.
+  - `font`: UI system font.
+  - `users`: Current logged in users.
+  - `packages`: Installed package counts (supporting dpkg, rpm, pacman, flatpak, snap, homebrew, scoop, chocolatey, etc.).
 
 # THEMES
 

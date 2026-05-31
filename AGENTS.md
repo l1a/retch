@@ -12,13 +12,20 @@
 - **Quality & Linting**: Use `just check` to run formatting (`cargo fmt -- --check`) and linting (`cargo clippy -- -D warnings`) checks locally before committing. This matches the checks performed in the CI/CD pipeline.
 - **Verification Routine**: Before proposing a push or Pull Request, always verify:
   1. All new and existing unit/integration tests cover changes.
-  2. All documentation (including `README.md` and man files) matches the current features.
+  2. All documentation is kept in sync with the current features.
   3. Default configuration templates (like `default_config_content()` in `src/main.rs`) and comment lists are fully updated with new options.
+- **Documentation & Versioning Updates**: When branching to make changes, ensure the following updates are performed:
+  - **Version Bump**: Increment the version in `Cargo.toml`, verify compilation, and run `cargo check` to update `Cargo.lock`.
+  - **Man Pages**: Update `docs/retch.1.md` with new parameters/fields and run `just man` to rebuild `docs/retch.1`.
+  - **README**: Add new features, command examples, or configuration keys to `README.md`.
+  - **Roadmap & History**: Update `AGENTS.md` by bumping the version in the "Current State" header and adding a new release log entry under "Major Achievements".
+  - **GitHub Wiki**: Clone and update the corresponding wiki pages (`Configuration-and-Theming.md`, `Workspace-Architecture.md`, `Home.md`) if configuration parameters or workspace structures change.
+  - **Bumping Strategy**: If the changes are significant (e.g. new subcrates, breaking CLI changes, major architectural redesigns), ALWAYS ask the user whether to perform a major, minor, or patch version bump.
 - **Command Redundancy**: Avoid running `just check && cargo test` sequentially since both build and check the project profiles, causing redundant background compilation cycles. Prefer `cargo test` during iteration and a final check before staging.
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.2.17)
+## Current State (v0.2.18)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts) concurrently using scoped threads.
 - **Benchmarking**: Criterion micro-benchmarks for core subsystems, hyperfine CLI recipes for cross-tool comparison, and continuous benchmarking CI with GitHub Pages dashboard.
 - **Architecture**: Modularized GPU detection into a dedicated component.
@@ -35,6 +42,10 @@
 - **WiFi & Bluetooth**: Integrated detailed connection parameters, link rates, MLO bands, adapter hardware names, power states, and connected Bluetooth device profiles.
 
 ## Major Achievements
+
+### v0.2.18 - Documentation Update (May 31, 2026)
+- **Documentation**: Significantly expanded README.md and manual page docs/retch.1.md to fully cover and document the active configuration options, CLI argument mappings, and newly supported concurrent queries (UI styling, shell version detection, EDID parsing, audio server types, Bluetooth devices, and Wi-Fi features).
+- **Version**: Bumped version to `0.2.18` in `Cargo.toml`, `docs/retch.1`, and documentation.
 
 ### v0.2.17 - Workspace Migration and Battery Subcrate (May 31, 2026)
 - **Battery Subcrate**: Extracted the native battery parsing implementations into a new standalone workspace package `crates/battery` (`retch-battery`), making it reusable as a library.
@@ -196,9 +207,6 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - **Camera / Webcam**: Connected webcam names.
 - **Gamepad / Controllers**: Connected controller/input device names.
 
-### Network
-- **Wi-Fi SSID & Bluetooth**: Wi-Fi network SSID, speeds, and Bluetooth status/connected devices.
-
 ### Desktop Environment & UI
 - **Terminal Font**: Font name and size configured in the terminal emulator.
 
@@ -206,7 +214,8 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 1. **Expansion** — Explore support for other platforms (e.g., BSDs, Android/Termux).
 2. **UX Polish** — Refine error messages and performance of slow platform queries.
-3. **Dependency Cleanup & Security** — Replace the unmaintained `battery` crate with native platform-specific battery queries (reading sysfs on Linux, `pmset` on macOS, and WMI/Win32 APIs on Windows). This will eliminate the transitive `nix` dependency, resolving the remaining Dependabot alerts, while also improving build times and binary footprint.
+3. **Workspace Expansion** — Consider separating other modular capabilities (e.g., GPU detection or EDID display parsing) into standalone workspace crates to keep the CLI lightweight.
+4. **Input Devices** — Implement queries for connected webcams and gamepad/input controllers to close the feature gap with Fastfetch.
 
 ---
 *Last updated: May 31, 2026*
