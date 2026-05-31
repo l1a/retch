@@ -120,12 +120,12 @@ impl SystemInfo {
 
         let cpu_cores = sys.cpus().len();
 
-        let total_mem = sys.total_memory() as f64 / 1024.0 / 1024.0;
-        let used_mem = sys.used_memory() as f64 / 1024.0 / 1024.0;
+        let total_mem = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
+        let used_mem = sys.used_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
         let memory = format!("{:.1} / {:.1} GB", used_mem, total_mem);
 
-        let total_swap = sys.total_swap() as f64 / 1024.0 / 1024.0;
-        let used_swap = sys.used_swap() as f64 / 1024.0 / 1024.0;
+        let total_swap = sys.total_swap() as f64 / 1024.0 / 1024.0 / 1024.0;
+        let used_swap = sys.used_swap() as f64 / 1024.0 / 1024.0 / 1024.0;
         let swap = if total_swap > 0.0 {
             format!("{:.1} / {:.1} GB", used_swap, total_swap)
         } else {
