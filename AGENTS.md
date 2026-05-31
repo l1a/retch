@@ -18,7 +18,7 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.2.15)
+## Current State (v0.2.16)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts) concurrently using scoped threads.
 - **Benchmarking**: Criterion micro-benchmarks for core subsystems, hyperfine CLI recipes for cross-tool comparison, and continuous benchmarking CI with GitHub Pages dashboard.
 - **Architecture**: Modularized GPU detection into a dedicated component.
@@ -35,6 +35,10 @@
 - **WiFi & Bluetooth**: Integrated detailed connection parameters, link rates, MLO bands, adapter hardware names, power states, and connected Bluetooth device profiles.
 
 ## Major Achievements
+
+### v0.2.16 - Update Roadmap with Native Battery Plan (May 31, 2026)
+- **Roadmap Update**: Updated development documentation (`AGENTS.md`) to include native battery implementation plan to eliminate the unmaintained `battery` crate and transitively fix dependabot security alerts on `nix`.
+- **Version**: Bumped version to `0.2.16` in `Cargo.toml`, `docs/retch.1`, and documentation.
 
 ### v0.2.15 - Restrict GITHUB_TOKEN Permissions (May 31, 2026)
 - **Workflows Security**: Added explicit `permissions: contents: read` blocks to both the Rust CI and Security Audit workflows to limit the scope of the default GITHUB_TOKEN and resolve CodeQL warnings.
@@ -198,6 +202,7 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 1. **Expansion** — Explore support for other platforms (e.g., BSDs, Android/Termux).
 2. **UX Polish** — Refine error messages and performance of slow platform queries.
+3. **Dependency Cleanup & Security** — Replace the unmaintained `battery` crate with native platform-specific battery queries (reading sysfs on Linux, `pmset` on macOS, and WMI/Win32 APIs on Windows). This will eliminate the transitive `nix` dependency, resolving the remaining Dependabot alerts, while also improving build times and binary footprint.
 
 ---
 *Last updated: May 31, 2026*
