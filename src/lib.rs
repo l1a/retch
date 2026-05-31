@@ -9,7 +9,6 @@
 //! This crate provides both a CLI binary (`retch`) and a library interface
 //! for fetching and displaying system information.
 
-pub mod battery;
 pub mod cli;
 pub mod config;
 pub mod display;

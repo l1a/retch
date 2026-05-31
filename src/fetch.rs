@@ -190,12 +190,12 @@ impl SystemInfo {
                 .collect()
         };
 
-        let battery = crate::battery::get_battery_info().map(|bat| {
+        let battery = retch_battery::get_battery_info().map(|bat| {
             let pct = bat.percentage;
             let state = match bat.state {
-                crate::battery::BatteryState::Charging => "charging",
-                crate::battery::BatteryState::Discharging => "discharging",
-                crate::battery::BatteryState::Full => "full",
+                retch_battery::BatteryState::Charging => "charging",
+                retch_battery::BatteryState::Discharging => "discharging",
+                retch_battery::BatteryState::Full => "full",
                 _ => "not charging",
             };
             let vendor = bat.vendor;
@@ -203,7 +203,7 @@ impl SystemInfo {
 
             // Format time remaining as "Xh Ym" or "Xd Yh"
             let time_str = match bat.state {
-                crate::battery::BatteryState::Charging => bat.time_remaining.map(|d| {
+                retch_battery::BatteryState::Charging => bat.time_remaining.map(|d| {
                     let total_mins = d.as_secs() / 60;
                     let hours = total_mins / 60;
                     let mins = total_mins % 60;
@@ -217,7 +217,7 @@ impl SystemInfo {
                         format!("{}m until full", mins)
                     }
                 }),
-                crate::battery::BatteryState::Discharging => bat.time_remaining.map(|d| {
+                retch_battery::BatteryState::Discharging => bat.time_remaining.map(|d| {
                     let total_mins = d.as_secs() / 60;
                     let hours = total_mins / 60;
                     let mins = total_mins % 60;
