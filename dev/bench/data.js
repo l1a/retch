@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780269649989,
+  "lastUpdate": 1780271319974,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -1001,6 +1001,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2588068.2842045976,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e3d467e40ab462d96ed88e27a163151af0882f4e",
+          "message": "Merge pull request #58 from l1a/feature/battery-subcrate\n\nMove battery module to retch-battery sub-crate",
+          "timestamp": "2026-05-31T16:44:48-07:00",
+          "tree_id": "2f218ce22db5c6593b82d9db78757216c72e840b",
+          "url": "https://github.com/l1a/retch/commit/e3d467e40ab462d96ed88e27a163151af0882f4e"
+        },
+        "date": 1780271319610,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 12068914.139999999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 101840013.13999999,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 100909292.44,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2611932.6573573584,
             "unit": "ns"
           }
         ]
