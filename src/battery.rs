@@ -338,7 +338,7 @@ pub fn get_battery_info() -> Option<BatteryInfo> {
 }
 
 // Helpers
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(target_os = "linux")]
 fn read_file_to_string<P: AsRef<Path>>(path: P) -> Option<String> {
     fs::read_to_string(path).ok().map(|s| s.trim().to_string())
 }
