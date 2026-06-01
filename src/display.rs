@@ -19,7 +19,6 @@ impl SystemInfo {
     /// between graphics, Chafa, and ASCII), and field filtering based on
     /// CLI flags and configuration.
     pub fn display(&self, cli: &Cli, _config: &Config) -> anyhow::Result<()> {
-        println!();
         let theme_name = _config.theme.as_deref().or(cli.theme.as_deref());
         let mut theme = match theme_name {
             Some(name) => Theme::from_name(name),
@@ -31,89 +30,15 @@ impl SystemInfo {
             theme = Theme::with_custom_overrides(theme, custom);
         }
 
+        // Determine terminal width
+        let term_width = if let Some((terminal_size::Width(w), _)) = terminal_size::terminal_size()
+        {
+            w as usize
+        } else {
+            80
+        };
+
         let show_logo = _config.show_logo.unwrap_or(true) && !cli.no_logo;
-        if show_logo {
-            let distro_hint = _config.logo.clone().or_else(logo::detect_distro);
-            #[cfg(feature = "graphics")]
-            let mut printed_logo = false;
-            #[cfg(not(feature = "graphics"))]
-            let printed_logo = false;
-
-            if !cli.ascii_only {
-                // 1. Try user-provided custom logo first (config override)
-                let user_logo = if let Some(config_dir) = dirs::config_dir() {
-                    let p = config_dir.join("retch").join("logo.png");
-                    if p.exists() {
-                        Some(p)
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                };
-
-                // 2. Kitty mode
-                #[cfg(feature = "graphics")]
-                if !printed_logo && logo::supports_kitty() {
-                    if let Some(path) = &user_logo {
-                        logo::print_graphical_logo_from_path(path);
-                        printed_logo = true;
-                    } else if let Some(distro) = &distro_hint {
-                        if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
-                            logo::print_graphical_logo(bytes);
-                            printed_logo = true;
-                        }
-                    }
-                }
-
-                // 2.3 iTerm2 mode
-                #[cfg(feature = "graphics")]
-                if !printed_logo && logo::supports_iterm2() {
-                    if let Some(path) = &user_logo {
-                        logo::print_iterm2_logo_from_path(path);
-                        printed_logo = true;
-                    } else if let Some(distro) = &distro_hint {
-                        if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
-                            logo::print_iterm2_logo(bytes);
-                            printed_logo = true;
-                        }
-                    }
-                }
-
-                // 2.5 Sixel mode
-                #[cfg(feature = "graphics")]
-                if !printed_logo && logo::supports_sixel() {
-                    if let Some(path) = &user_logo {
-                        logo::print_sixel_logo_from_path(path);
-                        printed_logo = true;
-                    } else if let Some(distro) = &distro_hint {
-                        if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
-                            logo::print_sixel_logo(bytes);
-                            printed_logo = true;
-                        }
-                    }
-                }
-
-                // 3. Chafa fallback (high-quality symbols)
-                if !printed_logo && logo::chafa_available() {
-                    if let Some(path) = &user_logo {
-                        if logo::print_with_chafa(path) {
-                            printed_logo = true;
-                        }
-                    } else if distro_hint.is_some() {
-                        // For chafa we need a file, so we skip embedded for now
-                        // (user can provide logo.png for chafa path)
-                    }
-                }
-            }
-
-            // 3. Final fallback: Real Fastfetch ASCII logo
-            if !printed_logo {
-                // Use the unified priority logic (graphic -> chafa -> ASCII)
-                logo::print_distro_logo_with_ascii(distro_hint.as_deref(), cli.ascii_only);
-            }
-            println!(); // spacing after logo
-        }
 
         // Determine which fields to show
         let allowed_fields: Option<Vec<String>> = if cli.long {
@@ -170,15 +95,16 @@ impl SystemInfo {
 
         // Helper for right-aligned labels
         let label_width = 10;
-        let print_line = |label: &str, value: &str| {
+        let mut info_lines = Vec::new();
+        let mut print_line = |label: &str, value: &str| {
             if should_show(label) {
-                println!(
+                info_lines.push(format!(
                     "{:>width$}{} {}",
                     theme.color_label(label),
                     theme.color_separator(":"),
                     theme.color_value(value),
                     width = label_width
-                );
+                ));
             }
         };
 
@@ -330,6 +256,276 @@ impl SystemInfo {
         if let Some(pkgs) = self.packages {
             if pkgs > 0 {
                 print_line("Packages", &pkgs.to_string());
+            }
+        }
+
+        // Setup logo representation
+        enum ActiveLogo {
+            Lines(Vec<String>),
+            Kitty(Vec<u8>),
+            Iterm2(Vec<u8>),
+            Sixel(Vec<u8>),
+            None,
+        }
+
+        let mut active_logo = ActiveLogo::None;
+
+        if show_logo {
+            let distro_hint = _config.logo.clone().or_else(logo::detect_distro);
+            let user_logo = if let Some(config_dir) = dirs::config_dir() {
+                let p = config_dir.join("retch").join("logo.png");
+                if p.exists() {
+                    Some(p)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            if cli.ascii_logo {
+                active_logo =
+                    ActiveLogo::Lines(logo::get_distro_logo_lines(distro_hint.as_deref()));
+            } else if _config.chafa.unwrap_or(false) || cli.chafa_logo {
+                let mut resolved = false;
+                if logo::chafa_available() {
+                    if let Some(path) = &user_logo {
+                        if let Some(lines) = logo::get_chafa_logo_lines(path) {
+                            active_logo = ActiveLogo::Lines(lines);
+                            resolved = true;
+                        }
+                    } else if let Some(distro) = &distro_hint {
+                        if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
+                            let temp_path = std::env::temp_dir()
+                                .join(format!("retch_logo_{}.png", std::process::id()));
+                            if std::fs::write(&temp_path, bytes).is_ok() {
+                                if let Some(lines) = logo::get_chafa_logo_lines(&temp_path) {
+                                    active_logo = ActiveLogo::Lines(lines);
+                                    resolved = true;
+                                }
+                                let _ = std::fs::remove_file(&temp_path);
+                            }
+                        }
+                    }
+                }
+                if !resolved {
+                    active_logo =
+                        ActiveLogo::Lines(logo::get_distro_logo_lines(distro_hint.as_deref()));
+                }
+            } else {
+                let mut resolved = false;
+
+                // Kitty
+                #[cfg(feature = "graphics")]
+                if !resolved && logo::supports_kitty() {
+                    if let Some(path) = &user_logo {
+                        if let Ok(bytes) = std::fs::read(path) {
+                            active_logo = ActiveLogo::Kitty(bytes);
+                            resolved = true;
+                        }
+                    } else if let Some(distro) = &distro_hint {
+                        if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
+                            active_logo = ActiveLogo::Kitty(bytes.to_vec());
+                            resolved = true;
+                        }
+                    }
+                }
+
+                // iTerm2
+                #[cfg(feature = "graphics")]
+                if !resolved && logo::supports_iterm2() {
+                    if let Some(path) = &user_logo {
+                        if let Ok(bytes) = std::fs::read(path) {
+                            active_logo = ActiveLogo::Iterm2(bytes);
+                            resolved = true;
+                        }
+                    } else if let Some(distro) = &distro_hint {
+                        if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
+                            active_logo = ActiveLogo::Iterm2(bytes.to_vec());
+                            resolved = true;
+                        }
+                    }
+                }
+
+                // Sixel
+                #[cfg(feature = "graphics")]
+                if !resolved && logo::supports_sixel() {
+                    if let Some(path) = &user_logo {
+                        if let Ok(bytes) = std::fs::read(path) {
+                            active_logo = ActiveLogo::Sixel(bytes);
+                            resolved = true;
+                        }
+                    } else if let Some(distro) = &distro_hint {
+                        if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
+                            active_logo = ActiveLogo::Sixel(bytes.to_vec());
+                            resolved = true;
+                        }
+                    }
+                }
+
+                // Chafa
+                if !resolved && logo::chafa_available() {
+                    if let Some(path) = &user_logo {
+                        if let Some(lines) = logo::get_chafa_logo_lines(path) {
+                            active_logo = ActiveLogo::Lines(lines);
+                            resolved = true;
+                        }
+                    } else if let Some(distro) = &distro_hint {
+                        if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
+                            // Write temp logo and read lines via chafa
+                            let temp_path = std::env::temp_dir()
+                                .join(format!("retch_logo_{}.png", std::process::id()));
+                            if std::fs::write(&temp_path, bytes).is_ok() {
+                                if let Some(lines) = logo::get_chafa_logo_lines(&temp_path) {
+                                    active_logo = ActiveLogo::Lines(lines);
+                                    resolved = true;
+                                }
+                                let _ = std::fs::remove_file(&temp_path);
+                            }
+                        }
+                    }
+                }
+
+                // Fallback to ASCII lines
+                if !resolved {
+                    active_logo =
+                        ActiveLogo::Lines(logo::get_distro_logo_lines(distro_hint.as_deref()));
+                }
+            }
+        }
+
+        // Helper to strip ANSI codes and calculate visible length
+        let visible_len = |s: &str| -> usize {
+            let mut count = 0;
+            let mut in_esc = false;
+            for c in s.chars() {
+                if c == '\x1b' {
+                    in_esc = true;
+                } else if in_esc {
+                    if c.is_ascii_alphabetic() {
+                        in_esc = false;
+                    }
+                } else {
+                    count += 1;
+                }
+            }
+            count
+        };
+
+        let max_text_width = info_lines
+            .iter()
+            .map(|line| visible_len(line))
+            .max()
+            .unwrap_or(0);
+        let text_column_width = std::cmp::max(max_text_width + 4, 45);
+
+        let max_logo_width = match &active_logo {
+            ActiveLogo::Lines(logo_lines) => logo_lines
+                .iter()
+                .map(|line| visible_len(line))
+                .max()
+                .unwrap_or(0),
+            ActiveLogo::Kitty(_) | ActiveLogo::Iterm2(_) | ActiveLogo::Sixel(_) => 40,
+            ActiveLogo::None => 0,
+        };
+
+        let side_by_side =
+            show_logo && term_width >= 95 && term_width >= (text_column_width + max_logo_width);
+
+        println!(); // leading newline
+
+        if side_by_side {
+            match active_logo {
+                ActiveLogo::Lines(logo_lines) => {
+                    let max_lines = std::cmp::max(info_lines.len(), logo_lines.len());
+                    for i in 0..max_lines {
+                        let info_line = info_lines.get(i).cloned().unwrap_or_default();
+                        let logo_line = logo_lines.get(i).cloned().unwrap_or_default();
+                        let vis_len = visible_len(&info_line);
+                        let padding = if vis_len < text_column_width {
+                            " ".repeat(text_column_width - vis_len)
+                        } else {
+                            String::new()
+                        };
+                        println!("{}{}{}", info_line, padding, logo_line);
+                    }
+                }
+                ActiveLogo::Kitty(bytes) => {
+                    // Print text lines
+                    for line in &info_lines {
+                        println!("{}", line);
+                    }
+                    // Position and render
+                    let num_lines = info_lines.len();
+                    print!("\x1b7"); // DEC save cursor
+                    if num_lines > 0 {
+                        print!("\x1b[{}A", num_lines); // Move up
+                    }
+                    print!("\x1b[{}C", text_column_width); // Move right
+                    logo::print_graphical_logo(&bytes);
+                    print!("\x1b8"); // DEC restore cursor
+                }
+                ActiveLogo::Iterm2(bytes) => {
+                    // Print text lines
+                    for line in &info_lines {
+                        println!("{}", line);
+                    }
+                    // Position and render
+                    let num_lines = info_lines.len();
+                    print!("\x1b7"); // DEC save cursor
+                    if num_lines > 0 {
+                        print!("\x1b[{}A", num_lines); // Move up
+                    }
+                    print!("\x1b[{}C", text_column_width); // Move right
+                    logo::print_iterm2_logo(&bytes);
+                    print!("\x1b8"); // DEC restore cursor
+                }
+                ActiveLogo::Sixel(bytes) => {
+                    // Print text lines
+                    for line in &info_lines {
+                        println!("{}", line);
+                    }
+                    // Position and render
+                    let num_lines = info_lines.len();
+                    print!("\x1b7"); // DEC save cursor
+                    if num_lines > 0 {
+                        print!("\x1b[{}A", num_lines); // Move up
+                    }
+                    print!("\x1b[{}C", text_column_width); // Move right
+                    logo::print_sixel_logo(&bytes);
+                    print!("\x1b8"); // DEC restore cursor
+                }
+                ActiveLogo::None => {
+                    for line in &info_lines {
+                        println!("{}", line);
+                    }
+                }
+            }
+        } else {
+            // Narrow or no-logo fallback: print logo, then print data
+            match active_logo {
+                ActiveLogo::Lines(logo_lines) => {
+                    for line in logo_lines {
+                        println!("{}", line);
+                    }
+                    println!();
+                }
+                ActiveLogo::Kitty(bytes) => {
+                    logo::print_graphical_logo(&bytes);
+                    println!();
+                }
+                ActiveLogo::Iterm2(bytes) => {
+                    logo::print_iterm2_logo(&bytes);
+                    println!();
+                }
+                ActiveLogo::Sixel(bytes) => {
+                    logo::print_sixel_logo(&bytes);
+                    println!();
+                }
+                ActiveLogo::None => {}
+            }
+            for line in &info_lines {
+                println!("{}", line);
             }
         }
 

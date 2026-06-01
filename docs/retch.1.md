@@ -28,8 +28,11 @@ retch - a fast, feature-rich system information fetcher
 **-c, --config** *FILE*
 :   Path to a custom configuration file instead of the default.
 
-**--ascii-only**
-:   Force ASCII-only output, disabling graphical and Chafa rendering.
+**--ascii-logo**
+:   Force ASCII logo output, disabling graphical and Chafa rendering.
+
+**--chafa-logo**
+:   Force Chafa symbols output, disabling high-res graphical protocols (Kitty, Sixel, iTerm2).
 
 **--no-logo**
 :   Disable the logo entirely.
@@ -92,6 +95,7 @@ You can generate a starting configuration with:
 - **theme**: Theme name to use. (default: `"auto"`).
 - **show_logo**: Boolean indicating whether to show the logo (default: `true`).
 - **ascii_only**: Boolean indicating whether to restrict logo to ASCII representation.
+- **chafa**: Boolean indicating whether to force Chafa symbols output.
 - **logo**: Distro name/ID to force override logo detection.
 - **fields**: Array of strings representing active fields and their display order. Available fields are:
   - `os`: Operating system name.
