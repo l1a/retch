@@ -68,7 +68,7 @@ pub fn detect_distro() -> Option<String> {
     }
 }
 
-/// Returns a list of strings representing the ASCII art for a given distro.
+///// Returns a list of strings representing the ASCII art for a given distro with color placeholders.
 ///
 /// All ASCII logos are sourced from or compatible with Fastfetch.
 pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
@@ -77,7 +77,7 @@ pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
     match d.as_deref() {
         // Arch Linux - exact from Fastfetch
         Some("arch") => vec![
-            "               -`".to_string(),
+            "                  -`".to_string(),
             "                 .o+`".to_string(),
             "                `ooo/".to_string(),
             "               `+oooo:".to_string(),
@@ -86,33 +86,33 @@ pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
             "            `/:-:++oooo+:".to_string(),
             "           `/++++/+++++++:".to_string(),
             "          `/++++++++++++++:".to_string(),
-            "         `/+++ooooooooooooo/`".to_string(),
-            "        ./ooosssso++osssssso+`".to_string(),
-            "       .oossssso-````/ossssss+`".to_string(),
+            "         `/+++o${2}oooooooo${1}oooo/`".to_string(),
+            "        ./${2}ooosssso++osssssso${1}+`".to_string(),
+            "${2}       .oossssso-````/ossssss+`".to_string(),
             "      -osssssso.      :ssssssso.".to_string(),
             "     :osssssss/        osssso+++.".to_string(),
             "    /ossssssss/        +ssssooo/-".to_string(),
             "  `/ossssso+/:-        -:/+osssso+-".to_string(),
             " `+sso+:-`                 `.-/+oso:".to_string(),
             "`++:.                           `-/+/".to_string(),
-            ".`                                 `".to_string(),
+            ".`                                 `/".to_string(),
         ],
 
         // Debian - exact from Fastfetch
         Some("debian") => vec![
-            " _,met$$$$$$$$$$gg.".to_string(),
-            "      ,g$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$P.".to_string(),
-            "    ,g$$$$P\"\"       \"\"\"Y$$$$.\".".to_string(),
-            "   ,$$$$P'              `$$$$$$.".to_string(),
+            "        ${2}_,met$$$$$$$$$$gg.".to_string(),
+            "     ,g$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$P.".to_string(),
+            "   ,g$$$$P\"\"       \"\"\"Y$$$$.\".".to_string(),
+            "  ,$$$$P'              `$$$$$$.".to_string(),
             "',$$$$P       ,ggs.     `$$$$b:".to_string(),
-            "`d$$$$'     ,$P\"'   .    $$$$$$".to_string(),
-            " $$$$P      d$'     ,    $$$$P".to_string(),
-            " $$$$:      $$$.   -    ,d$$$$'".to_string(),
+            "`d$$$$'     ,$P\"'   ${1}.${2}    $$$$$$".to_string(),
+            " $$$$P      d$'     ${1},${2}    $$$$P".to_string(),
+            " $$$$:      $$$.   ${1}-${2}    ,d$$$$'".to_string(),
             " $$$$;      Y$b._   _,d$P'".to_string(),
-            " Y$$$$.    .`\"Y$$$$$$$$P\"'".to_string(),
-            " `$$$$b      \"-.__".to_string(),
-            "  `Y$$$$b".to_string(),
-            "   `Y$$$$.".to_string(),
+            " Y$$$$.    ${1}`.${2}`\"Y$$$$$$$$P\"'".to_string(),
+            " `$$$$b      ${1}\"-.__".to_string(),
+            "  ${2}`Y$$$$b".to_string(),
+            "   `Y$$$.".to_string(),
             "     `$$$$b.".to_string(),
             "       `Y$$$$b.".to_string(),
             "         `\"Y$$b._".to_string(),
@@ -124,185 +124,250 @@ pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
             "             .',;::::;,'.".to_string(),
             "         .';:cccccccccccc:;,.".to_string(),
             "      .;cccccccccccccccccccccc;.".to_string(),
-            "    .:cccccccccccccccccccccc:.".to_string(),
-            "  .;ccccccccccccc;.:dddl:.;ccccccc;.".to_string(),
-            " .:ccccccccccccc;OWMKOOXMWd;ccccccc:.".to_string(),
-            ".:ccccccccccccc;KMMc;cc;xMMc;ccccccc:.".to_string(),
-            ",cccccccccccccc;MMM.;cc;;WW:;cccccccc,".to_string(),
-            ":cccccccccccccc;MMM.;cccccccccccccccc:".to_string(),
-            ":ccccccc;oxOOOo;MMM000k.;cccccccccccc:".to_string(),
-            "cccccc;0MMKxdd:;MMMkddc.;cccccccccccc;".to_string(),
-            "ccccc;XMO';cccc;MMM.;cccccccccccccccc'".to_string(),
-            "ccccc;MMo;ccccc;MMW.;ccccccccccccccc;".to_string(),
-            "ccccc;0MNc.ccc.xMMd;ccccccccccccccc;".to_string(),
-            "cccccc;dNMWXXXWM0:;cccccccccccccc:,".to_string(),
-            "cccccccc;.:odl:.;cccccccccccccc:,.".to_string(),
+            "    .:cccccccccccccccccccccccccc:.".to_string(),
+            "  .;ccccccccccccc;${2}.:dddl:${1};ccccccc;.".to_string(),
+            " .:ccccccccccccc;${2}OWMKOOXMWd${1};ccccccc:.".to_string(),
+            ".:ccccccccccccc;${2}KMMc${1};cc;${2}xMMc${1};ccccccc:.".to_string(),
+            ",cccccccccccccc;${2}MMM.${1};cc;${2};WW:${1};cccccccc,".to_string(),
+            ":cccccccccccccc;${2}MMM.${1};cccccccccccccccc:".to_string(),
+            ":ccccccc;${2}oxOOOo${1};${2}MMM000k.${1};cccccccccccc:".to_string(),
+            "cccccc;${2}0MMKxdd:${1};${2}MMMkddc.${1};cccccccccccc;".to_string(),
+            "ccccc;${2}XMO'${1};cccc;${2}MMM.${1};cccccccccccccccc'".to_string(),
+            "ccccc;${2}MMo${1};ccccc;${2}MMW.${1};ccccccccccccccc;".to_string(),
+            "ccccc;${2}0MNc.${1}ccc${2}.xMMd${1};ccccccccccccccc;".to_string(),
+            "cccccc;${2}dNMWXXXWM0:${1};cccccccccccccc:,".to_string(),
+            "cccccccc;${2}.:odl:${1};cccccccccccccc:,.".to_string(),
             "ccccccccccccccccccccccccccccc:'.".to_string(),
             ":ccccccccccccccccccccccc:;,..".to_string(),
+            " ':cccccccccccccccc::;,.".to_string(),
         ],
 
         // NixOS - exact from Fastfetch
         Some("nixos") => vec![
-            "          ::::.    ':::::".to_string(),
-            "      ':::::::::.   ':::::::::".to_string(),
-            "  .:::::::::::::     ::::::::::::.".to_string(),
-            "  :::::::::::'        ::::::::::::".to_string(),
-            " .::::::::::'          :::::::::::.".to_string(),
-            " ::::::::::             :::::::::::".to_string(),
-            " :::::::::              :::::::::::".to_string(),
-            " ::::::::                ::::::::::".to_string(),
-            " '::::::.                '::::::::'".to_string(),
-            "  ':::::                  '::::::'".to_string(),
-            "   ':::                    '::::'".to_string(),
-            "    ':                      ':".to_string(),
+            "          ${1}▗▄▄▄       ${2}▗▄▄▄▄    ▄▄▄▖".to_string(),
+            "          ${1}▜███▙       ${2}▜███▙  ▟███▛".to_string(),
+            "           ${1}▜███▙       ${2}▜███▙▟███▛".to_string(),
+            "            ${1}▜███▙       ${2}▜██████▛".to_string(),
+            "     ${1}▟█████████████████▙ ${2}▜████▛     ${3}▟▙".to_string(),
+            "    ${1}▟███████████████████▙ ${2}▜███▙    ${3}▟██▙".to_string(),
+            "           ${6}▄▄▄▄▖           ${2}▜███▙  ${3}▟███▛".to_string(),
+            "          ${6}▟███▛             ${2}▜██▛ ${3}▟███▛".to_string(),
+            "         ${6}▟███▛               ${2}▜▛ ${3}▟███▛".to_string(),
+            "${6}▟███████████▛                  ${3}▟██████████▙".to_string(),
+            "${6}▜██████████▛                  ${3}▟███████████▛".to_string(),
+            "      ${6}▟███▛ ${5}▟▙               ${3}▟███▛".to_string(),
+            "     ${6}▟███▛ ${5}▟██▙             ${3}▟███▛".to_string(),
+            "    ${6}▟███▛  ${5}▜███▙           ${3}▝▀▀▀▀".to_string(),
+            "    ${6}▜██▛    ${5}▜███▙ ${4}▜██████████████████▛".to_string(),
+            "     ${6}▜▛     ${5}▟████▙ ${4}▜████████████████▛".to_string(),
+            "           ${5}▟██████▙         ${4}▜███▙".to_string(),
+            "          ${5}▟███▛▜███▙         ${4}▜███▙".to_string(),
+            "         ${5}▟███▛  ▜███▙         ${4}▜███▙".to_string(),
+            "         ${5}▝▀▀▀    ▀▀▀▀▘         ${4}▀▀▀▘".to_string(),
         ],
 
         // Ubuntu - exact from Fastfetch
         Some("ubuntu") => vec![
-            "                          ....".to_string(),
-            "          ....,,:::::ccccclllclllcc:::;,,....".to_string(),
-            "      ..,;::cccllllllllllllllllllllllllcc::;..".to_string(),
-            "    ..,;::cccllllllllllllllllllllllllllllcc::;..".to_string(),
-            "  ..,;::cccllllllllllllllllllllllllllllllllcc::;..".to_string(),
-            " ..,;::cccllllllllllllllllllllllllllllllllllcc::;..".to_string(),
-            "..,;::cccllllllllllllllllllllllllllllllllllllcc::;.".to_string(),
-            "..,;::cccllllllllllllllllllllllllllllllllllllcc::;.".to_string(),
-            "..,;::cccllllllllllllllllllllllllllllllllllllcc::;.".to_string(),
-            "..,;::cccllllllllllllllllllllllllllllllllllllcc::;.".to_string(),
-            "..,;::cccllllllllllllllllllllllllllllllllllllcc::;.".to_string(),
-            "..,;::cccllllllllllllllllllllllllllllllllllllcc::;.".to_string(),
+            "                             ....".to_string(),
+            "              ${2}.',:clooo:  ${1}.:looooo:.".to_string(),
+            "           ${2}.;looooooooc  ${1}.oooooooooo'".to_string(),
+            "        ${2}.;looooool:,''.  ${1}:ooooooooooc".to_string(),
+            "       ${2};looool;.         ${1}'oooooooooo,".to_string(),
+            "      ${2};clool'             ${1}.cooooooc.  ${2},,".to_string(),
+            "         ${2}...                ${1}......  ${2}.:oo,".to_string(),
+            "  ${1}.;clol:,.                        ${2}.loooo'".to_string(),
+            " ${1}:ooooooooo,                        ${2}'ooool".to_string(),
+            "${1}'ooooooooooo.                        ${2}loooo.".to_string(),
+            "${1}'ooooooooool                         ${2}coooo.".to_string(),
+            " ${1},loooooooc.                        ${2}.loooo.".to_string(),
+            "   ${1}.,;;;'.                          ${2};ooooc".to_string(),
+            "       ${2}...                         ${2},ooool.".to_string(),
+            "    ${2}.cooooc.              ${1}..',,'.  ${2}.cooo.".to_string(),
+            "      ${2};ooooo:.           ${1};oooooooc.  ${2}:l.".to_string(),
+            "       ${2}.coooooc,..      ${1}coooooooooo.".to_string(),
+            "         ${2}.:ooooooolc:. ${1}.ooooooooooo'".to_string(),
+            "           ${2}.':loooooo;  ${1},oooooooooc".to_string(),
+            "               ${2}..';::c'  ${1}.;loooo:'".to_string(),
         ],
 
         Some("pop") => vec![
-            "\x1b[37m             /////////////\x1b[0m".to_string(),
-            "\x1b[37m         /////////////////////\x1b[0m".to_string(),
-            "\x1b[37m      ///////\x1b[36m*767\x1b[37m////////////////\x1b[0m".to_string(),
-            "\x1b[37m    //////\x1b[36m7676767676*\x1b[37m//////////////\x1b[0m".to_string(),
-            "\x1b[37m   /////\x1b[36m76767\x1b[37m//\x1b[36m7676767\x1b[37m//////////////\x1b[0m".to_string(),
-            "\x1b[37m  /////\x1b[36m767676\x1b[37m///\x1b[36m*76767\x1b[37m///////////////\x1b[0m".to_string(),
-            "\x1b[37m ///////\x1b[36m767676\x1b[37m///\x1b[36m76767\x1b[37m.\x1b[36m///7676*\x1b[37m///////\x1b[0m".to_string(),
-            "\x1b[37m/////////\x1b[36m767676\x1b[37m//\x1b[36m76767\x1b[37m///\x1b[36m767676\x1b[37m////////\x1b[0m".to_string(),
-            "\x1b[37m//////////\x1b[36m767676767676\x1b[37m////\x1b[36m76767\x1b[37m/////////\x1b[0m".to_string(),
-            "\x1b[37m///////////\x1b[36m767676767\x1b[37m//////\x1b[36m7676\x1b[37m//////////\x1b[0m".to_string(),
-            "\x1b[37m////////////,\x1b[36m7676\x1b[37m,///////\x1b[36m767\x1b[37m///////////\x1b[0m".to_string(),
-            "\x1b[37m/////////////*\x1b[36m7676\x1b[37m///////\x1b[36m76\x1b[37m////////////\x1b[0m".to_string(),
-            "\x1b[37m///////////////\x1b[36m7676\x1b[37m////////////////////\x1b[0m".to_string(),
-            "\x1b[37m ///////////////\x1b[36m7676\x1b[37m///\x1b[36m767\x1b[37m////////////\x1b[0m".to_string(),
-            "\x1b[37m  //////////////////////\x1b[36m'\x1b[37m////////////\x1b[0m".to_string(),
-            "\x1b[37m   //////\x1b[36m.7676767676767676767,\x1b[37m//////\x1b[0m".to_string(),
-            "\x1b[37m    /////\x1b[36m767676767676767676767\x1b[37m/////\x1b[0m".to_string(),
-            "\x1b[37m      ///////////////////////////\x1b[0m".to_string(),
-            "\x1b[37m         /////////////////////\x1b[0m".to_string(),
-            "\x1b[37m             /////////////\x1b[0m".to_string(),
+            "             /////////////".to_string(),
+            "         /////////////////////".to_string(),
+            "      ///////${2}*767${1}////////////////".to_string(),
+            "    //////${2}7676767676*${1}//////////////".to_string(),
+            "   /////${2}76767${1}//${2}7676767${1}//////////////".to_string(),
+            "  /////${2}767676${1}///${2}*76767${1}///////////////".to_string(),
+            " ///////${2}767676${1}///${2}76767${1}.///${2}7676*${1}///////".to_string(),
+            "/////////${2}767676${1}//${2}76767${1}///${2}767676${1}////////".to_string(),
+            "//////////${2}76767676767${1}////${2}76767${1}/////////".to_string(),
+            "///////////${2}76767676${1}//////${2}7676${1}//////////".to_string(),
+            "////////////,${2}7676${1},///////${2}767${1}///////////".to_string(),
+            "/////////////*${2}7676${1}///////${2}76${1}////////////".to_string(),
+            "///////////////${2}7676${1}////////////////////".to_string(),
+            " ///////////////${2}7676${1}///${2}767${1}////////////".to_string(),
+            "  //////////////////////${2}'${1}////////////".to_string(),
+            "   //////${2}.7676767676767676767,${1}//////".to_string(),
+            "    /////${2}767676767676767676767${1}/////".to_string(),
+            "      ///////////////////////////".to_string(),
+            "         /////////////////////".to_string(),
+            "             /////////////".to_string(),
         ],
 
         Some("manjaro") => vec![
-            "\x1b[32m██████████████████  ████████\x1b[0m".to_string(),
-            "\x1b[32m██████████████████  ████████\x1b[0m".to_string(),
-            "\x1b[32m██████████████████  ████████\x1b[0m".to_string(),
-            "\x1b[32m██████████████████  ████████\x1b[0m".to_string(),
-            "\x1b[32m████████            ████████\x1b[0m".to_string(),
-            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
-            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
-            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
-            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
-            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
-            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
-            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
-            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
-            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
-            "\x1b[32m████████  ████████  ████████\x1b[0m".to_string(),
+            "██████████████████  ████████".to_string(),
+            "██████████████████  ████████".to_string(),
+            "██████████████████  ████████".to_string(),
+            "██████████████████  ████████".to_string(),
+            "████████            ████████".to_string(),
+            "████████  ████████  ████████".to_string(),
+            "████████  ████████  ████████".to_string(),
+            "████████  ████████  ████████".to_string(),
+            "████████  ████████  ████████".to_string(),
+            "████████  ████████  ████████".to_string(),
+            "████████  ████████  ████████".to_string(),
+            "████████  ████████  ████████".to_string(),
+            "████████  ████████  ████████".to_string(),
+            "████████  ████████  ████████".to_string(),
         ],
 
         Some("endeavouros") => vec![
-            "                     \x1b[35m./\x1b[31mo\x1b[34m.\x1b[0m".to_string(),
-            "                   \x1b[35m./\x1b[31msssso\x1b[34m-\x1b[0m".to_string(),
-            "                 \x1b[35m`:\x1b[31mosssssss+\x1b[34m-\x1b[0m".to_string(),
-            "               \x1b[35m`:+\x1b[31msssssssssso\x1b[34m/.\x1b[0m".to_string(),
-            "             \x1b[35m`-/o\x1b[31mssssssssssssso\x1b[34m/.\x1b[0m".to_string(),
-            "           \x1b[35m`-/+\x1b[31msssssssssssssssso\x1b[34m+:`\x1b[0m".to_string(),
-            "         \x1b[35m`-:/+\x1b[31msssssssssssssssssso\x1b[34m+/.\x1b[0m".to_string(),
-            "       \x1b[35m`.://o\x1b[31msssssssssssssssssssso\x1b[34m++-\x1b[0m".to_string(),
-            "      \x1b[35m.://+\x1b[31mssssssssssssssssssssssso\x1b[34m++:\x1b[0m".to_string(),
-            "    \x1b[35m.:///o\x1b[31mssssssssssssssssssssssssso\x1b[34m++:\x1b[0m".to_string(),
-            "  \x1b[35m`:////\x1b[31mssssssssssssssssssssssssssso\x1b[34m+++.\x1b[0m".to_string(),
-            "\x1b[35m`-////+\x1b[31mssssssssssssssssssssssssssso\x1b[34m++++-\x1b[0m".to_string(),
-            " \x1b[35m`..-+\x1b[31moosssssssssssssssssssssssso\x1b[34m+++++/`\x1b[0m".to_string(),
-            "   \x1b[34m./++++++++++++++++++++++++++++++/:.\x1b[0m".to_string(),
-            "  \x1b[34m`:::::::::::::::::::::::::------``\x1b[0m".to_string(),
-            "  \x1b[34m`:::::::::::::::::::::::::------``\x1b[0m".to_string(),
+            "                     ${2}./${1}o${3}.".to_string(),
+            "                   ${2}./${1}sssso${3}-".to_string(),
+            "                 ${2}`:${1}osssssss+${3}-".to_string(),
+            "               ${2}`:+${1}sssssssssso${3}/.".to_string(),
+            "             ${2}`-/o${1}ssssssssssssso${3}/.".to_string(),
+            "           ${2}`-/+${1}sssssssssssssssso${3}+:`".to_string(),
+            "         ${2}`-:/+${1}sssssssssssssssssso${3}+/.".to_string(),
+            "       ${2}`.://o${1}sssssssssssssssssssso${3}++-".to_string(),
+            "      ${2}.://+${1}ssssssssssssssssssssssso${3}++:".to_string(),
+            "    ${2}.:///o${1}ssssssssssssssssssssssssso${3}++:".to_string(),
+            "  ${2}`:////${1}ssssssssssssssssssssssssssso${3}+++.".to_string(),
+            "${2}`-////+${1}ssssssssssssssssssssssssssso${3}++++-".to_string(),
+            " ${2}`..-+${1}oosssssssssssssssssssssssso${3}+++++/`".to_string(),
+            "   ${3}./++++++++++++++++++++++++++++++/:.".to_string(),
+            "  `:::::::::::::::::::::::::------``".to_string(),
         ],
 
         Some("opensuse") | Some("opensuse-leap") | Some("opensuse-tumbleweed") => vec![
-            "\x1b[32m           .;ldkO0000Okdl;.\x1b[0m".to_string(),
-            "\x1b[32m       .;d00xl:^''''''^:ok00d;.\x1b[0m".to_string(),
-            "\x1b[32m     .d00l'                'o00d.\x1b[0m".to_string(),
-            "\x1b[32m   .d0Kd'\x1b[37m  Okxol:;,.          \x1b[32m:O0d\x1b[0m".to_string(),
-            "\x1b[32m  .OK\x1b[37mKKK0kOKKKKKKKKKKOxo:,\x1b[32m      lKO.\x1b[0m".to_string(),
-            "\x1b[32m ,0K\x1b[37mKKKKKKKKKKKKKKK0P^\x1b[32m,,,\x1b[37m^dx:\x1b[32m    ;00,\x1b[0m".to_string(),
-            "\x1b[32m.OK\x1b[37mKKKKKKKKKKKKKKKk'\x1b[32m.oOPPb.\x1b[37m'0k.\x1b[32m   cKO.\x1b[0m".to_string(),
-            "\x1b[32m:KK\x1b[37mKKKKKKKKKKKKKKK: \x1b[32mkKx..dd \x1b[37mlKd\x1b[32m   'OK:\x1b[0m".to_string(),
-            "\x1b[32mdKK\x1b[37mKKKKKKKKKOx0KKKd \x1b[32m^0KKKO' \x1b[37mkKKc\x1b[32m   dKd\x1b[0m".to_string(),
-            "\x1b[32mdKK\x1b[37mKKKKKKKKKK;.;oOKx,..\x1b[32m^\x1b[37m..;kKKK0.\x1b[32m  dKd\x1b[0m".to_string(),
-            "\x1b[32m:KK\x1b[37mKKKKKKKKKK0o;...^cdxxOK0O/^^'  \x1b[32m.0K:\x1b[0m".to_string(),
-            "\x1b[32m kKK\x1b[37mKKKKKKKKKKKKK0x;,,......,;od  \x1b[32mlKk\x1b[0m".to_string(),
-            "\x1b[32m '0K\x1b[37mKKKKKKKKKKKKKKKKKKKK00KKOo^  \x1b[32mc00'\x1b[0m".to_string(),
-            "\x1b[32m  'kK\x1b[37mKKOxddxkOO00000Okxoc;''   \x1b[32m.dKk'\x1b[0m".to_string(),
-            "\x1b[32m    l0Ko.                    .c00l'\x1b[0m".to_string(),
-            "\x1b[32m     'l0Kk:.              .;xK0l'\x1b[0m".to_string(),
-            "\x1b[32m        'lkK0xl:;,,,,;:ldO0kl'\x1b[0m".to_string(),
-            "\x1b[32m            '^:ldxkkkkxdl:^'\x1b[0m".to_string(),
+            "           ${2}.;ldkO0000Okdl;.".to_string(),
+            "       .;d00xl:^''''''^:ok00d;.".to_string(),
+            "     .d00l'                'o00d.".to_string(),
+            "   .d0Kd'${1}  Okxol:;,.          ${2}:O0d".to_string(),
+            "  .OK${1}KKK0kOKKKKKKKKKKOxo:,      ${2}lKO.".to_string(),
+            " ,0K${1}KKKKKKKKKKKKKKK0P^${2},,,${1}^dx:${2}    ;00,".to_string(),
+            ".OK${1}KKKKKKKKKKKKKKKk'${2}.oOPPb.${1}'0k.${2}   cKO.".to_string(),
+            ":KK${1}KKKKKKKKKKKKKKK: ${2}kKx..dd ${1}lKd${2}   'OK:".to_string(),
+            "dKK${1}KKKKKKKKKOx0KKKd ${2}^0KKKO' ${1}kKKc${2}   dKd".to_string(),
+            "dKK${1}KKKKKKKKKK;.;oOKx,..${2}^${1}..;kKKK0.${2}  dKd".to_string(),
+            ":KK${1}KKKKKKKKKK0o;...^cdxxOK0O/^^'  ${2}.0K:".to_string(),
+            " kKK${1}KKKKKKKKKKKKK0x;,,......,;od  ${2}lKk".to_string(),
+            " '0K${1}KKKKKKKKKKKKKKKKKKKK00KKOo^  ${2}c00'".to_string(),
+            "  'kK${1}KKOxddxkOO00000Okxoc;''   ${2}.dKk'".to_string(),
+            "    l0Ko.                    .c00l'".to_string(),
+            "     'l0Kk:.              .;xK0l'".to_string(),
+            "        'lkK0xl:;,,,,;:ldO0kl'".to_string(),
+            "            '^:ldxkkkkxdl:^'".to_string(),
         ],
 
         Some("macos") => vec![
-            "\x1b[32m                    c.'\x1b[0m".to_string(),
-            "\x1b[32m                 ,xNMM.\x1b[0m".to_string(),
-            "\x1b[32m               .OMMMMo\x1b[0m".to_string(),
-            "\x1b[32m               lMM\"\x1b[0m".to_string(),
-            "\x1b[32m     .;loddo:.  .olloddol;.\x1b[0m".to_string(),
-            "\x1b[32m   cKMMMMMMMMMMNWMMMMMMMMMM0:\x1b[0m".to_string(),
-            "\x1b[33m .KMMMMMMMMMMMMMMMMMMMMMMMWd.\x1b[0m".to_string(),
-            "\x1b[33m XMMMMMMMMMMMMMMMMMMMMMMMX.\x1b[0m".to_string(),
-            "\x1b[31m;MMMMMMMMMMMMMMMMMMMMMMMM:\x1b[0m".to_string(),
-            "\x1b[31m:MMMMMMMMMMMMMMMMMMMMMMMM:\x1b[0m".to_string(),
-            "\x1b[31m.MMMMMMMMMMMMMMMMMMMMMMMMX.\x1b[0m".to_string(),
-            "\x1b[31m kMMMMMMMMMMMMMMMMMMMMMMMMWd.\x1b[0m".to_string(),
-            "\x1b[35m'XMMMMMMMMMMMMMMMMMMMMMMMMMMk\x1b[0m".to_string(),
-            "\x1b[35m 'XMMMMMMMMMMMMMMMMMMMMMMMMK.\x1b[0m".to_string(),
-            "\x1b[34m    kMMMMMMMMMMMMMMMMMMMMMMd\x1b[0m".to_string(),
-            "\x1b[34m     ;KMMMMMMMWXXWMMMMMMMk.\x1b[0m".to_string(),
-            "\x1b[34m       \"cooc*\"    \"*coo'\"\x1b[0m".to_string(),
+            "                     ..'".to_string(),
+            "                 ,xNMM.".to_string(),
+            "               .OMMMMo".to_string(),
+            "               lMM\"".to_string(),
+            "     .;loddo:.  .olloddol;.".to_string(),
+            "   cKMMMMMMMMMMNWMMMMMMMMMM0:".to_string(),
+            " ${2}.KMMMMMMMMMMMMMMMMMMMMMMMWd.".to_string(),
+            " XMMMMMMMMMMMMMMMMMMMMMMMX.".to_string(),
+            "${3};MMMMMMMMMMMMMMMMMMMMMMMM:".to_string(),
+            ":MMMMMMMMMMMMMMMMMMMMMMMM:".to_string(),
+            "${4}.MMMMMMMMMMMMMMMMMMMMMMMMX.".to_string(),
+            " kMMMMMMMMMMMMMMMMMMMMMMMMWd.".to_string(),
+            " ${5}'XMMMMMMMMMMMMMMMMMMMMMMMMMMk".to_string(),
+            "  'XMMMMMMMMMMMMMMMMMMMMMMMMK.".to_string(),
+            "    ${6}kMMMMMMMMMMMMMMMMMMMMMMd".to_string(),
+            "     ;KMMMMMMMWXXWMMMMMMMk.".to_string(),
+            "       \"cooc*\"    \"*coo'\"".to_string(),
         ],
 
         Some("windows") => vec![
-            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
-            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
-            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
-            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
-            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
-            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
-            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
-            "".to_string(),
-            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
-            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
-            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
-            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
-            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
-            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
-            "\x1b[36m    ####################  ####################\x1b[0m".to_string(),
+            "${1}        ,.=:!!t3Z3z.,".to_string(),
+            "       :tt:::tt333EE3".to_string(),
+            "${1}       Et:::ztt33EEEL${2} @Ee.,      ..,".to_string(),
+            "${1}      ;tt:::tt333EE7${2} ;EEEEEEttttt33#".to_string(),
+            "${1}     :Et:::zt333EEQ.${2} $EEEEEttttt33QL".to_string(),
+            "${1}     it::::tt333EEF${2} @EEEEEEttttt33F".to_string(),
+            "${1}    ;3=*^```\"*4EEV${2} :EEEEEEttttt33@.".to_string(),
+            "${3}    ,.=::::!t=., ${1}`${2} @EEEEEEtttz33QF".to_string(),
+            "${3}   ;::::::::zt33)${2}   \"4EEEtttji3P*".to_string(),
+            "${3}  :t::::::::tt33.${4}:Z3z..${2}  ``${4} ,..g.".to_string(),
+            "${3}  i::::::::zt33F${4} AEEEtttt::::ztF".to_string(),
+            "${3} ;:::::::::t33V${4} ;EEEttttt::::t3".to_string(),
+            "${3} E::::::::zt33L${4} @EEEtttt::::z3F".to_string(),
+            "${3}{3=*^```\"*4E3)${4} ;EEEtttt:::::tZ`".to_string(),
+            "${3}             `${4} :EEEEtttt::::z7".to_string(),
+            "                 \"VEzjt:;;z>*`".to_string(),
         ],
 
         // Fallback: Tux (Linux)
         _ => vec![
-            "    .--.".to_string(),
-            "   |o_o |".to_string(),
-            "   |:_/ |".to_string(),
-            "  //   \\ \\".to_string(),
+            "    ${2}.--.".to_string(),
+            "   ${2}|${3}o${2}_${3}o${2} |".to_string(),
+            "   ${2}|${3}:${2}_/ |".to_string(),
+            "  ${2}//   \\ \\".to_string(),
             " (|     | )".to_string(),
             "/'\\_   _/`\\".to_string(),
             "\\___)=(___/".to_string(),
         ],
     }
+}
+
+/// Returns dynamic ANSI color arrays for a given distribution.
+pub fn get_distro_colors(distro: Option<&str>) -> Vec<&'static str> {
+    let d = distro.map(|s| s.to_lowercase());
+    match d.as_deref() {
+        Some("arch") => vec!["\x1b[36m", "\x1b[37m"],
+        Some("debian") => vec!["\x1b[31m", "\x1b[37m"],
+        Some("fedora") => vec!["\x1b[34m", "\x1b[37m"],
+        Some("nixos") => vec![
+            "\x1b[34m", "\x1b[36m", "\x1b[34m", "\x1b[36m", "\x1b[34m", "\x1b[36m",
+        ],
+        Some("ubuntu") => vec!["\x1b[33m", "\x1b[31m"],
+        Some("pop") => vec!["\x1b[36m", "\x1b[37m"],
+        Some("manjaro") => vec!["\x1b[32m"],
+        Some("endeavouros") => vec!["\x1b[35m", "\x1b[31m", "\x1b[34m"],
+        Some("opensuse") | Some("opensuse-leap") | Some("opensuse-tumbleweed") => {
+            vec!["\x1b[32m", "\x1b[37m"]
+        }
+        Some("macos") => vec!["\x1b[32m", "\x1b[33m", "\x1b[31m", "\x1b[35m", "\x1b[34m"],
+        Some("windows") => vec!["\x1b[36m"],
+        _ => vec!["\x1b[30m", "\x1b[37m", "\x1b[33m"], // Tux
+    }
+}
+
+/// Interpolates placeholders `${1}`...`${9}` or `$1`...`$9` with dynamic ANSI colors and appends a reset at the end.
+pub fn get_distro_logo_lines(distro: Option<&str>) -> Vec<String> {
+    let raw_lines = get_ascii_logo(distro);
+    let colors = get_distro_colors(distro);
+    let default_color = colors.first().copied().unwrap_or("\x1b[0m");
+
+    raw_lines
+        .into_iter()
+        .map(|line| {
+            let mut formatted = line;
+            for i in 1..=9 {
+                let color_val = colors.get(i - 1).copied().unwrap_or("\x1b[0m");
+                let placeholder = format!("${{{}}}", i);
+                formatted = formatted.replace(&placeholder, color_val);
+                let placeholder_short = format!("${}", i);
+                formatted = formatted.replace(&placeholder_short, color_val);
+            }
+            if !formatted.is_empty() {
+                format!("{}{}\x1b[0m", default_color, formatted)
+            } else {
+                formatted
+            }
+        })
+        .collect()
 }
 
 /// Checks if the terminal supports the Kitty inline image protocol.
@@ -395,67 +460,91 @@ pub fn print_with_chafa(path: &std::path::Path) -> bool {
     }
 }
 
+/// Attempts to get Chafa output as a list of lines.
+pub fn get_chafa_logo_lines(path: &std::path::Path) -> Option<Vec<String>> {
+    let output = std::process::Command::new("chafa")
+        .arg("--format")
+        .arg("symbols")
+        .arg("--size")
+        .arg("40x20")
+        .arg(path)
+        .output()
+        .ok()?;
+    if output.status.success() {
+        let content = String::from_utf8_lossy(&output.stdout);
+        Some(content.lines().map(|s| s.to_string()).collect())
+    } else {
+        None
+    }
+}
+
 /// Print logo for a distro following the strict priority:
 /// 1. Real graphic logo (if terminal supports it and embedded logo exists)
 /// 2. Chafa high-quality symbols (if chafa is available)
 /// 3. Real Fastfetch ASCII logo (always available)
 pub fn print_distro_logo(distro: Option<&str>) {
-    print_distro_logo_with_ascii(distro, false);
+    print_distro_logo_with_ascii(distro, false, false);
 }
 
-/// Renders the distribution logo with an option to force ASCII mode.
+/// Renders the distribution logo with options to force ASCII or Chafa mode.
 ///
 /// This is the primary entry point for logo rendering, handling the entire
 /// priority chain from high-res graphics down to text-based ASCII.
-pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool) {
+/// - `ascii_only`: skip all graphical protocols and render the ASCII art directly.
+/// - `chafa_only`: skip Kitty/iTerm2/Sixel and go straight to Chafa (falls back
+///   to ASCII if Chafa is unavailable). `ascii_only` takes precedence.
+pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool, chafa_only: bool) {
     if ascii_only {
         // Force ASCII path
-        let art = get_ascii_logo(distro);
+        let art = get_distro_logo_lines(distro);
         for line in art {
             println!("{}", line);
         }
         return;
     }
 
-    let supports_kitty = supports_kitty();
-    let supports_iterm2 = supports_iterm2();
-    let supports_sixel = supports_sixel();
     let has_chafa = chafa_available();
 
-    // 1. Try embedded graphical logo (Kitty)
-    #[cfg(feature = "graphics")]
-    if supports_kitty {
-        if let Some(bytes) = get_embedded_logo(distro) {
-            if !bytes.is_empty() {
-                print_graphical_logo(bytes);
-                return;
+    if !chafa_only {
+        let supports_kitty = supports_kitty();
+        let supports_iterm2 = supports_iterm2();
+        let supports_sixel = supports_sixel();
+
+        // 1. Try embedded graphical logo (Kitty)
+        #[cfg(feature = "graphics")]
+        if supports_kitty {
+            if let Some(bytes) = get_embedded_logo(distro) {
+                if !bytes.is_empty() {
+                    print_graphical_logo(bytes);
+                    return;
+                }
+            }
+        }
+
+        // 2. Try embedded graphical logo (iTerm2)
+        #[cfg(feature = "graphics")]
+        if supports_iterm2 {
+            if let Some(bytes) = get_embedded_logo(distro) {
+                if !bytes.is_empty() {
+                    print_iterm2_logo(bytes);
+                    return;
+                }
+            }
+        }
+
+        // 3. Try embedded graphical logo (Sixel)
+        #[cfg(feature = "graphics")]
+        if supports_sixel {
+            if let Some(bytes) = get_embedded_logo(distro) {
+                if !bytes.is_empty() {
+                    print_sixel_logo(bytes);
+                    return;
+                }
             }
         }
     }
 
-    // 2. Try embedded graphical logo (iTerm2)
-    #[cfg(feature = "graphics")]
-    if supports_iterm2 {
-        if let Some(bytes) = get_embedded_logo(distro) {
-            if !bytes.is_empty() {
-                print_iterm2_logo(bytes);
-                return;
-            }
-        }
-    }
-
-    // 3. Try embedded graphical logo (Sixel)
-    #[cfg(feature = "graphics")]
-    if supports_sixel {
-        if let Some(bytes) = get_embedded_logo(distro) {
-            if !bytes.is_empty() {
-                print_sixel_logo(bytes);
-                return;
-            }
-        }
-    }
-
-    // 3. Try chafa using embedded distro logo
+    // 4. Try chafa using embedded distro logo
     if has_chafa {
         if let Some(bytes) = get_embedded_logo(distro) {
             if bytes.len() > 100 {
@@ -470,8 +559,8 @@ pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool) {
         }
     }
 
-    // 4. Final fallback: Real Fastfetch ASCII logo
-    let art = get_ascii_logo(distro);
+    // 5. Final fallback: Real Fastfetch ASCII logo
+    let art = get_distro_logo_lines(distro);
     for line in art {
         println!("{}", line);
     }
@@ -616,7 +705,9 @@ mod tests {
         let logo = get_ascii_logo(Some("unknown_distro"));
         assert!(!logo.is_empty());
         // Should fall back to Tux
-        assert!(logo.iter().any(|line| line.contains("o_o")));
+        assert!(logo
+            .iter()
+            .any(|line| line.contains("o${2}_${3}o") || line.contains("o_o")));
     }
 
     #[test]
@@ -805,6 +896,6 @@ mod tests {
         assert!(!windows.is_empty());
         assert!(windows
             .iter()
-            .any(|line| line.contains("####################  ####################")));
+            .any(|line| line.contains("AEEEtttt::::ztF") || line.contains("tt:::tt333EE3")));
     }
 }

@@ -25,7 +25,7 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.2.20)
+## Current State (v0.2.21)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Benchmarking**: Criterion micro-benchmarks for core subsystems, hyperfine CLI recipes for cross-tool comparison, and continuous benchmarking CI with GitHub Pages dashboard.
 - **Architecture**: Modularized GPU detection into a dedicated component.
@@ -43,6 +43,14 @@
 - **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
 
 ## Major Achievements
+
+### v0.2.21 - UI Layout Improvements and High Detailed ASCII Logos (June 1, 2026)
+- **Side-by-Side Layout**: Implemented side-by-side printing for logo (text ASCII, Chafa, and Sixel/Kitty/iTerm2 graphics) and system info on wider terminals (width >= 95 columns) with automatic vertical fallback for narrow terminals.
+- **High Detailed ASCII Logos**: Sourced and added highly detailed color-placeholder-based Fastfetch ASCII logos for all supported distributions (Arch, Debian, Fedora, NixOS, Ubuntu, Pop!_OS, Manjaro, EndeavourOS, openSUSE, Apple/macOS, Windows).
+- **Dynamic Color Interpolation**: Implemented dynamic ANSI color placeholder substitution using distro-specific color palettes.
+- **Chafa/ASCII Logo Flags**: Introduced `--chafa-logo` (force Chafa rendering, skip graphical protocols) and `--ascii-logo` (force ASCII art) CLI flags and configuration parameters.
+- **Logo Flag Fix**: Fixed `--print-logos --chafa-logo` incorrectly rendering graphical images instead of Chafa; `print_distro_logo_with_ascii` now accepts a `chafa_only` parameter that bypasses Kitty/iTerm2/Sixel.
+- **Version**: Bumped version to `0.2.21` in `Cargo.toml`, `docs/retch.1`, and documentation.
 
 ### v0.2.20 - Webcam/Camera and Gamepad/Controller Support (June 1, 2026)
 - **Hardware Support**: Implemented cross-platform detection for connected Cameras/Webcams and Gamepads/Controllers across Linux, macOS, and Windows.

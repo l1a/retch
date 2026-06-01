@@ -136,13 +136,13 @@ fn main() -> anyhow::Result<()> {
 
         for (id, name) in logos {
             println!("{}:", name);
-            logo::print_distro_logo_with_ascii(Some(id), cli.ascii_only);
+            logo::print_distro_logo_with_ascii(Some(id), cli.ascii_logo, cli.chafa_logo);
             println!();
         }
 
         println!("(default fallback for unknown distros: Tux)");
         println!("Tux:");
-        logo::print_distro_logo_with_ascii(None, cli.ascii_only);
+        logo::print_distro_logo_with_ascii(None, cli.ascii_logo, cli.chafa_logo);
         println!();
         return Ok(());
     }
@@ -212,6 +212,9 @@ fn default_config_content() -> String {
 
 # Force ASCII-only output (even if graphical logos are supported)
 # ascii_only = false
+
+# Force Chafa symbols output (even if graphical logos are supported)
+# chafa = false
 
 # Output modes (CLI only, but documented here for reference)
 # short = true     # OS, Kernel, Host, CPU, GPU, Memory, Disk

@@ -21,6 +21,8 @@ pub struct Config {
     pub show_logo: Option<bool>,
     /// Whether to force ASCII-only logo output.
     pub ascii_only: Option<bool>,
+    /// Whether to force Chafa symbols output.
+    pub chafa: Option<bool>,
     /// Force a specific distribution logo by name/ID.
     pub logo: Option<String>,
     /// List of fields to display, in order.
@@ -88,8 +90,11 @@ impl Config {
         if cli.no_logo {
             merged.show_logo = Some(false);
         }
-        if cli.ascii_only {
+        if cli.ascii_logo {
             merged.ascii_only = Some(true);
+        }
+        if cli.chafa_logo {
+            merged.chafa = Some(true);
         }
         if let Some(logo) = &cli.logo {
             merged.logo = Some(logo.clone());
@@ -118,6 +123,7 @@ impl Config {
             ("theme", DEFAULT_THEME_BLOCK),
             ("show_logo", DEFAULT_SHOW_LOGO_BLOCK),
             ("ascii_only", DEFAULT_ASCII_ONLY_BLOCK),
+            ("chafa", DEFAULT_CHAFA_BLOCK),
             ("logo", DEFAULT_LOGO_BLOCK),
             ("fields", DEFAULT_FIELDS_BLOCK),
         ];
@@ -167,6 +173,9 @@ const DEFAULT_SHOW_LOGO_BLOCK: &str = r##"# Whether to show the ASCII logo
 
 const DEFAULT_ASCII_ONLY_BLOCK: &str = r##"# Force ASCII-only output (even if graphical logos are supported)
 # ascii_only = false"##;
+
+const DEFAULT_CHAFA_BLOCK: &str = r##"# Force Chafa symbols output (even if graphical logos are supported)
+# chafa = false"##;
 
 const DEFAULT_LOGO_BLOCK: &str = r##"# Force a specific distribution logo by name/ID
 # logo = "arch""##;
@@ -241,8 +250,8 @@ mod tests {
         let merged = config.merge_with_cli(&cli);
         assert_eq!(merged.show_logo, Some(false));
 
-        // Test ascii-only override
-        let cli = Cli::try_parse_from(["retch", "--ascii-only"]).unwrap();
+        // Test ascii-logo override
+        let cli = Cli::try_parse_from(["retch", "--ascii-logo"]).unwrap();
         let merged = config.merge_with_cli(&cli);
         assert_eq!(merged.ascii_only, Some(true));
 
@@ -305,7 +314,7 @@ mod tests {
 
     #[test]
     fn test_merge_defaults_all_present() {
-        let existing = "theme = \"dark\"\nshow_logo = true\nascii_only = false\nlogo = \"fedora\"\nfields = [\"os\"]\n[custom_theme]\nlabel_color = \"red\"\n";
+        let existing = "theme = \"dark\"\nshow_logo = true\nascii_only = false\nchafa = false\nlogo = \"fedora\"\nfields = [\"os\"]\n[custom_theme]\nlabel_color = \"red\"\n";
         let (merged, additions) = Config::merge_defaults(existing);
         assert!(additions.is_empty());
         assert_eq!(merged.trim(), existing.trim());
@@ -313,7 +322,7 @@ mod tests {
 
     #[test]
     fn test_merge_defaults_commented_ignored() {
-        let existing = "# theme = \"auto\"\n# show_logo = true\n# ascii_only = false\n# logo = \"arch\"\n# fields = []\n# [custom_theme]\n";
+        let existing = "# theme = \"auto\"\n# show_logo = true\n# ascii_only = false\n# chafa = false\n# logo = \"arch\"\n# fields = []\n# [custom_theme]\n";
         let (merged, additions) = Config::merge_defaults(existing);
         assert!(additions.is_empty());
         assert_eq!(merged.trim(), existing.trim());
@@ -325,11 +334,19 @@ mod tests {
         let (merged, additions) = Config::merge_defaults(existing);
         assert_eq!(
             additions,
-            vec!["show_logo", "ascii_only", "logo", "fields", "custom_theme"]
+            vec![
+                "show_logo",
+                "ascii_only",
+                "chafa",
+                "logo",
+                "fields",
+                "custom_theme"
+            ]
         );
         assert!(merged.contains("theme = \"light\""));
         assert!(merged.contains("show_logo = true"));
         assert!(merged.contains("ascii_only = false"));
+        assert!(merged.contains("chafa = false"));
         assert!(merged.contains("logo = \"arch\""));
         assert!(merged.contains("fields = ["));
         assert!(merged.contains("[custom_theme]"));

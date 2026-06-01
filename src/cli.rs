@@ -33,7 +33,11 @@ pub struct Cli {
 
     /// Show only ASCII logo (even if graphics are supported)
     #[arg(long)]
-    pub ascii_only: bool,
+    pub ascii_logo: bool,
+
+    /// Force Chafa symbols output (even if graphics are supported)
+    #[arg(long)]
+    pub chafa_logo: bool,
 
     /// Short output mode (OS, Kernel, Host, CPU, GPU, Memory, Disk)
     #[arg(long)]
