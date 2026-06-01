@@ -20,6 +20,8 @@ retch is under active development with a working core, rich system information o
   - **Multi-GPU & VRAM**: Detects multiple graphics cards (supports AMD/NVIDIA/Apple Silicon; translates AMD codenames like Phoenix1 to marketing names).
   - **Displays**: Raw EDID parser reads monitor vendor/model names, preferred resolutions, refresh rates (via Detailed Timing Descriptors), and generates unique serial ID suffixes for identical models.
   - **Motherboard & BIOS**: Parses motherboard manufacturer/model and BIOS version/vendor details.
+  - **Camera/Webcam**: Queries connected webcam and camera device names.
+  - **Gamepad/Controller**: Enumerates wired and wireless game controllers (Xbox, PlayStation, DualShock, DualSense, Nintendo Joy-Con, etc.).
   - **Audio Devices**: Detects active audio servers (PipeWire, PulseAudio, ALSA on Linux; CoreAudio on macOS; Windows Audio on Windows).
   - **Disks & Temp**: Measures active disk mounts (hiding loopback/temporary volumes) and temperature sensors.
 - **Advanced Networking & Wireless**:

@@ -105,6 +105,8 @@ You can generate a starting configuration with:
   - `bios`: BIOS vendor and version.
   - `display`: Connected monitor displays with refresh rates and resolution.
   - `audio`: Audio card controller and active sound servers (PipeWire, PulseAudio, ALSA, CoreAudio, Windows Audio).
+  - `camera`: Connected camera/webcam names.
+  - `gamepad`: Connected gamepad/controller names.
   - `memory`: System RAM usage and capacity.
   - `swap`: System SWAP usage and capacity.
   - `uptime`: System uptime.
