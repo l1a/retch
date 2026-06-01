@@ -189,6 +189,17 @@ See the full list of supported distros with:
 retch --print-logos
 ```
 
+## Workspace Architecture
+
+retch is structured as a Cargo workspace with the following crates:
+
+| Crate | Path | Description |
+|---|---|---|
+| `retch-cli` | `.` | CLI binary — display logic, configuration, logo rendering |
+| `retch-sysinfo` | `crates/sysinfo` | System info library — all `detect_*` logic, `SystemInfo`, `CollectOptions`, GPU, and battery |
+
+The `retch-sysinfo` crate can be used independently as a library for cross-platform system information gathering without any dependency on `clap` or the CLI.
+
 ## License
 
 This project is licensed under the GNU General Public License v3.0.

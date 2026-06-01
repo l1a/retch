@@ -1547,16 +1547,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
-name = "retch-battery"
-version = "0.1.0"
-
-[[package]]
 name = "retch-cli"
-version = "0.2.21"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "base64",
- "chrono",
  "clap",
  "clap_complete",
  "clap_complete_nushell",
@@ -1565,12 +1560,22 @@ dependencies = [
  "icy_sixel",
  "image",
  "owo-colors",
- "retch-battery",
- "rusqlite",
+ "retch-sysinfo",
  "serde",
- "sysinfo",
  "terminal_size",
  "toml",
+]
+
+[[package]]
+name = "retch-sysinfo"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "dirs",
+ "owo-colors",
+ "rusqlite",
+ "sysinfo",
 ]
 
 [[package]]
