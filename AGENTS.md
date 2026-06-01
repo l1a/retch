@@ -213,10 +213,6 @@
 
 Below is a comparison of information gathered by `fastfetch` that is currently missing in `retch`:
 
-### Hardware & Hardware Specs
-- **Camera / Webcam**: Connected webcam names.
-- **Gamepad / Controllers**: Connected controller/input device names.
-
 ### Desktop Environment & UI
 - **Terminal Font**: Font name and size configured in the terminal emulator.
 
@@ -225,7 +221,6 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 1. **Expansion** — Explore support for other platforms (e.g., BSDs, Android/Termux).
 2. **UX Polish** — Refine error messages and performance of slow platform queries.
 3. **Workspace Expansion** — Consider separating other modular capabilities (e.g., GPU detection or EDID display parsing) into standalone workspace crates to keep the CLI lightweight.
-4. **Input Devices** — Implement queries for connected webcams and gamepad/input controllers to close the feature gap with Fastfetch.
 
 ---
-*Last updated: May 31, 2026*
+*Last updated: June 1, 2026*
