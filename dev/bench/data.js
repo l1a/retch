@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780335133846,
+  "lastUpdate": 1780337833454,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -1133,6 +1133,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2581835.1629453055,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ac7af90276f5b703a1bb0afa1fa6bfc152a68ee9",
+          "message": "Merge pull request #61 from l1a/feature/input-hardware\n\nAdd webcam and gamepad hardware detection",
+          "timestamp": "2026-06-01T11:13:08-07:00",
+          "tree_id": "05e5d0557110d1815b8324977724d10c5be6d9be",
+          "url": "https://github.com/l1a/retch/commit/ac7af90276f5b703a1bb0afa1fa6bfc152a68ee9"
+        },
+        "date": 1780337833122,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 11013187.540000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 95274560.94,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 86929407.77060178,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2401631.5219223914,
             "unit": "ns"
           }
         ]
