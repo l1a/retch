@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780272596653,
+  "lastUpdate": 1780335133846,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -1089,6 +1089,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2587740.9223035406,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fa03aa8dcdb3fc039746236de96e31f62ff5bcd4",
+          "message": "Merge pull request #60 from l1a/fix/publish-readiness\n\nAdd version to retch-battery dependency",
+          "timestamp": "2026-06-01T10:28:01-07:00",
+          "tree_id": "eef526c600c71e9e1b9c34db586bba6ba1497cc9",
+          "url": "https://github.com/l1a/retch/commit/fa03aa8dcdb3fc039746236de96e31f62ff5bcd4"
+        },
+        "date": 1780335133505,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 12471594.800000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 101924087.29999998,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 96015568.30833335,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2581835.1629453055,
             "unit": "ns"
           }
         ]
