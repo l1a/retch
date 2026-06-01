@@ -25,7 +25,7 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.2.21)
+## Current State (v0.3.0)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Benchmarking**: Criterion micro-benchmarks for core subsystems, hyperfine CLI recipes for cross-tool comparison, and continuous benchmarking CI with GitHub Pages dashboard.
 - **Architecture**: Modularized GPU detection into a dedicated component.
@@ -43,6 +43,14 @@
 - **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
 
 ## Major Achievements
+
+### v0.3.0 - retch-sysinfo Workspace Crate (June 1, 2026)
+- **Workspace Refactor**: Extracted all system information gathering logic into a new standalone workspace crate `crates/sysinfo` (`retch-sysinfo`), covering GPU detection, battery, network, audio, display, bluetooth, camera, gamepad, UI theme, shell, and all other `detect_*` subsystems.
+- **Battery Absorbed**: The existing `retch-battery` workspace crate (`crates/battery`) has been absorbed into `retch-sysinfo` as the `battery` submodule, eliminating a redundant crate.
+- **CollectOptions**: Introduced `CollectOptions` struct to decouple `SystemInfo::collect()` from the CLI argument parser, enabling `retch-sysinfo` to be used as a pure library without depending on `clap`.
+- **Orphan Rule Fix**: Converted `SystemInfo::display()` inherent impl (which violated Rust orphan rules after the type moved crates) to a free function `display::display()` in the CLI crate.
+- **Thin Shims**: CLI crate `src/fetch.rs` and `src/gpu.rs` are now thin re-export shims (`pub use retch_sysinfo::...`) so all existing callsites continue to compile unchanged.
+- **Version**: Bumped version to `0.3.0` in `Cargo.toml`, `docs/retch.1.md`, and documentation.
 
 ### v0.2.21 - UI Layout Improvements and High Detailed ASCII Logos (June 1, 2026)
 - **Side-by-Side Layout**: Implemented side-by-side printing for logo (text ASCII, Chafa, and Sixel/Kitty/iTerm2 graphics) and system info on wider terminals (width >= 95 columns) with automatic vertical fallback for narrow terminals.

@@ -9,8 +9,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 use clap::Parser;
 use retch_cli::cli::Cli;
-use retch_cli::config::Config;
-use retch_cli::fetch::SystemInfo;
+use retch_cli::fetch::{CollectOptions, SystemInfo};
 use retch_cli::gpu;
 
 /// Benchmark the full `SystemInfo::collect` pipeline.
@@ -20,11 +19,10 @@ use retch_cli::gpu;
 /// network interface.
 fn bench_system_info_collect(c: &mut Criterion) {
     let cli = Cli::try_parse_from(["retch"]).unwrap();
-    let config = Config::default();
 
     c.bench_function("SystemInfo::collect", |b| {
         b.iter(|| {
-            let _ = SystemInfo::collect(&cli, &config);
+            let _ = SystemInfo::collect(CollectOptions { long: cli.long });
         });
     });
 }

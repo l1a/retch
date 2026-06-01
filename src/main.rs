@@ -9,7 +9,8 @@ use clap::{CommandFactory, Parser};
 use clap_complete::generate;
 use retch_cli::cli::{Cli, CompletionShell};
 use retch_cli::config::Config;
-use retch_cli::fetch::SystemInfo;
+use retch_cli::display;
+use retch_cli::fetch::{CollectOptions, SystemInfo};
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -178,10 +179,10 @@ fn main() -> anyhow::Result<()> {
     let config = config.merge_with_cli(&cli);
 
     // Collect system information
-    let info = SystemInfo::collect(&cli, &config)?;
+    let info = SystemInfo::collect(CollectOptions { long: cli.long })?;
 
     // Display output
-    info.display(&cli, &config)?;
+    display::display(&info, &cli, &config)?;
 
     Ok(())
 }
