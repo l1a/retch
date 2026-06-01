@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780346038702,
+  "lastUpdate": 1780348163655,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -1221,6 +1221,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2463869.6594653535,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e75bb7bb471414644aafe836675d355f57fe1630",
+          "message": "Merge pull request #63 from l1a/chore/retch-sysinfo-crate\n\nAdd retch-sysinfo workspace crate; absorb retch-battery (v0.3.0)",
+          "timestamp": "2026-06-01T14:05:28-07:00",
+          "tree_id": "bab6e70ec41d9983f009bbef329eb487381bc2e8",
+          "url": "https://github.com/l1a/retch/commit/e75bb7bb471414644aafe836675d355f57fe1630"
+        },
+        "date": 1780348163273,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 11226853.400000002,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 93020420.5,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 90387637.36569437,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2900797.088311818,
             "unit": "ns"
           }
         ]
