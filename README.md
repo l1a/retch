@@ -14,16 +14,33 @@ retch is under active development with a working core, rich system information o
 
 ## Features
 
-- Rich system information (OS, CPU, Motherboard, BIOS, GPU, Display, Audio, Memory, Disks, Network, Wi-Fi, Bluetooth, etc.)
-- High-quality ASCII logos (adapted from Fastfetch)
-- Graphical logo support via Kitty protocol, iTerm2, and Sixel
-- Graphical fallback via Chafa (Unicode symbols)
-- Theming system (`default`, `dark`, `light`)
-- Full configuration file support (`~/.config/retch/config.toml`)
-- Smart config + CLI merging
-- `--ascii-only` flag to force text-only output
-- `--logo` (`-l`) flag to override the distro logo
-- `--print-logos` and `--list-distros` commands
+- **Concurrent Execution**: Scoped multi-threading (`std::thread::scope`) fetches slow system properties (GPUs, packages, network, displays, audio, Bluetooth, etc.) concurrently to keep execution blazing fast.
+- **Cross-Platform**: First-class support for Linux (Fedora, Ubuntu, Arch, etc.), macOS (Darwin), and Windows (Win32).
+- **Rich Hardware Detection**:
+  - **Multi-GPU & VRAM**: Detects multiple graphics cards (supports AMD/NVIDIA/Apple Silicon; translates AMD codenames like Phoenix1 to marketing names).
+  - **Displays**: Raw EDID parser reads monitor vendor/model names, preferred resolutions, refresh rates (via Detailed Timing Descriptors), and generates unique serial ID suffixes for identical models.
+  - **Motherboard & BIOS**: Parses motherboard manufacturer/model and BIOS version/vendor details.
+  - **Audio Devices**: Detects active audio servers (PipeWire, PulseAudio, ALSA on Linux; CoreAudio on macOS; Windows Audio on Windows).
+  - **Disks & Temp**: Measures active disk mounts (hiding loopback/temporary volumes) and temperature sensors.
+- **Advanced Networking & Wireless**:
+  - **Network Interfaces**: Outputs IPv4 & IPv6 addresses for active interfaces.
+  - **Wi-Fi**: Details SSID, band frequency, channel, RX/TX link rates, adapter hardware, and Wi-Fi 7 Multi-Link Operation (MLO) bands.
+  - **Bluetooth**: Reports adapter controller state, manufacturer/model, and connected device names/counts.
+- **Battery Info**: Uses a custom, native implementation (no heavy dependencies) to extract capacity, vendor/model, time remaining, and battery health.
+- **Software & Desktop Environment**:
+  - **Shell Version**: Identifies the running shell and parses versions (`bash`, `zsh`, `fish`, `nu`, `pwsh`, `elvish`, `tcsh`).
+  - **Desktop Environment & WM**: Detects GNOME, KDE, macOS Aqua, Windows, etc.
+  - **UI Themes & Styling**: Concurrently resolves GTK2/3/4 or Qt global settings, icon packs, cursors, and system fonts (macOS/Windows/Linux-compatible).
+  - **Package Counts**: Counts packages across many managers (`dpkg`, `rpm`, `pacman`, `flatpak`, `snap`, `homebrew`, `scoop`, `chocolatey`, `macports`).
+- **Logo Rendering Modes**:
+  - **ASCII art**: High-quality color ASCII art matching your distro (adapted from Fastfetch).
+  - **Graphical images**: Inline image rendering support via Kitty protocol, iTerm2, and Sixel.
+  - **Unicode symbols fallback**: Graphical rendering using Chafa when full image protocols are unavailable.
+  - **Interactive CLI tools**: Command flags like `--ascii-only`, `--logo <NAME>` to force overrides, `--print-logos`, and `--list-distros`.
+- **Flexible Theming**:
+  - Built-in community color schemes (Catppuccin Latte/Frappé/Macchiato/Mocha, Solarized Light/Dark) or automatic dark/light preference detection.
+  - Full hex code (`#RRGGBB`) color support for custom theme creation.
+- **Configuration Engine**: Merge logic integrates CLI parameters and TOML configuration files seamlessly.
 
 ## Installation
 
@@ -98,22 +115,60 @@ Supported shells: `bash`, `elvish`, `fish`, `power-shell`, `zsh`, `nushell`.
 
 ## Configuration
 
-retch looks for a configuration file at:
+retch looks for a configuration file at `~/.config/retch/config.toml` (or `$XDG_CONFIG_HOME/retch/config.toml`).
 
-```
-~/.config/retch/config.toml
-```
+### Setup Commands
 
-You can generate a default config with:
+- **Generate config template** (prints to stdout):
+  ```sh
+  retch --generate-config
+  ```
+- **Write config directly** to the default location:
+  ```sh
+  retch --write-config
+  ```
+- **Merge defaults** into an existing configuration file (adds comments for new keys):
+  ```sh
+  retch --merge-config
+  ```
 
-```sh
-retch --generate-config
-```
+### Configuration Structure
 
-Or write it directly to the default location:
+Here is an example of the settings you can configure in `config.toml`:
 
-```sh
-retch --write-config
+```toml
+# Theme to use. Defaults to "auto" (follows system dark/light preference).
+# Other options: "neutral", "dark", "light", "custom", or community schemes:
+# "catppuccin-latte", "catppuccin-frappe", "catppuccin-macchiato", "catppuccin-mocha",
+# "solarized-dark", "solarized-light".
+theme = "auto"
+
+# Whether to show the distribution ASCII/graphical logo
+show_logo = true
+
+# Force ASCII-only logo output (even if graphical protocols are supported)
+ascii_only = false
+
+# Override the detected distribution logo (e.g. "ubuntu", "fedora", "pop", "macos", "windows")
+logo = "pop"
+
+# Custom theme colors (applied if theme = "custom" or as partial overrides)
+# Colors can be specified using terminal names or standard hex values (#RRGGBB)
+[custom_theme]
+label_color = "bright_cyan"
+value_color = "#cdd6f4"
+accent_color = "bright_green"
+title_color = "bright_yellow"
+separator_color = "bright_black"
+
+# Ordered list of system information fields to display
+fields = [
+    "os", "kernel", "host", "arch", "cpu", "cpu-freq", "gpu",
+    "motherboard", "bios", "display", "audio",
+    "memory", "swap", "uptime", "procs", "load",
+    "disk", "temp", "net", "wifi", "bluetooth", "battery",
+    "shell", "terminal", "desktop", "theme", "icons", "cursor", "font", "users", "packages"
+]
 ```
 
 ## Logos
