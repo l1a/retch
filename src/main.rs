@@ -220,7 +220,7 @@ fn default_config_content() -> String {
 # List of fields to display (leave empty or omit to show all)
 # fields = [
 #     "os", "kernel", "host", "arch", "cpu", "cpu-freq", "gpu",
-#     "motherboard", "bios", "display", "audio",
+#     "motherboard", "bios", "display", "audio", "camera", "gamepad",
 #     "memory", "swap", "uptime", "procs", "load",
 #     "disk", "temp", "net", "wifi", "bluetooth", "battery",
 #     "shell", "terminal", "desktop", "theme", "icons", "cursor", "font", "users", "packages"

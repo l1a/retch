@@ -1536,7 +1536,7 @@ version = "0.1.0"
 
 [[package]]
 name = "retch-cli"
-version = "0.2.19"
+version = "0.2.20"
 dependencies = [
  "anyhow",
  "base64",

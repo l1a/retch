@@ -25,14 +25,14 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.2.19)
-- **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts) concurrently using scoped threads.
+## Current State (v0.2.20)
+- **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Benchmarking**: Criterion micro-benchmarks for core subsystems, hyperfine CLI recipes for cross-tool comparison, and continuous benchmarking CI with GitHub Pages dashboard.
 - **Architecture**: Modularized GPU detection into a dedicated component.
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
 - **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
-- **Quality**: Strict `just check` (fmt + lint), unit test coverage (31 passing tests), and automated CLI integration test suite (6 tests).
+- **Quality**: Strict `just check` (fmt + lint), unit test coverage (33 passing tests), and automated CLI integration test suite (7 tests).
 - **CI/CD**: Multi-platform build/testing on Linux (Fedora & Ubuntu), macOS, and Windows. Releases compiled for Fedora (x86_64/ARM), macOS (ARM), and Windows (x86_64/ARM) on native host/container runner environments.
 - **Documentation**: Full internal Rustdoc coverage and updated README/man pages.
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
@@ -40,8 +40,14 @@
 - **Battery**: Added time remaining, health, vendor/model, and improved formatting.
 - **Network**: Added local IPv4 and larger-scoped IPv6 address display for all "Up" interfaces with loopback and link-local filtering.
 - **WiFi & Bluetooth**: Integrated detailed connection parameters, link rates, MLO bands, adapter hardware names, power states, and connected Bluetooth device profiles.
+- **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
 
 ## Major Achievements
+
+### v0.2.20 - Webcam/Camera and Gamepad/Controller Support (June 1, 2026)
+- **Hardware Support**: Implemented cross-platform detection for connected Cameras/Webcams and Gamepads/Controllers across Linux, macOS, and Windows.
+- **Concurrency**: Integrated new device probes concurrently in the scoped-thread fetching pipeline to maintain fast startup.
+- **Version**: Bumped version to `0.2.20` in `Cargo.toml`, `docs/retch.1`, and documentation.
 
 ### v0.2.19 - Cargo Publish Validation Fix (June 1, 2026)
 - **Publish Readiness**: Added explicit version constraints to the local `retch-battery` workspace path dependency in the root `Cargo.toml`. This ensures the project builds and verifies successfully under `cargo publish --dry-run` and is fully ready to be published to crates.io.
@@ -207,10 +213,6 @@
 
 Below is a comparison of information gathered by `fastfetch` that is currently missing in `retch`:
 
-### Hardware & Hardware Specs
-- **Camera / Webcam**: Connected webcam names.
-- **Gamepad / Controllers**: Connected controller/input device names.
-
 ### Desktop Environment & UI
 - **Terminal Font**: Font name and size configured in the terminal emulator.
 
@@ -219,7 +221,6 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 1. **Expansion** — Explore support for other platforms (e.g., BSDs, Android/Termux).
 2. **UX Polish** — Refine error messages and performance of slow platform queries.
 3. **Workspace Expansion** — Consider separating other modular capabilities (e.g., GPU detection or EDID display parsing) into standalone workspace crates to keep the CLI lightweight.
-4. **Input Devices** — Implement queries for connected webcams and gamepad/input controllers to close the feature gap with Fastfetch.
 
 ---
-*Last updated: May 31, 2026*
+*Last updated: June 1, 2026*

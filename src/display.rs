@@ -143,6 +143,8 @@ impl SystemInfo {
                 "gpu".to_string(),
                 "display".to_string(),
                 "audio".to_string(),
+                "camera".to_string(),
+                "gamepad".to_string(),
                 "memory".to_string(),
                 "swap".to_string(),
                 "load".to_string(),
@@ -213,6 +215,16 @@ impl SystemInfo {
         }
         if let Some(audio) = &self.audio {
             print_line("Audio", audio);
+        }
+        if should_show("Camera") {
+            for cam in &self.camera {
+                print_line("Camera", cam);
+            }
+        }
+        if should_show("Gamepad") {
+            for gp in &self.gamepad {
+                print_line("Gamepad", gp);
+            }
         }
         print_line("Memory", &self.memory);
         print_line("Swap", &self.swap);
