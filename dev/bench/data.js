@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780271319974,
+  "lastUpdate": 1780272596653,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -1045,6 +1045,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2611932.6573573584,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cae21444c80eac2dbf3ccd2a8c8197f1c45a24dc",
+          "message": "Merge pull request #59 from l1a/chore/docs-update\n\nBump version to 0.2.18 and update docs",
+          "timestamp": "2026-05-31T17:05:44-07:00",
+          "tree_id": "ab999a004d1618eda16f23e4948cfd9ff504831c",
+          "url": "https://github.com/l1a/retch/commit/cae21444c80eac2dbf3ccd2a8c8197f1c45a24dc"
+        },
+        "date": 1780272596256,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 8159288.100000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 85603079.90000002,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 82653261.25176382,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2587740.9223035406,
             "unit": "ns"
           }
         ]
