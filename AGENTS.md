@@ -25,7 +25,7 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.2.18)
+## Current State (v0.2.19)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts) concurrently using scoped threads.
 - **Benchmarking**: Criterion micro-benchmarks for core subsystems, hyperfine CLI recipes for cross-tool comparison, and continuous benchmarking CI with GitHub Pages dashboard.
 - **Architecture**: Modularized GPU detection into a dedicated component.
@@ -42,6 +42,10 @@
 - **WiFi & Bluetooth**: Integrated detailed connection parameters, link rates, MLO bands, adapter hardware names, power states, and connected Bluetooth device profiles.
 
 ## Major Achievements
+
+### v0.2.19 - Cargo Publish Validation Fix (June 1, 2026)
+- **Publish Readiness**: Added explicit version constraints to the local `retch-battery` workspace path dependency in the root `Cargo.toml`. This ensures the project builds and verifies successfully under `cargo publish --dry-run` and is fully ready to be published to crates.io.
+- **Version**: Bumped version to `0.2.19` in `Cargo.toml`, `docs/retch.1`, and documentation.
 
 ### v0.2.18 - Documentation Update (May 31, 2026)
 - **Documentation**: Significantly expanded README.md and manual page docs/retch.1.md to fully cover and document the active configuration options, CLI argument mappings, and newly supported concurrent queries (UI styling, shell version detection, EDID parsing, audio server types, Bluetooth devices, and Wi-Fi features).

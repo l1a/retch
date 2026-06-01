@@ -6,7 +6,7 @@ members = [
 
 [package]
 name = "retch-cli"
-version = "0.2.18"
+version = "0.2.19"
 edition = "2021"
 authors = ["Ken Tobias"]
 description = "A fast, feature-rich system information fetcher written in Rust (similar to fastfetch or neofetch)"
@@ -36,7 +36,7 @@ image = { version = "0.25", optional = true }
 base64 = { version = "0.22", optional = true }
 rusqlite = { version = "0.40", features = ["bundled"] }
 icy_sixel = { version = "0.5", optional = true }
-retch-battery = { path = "crates/battery" }
+retch-battery = { path = "crates/battery", version = "0.1.0" }
 
 [features]
 default = ["graphics"]
