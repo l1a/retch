@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780337833454,
+  "lastUpdate": 1780346038702,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -1177,6 +1177,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2401631.5219223914,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "014fb5d1a81e044e90c937e3b2af561ae86b278b",
+          "message": "Merge pull request #62 from l1a/feature/ui-improvements\n\nfeat: side-by-side layout, improved ASCII logos, and logo flags",
+          "timestamp": "2026-06-01T13:30:03-07:00",
+          "tree_id": "f7d55c533143ea0d40a3466a8b52a9636daba633",
+          "url": "https://github.com/l1a/retch/commit/014fb5d1a81e044e90c937e3b2af561ae86b278b"
+        },
+        "date": 1780346038130,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 10130659.56,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 133523416.16,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 141390727.38333338,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2463869.6594653535,
             "unit": "ns"
           }
         ]
