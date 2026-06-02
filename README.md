@@ -169,7 +169,7 @@ fields = [
     "motherboard", "bios", "display", "audio",
     "memory", "swap", "uptime", "procs", "load",
     "disk", "temp", "net", "wifi", "bluetooth", "battery",
-    "shell", "terminal", "desktop", "theme", "icons", "cursor", "font", "users", "packages"
+    "shell", "terminal", "terminal_font", "desktop", "theme", "icons", "cursor", "font", "users", "packages"
 ]
 ```
 
