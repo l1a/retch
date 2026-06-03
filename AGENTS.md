@@ -246,7 +246,7 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 1. **Expansion** — Explore support for other platforms (e.g., BSDs, Android/Termux).
 2. **UX Polish** — Refine error messages and performance of slow platform queries.
-3. **Workspace Expansion** — Consider separating other modular capabilities (e.g., GPU detection or EDID display parsing) into standalone workspace crates to keep the CLI lightweight.
+3. **Workspace Expansion** — GPU and battery detection logic have already been consolidated into the `retch-sysinfo` workspace crate. Future expansions can consider isolating display parsing.
 
 ---
-*Last updated: June 2, 2026*
+*Last updated: June 3, 2026*

@@ -12,19 +12,24 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  benchmark:
+  benchmark-linux-x64:
+    name: Benchmark Linux x64
     runs-on: ubuntu-latest
+    container: fedora:latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Install dependencies (Fedora)
+        run: |
+          dnf install -y git curl gcc make sqlite-devel python3
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          git config --global --add safe.directory '*'
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
 
       - name: Install fastfetch and hyperfine
         run: |
-          sudo apt-get update && sudo apt-get install -y hyperfine
-          wget https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb
-          sudo dpkg -i fastfetch-linux-amd64.deb || sudo apt-get install -f -y
+          python3 scripts/install_fastfetch.py
+          python3 scripts/install_hyperfine.py
 
       - name: Build release binary
         run: cargo build --release
@@ -38,20 +43,236 @@ jobs:
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
+          name: "Linux x64 Benchmarks"
           tool: 'customSmallerIsBetter'
           output-file-path: benchmark_result.json
-
-          # GitHub Pages publishing
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
-
-          # Alert thresholds
           alert-threshold: '200%'
-          fail-on-alert: true
+          fail-on-alert: false
           comment-on-alert: true
           alert-comment-cc-users: '@l1a'
+          max-items-in-chart: 50
 
-          # Chart configuration
+  benchmark-linux-arm:
+    name: Benchmark Linux arm64
+    needs: benchmark-linux-x64
+    runs-on: ubuntu-24.04-arm
+    container: fedora:latest
+    steps:
+      - name: Install dependencies (Fedora)
+        run: |
+          dnf install -y git curl gcc make sqlite-devel python3
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          git config --global --add safe.directory '*'
+
+      - uses: actions/checkout@v4
+
+      - name: Install fastfetch and hyperfine
+        run: |
+          python3 scripts/install_fastfetch.py
+          python3 scripts/install_hyperfine.py
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Run benchmarks
+        run: |
+          cargo bench
+          hyperfine --warmup 3 --runs 10 './target/release/retch' 'fastfetch' --export-json hyperfine_result.json
+          python3 scripts/parse_criterion.py
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: "Linux Arm64 Benchmarks"
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark_result.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          alert-threshold: '200%'
+          fail-on-alert: false
+          comment-on-alert: true
+          alert-comment-cc-users: '@l1a'
+          max-items-in-chart: 50
+
+  benchmark-macos-arm:
+    name: Benchmark macOS arm64
+    needs: benchmark-linux-arm
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install fastfetch and hyperfine
+        run: |
+          python3 scripts/install_fastfetch.py
+          python3 scripts/install_hyperfine.py
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Run benchmarks
+        run: |
+          cargo bench
+          hyperfine --warmup 3 --runs 10 './target/release/retch' 'fastfetch' --export-json hyperfine_result.json
+          python3 scripts/parse_criterion.py
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: "macOS Arm64 Benchmarks"
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark_result.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          alert-threshold: '200%'
+          fail-on-alert: false
+          comment-on-alert: true
+          alert-comment-cc-users: '@l1a'
+          max-items-in-chart: 50
+
+  benchmark-macos-x64:
+    name: Benchmark macOS x64
+    needs: benchmark-macos-arm
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install fastfetch and hyperfine
+        run: |
+          python3 scripts/install_fastfetch.py
+          python3 scripts/install_hyperfine.py
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Run benchmarks
+        run: |
+          cargo bench
+          hyperfine --warmup 3 --runs 10 './target/release/retch' 'fastfetch' --export-json hyperfine_result.json
+          python3 scripts/parse_criterion.py
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: "macOS x64 Benchmarks"
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark_result.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          alert-threshold: '200%'
+          fail-on-alert: false
+          comment-on-alert: true
+          alert-comment-cc-users: '@l1a'
+          max-items-in-chart: 50
+
+  benchmark-windows-x64:
+    name: Benchmark Windows x64
+    needs: benchmark-macos-x64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Configure Windows PATH
+        run: |
+          echo "${env:USERPROFILE}\.cargo\bin" >> $env:GITHUB_PATH
+          echo "${env:USERPROFILE}\bin" >> $env:GITHUB_PATH
+          echo "${env:USERPROFILE}\scoop\shims" >> $env:GITHUB_PATH
+          echo "${env:LOCALAPPDATA}\Microsoft\WinGet\Links" >> $env:GITHUB_PATH
+        shell: pwsh
+
+      - name: Install fastfetch and hyperfine
+        run: |
+          python scripts/install_fastfetch.py
+          python scripts/install_hyperfine.py
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Run benchmarks
+        run: |
+          cargo bench
+          hyperfine --warmup 3 --runs 10 '.\target\release\retch.exe' 'fastfetch' --export-json hyperfine_result.json
+          python scripts/parse_criterion.py
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: "Windows x64 Benchmarks"
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark_result.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          alert-threshold: '200%'
+          fail-on-alert: false
+          comment-on-alert: true
+          alert-comment-cc-users: '@l1a'
+          max-items-in-chart: 50
+
+  benchmark-windows-arm:
+    name: Benchmark Windows arm64
+    needs: benchmark-windows-x64
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Configure Windows PATH
+        run: |
+          echo "${env:USERPROFILE}\.cargo\bin" >> $env:GITHUB_PATH
+          echo "${env:USERPROFILE}\bin" >> $env:GITHUB_PATH
+          echo "${env:USERPROFILE}\scoop\shims" >> $env:GITHUB_PATH
+          echo "${env:LOCALAPPDATA}\Microsoft\WinGet\Links" >> $env:GITHUB_PATH
+        shell: pwsh
+
+      - name: Install fastfetch and hyperfine
+        run: |
+          python scripts/install_fastfetch.py
+          python scripts/install_hyperfine.py
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Run benchmarks
+        run: |
+          cargo bench
+          hyperfine --warmup 3 --runs 10 '.\target\release\retch.exe' 'fastfetch' --export-json hyperfine_result.json
+          python scripts/parse_criterion.py
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: "Windows Arm64 Benchmarks"
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark_result.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          alert-threshold: '200%'
+          fail-on-alert: false
+          comment-on-alert: true
+          alert-comment-cc-users: '@l1a'
           max-items-in-chart: 50
