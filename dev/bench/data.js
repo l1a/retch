@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780511492233,
+  "lastUpdate": 1780511772741,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -2157,6 +2157,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 192708705.59999996,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "248b7b5a9f9a1a3eb5b62512ffa362eac159b756",
+          "message": "Configure Windows PATH in benchmark jobs",
+          "timestamp": "2026-06-03T11:23:32-07:00",
+          "tree_id": "4428a646927f214627bae22beffb50b429e372fd",
+          "url": "https://github.com/l1a/retch/commit/248b7b5a9f9a1a3eb5b62512ffa362eac159b756"
+        },
+        "date": 1780511771052,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 61485096.62000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 963592800.82,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 642482901.95,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 205128734.70000002,
             "unit": "ns"
           }
         ]
