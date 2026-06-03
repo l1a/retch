@@ -2,7 +2,7 @@ name: Continuous Benchmarking
 
 on:
   push:
-    branches: [ "feature/multi-platform-benchmarks" ]
+    branches: [ "main" ]
 
 permissions:
   contents: write
