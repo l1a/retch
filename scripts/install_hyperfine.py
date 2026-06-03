@@ -55,6 +55,11 @@ def main():
 
     if installed:
         print("hyperfine successfully installed.")
+        if "GITHUB_PATH" in os.environ and not shutil.which("hyperfine"):
+            cargo_bin = os.path.abspath(os.path.expanduser("~/.cargo/bin"))
+            print(f"Adding {cargo_bin} to GITHUB_PATH...")
+            with open(os.environ["GITHUB_PATH"], "a") as f:
+                f.write(f"{cargo_bin}\n")
     else:
         print("Error: Failed to install hyperfine.", file=sys.stderr)
         sys.exit(1)
