@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780457946881,
+  "lastUpdate": 1780500599615,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -1309,6 +1309,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2880711.7840852668,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ee40198839b524b1e9ae6f31f8392294998b474d",
+          "message": "Merge pull request #65 from l1a/fix/macos-battery-health\n\nFix macOS battery health and bluetooth status",
+          "timestamp": "2026-06-03T08:25:49-07:00",
+          "tree_id": "f8c6207f2352534def666beab56f0cc41006c0b2",
+          "url": "https://github.com/l1a/retch/commit/ee40198839b524b1e9ae6f31f8392294998b474d"
+        },
+        "date": 1780500598959,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 7392142.219999999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 90797879.41999999,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 85398213.22930695,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2720769.2207854465,
             "unit": "ns"
           }
         ]
