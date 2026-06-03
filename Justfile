@@ -75,13 +75,13 @@ bench:
 
 # Benchmark the release binary with hyperfine (requires: hyperfine)
 bench-cli:
-    @command -v hyperfine > /dev/null || { echo "Error: hyperfine is not installed. Install it with: cargo install hyperfine"; exit 1; }
+    @python3 scripts/install_hyperfine.py 2>/dev/null || python scripts/install_hyperfine.py
     cargo build --release
     hyperfine --warmup 3 --runs 10 './target/release/retch'
 
 # Compare retch against fastfetch and neofetch (requires: hyperfine)
 bench-compare:
-    @command -v hyperfine > /dev/null || { echo "Error: hyperfine is not installed. Install it with: cargo install hyperfine"; exit 1; }
+    @python3 scripts/install_hyperfine.py 2>/dev/null || python scripts/install_hyperfine.py
     cargo build --release
     @CMDS="'./target/release/retch'"; \
     if command -v fastfetch > /dev/null; then CMDS="$CMDS 'fastfetch'"; fi; \
