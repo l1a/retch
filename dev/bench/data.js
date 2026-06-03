@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780348163655,
+  "lastUpdate": 1780457946881,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -1265,6 +1265,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2900797.088311818,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "92a2d8901021d3108b3445f32fdc93fe2086e29a",
+          "message": "Merge pull request #64 from l1a/feat/terminal-font\n\nfeat: Terminal Font Detection (v0.3.1)",
+          "timestamp": "2026-06-02T20:35:26-07:00",
+          "tree_id": "d7fee21bce51788a91712894b43864654908edcf",
+          "url": "https://github.com/l1a/retch/commit/92a2d8901021d3108b3445f32fdc93fe2086e29a"
+        },
+        "date": 1780457946544,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 11669491.680000002,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 107396013.48,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 98022988.62999998,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2880711.7840852668,
             "unit": "ns"
           }
         ]
