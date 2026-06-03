@@ -22,6 +22,7 @@ jobs:
           dnf install -y git curl gcc make sqlite-devel python3
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          git config --global --add safe.directory '*'
 
       - uses: actions/checkout@v4
 
@@ -66,6 +67,7 @@ jobs:
           dnf install -y git curl gcc make sqlite-devel python3
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          git config --global --add safe.directory '*'
 
       - uses: actions/checkout@v4
 
