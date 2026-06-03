@@ -191,6 +191,14 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Configure Windows PATH
+        run: |
+          echo "${env:USERPROFILE}\.cargo\bin" >> $env:GITHUB_PATH
+          echo "${env:USERPROFILE}\bin" >> $env:GITHUB_PATH
+          echo "${env:USERPROFILE}\scoop\shims" >> $env:GITHUB_PATH
+          echo "${env:LOCALAPPDATA}\Microsoft\WinGet\Links" >> $env:GITHUB_PATH
+        shell: pwsh
+
       - name: Install fastfetch and hyperfine
         run: |
           python scripts/install_fastfetch.py
@@ -230,6 +238,14 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Configure Windows PATH
+        run: |
+          echo "${env:USERPROFILE}\.cargo\bin" >> $env:GITHUB_PATH
+          echo "${env:USERPROFILE}\bin" >> $env:GITHUB_PATH
+          echo "${env:USERPROFILE}\scoop\shims" >> $env:GITHUB_PATH
+          echo "${env:LOCALAPPDATA}\Microsoft\WinGet\Links" >> $env:GITHUB_PATH
+        shell: pwsh
 
       - name: Install fastfetch and hyperfine
         run: |
