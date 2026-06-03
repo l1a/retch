@@ -38,7 +38,10 @@ def main():
             installed = run_cmd(["scoop", "install", "hyperfine"])
 
     elif os_type == "Linux":
-        if shutil.which("apt-get"):
+        if shutil.which("dnf"):
+            print("Found dnf. Installing hyperfine...")
+            installed = run_cmd(["dnf", "install", "-y", "hyperfine"])
+        elif shutil.which("apt-get"):
             print("Found apt-get. Installing hyperfine...")
             installed = run_cmd(["sudo", "apt-get", "update"]) and run_cmd(["sudo", "apt-get", "install", "-y", "hyperfine"])
 

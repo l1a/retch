@@ -15,11 +15,15 @@ jobs:
   benchmark-linux-x64:
     name: Benchmark Linux x64
     runs-on: ubuntu-latest
+    container: fedora:latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Install dependencies (Fedora)
+        run: |
+          dnf install -y git curl gcc make sqlite-devel python3
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
 
       - name: Install fastfetch and hyperfine
         run: |
@@ -55,11 +59,15 @@ jobs:
     name: Benchmark Linux arm64
     needs: benchmark-linux-x64
     runs-on: ubuntu-24.04-arm
+    container: fedora:latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Install dependencies (Fedora)
+        run: |
+          dnf install -y git curl gcc make sqlite-devel python3
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
 
       - name: Install fastfetch and hyperfine
         run: |

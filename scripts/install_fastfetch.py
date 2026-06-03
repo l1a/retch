@@ -63,7 +63,10 @@ def main():
             installed = run_cmd(["choco", "install", "fastfetch", "-y"])
 
     elif os_type == "Linux":
-        if shutil.which("apt-get"):
+        if shutil.which("dnf"):
+            print("Found dnf. Installing fastfetch...")
+            installed = run_cmd(["dnf", "install", "-y", "fastfetch"])
+        elif shutil.which("apt-get"):
             # Try to install from apt first, or download deb
             print("Found apt-get. Attempting to install fastfetch...")
             installed = run_cmd(["sudo", "apt-get", "update"]) and run_cmd(["sudo", "apt-get", "install", "-y", "fastfetch"])
