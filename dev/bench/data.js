@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780507909389,
+  "lastUpdate": 1780509308512,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -1669,6 +1669,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 1574606.7808965556,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "99579ba9289002ec5b191f0921b65bfa9ed8570e",
+          "message": "Import os in hyperfine installer",
+          "timestamp": "2026-06-03T10:50:50-07:00",
+          "tree_id": "a6778a7f2d5c8c964e660b60709cedc84c67ac99",
+          "url": "https://github.com/l1a/retch/commit/99579ba9289002ec5b191f0921b65bfa9ed8570e"
+        },
+        "date": 1780509307728,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 2734222.840000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 134929766.04000002,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 128044711.075,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1695565.9982143058,
             "unit": "ns"
           }
         ]
