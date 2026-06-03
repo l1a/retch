@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780505952791,
+  "lastUpdate": 1780506020015,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -1581,6 +1581,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2674544.461871699,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "4be849d2c552d060db86bbc11683a8fd251f0c0b",
+          "message": "Configure git safe directory inside Fedora containers",
+          "timestamp": "2026-06-03T09:54:28-07:00",
+          "tree_id": "bef608005f117a8a29ffa44e7f42771ecd3cd4b0",
+          "url": "https://github.com/l1a/retch/commit/4be849d2c552d060db86bbc11683a8fd251f0c0b"
+        },
+        "date": 1780506019654,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 2733827.659999999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 66221647.76000001,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 58918954.83665645,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1707798.011411298,
             "unit": "ns"
           }
         ]
