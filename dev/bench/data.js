@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780507043525,
+  "lastUpdate": 1780507288541,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -1759,6 +1759,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 1158992.7039175942,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "10396be118bf4df2bef9664e6b79dcfa48c6328f",
+          "message": "Disable fail-on-alert to tolerate VM noise",
+          "timestamp": "2026-06-03T10:13:15-07:00",
+          "tree_id": "fe92c928d5f66c210b9dae49414504acb40aa04f",
+          "url": "https://github.com/l1a/retch/commit/10396be118bf4df2bef9664e6b79dcfa48c6328f"
+        },
+        "date": 1780507287970,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 1642810.24,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 141917269.94,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 122871702.35,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1171179.1325786265,
             "unit": "ns"
           }
         ]
