@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780503052032,
+  "lastUpdate": 1780503299062,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -1399,6 +1399,52 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2712096.6244848007,
+            "unit": "ns"
+          }
+        ]
+      }
+    ],
+    "macOS Benchmarks": [
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "58414e10d80c83b8f0a26214398f4caaf22b6a09",
+          "message": "Test multi-platform benchmarks on feature branch",
+          "timestamp": "2026-06-03T09:06:41-07:00",
+          "tree_id": "4f41060298bf4e121c8cf843e2b5e42f58c86ae5",
+          "url": "https://github.com/l1a/retch/commit/58414e10d80c83b8f0a26214398f4caaf22b6a09"
+        },
+        "date": 1780503297555,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 35065078.92,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 602557058.22,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 519707795.9,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 179182804.85,
             "unit": "ns"
           }
         ]
