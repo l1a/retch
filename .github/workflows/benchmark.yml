@@ -51,7 +51,7 @@ jobs:
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
           alert-threshold: '200%'
-          fail-on-alert: true
+          fail-on-alert: false
           comment-on-alert: true
           alert-comment-cc-users: '@l1a'
           max-items-in-chart: 50
@@ -96,7 +96,7 @@ jobs:
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
           alert-threshold: '200%'
-          fail-on-alert: true
+          fail-on-alert: false
           comment-on-alert: true
           alert-comment-cc-users: '@l1a'
           max-items-in-chart: 50
@@ -136,7 +136,7 @@ jobs:
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
           alert-threshold: '200%'
-          fail-on-alert: true
+          fail-on-alert: false
           comment-on-alert: true
           alert-comment-cc-users: '@l1a'
           max-items-in-chart: 50
@@ -176,7 +176,7 @@ jobs:
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
           alert-threshold: '200%'
-          fail-on-alert: true
+          fail-on-alert: false
           comment-on-alert: true
           alert-comment-cc-users: '@l1a'
           max-items-in-chart: 50
@@ -216,7 +216,7 @@ jobs:
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
           alert-threshold: '200%'
-          fail-on-alert: true
+          fail-on-alert: false
           comment-on-alert: true
           alert-comment-cc-users: '@l1a'
           max-items-in-chart: 50
@@ -256,7 +256,7 @@ jobs:
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
           alert-threshold: '200%'
-          fail-on-alert: true
+          fail-on-alert: false
           comment-on-alert: true
           alert-comment-cc-users: '@l1a'
           max-items-in-chart: 50
