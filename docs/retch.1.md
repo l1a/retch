@@ -124,6 +124,7 @@ You can generate a starting configuration with:
   - `battery`: Battery capacity, vendor/model, time remaining, and health.
   - `shell`: Shell name and version (e.g. bash, zsh, fish, nu).
   - `terminal`: Terminal emulator name and version.
+  - `terminal_font`: Terminal emulator active font.
   - `desktop`: Desktop environment or window manager.
   - `theme`: UI Theme settings.
   - `icons`: UI icon pack.

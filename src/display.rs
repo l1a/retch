@@ -251,6 +251,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if let Some(font) = &info.font {
         print_line("Font", font);
     }
+    if let Some(term_font) = &info.terminal_font {
+        print_line("Terminal Font", term_font);
+    }
     print_line("Users", &info.users.to_string());
     if let Some(pkgs) = info.packages {
         if pkgs > 0 {
