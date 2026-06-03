@@ -3016,6 +3016,7 @@ fn get_default_monospace_font() -> Option<String> {
                 }
             }
         }
+        return None;
     }
 
     #[cfg(target_os = "macos")]
@@ -3028,6 +3029,7 @@ fn get_default_monospace_font() -> Option<String> {
         return Some("Consolas".to_string());
     }
 
+    #[allow(unreachable_code)]
     None
 }
 
