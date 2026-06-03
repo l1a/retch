@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780517033300,
+  "lastUpdate": 1780517515254,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Linux x64 Benchmarks": [
@@ -1285,6 +1285,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1322284215,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b13e968dc483454c9fbb632a9714d46474bdc678",
+          "message": "Merge pull request #66 from l1a/feature/multi-platform-benchmarks\n\nv0.3.2 - macOS Battery/Bluetooth Fixes & Multi-Platform Benchmarks",
+          "timestamp": "2026-06-03T12:36:18-07:00",
+          "tree_id": "150eb86f6551ec2ce10a0920f17d572403943ffe",
+          "url": "https://github.com/l1a/retch/commit/b13e968dc483454c9fbb632a9714d46474bdc678"
+        },
+        "date": 1780517511556,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 285315999.99999994,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1500357430.0000002,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 324795795,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1344703915,
             "unit": "ns"
           }
         ]
