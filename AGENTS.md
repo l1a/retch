@@ -25,7 +25,7 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.3.1)
+## Current State (v0.3.2)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Benchmarking**: Criterion micro-benchmarks for core subsystems, hyperfine CLI recipes for cross-tool comparison, and continuous benchmarking CI with GitHub Pages dashboard.
 - **Architecture**: Modularized GPU detection into a dedicated component.
@@ -43,6 +43,11 @@
 - **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
 
 ## Major Achievements
+
+### v0.3.2 - macOS Battery Health and Bluetooth Fix (June 3, 2026)
+- **macOS Battery Health**: Fixed battery health calculation on newer/Apple Silicon macOS systems by prioritizing the raw `AppleRawMaxCapacity` metric from `ioreg` over the normalized `MaxCapacity` (which is often fixed at 100), preventing new batteries from reporting incorrect low values (such as 2%).
+- **macOS Bluetooth Status**: Fixed Bluetooth power status detection showing "Off" when Bluetooth is on, by supporting the modern `State: On/Off` output key format from `system_profiler SPBluetoothDataType`.
+- **Version**: Bumped version to `0.3.2` in `Cargo.toml`, `docs/retch.1.md`, and documentation.
 
 ### v0.3.1 - Terminal Font Detection (June 2, 2026)
 - **Terminal Fonts**: Implemented terminal font detection for Kitty, Alacritty, WezTerm, iTerm2, foot, ptyxis, and konsole.

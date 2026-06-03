@@ -151,6 +151,7 @@ pub fn get_battery_info() -> Option<BatteryInfo> {
 
     let mut current_capacity: Option<f32> = None;
     let mut max_capacity: Option<f32> = None;
+    let mut raw_max_capacity: Option<f32> = None;
     let mut design_capacity: Option<f32> = None;
     let mut is_charging = false;
     let mut fully_charged = false;
@@ -163,6 +164,8 @@ pub fn get_battery_info() -> Option<BatteryInfo> {
             current_capacity = val.parse().ok();
         } else if let Some(val) = parse_ioreg_line(line, "MaxCapacity") {
             max_capacity = val.parse().ok();
+        } else if let Some(val) = parse_ioreg_line(line, "AppleRawMaxCapacity") {
+            raw_max_capacity = val.parse().ok();
         } else if let Some(val) = parse_ioreg_line(line, "DesignCapacity") {
             design_capacity = val.parse().ok();
         } else if let Some(val) = parse_ioreg_line(line, "IsCharging") {
@@ -181,12 +184,19 @@ pub fn get_battery_info() -> Option<BatteryInfo> {
     let max_cap = max_capacity?;
     let cur_cap = current_capacity?;
 
-    let percentage = (cur_cap / max_cap) * 100.0;
+    let percentage = if max_cap > 0.0 {
+        (cur_cap / max_cap) * 100.0
+    } else {
+        0.0
+    };
 
     let mut health = None;
     if let Some(design_cap) = design_capacity {
         if design_cap > 0.0 {
-            health = Some((max_cap / design_cap) * 100.0);
+            let h_max = raw_max_capacity.or(max_capacity);
+            if let Some(health_max) = h_max {
+                health = Some((health_max / design_cap) * 100.0);
+            }
         }
     }
 

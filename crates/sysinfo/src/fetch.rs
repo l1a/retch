@@ -1180,7 +1180,7 @@ fn parse_macos_bluetooth(stdout: &str) -> Option<String> {
 
     for line in stdout.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with("Bluetooth Power:") {
+        if trimmed.starts_with("Bluetooth Power:") || trimmed.starts_with("State:") {
             if trimmed.contains("On") {
                 state = "On";
             }
@@ -3474,6 +3474,12 @@ empty_value =
         assert_eq!(
             parse_macos_bluetooth(sample_off),
             Some("Off (Apple Bluetooth)".to_string())
+        );
+
+        let sample_state_on = "Bluetooth:\n\n      State: On\n      Chipset: BCM_4388\n";
+        assert_eq!(
+            parse_macos_bluetooth(sample_state_on),
+            Some("On (Apple BCM_4388) - 0 connected".to_string())
         );
     }
 
