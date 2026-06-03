@@ -302,13 +302,10 @@ pub fn get_battery_info() -> Option<BatteryInfo> {
         model: None,
     };
 
-    if let Ok(output) = std::process::Command::new("wmic")
+    if let Ok(output) = std::process::Command::new("powershell")
         .args([
-            "path",
-            "Win32_Battery",
-            "get",
-            "DesignCapacity,FullChargeCapacity,Manufacturer,Name",
-            "/value",
+            "-Command",
+            "Get-CimInstance Win32_Battery | Select-Object DesignCapacity,FullChargeCapacity,Manufacturer,Name | Format-List",
         ])
         .output()
     {
@@ -318,7 +315,7 @@ pub fn get_battery_info() -> Option<BatteryInfo> {
 
             for line in stdout.lines() {
                 let line = line.trim();
-                if let Some(pos) = line.find('=') {
+                if let Some(pos) = line.find(':') {
                     let key = line[..pos].trim();
                     let val = line[pos + 1..].trim();
                     if !val.is_empty() {
