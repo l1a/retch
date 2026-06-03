@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780504900603,
+  "lastUpdate": 1780504920253,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Benchmark": [
@@ -1537,6 +1537,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 2906378.664859442,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "56e8e6e804cf08fa3d7d32e61b35c7c70da8716a",
+          "message": "Update Windows battery query to PowerShell and configure 6-job benchmark CI matrix",
+          "timestamp": "2026-06-03T09:37:53-07:00",
+          "tree_id": "e5b6f8512a14b049491db31d512ef83085fd9620",
+          "url": "https://github.com/l1a/retch/commit/56e8e6e804cf08fa3d7d32e61b35c7c70da8716a"
+        },
+        "date": 1780504919556,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 10455690.239999998,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 99940936.33999999,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 102424324.68,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 2674544.461871699,
             "unit": "ns"
           }
         ]
