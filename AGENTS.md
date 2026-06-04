@@ -25,7 +25,7 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.3.2)
+## Current State (v0.3.3)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Benchmarking**: Criterion micro-benchmarks for core subsystems, hyperfine CLI recipes for cross-tool comparison, and continuous benchmarking CI with GitHub Pages dashboard.
 - **Architecture**: Modularized GPU detection into a dedicated component.
@@ -43,6 +43,14 @@
 - **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
 
 ## Major Achievements
+
+### v0.3.3 - Native OS Queries & Performance Optimization (June 4, 2026)
+- **Active Network Interface**: Swapped out spawning `ip route show default` (taking ~10-20ms) with a native parser for `/proc/net/route` on Linux, falling back to the command if `/proc/net/route` is unavailable.
+- **Display Resolution & Refresh Rates**: Reordered display detection to try reading `/sys/class/drm` and EDIDs directly from the sysfs filesystem first, reserving `xrandr` as a fallback.
+- **System Model (Motherboard)**: Substituted spawning `sysctl -n hw.model` with a native `sysctlbyname` FFI call on macOS.
+- **Registry FFI Module**: Added a lightweight, native FFI registry reader targeting `advapi32.dll` to query registry values directly on Windows.
+- **Motherboard, BIOS, & Theme**: Swapped out spawning slow `wmic` or `reg query` processes for motherboard, BIOS, and theme details with direct native registry queries.
+- **Version**: Bumped version to `0.3.3` in `Cargo.toml`, `docs/retch.1.md`, and documentation.
 
 ### v0.3.2 - macOS Battery Health and Bluetooth Fix (June 3, 2026)
 - **macOS Battery Health**: Fixed battery health calculation on newer/Apple Silicon macOS systems by prioritizing the raw `AppleRawMaxCapacity` metric from `ioreg` over the normalized `MaxCapacity` (which is often fixed at 100), preventing new batteries from reporting incorrect low values (such as 2%).
@@ -249,4 +257,4 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 3. **Workspace Expansion** — GPU and battery detection logic have already been consolidated into the `retch-sysinfo` workspace crate. Future expansions can consider isolating display parsing.
 
 ---
-*Last updated: June 3, 2026*
+*Last updated: June 4, 2026*
