@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780592310247,
+  "lastUpdate": 1780592598817,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Linux x64 Benchmarks": [
@@ -1191,6 +1191,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 254923886.475,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2c8929eff22476a7f6682a4f1a22b68ffe13b346",
+          "message": "deps(deps): bump the cargo-dependencies group across 1 directory with 2 updates (#69)\n\n* deps(deps): bump the cargo-dependencies group across 1 directory with 2 updates\n\nBumps the cargo-dependencies group with 2 updates in the / directory: [sysinfo](https://github.com/GuillaumeGomez/sysinfo) and [chrono](https://github.com/chronotope/chrono).\n\n\nUpdates `sysinfo` from 0.39.2 to 0.39.3\n- [Changelog](https://github.com/GuillaumeGomez/sysinfo/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/GuillaumeGomez/sysinfo/compare/v0.39.2...v0.39.3)\n\nUpdates `chrono` from 0.4.44 to 0.4.45\n- [Release notes](https://github.com/chronotope/chrono/releases)\n- [Changelog](https://github.com/chronotope/chrono/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/chronotope/chrono/compare/v0.4.44...v0.4.45)\n\n---\nupdated-dependencies:\n- dependency-name: sysinfo\n  dependency-version: 0.39.3\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: cargo-dependencies\n- dependency-name: chrono\n  dependency-version: 0.4.45\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: cargo-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\n\n* Bump version to 0.3.4 and update docs\n\n---------\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>\nCo-authored-by: Ken Tobias <634380+l1a@users.noreply.github.com>",
+          "timestamp": "2026-06-04T09:50:00-07:00",
+          "tree_id": "da1fab8118438991920da275cd4aa46f9a678a63",
+          "url": "https://github.com/l1a/retch/commit/2c8929eff22476a7f6682a4f1a22b68ffe13b346"
+        },
+        "date": 1780592597618,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 45462051.52,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 687445322.32,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 825187608.1,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 218848881.26666665,
             "unit": "ns"
           }
         ]
