@@ -327,19 +327,7 @@ impl SystemInfo {
                     {
                         let native_iface = std::fs::read_to_string("/proc/net/route")
                             .ok()
-                            .and_then(|content| {
-                                for line in content.lines().skip(1) {
-                                    let parts: Vec<&str> = line.split_whitespace().collect();
-                                    if parts.len() >= 8 {
-                                        let dest = parts[1];
-                                        let mask = parts[7];
-                                        if dest == "00000000" && mask == "00000000" {
-                                            return Some(parts[0].to_string());
-                                        }
-                                    }
-                                }
-                                None
-                            });
+                            .and_then(|content| parse_proc_net_route(&content));
 
                         native_iface.or_else(|| {
                             std::process::Command::new("ip")
@@ -583,6 +571,20 @@ impl SystemInfo {
             gamepad,
         })
     }
+}
+
+fn parse_proc_net_route(content: &str) -> Option<String> {
+    for line in content.lines().skip(1) {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() >= 8 {
+            let dest = parts[1];
+            let mask = parts[7];
+            if dest == "00000000" && mask == "00000000" {
+                return Some(parts[0].to_string());
+            }
+        }
+    }
+    None
 }
 
 /// Count installed packages by inspecting package manager databases directly.
@@ -3576,6 +3578,20 @@ empty_value =
                 "sof-hda-dsp".to_string()
             ]
         );
+    }
+
+    #[test]
+    fn test_parse_proc_net_route() {
+        let sample =
+            "Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT\n\
+                      wlan0\t0000A8C0\t00000000\t0001\t0\t0\t600\t0000FFFF\t0\t0\t0\n\
+                      wlan0\t00000000\t0100A8C0\t0003\t0\t0\t600\t00000000\t0\t0\t0\n";
+        assert_eq!(parse_proc_net_route(sample), Some("wlan0".to_string()));
+
+        let sample_no_default =
+            "Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT\n\
+                                 wlan0\t0000A8C0\t00000000\t0001\t0\t0\t600\t0000FFFF\t0\t0\t0\n";
+        assert_eq!(parse_proc_net_route(sample_no_default), None);
     }
 
     #[test]
