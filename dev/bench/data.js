@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780517515254,
+  "lastUpdate": 1780586428022,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Linux x64 Benchmarks": [
@@ -307,6 +307,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 1538899.7572071082,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "046c8e0b0137a548dcb51d46fef7703b46efe9cc",
+          "message": "v0.3.3 - Native OS Queries & Performance Optimization (#68)\n\n* Implement native queries for route, displays, reg\n\n* Allow clippy upper_case_acronyms for win_reg\n\n* Bump version to 0.3.3 and rebuild man pages\n\n* Test route parsing and wire up helper\n\n* Restrict route parser to Linux or tests",
+          "timestamp": "2026-06-04T08:16:04-07:00",
+          "tree_id": "969803f451b805de37c1b56fbebdded3f6c125d3",
+          "url": "https://github.com/l1a/retch/commit/046c8e0b0137a548dcb51d46fef7703b46efe9cc"
+        },
+        "date": 1780586427688,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 2694815.9400000004,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 48645263.54000001,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 48184673.31882282,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1746108.2827593226,
             "unit": "ns"
           }
         ]
