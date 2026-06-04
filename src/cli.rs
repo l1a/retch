@@ -12,7 +12,7 @@ use clap::{Parser, ValueEnum};
 #[command(name = "retch", author, version, about, long_about = None)]
 pub struct Cli {
     /// Output mode: short, long, or custom
-    #[arg(short, long, default_value = "long")]
+    #[arg(short, long)]
     pub mode: Option<String>,
 
     /// Use a specific theme
@@ -24,7 +24,7 @@ pub struct Cli {
     pub config: Option<String>,
 
     /// Force a specific distribution logo by name/ID
-    #[arg(short, long)]
+    #[arg(long)]
     pub logo: Option<String>,
 
     /// Disable logo
@@ -40,11 +40,11 @@ pub struct Cli {
     pub chafa_logo: bool,
 
     /// Short output mode (OS, Kernel, Host, CPU, GPU, Memory, Disk)
-    #[arg(long)]
+    #[arg(short, long)]
     pub short: bool,
 
     /// Long output mode (show all fields)
-    #[arg(long)]
+    #[arg(short, long)]
     pub long: bool,
 
     /// List available themes
