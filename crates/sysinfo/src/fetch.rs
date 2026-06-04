@@ -573,6 +573,7 @@ impl SystemInfo {
     }
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn parse_proc_net_route(content: &str) -> Option<String> {
     for line in content.lines().skip(1) {
         let parts: Vec<&str> = line.split_whitespace().collect();
