@@ -3749,6 +3749,7 @@ empty_value =
 }
 
 #[cfg(target_os = "windows")]
+#[allow(clippy::upper_case_acronyms)]
 mod win_reg {
     use std::ffi::OsStr;
     use std::os::windows::ffi::OsStrExt;
