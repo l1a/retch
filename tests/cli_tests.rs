@@ -26,6 +26,15 @@ fn test_cli_help() {
     assert!(stdout.contains("Options:"));
     assert!(stdout.contains("--theme"));
     assert!(stdout.contains("--logo"));
+    assert!(stdout.contains("-s, --short"));
+    assert!(stdout.contains("-l, --long"));
+}
+
+#[test]
+fn test_cli_mode_missing_arg() {
+    let (_, stderr, success) = run_retch(&["--mode"]);
+    assert!(!success);
+    assert!(stderr.contains("error: a value is required for '--mode <MODE>' but none was supplied"));
 }
 
 #[test]

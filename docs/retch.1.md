@@ -23,7 +23,7 @@ retch - a fast, feature-rich system information fetcher
 :   Print version information.
 
 **-m, --mode** *MODE*
-:   Select output mode (`short`, `long`, or `custom`). Default is `long`.
+:   Select output mode (`short`, `long`, or `custom`).
 
 **-c, --config** *FILE*
 :   Path to a custom configuration file instead of the default.
@@ -37,7 +37,7 @@ retch - a fast, feature-rich system information fetcher
 **--no-logo**
 :   Disable the logo entirely.
 
-**-l, --logo** *LOGO*
+**--logo** *LOGO*
 :   Force a specific distribution logo by name/ID (e.g. `pop`, `manjaro`, `endeavouros`, `opensuse`, `ubuntu`, `fedora`, `macos`, `windows`).
 
 **--theme** *THEME*
@@ -70,10 +70,10 @@ retch - a fast, feature-rich system information fetcher
 **--fields** *FIELDS*
 :   Comma-separated list of fields to display, overriding the config file's default list.
 
-**--short**
+**-s, --short**
 :   Short output mode. Equivalent to `--mode short`. Shows: OS, Kernel, Host, CPU, GPU, Memory, Disk.
 
-**--long**
+**-l, --long**
 :   Long output mode. Equivalent to `--mode long`. Shows all available fields.
 
 # CONFIGURATION
