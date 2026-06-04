@@ -325,17 +325,35 @@ impl SystemInfo {
                 let active_interface = {
                     #[cfg(target_os = "linux")]
                     {
-                        std::process::Command::new("ip")
-                            .args(["route", "show", "default"])
-                            .output()
+                        let native_iface = std::fs::read_to_string("/proc/net/route")
                             .ok()
-                            .and_then(|o| String::from_utf8(o.stdout).ok())
-                            .and_then(|s| {
-                                s.split_whitespace()
-                                    .position(|w| w == "dev")
-                                    .and_then(|i| s.split_whitespace().nth(i + 1))
-                                    .map(|s| s.to_string())
-                            })
+                            .and_then(|content| {
+                                for line in content.lines().skip(1) {
+                                    let parts: Vec<&str> = line.split_whitespace().collect();
+                                    if parts.len() >= 8 {
+                                        let dest = parts[1];
+                                        let mask = parts[7];
+                                        if dest == "00000000" && mask == "00000000" {
+                                            return Some(parts[0].to_string());
+                                        }
+                                    }
+                                }
+                                None
+                            });
+
+                        native_iface.or_else(|| {
+                            std::process::Command::new("ip")
+                                .args(["route", "show", "default"])
+                                .output()
+                                .ok()
+                                .and_then(|o| String::from_utf8(o.stdout).ok())
+                                .and_then(|s| {
+                                    s.split_whitespace()
+                                        .position(|w| w == "dev")
+                                        .and_then(|i| s.split_whitespace().nth(i + 1))
+                                        .map(|s| s.to_string())
+                                })
+                        })
                     }
                     #[cfg(target_os = "macos")]
                     {
@@ -1842,6 +1860,59 @@ fn parse_asound_cards(content: &str, asound_dir: &str) -> Vec<String> {
 fn detect_motherboard() -> Option<String> {
     #[cfg(target_os = "macos")]
     {
+        extern "C" {
+            fn sysctlbyname(
+                name: *const i8,
+                oldp: *mut std::ffi::c_void,
+                oldlenp: *mut usize,
+                newp: *mut std::ffi::c_void,
+                newlen: usize,
+            ) -> i32;
+        }
+
+        let name_c = std::ffi::CString::new("hw.model").ok();
+        let mut model_str = None;
+
+        if let Some(name) = name_c {
+            let mut size: usize = 0;
+            unsafe {
+                sysctlbyname(
+                    name.as_ptr(),
+                    std::ptr::null_mut(),
+                    &mut size,
+                    std::ptr::null_mut(),
+                    0,
+                );
+            }
+            if size > 0 {
+                let mut buf = vec![0u8; size];
+                let res = unsafe {
+                    sysctlbyname(
+                        name.as_ptr(),
+                        buf.as_mut_ptr() as *mut std::ffi::c_void,
+                        &mut size,
+                        std::ptr::null_mut(),
+                        0,
+                    )
+                };
+                if res == 0 {
+                    if let Some(pos) = buf.iter().position(|&x| x == 0) {
+                        buf.truncate(pos);
+                    }
+                    if let Ok(model) = String::from_utf8(buf) {
+                        let trimmed = model.trim();
+                        if !trimmed.is_empty() {
+                            model_str = Some(trimmed.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        if model_str.is_some() {
+            return model_str;
+        }
+
         if let Ok(output) = std::process::Command::new("sysctl")
             .args(["-n", "hw.model"])
             .output()
@@ -1858,6 +1929,30 @@ fn detect_motherboard() -> Option<String> {
 
     #[cfg(target_os = "windows")]
     {
+        let manufacturer = win_reg::get_reg_string(
+            win_reg::HKEY_LOCAL_MACHINE,
+            "HARDWARE\\DESCRIPTION\\System\\BIOS",
+            "BaseBoardManufacturer",
+        )
+        .unwrap_or_default();
+        let product = win_reg::get_reg_string(
+            win_reg::HKEY_LOCAL_MACHINE,
+            "HARDWARE\\DESCRIPTION\\System\\BIOS",
+            "BaseBoardProduct",
+        )
+        .unwrap_or_default();
+
+        let manufacturer = manufacturer.trim();
+        let product = product.trim();
+
+        if !manufacturer.is_empty() && !product.is_empty() {
+            return Some(format!("{} {}", manufacturer, product));
+        } else if !product.is_empty() {
+            return Some(product.to_string());
+        } else if !manufacturer.is_empty() {
+            return Some(manufacturer.to_string());
+        }
+
         if let Ok(output) = std::process::Command::new("wmic")
             .args(["baseboard", "get", "manufacturer,product", "/value"])
             .output()
@@ -1942,6 +2037,57 @@ fn detect_bios() -> Option<String> {
 
     #[cfg(target_os = "windows")]
     {
+        let manufacturer = win_reg::get_reg_string(
+            win_reg::HKEY_LOCAL_MACHINE,
+            "HARDWARE\\DESCRIPTION\\System\\BIOS",
+            "BIOSVendor",
+        )
+        .unwrap_or_default();
+        let version = win_reg::get_reg_string(
+            win_reg::HKEY_LOCAL_MACHINE,
+            "HARDWARE\\DESCRIPTION\\System\\BIOS",
+            "BIOSVersion",
+        )
+        .unwrap_or_default();
+        let raw_date = win_reg::get_reg_string(
+            win_reg::HKEY_LOCAL_MACHINE,
+            "HARDWARE\\DESCRIPTION\\System\\BIOS",
+            "BIOSReleaseDate",
+        )
+        .unwrap_or_default();
+
+        let manufacturer = manufacturer.trim();
+        let version = version.trim();
+        let raw_date = raw_date.trim();
+
+        let date = if raw_date.len() >= 8 {
+            let year = &raw_date[0..4];
+            let month = &raw_date[4..6];
+            let day = &raw_date[6..8];
+            format!("{}/{}/{}", month, day, year)
+        } else {
+            raw_date.to_string()
+        };
+
+        let mut parts = Vec::new();
+        if !manufacturer.is_empty() {
+            parts.push(manufacturer.to_string());
+        }
+        if !version.is_empty() {
+            parts.push(version.to_string());
+        }
+        let mut res = parts.join(" ");
+        if !date.is_empty() {
+            if res.is_empty() {
+                res = date;
+            } else {
+                res = format!("{} ({})", res, date);
+            }
+        }
+        if !res.is_empty() {
+            return Some(res);
+        }
+
         if let Ok(output) = std::process::Command::new("wmic")
             .args([
                 "bios",
@@ -2241,75 +2387,77 @@ fn detect_displays() -> Vec<String> {
     {
         let mut displays = Vec::new();
 
-        if let Ok(output) = std::process::Command::new("xrandr")
-            .arg("--current")
-            .output()
-        {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                displays = parse_xrandr_displays(&stdout);
-            }
-        }
+        // Try reading directly from sysfs first for best performance
+        if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
+            for entry in entries.filter_map(|e| e.ok()) {
+                let path = entry.path();
+                let status_path = path.join("status");
+                let modes_path = path.join("modes");
+                let edid_path = path.join("edid");
+                if status_path.exists() && modes_path.exists() {
+                    if let Ok(status) = std::fs::read_to_string(&status_path) {
+                        if status.trim() == "connected" {
+                            if let Ok(modes) = std::fs::read_to_string(&modes_path) {
+                                if let Some(first_mode) = modes.lines().next() {
+                                    let res = first_mode.trim().to_string();
+                                    let port = entry.file_name().to_string_lossy().to_string();
+                                    let clean_port = if let Some(idx) = port.find('-') {
+                                        port[idx + 1..].to_string()
+                                    } else {
+                                        port
+                                    };
 
-        if displays.is_empty() {
-            if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
-                for entry in entries.filter_map(|e| e.ok()) {
-                    let path = entry.path();
-                    let status_path = path.join("status");
-                    let modes_path = path.join("modes");
-                    let edid_path = path.join("edid");
-                    if status_path.exists() && modes_path.exists() {
-                        if let Ok(status) = std::fs::read_to_string(&status_path) {
-                            if status.trim() == "connected" {
-                                if let Ok(modes) = std::fs::read_to_string(&modes_path) {
-                                    if let Some(first_mode) = modes.lines().next() {
-                                        let res = first_mode.trim().to_string();
-                                        let port = entry.file_name().to_string_lossy().to_string();
-                                        let clean_port = if let Some(idx) = port.find('-') {
-                                            port[idx + 1..].to_string()
-                                        } else {
-                                            port
-                                        };
+                                    let edid_bytes = if edid_path.exists() {
+                                        std::fs::read(&edid_path).ok()
+                                    } else {
+                                        None
+                                    };
 
-                                        let edid_bytes = if edid_path.exists() {
-                                            std::fs::read(&edid_path).ok()
-                                        } else {
-                                            None
-                                        };
+                                    let name = edid_bytes
+                                        .as_ref()
+                                        .and_then(|bytes| parse_monitor_name_from_edid(bytes))
+                                        .unwrap_or(clean_port);
 
-                                        let name = edid_bytes
-                                            .as_ref()
-                                            .and_then(|bytes| parse_monitor_name_from_edid(bytes))
-                                            .unwrap_or(clean_port);
+                                    let refresh = edid_bytes
+                                        .as_ref()
+                                        .and_then(|bytes| parse_refresh_rate_from_edid(bytes));
 
-                                        let refresh = edid_bytes
-                                            .as_ref()
-                                            .and_then(|bytes| parse_refresh_rate_from_edid(bytes));
+                                    let serial = edid_bytes
+                                        .as_ref()
+                                        .and_then(|bytes| parse_serial_number_from_edid(bytes));
 
-                                        let serial = edid_bytes
-                                            .as_ref()
-                                            .and_then(|bytes| parse_serial_number_from_edid(bytes));
+                                    let display_name = if let Some(ref s) = serial {
+                                        format!("{} #{}", name, s)
+                                    } else {
+                                        name
+                                    };
 
-                                        let display_name = if let Some(ref s) = serial {
-                                            format!("{} #{}", name, s)
-                                        } else {
-                                            name
-                                        };
-
-                                        if let Some(r) = refresh {
-                                            displays.push(format!(
-                                                "{} ({} @ {}Hz)",
-                                                display_name,
-                                                res,
-                                                format_refresh_rate(r)
-                                            ));
-                                        } else {
-                                            displays.push(format!("{} ({})", display_name, res));
-                                        }
+                                    if let Some(r) = refresh {
+                                        displays.push(format!(
+                                            "{} ({} @ {}Hz)",
+                                            display_name,
+                                            res,
+                                            format_refresh_rate(r)
+                                        ));
+                                    } else {
+                                        displays.push(format!("{} ({})", display_name, res));
                                     }
                                 }
                             }
                         }
                     }
+                }
+            }
+        }
+
+        // Fallback to xrandr only if sysfs yielded no connected displays
+        if displays.is_empty() {
+            if let Ok(output) = std::process::Command::new("xrandr")
+                .arg("--current")
+                .output()
+            {
+                if let Ok(stdout) = String::from_utf8(output.stdout) {
+                    displays = parse_xrandr_displays(&stdout);
                 }
             }
         }
@@ -2886,35 +3034,49 @@ fn detect_ui_theme_and_fonts() -> (
     Option<String>,
 ) {
     let theme = {
-        let output = std::process::Command::new("reg")
-            .args([
-                "query",
-                r"HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
-                "/v",
-                "AppsUseLightTheme",
-            ])
-            .output()
-            .ok();
+        let apps_light = win_reg::get_reg_u32(
+            win_reg::HKEY_CURRENT_USER,
+            "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+            "AppsUseLightTheme",
+        );
 
-        let apps_dark = output.and_then(|o| {
-            if o.status.success() {
-                let s = String::from_utf8_lossy(&o.stdout);
-                if s.contains("0x0") {
-                    Some(true) // Dark theme
-                } else if s.contains("0x1") {
-                    Some(false) // Light theme
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        });
+        let apps_dark = apps_light.map(|val| val == 0);
 
         match apps_dark {
             Some(true) => Some("Dark".to_string()),
             Some(false) => Some("Light".to_string()),
-            None => Some("Unknown".to_string()),
+            None => {
+                let output = std::process::Command::new("reg")
+                    .args([
+                        "query",
+                        r"HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+                        "/v",
+                        "AppsUseLightTheme",
+                    ])
+                    .output()
+                    .ok();
+
+                let cmd_dark = output.and_then(|o| {
+                    if o.status.success() {
+                        let s = String::from_utf8_lossy(&o.stdout);
+                        if s.contains("0x0") {
+                            Some(true)
+                        } else if s.contains("0x1") {
+                            Some(false)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                });
+
+                match cmd_dark {
+                    Some(true) => Some("Dark".to_string()),
+                    Some(false) => Some("Light".to_string()),
+                    None => Some("Unknown".to_string()),
+                }
+            }
         }
     };
 
@@ -3583,5 +3745,134 @@ empty_value =
                 "DualSense Wireless Controller".to_string()
             ]
         );
+    }
+}
+
+#[cfg(target_os = "windows")]
+mod win_reg {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    use std::ptr;
+
+    type HKEY = *mut std::ffi::c_void;
+    pub const HKEY_LOCAL_MACHINE: HKEY = 0x80000002 as HKEY;
+    pub const HKEY_CURRENT_USER: HKEY = 0x80000001 as HKEY;
+    const KEY_READ: u32 = 0x20019;
+
+    extern "system" {
+        fn RegOpenKeyExW(
+            hKey: HKEY,
+            lpSubKey: *const u16,
+            ulOptions: u32,
+            samDesired: u32,
+            phkResult: *mut HKEY,
+        ) -> i32;
+
+        fn RegQueryValueExW(
+            hKey: HKEY,
+            lpValueName: *const u16,
+            lpReserved: *mut u32,
+            lpType: *mut u32,
+            lpData: *mut u8,
+            lpcbData: *mut u32,
+        ) -> i32;
+
+        fn RegCloseKey(hKey: HKEY) -> i32;
+    }
+
+    pub fn get_reg_string(hkey: HKEY, subkey: &str, value: &str) -> Option<String> {
+        let subkey_w: Vec<u16> = OsStr::new(subkey).encode_wide().chain(Some(0)).collect();
+        let value_w: Vec<u16> = OsStr::new(value).encode_wide().chain(Some(0)).collect();
+        let mut hk: HKEY = ptr::null_mut();
+
+        let res = unsafe { RegOpenKeyExW(hkey, subkey_w.as_ptr(), 0, KEY_READ, &mut hk) };
+        if res != 0 {
+            return None;
+        }
+
+        let mut size: u32 = 0;
+        let mut ty: u32 = 0;
+        unsafe {
+            RegQueryValueExW(
+                hk,
+                value_w.as_ptr(),
+                ptr::null_mut(),
+                &mut ty,
+                ptr::null_mut(),
+                &mut size,
+            );
+        }
+
+        if size == 0 {
+            unsafe {
+                RegCloseKey(hk);
+            }
+            return None;
+        }
+
+        let mut buf = vec![0u8; size as usize];
+        let res = unsafe {
+            RegQueryValueExW(
+                hk,
+                value_w.as_ptr(),
+                ptr::null_mut(),
+                &mut ty,
+                buf.as_mut_ptr(),
+                &mut size,
+            )
+        };
+        unsafe {
+            RegCloseKey(hk);
+        }
+
+        if res == 0 {
+            if ty == 1 || ty == 2 {
+                // REG_SZ or REG_EXPAND_SZ
+                let words = unsafe {
+                    std::slice::from_raw_parts(buf.as_ptr() as *const u16, buf.len() / 2)
+                };
+                let len = words.iter().position(|&x| x == 0).unwrap_or(words.len());
+                String::from_utf16(&words[..len]).ok()
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn get_reg_u32(hkey: HKEY, subkey: &str, value: &str) -> Option<u32> {
+        let subkey_w: Vec<u16> = OsStr::new(subkey).encode_wide().chain(Some(0)).collect();
+        let value_w: Vec<u16> = OsStr::new(value).encode_wide().chain(Some(0)).collect();
+        let mut hk: HKEY = ptr::null_mut();
+
+        let res = unsafe { RegOpenKeyExW(hkey, subkey_w.as_ptr(), 0, KEY_READ, &mut hk) };
+        if res != 0 {
+            return None;
+        }
+
+        let mut size: u32 = 4;
+        let mut ty: u32 = 0;
+        let mut val: u32 = 0;
+        let res = unsafe {
+            RegQueryValueExW(
+                hk,
+                value_w.as_ptr(),
+                ptr::null_mut(),
+                &mut ty,
+                &mut val as *mut u32 as *mut u8,
+                &mut size,
+            )
+        };
+        unsafe {
+            RegCloseKey(hk);
+        }
+
+        if res == 0 && ty == 4 {
+            // REG_DWORD
+            Some(val)
+        } else {
+            None
+        }
     }
 }
