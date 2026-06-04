@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780589759202,
+  "lastUpdate": 1780590005149,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Linux x64 Benchmarks": [
@@ -1059,6 +1059,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 180303960.4166667,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "585270b923d52522281c533fb0763203d8a90b40",
+          "message": "Update CLI flags for short, long, and mode options (#70)",
+          "timestamp": "2026-06-04T09:08:05-07:00",
+          "tree_id": "0ea02c92aac1141943ac5f8df9742e9e9034f14f",
+          "url": "https://github.com/l1a/retch/commit/585270b923d52522281c533fb0763203d8a90b40"
+        },
+        "date": 1780590003385,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 22603521.88,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 635073225.88,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 652311333.4,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 254923886.475,
             "unit": "ns"
           }
         ]
