@@ -25,10 +25,9 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.3.4)
+## Current State (v0.3.5)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
-- **Benchmarking**: Criterion micro-benchmarks for core subsystems, hyperfine CLI recipes for cross-tool comparison, and continuous benchmarking CI with GitHub Pages dashboard.
-- **Architecture**: Modularized GPU detection into a dedicated component.
+- **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
 - **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
@@ -43,6 +42,12 @@
 - **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
 
 ## Major Achievements
+
+### v0.3.5 - Display Module Isolation (June 8, 2026)
+- **Workspace Refactor**: Extracted all display detection and EDID parsing logic from `crates/sysinfo/src/fetch.rs` into a new dedicated module `crates/sysinfo/src/display.rs` within `retch-sysinfo`.
+- **New Module**: `display.rs` now owns `detect_displays`, `parse_macos_displays`, `parse_xrandr_displays`, `parse_monitor_name_from_edid`, `parse_refresh_rate_from_edid`, `parse_serial_number_from_edid`, `format_refresh_rate`, and `get_monitor_name_for_port`, along with their unit tests.
+- **Zero Regression**: All 22 `retch-sysinfo` unit tests (including 4 display module tests) and all 8 CLI integration tests continue to pass. `just check` (fmt + clippy) is clean.
+- **Version**: Bumped version to `0.3.5` in `Cargo.toml`, `crates/sysinfo/Cargo.toml` (→ `0.1.5`), and documentation.
 
 ### v0.3.4 - Dependency Updates & CLI Refinements (June 4, 2026)
 - **CLI Options**: Added short `-s` for `--short`, short `-l` for `--long`, removed `-l` from `--logo` to prevent conflicts, and removed default from `--mode` to error when missing its value.
