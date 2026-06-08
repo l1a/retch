@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780947047100,
+  "lastUpdate": 1780947460945,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Linux x64 Benchmarks": [
@@ -2426,6 +2426,65 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1240204200,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "03f2f059fb0ad385d838b489f3e4ac1b62e6855b",
+          "message": "refactor: isolate display parsing into display.rs, expand tests and benchmarks (v0.3.5)\n\nExtracts all display detection and EDID parsing from fetch.rs into crates/sysinfo/src/display.rs. Adds 13 new unit tests (22→35) covering edge cases and 4 new criterion benchmarks for the pure EDID parsing functions. Bumps retch-cli to 0.3.5, retch-sysinfo to 0.1.5.",
+          "timestamp": "2026-06-08T11:57:39-07:00",
+          "tree_id": "7f7cbba8a52f301fe9a06fec1ddbf7bae7034a21",
+          "url": "https://github.com/l1a/retch/commit/03f2f059fb0ad385d838b489f3e4ac1b62e6855b"
+        },
+        "date": 1780947458748,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 257475224,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1410950314.0000002,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 103.16764490482562,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947618551714036,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 102.31712187266194,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 288178940,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1239644925,
             "unit": "ns"
           }
         ]
