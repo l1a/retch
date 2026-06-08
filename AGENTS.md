@@ -31,7 +31,7 @@
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
 - **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
-- **Quality**: Strict `just check` (fmt + lint), unit test coverage (33 passing tests), and automated CLI integration test suite (7 tests).
+- **Quality**: Strict `just check` (fmt + lint), unit test coverage (35 `retch-sysinfo` and 26 `retch-cli` passing unit tests), and automated CLI integration test suite (8 tests).
 - **CI/CD**: Multi-platform build/testing on Linux (Fedora & Ubuntu), macOS, and Windows. Releases compiled for Fedora (x86_64/ARM), macOS (ARM), and Windows (x86_64/ARM) on native host/container runner environments.
 - **Documentation**: Full internal Rustdoc coverage and updated README/man pages.
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
@@ -45,8 +45,9 @@
 
 ### v0.3.5 - Display Module Isolation (June 8, 2026)
 - **Workspace Refactor**: Extracted all display detection and EDID parsing logic from `crates/sysinfo/src/fetch.rs` into a new dedicated module `crates/sysinfo/src/display.rs` within `retch-sysinfo`.
-- **New Module**: `display.rs` now owns `detect_displays`, `parse_macos_displays`, `parse_xrandr_displays`, `parse_monitor_name_from_edid`, `parse_refresh_rate_from_edid`, `parse_serial_number_from_edid`, `format_refresh_rate`, and `get_monitor_name_for_port`, along with their unit tests.
-- **Zero Regression**: All 22 `retch-sysinfo` unit tests (including 4 display module tests) and all 8 CLI integration tests continue to pass. `just check` (fmt + clippy) is clean.
+- **New Module**: `display.rs` now owns `detect_displays`, `parse_macos_displays`, `parse_xrandr_displays`, `parse_monitor_name_from_edid`, `parse_refresh_rate_from_edid`, `parse_serial_number_from_edid`, `format_refresh_rate`, and `get_monitor_name_for_port`.
+- **Test & Bench Expansion**: Expanded test coverage with 13 new unit tests verifying EDID edge cases (precedence, bounds, malformed data), bringing `retch-sysinfo` unit tests to 35. Added 4 new Criterion micro-benchmarks for EDID parsing.
+- **Zero Regression**: All 35 `retch-sysinfo` unit tests, 26 `retch-cli` unit tests, and 8 CLI integration tests pass. `just check` (fmt + clippy) is clean.
 - **Version**: Bumped version to `0.3.5` in `Cargo.toml`, `crates/sysinfo/Cargo.toml` (→ `0.1.5`), and documentation.
 
 ### v0.3.4 - Dependency Updates & CLI Refinements (June 4, 2026)
@@ -262,9 +263,10 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 ## Next Steps
 
-1. **Expansion** — Explore support for other platforms (e.g., BSDs, Android/Termux).
-2. **UX Polish** — Refine error messages and performance of slow platform queries.
-3. **Workspace Expansion** — GPU and battery detection logic have already been consolidated into the `retch-sysinfo` workspace crate. Future expansions can consider isolating display parsing.
+1. **crates.io Publishing** — Publish `retch-sysinfo` v0.1.5 and `retch-cli` v0.3.5 to crates.io now that dry-run validations are complete.
+2. **Network Module Isolation** — Extract network interface routing, active interface logic, and IP parsing out of the monolithic `fetch.rs` into a dedicated `crates/sysinfo/src/network.rs` module.
+3. **Audio Module Isolation** — Extract and isolate audio server and device query logic from `fetch.rs` into a dedicated `crates/sysinfo/src/audio.rs` module.
+4. **Platform & Native Probes** — Expand OS support (BSDs/Android) and continue replacing slow command execution paths with direct system/registry FFI calls.
 
 ---
-*Last updated: June 4, 2026*
+*Last updated: June 8, 2026*
