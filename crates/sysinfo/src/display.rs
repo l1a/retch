@@ -20,7 +20,7 @@
 /// and 108) for a Monitor Name Descriptor (tag `0xFC`) and returns the name
 /// string, or `None` if no such descriptor is found or the EDID is too short.
 #[allow(dead_code)]
-pub(crate) fn parse_monitor_name_from_edid(edid: &[u8]) -> Option<String> {
+pub fn parse_monitor_name_from_edid(edid: &[u8]) -> Option<String> {
     if edid.len() < 128 {
         return None;
     }
@@ -50,7 +50,7 @@ pub(crate) fn parse_monitor_name_from_edid(edid: &[u8]) -> Option<String> {
 ///
 /// Returns `None` if the EDID is too short or the pixel clock is zero.
 #[allow(dead_code)]
-pub(crate) fn parse_refresh_rate_from_edid(edid: &[u8]) -> Option<f64> {
+pub fn parse_refresh_rate_from_edid(edid: &[u8]) -> Option<f64> {
     if edid.len() < 72 {
         return None;
     }
@@ -80,7 +80,7 @@ pub(crate) fn parse_refresh_rate_from_edid(edid: &[u8]) -> Option<f64> {
 /// Integers (e.g. 60.0) are rendered without decimals; non-integer values
 /// (e.g. 59.94) are rounded to two decimal places.
 #[allow(dead_code)]
-pub(crate) fn format_refresh_rate(refresh: f64) -> String {
+pub fn format_refresh_rate(refresh: f64) -> String {
     if (refresh - refresh.round()).abs() < 0.01 {
         format!("{:.0}", refresh)
     } else {
@@ -96,7 +96,7 @@ pub(crate) fn format_refresh_rate(refresh: f64) -> String {
 ///
 /// Returns `None` if no serial number is found or the EDID is too short.
 #[allow(dead_code)]
-pub(crate) fn parse_serial_number_from_edid(edid: &[u8]) -> Option<String> {
+pub fn parse_serial_number_from_edid(edid: &[u8]) -> Option<String> {
     if edid.len() < 128 {
         return None;
     }
@@ -135,7 +135,7 @@ pub(crate) fn parse_serial_number_from_edid(edid: &[u8]) -> Option<String> {
 /// the EDID bytes, and extracts the monitor name via [`parse_monitor_name_from_edid`].
 /// Returns `None` if not found on Linux or not compiled for Linux.
 #[allow(dead_code)]
-pub(crate) fn get_monitor_name_for_port(port: &str) -> Option<String> {
+pub fn get_monitor_name_for_port(port: &str) -> Option<String> {
     if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
         for entry in entries.filter_map(|e| e.ok()) {
             let name = entry.file_name().to_string_lossy().to_string();
@@ -161,7 +161,7 @@ pub(crate) fn get_monitor_name_for_port(port: &str) -> Option<String> {
 /// - **Linux**: Reads `/sys/class/drm` natively; falls back to `xrandr --current`.
 /// - **macOS**: Parses `system_profiler SPDisplaysDataType` output.
 /// - **Windows**: Queries `wmic path Win32_VideoController`.
-pub(crate) fn detect_displays() -> Vec<String> {
+pub fn detect_displays() -> Vec<String> {
     #[cfg(target_os = "macos")]
     {
         if let Ok(output) = std::process::Command::new("system_profiler")
@@ -324,7 +324,7 @@ pub(crate) fn detect_displays() -> Vec<String> {
 ///
 /// Returns a list of strings in the form `"<Name> (<Resolution> @ <Rate>)"`.
 #[cfg(target_os = "macos")]
-pub(crate) fn parse_macos_displays(stdout: &str) -> Vec<String> {
+pub fn parse_macos_displays(stdout: &str) -> Vec<String> {
     let mut displays = Vec::new();
     let mut current_name = None;
     let mut current_res = None;
@@ -384,7 +384,7 @@ pub(crate) fn parse_macos_displays(stdout: &str) -> Vec<String> {
 /// For each connected port, looks up the monitor name from EDID via
 /// [`get_monitor_name_for_port`], falling back to the port name itself.
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-pub(crate) fn parse_xrandr_displays(stdout: &str) -> Vec<String> {
+pub fn parse_xrandr_displays(stdout: &str) -> Vec<String> {
     let mut displays = Vec::new();
     let mut current_display = None;
     let mut current_port = None;
@@ -429,38 +429,81 @@ pub(crate) fn parse_xrandr_displays(stdout: &str) -> Vec<String> {
 mod tests {
     use super::*;
 
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn test_parse_macos_displays() {
-        let sample = "Graphics/Displays:\n\n    Apple M2:\n\n      Chipset Model: Apple M2\n      Displays:\n        Color LCD:\n          Resolution: 3024 x 1964\n          UI Looks like: 1512 x 982 @ 60.00Hz\n";
-        let parsed = parse_macos_displays(sample);
-        assert_eq!(parsed, vec!["Color LCD (3024x1964 @ 60Hz)".to_string()]);
+    // ── EDID helpers ─────────────────────────────────────────────────────────
+
+    /// Build a 128-byte all-zero EDID with the 1080p60 DTD at offset 54.
+    fn edid_1080p60() -> Vec<u8> {
+        let mut edid = vec![0u8; 128];
+        // Pixel clock 14850 (x 10 kHz = 148.5 MHz)
+        edid[54] = 0x02;
+        edid[55] = 0x3A;
+        // H Active 1920, H Blanking 280
+        edid[56] = 0x80;
+        edid[57] = 0x18;
+        edid[58] = 0x71;
+        // V Active 1080, V Blanking 45
+        edid[59] = 0x38;
+        edid[60] = 0x2D;
+        edid[61] = 0x40;
+        edid
     }
 
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    #[test]
-    fn test_parse_xrandr_displays() {
-        let sample = "Screen 0: minimum 320 x 200, current 2560 x 1440\nDP-1 connected primary 2560x1440+0+0\n   2560x1440     143.97*+\n   1920x1080     60.00\n";
-        let parsed = parse_xrandr_displays(sample);
-        assert_eq!(parsed, vec!["DP-1 (2560x1440 @ 143.97Hz)".to_string()]);
+    /// Inject a Monitor Name Descriptor (tag 0xFC) at EDID offset 72.
+    fn inject_monitor_name(edid: &mut Vec<u8>, name: &[u8]) {
+        edid[72] = 0x00;
+        edid[73] = 0x00;
+        edid[74] = 0x00;
+        edid[75] = 0xFC;
+        for (i, &b) in name.iter().enumerate().take(13) {
+            edid[76 + i] = b;
+        }
     }
+
+    // ── parse_monitor_name_from_edid ──────────────────────────────────────────
+
+    #[test]
+    fn test_monitor_name_too_short_edid() {
+        assert_eq!(parse_monitor_name_from_edid(&[0u8; 64]), None);
+    }
+
+    #[test]
+    fn test_monitor_name_no_descriptor() {
+        // 128-byte EDID with no 0xFC descriptor block -> None
+        assert_eq!(parse_monitor_name_from_edid(&[0u8; 128]), None);
+    }
+
+    #[test]
+    fn test_monitor_name_at_offset_72() {
+        let mut edid = vec![0u8; 128];
+        inject_monitor_name(&mut edid, b"DELL S3422DW\n");
+        assert_eq!(
+            parse_monitor_name_from_edid(&edid),
+            Some("DELL S3422DW".to_string())
+        );
+    }
+
+    #[test]
+    fn test_monitor_name_at_offset_54() {
+        let mut edid = vec![0u8; 128];
+        edid[54] = 0x00;
+        edid[55] = 0x00;
+        edid[56] = 0x00;
+        edid[57] = 0xFC;
+        let name = b"LG 27UK850\n  ";
+        for (i, &b) in name.iter().enumerate().take(13) {
+            edid[58 + i] = b;
+        }
+        assert_eq!(
+            parse_monitor_name_from_edid(&edid),
+            Some("LG 27UK850".to_string())
+        );
+    }
+
+    // ── parse_refresh_rate_from_edid ──────────────────────────────────────────
 
     #[test]
     fn test_parse_refresh_rate_from_edid() {
-        // Construct a mock EDID block with a DTD at byte 54
-        let mut edid = vec![0u8; 128];
-        // Pixel clock = 14850 -> 0x3A02 (in 10 kHz units -> 148.5 MHz)
-        edid[54] = 0x02;
-        edid[55] = 0x3A;
-        // H Active = 1920 (0x780), H Blanking = 280 (0x118)
-        edid[56] = 0x80; // Low 8 bits of H Active
-        edid[57] = 0x18; // Low 8 bits of H Blanking
-        edid[58] = 0x71; // High 4 bits: H Active (7), H Blanking (1)
-                         // V Active = 1080 (0x438), V Blanking = 45 (0x2D)
-        edid[59] = 0x38; // Low 8 bits of V Active
-        edid[60] = 0x2D; // Low 8 bits of V Blanking
-        edid[61] = 0x40; // High 4 bits: V Active (4), V Blanking (0)
-
+        let edid = edid_1080p60();
         let refresh = parse_refresh_rate_from_edid(&edid);
         assert!(refresh.is_some());
         // 148,500,000 / ((1920 + 280) * (1080 + 45)) = 60 Hz
@@ -468,16 +511,48 @@ mod tests {
     }
 
     #[test]
+    fn test_refresh_rate_too_short_edid() {
+        assert_eq!(parse_refresh_rate_from_edid(&[0u8; 71]), None);
+    }
+
+    #[test]
+    fn test_refresh_rate_zero_pixel_clock() {
+        // All-zero bytes -> pixel clock == 0 -> None
+        let edid = vec![0u8; 128];
+        assert_eq!(parse_refresh_rate_from_edid(&edid), None);
+    }
+
+    #[test]
+    fn test_refresh_rate_zero_totals() {
+        // Non-zero pixel clock but all dimension bytes zero -> h_total == 0 -> None
+        let mut edid = vec![0u8; 128];
+        edid[54] = 0x01; // pixel clock byte != 0
+                         // all active/blanking bytes remain 0
+        assert_eq!(parse_refresh_rate_from_edid(&edid), None);
+    }
+
+    // ── format_refresh_rate ───────────────────────────────────────────────────
+
+    #[test]
     fn test_format_refresh_rate() {
         assert_eq!(format_refresh_rate(60.0), "60");
         assert_eq!(format_refresh_rate(59.94), "59.94");
         assert_eq!(format_refresh_rate(143.971), "143.97");
+        assert_eq!(format_refresh_rate(120.0), "120");
+        assert_eq!(format_refresh_rate(240.0), "240");
+    }
+
+    // ── parse_serial_number_from_edid ─────────────────────────────────────────
+
+    #[test]
+    fn test_serial_too_short_edid() {
+        assert_eq!(parse_serial_number_from_edid(&[0u8; 64]), None);
     }
 
     #[test]
     fn test_parse_serial_number_from_edid() {
         let mut edid = vec![0u8; 128];
-        // 1. Test fallback 32-bit numeric serial
+        // 1. Fallback 32-bit numeric serial
         edid[12] = 0x78;
         edid[13] = 0x56;
         edid[14] = 0x34;
@@ -487,7 +562,7 @@ mod tests {
             Some("305419896".to_string())
         );
 
-        // 2. Test ASCII Monitor Serial Number descriptor block (tag 0xFF) at offset 72
+        // 2. ASCII Monitor Serial Number descriptor block (tag 0xFF) at offset 72
         edid[72] = 0x00;
         edid[73] = 0x00;
         edid[74] = 0x00;
@@ -500,5 +575,104 @@ mod tests {
             parse_serial_number_from_edid(&edid),
             Some("CN0123456789".to_string())
         );
+    }
+
+    #[test]
+    fn test_serial_numeric_zero_is_none() {
+        // All-zero EDID -> serial_num == 0 -> None
+        let edid = vec![0u8; 128];
+        assert_eq!(parse_serial_number_from_edid(&edid), None);
+    }
+
+    #[test]
+    fn test_serial_numeric_all_ff_is_none() {
+        let mut edid = vec![0u8; 128];
+        edid[12] = 0xFF;
+        edid[13] = 0xFF;
+        edid[14] = 0xFF;
+        edid[15] = 0xFF;
+        assert_eq!(parse_serial_number_from_edid(&edid), None);
+    }
+
+    #[test]
+    fn test_serial_ascii_takes_precedence_over_numeric() {
+        let mut edid = vec![0u8; 128];
+        // Non-zero numeric serial
+        edid[12] = 0x01;
+        edid[13] = 0x02;
+        edid[14] = 0x03;
+        edid[15] = 0x04;
+        // ASCII serial descriptor at offset 54
+        edid[54] = 0x00;
+        edid[55] = 0x00;
+        edid[56] = 0x00;
+        edid[57] = 0xFF;
+        let serial = b"ASCIIWIN0001\n";
+        for (i, &b) in serial.iter().enumerate().take(13) {
+            edid[58 + i] = b;
+        }
+        // ASCII descriptor should win over the numeric value
+        assert_eq!(
+            parse_serial_number_from_edid(&edid),
+            Some("ASCIIWIN0001".to_string())
+        );
+    }
+
+    // ── parse_xrandr_displays ─────────────────────────────────────────────────
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    #[test]
+    fn test_parse_xrandr_displays() {
+        let sample = "Screen 0: minimum 320 x 200, current 2560 x 1440\n\
+                      DP-1 connected primary 2560x1440+0+0\n\
+                         2560x1440     143.97*+\n\
+                         1920x1080     60.00\n";
+        let parsed = parse_xrandr_displays(sample);
+        assert_eq!(parsed, vec!["DP-1 (2560x1440 @ 143.97Hz)".to_string()]);
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    #[test]
+    fn test_parse_xrandr_multiple_displays() {
+        let sample = "Screen 0: minimum 320 x 200, current 3840 x 1080\n\
+                      HDMI-1 connected 1920x1080+0+0\n\
+                         1920x1080     60.00*+\n\
+                      DP-1 connected 1920x1080+1920+0\n\
+                         1920x1080    144.00*+\n";
+        let parsed = parse_xrandr_displays(sample);
+        assert_eq!(
+            parsed,
+            vec![
+                "HDMI-1 (1920x1080 @ 60.00Hz)".to_string(),
+                "DP-1 (1920x1080 @ 144.00Hz)".to_string(),
+            ]
+        );
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    #[test]
+    fn test_parse_xrandr_no_connected_displays() {
+        let sample = "Screen 0: minimum 320 x 200, current 0 x 0\n\
+                      HDMI-1 disconnected\n\
+                      DP-1 disconnected\n";
+        assert_eq!(parse_xrandr_displays(sample), Vec::<String>::new());
+    }
+
+    // ── parse_macos_displays ──────────────────────────────────────────────────
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_parse_macos_displays() {
+        let sample = "Graphics/Displays:\n\n    Apple M2:\n\n      Chipset Model: Apple M2\n      Displays:\n        Color LCD:\n          Resolution: 3024 x 1964\n          UI Looks like: 1512 x 982 @ 60.00Hz\n";
+        let parsed = parse_macos_displays(sample);
+        assert_eq!(parsed, vec!["Color LCD (3024x1964 @ 60Hz)".to_string()]);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_parse_macos_no_frequency() {
+        let sample = "Graphics/Displays:\n      Displays:\n        ASUS PA329C:\n          Resolution: 3840 x 2160\n";
+        let parsed = parse_macos_displays(sample);
+        assert_eq!(parsed, vec!["ASUS PA329C (3840x2160)".to_string()]);
     }
 }
