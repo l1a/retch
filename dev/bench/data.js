@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780948060311,
+  "lastUpdate": 1780948590015,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Linux x64 Benchmarks": [
@@ -2022,6 +2022,65 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 369394746.05,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "906c5abfb8923400935698c0e78970d34b0db97c",
+          "message": "Update AGENTS.md progress and next steps (#72)",
+          "timestamp": "2026-06-08T12:33:05-07:00",
+          "tree_id": "1de64e381b62d4f79deb5adacbc4da43901fc6ff",
+          "url": "https://github.com/l1a/retch/commit/906c5abfb8923400935698c0e78970d34b0db97c"
+        },
+        "date": 1780948587584,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 50489630.059999995,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1129978028.5600002,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 1727761819.35,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 202.88868900162458,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 4.490288063532373,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 179.34719265633106,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 407455864.6,
             "unit": "ns"
           }
         ]
