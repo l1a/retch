@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780948590015,
+  "lastUpdate": 1780949077759,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Linux x64 Benchmarks": [
@@ -2406,6 +2406,65 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1799097830,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "906c5abfb8923400935698c0e78970d34b0db97c",
+          "message": "Update AGENTS.md progress and next steps (#72)",
+          "timestamp": "2026-06-08T12:33:05-07:00",
+          "tree_id": "1de64e381b62d4f79deb5adacbc4da43901fc6ff",
+          "url": "https://github.com/l1a/retch/commit/906c5abfb8923400935698c0e78970d34b0db97c"
+        },
+        "date": 1780949075940,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 30914446,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1814944275.9999998,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 125.87144713083255,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.005896148485331,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 126.10307953380502,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 342845237.5,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1334363980,
             "unit": "ns"
           }
         ]
