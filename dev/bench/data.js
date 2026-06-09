@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780973939870,
+  "lastUpdate": 1780974020511,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Linux x64 Benchmarks": [
@@ -1285,6 +1285,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 1198006.3786967222,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "6365e661aa70ab10a23ae29fda01d1c7a2afb036",
+          "message": "chore: add Claude Code project settings\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "timestamp": "2026-06-08T19:50:21-07:00",
+          "tree_id": "c23a0e102dc774a5a06b0156115a4810d15e542e",
+          "url": "https://github.com/l1a/retch/commit/6365e661aa70ab10a23ae29fda01d1c7a2afb036"
+        },
+        "date": 1780974019857,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 1748969.9000000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 152174821.29999998,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 139231941.8125,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 47.19150267096386,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947413592611558,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 46.42640238498519,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7644.2357289325355,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1192631.15916868,
             "unit": "ns"
           }
         ]
