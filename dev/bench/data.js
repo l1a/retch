@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780975260920,
+  "lastUpdate": 1780975366972,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Linux x64 Benchmarks": [
@@ -3016,6 +3016,65 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1407471070,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "6365e661aa70ab10a23ae29fda01d1c7a2afb036",
+          "message": "chore: add Claude Code project settings\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "timestamp": "2026-06-08T19:50:21-07:00",
+          "tree_id": "c23a0e102dc774a5a06b0156115a4810d15e542e",
+          "url": "https://github.com/l1a/retch/commit/6365e661aa70ab10a23ae29fda01d1c7a2afb036"
+        },
+        "date": 1780975363478,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 22740822,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1454863272.0000002,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 99.14400215218615,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 4.060330195108593,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 99.93715737521663,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 238905710.00000006,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1365851050,
             "unit": "ns"
           }
         ]
