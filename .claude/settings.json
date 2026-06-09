@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh api *)",
+      "Bash(git clone *)",
+      "Read(//tmp/**)",
+      "Bash(git fetch *)",
+      "Bash(just man *)"
+    ]
+  }
+}
