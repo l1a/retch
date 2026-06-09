@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780949526480,
+  "lastUpdate": 1780973658587,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Linux x64 Benchmarks": [
@@ -567,6 +567,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 1705621.9255856858,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "d1a535b0061e46fe228bbc6bc6750aaa1a3d682a",
+          "message": "docs: update AGENTS.md wiki instructions and fix man page version\n\nAdd explicit wiki clone URL and expand wiki update guidance in AGENTS.md.\nRegenerate docs/retch.1 to correct version header (0.3.4 → 0.3.5).\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "timestamp": "2026-06-08T19:47:53-07:00",
+          "tree_id": "475ab89487f022b32be2a0ef3c9080b336f41d0a",
+          "url": "https://github.com/l1a/retch/commit/d1a535b0061e46fe228bbc6bc6750aaa1a3d682a"
+        },
+        "date": 1780973658345,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 2692372.3200000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 51177297.019999996,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 47908540.069903456,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 59.12955998208099,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.028355815768492,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 59.53341444621142,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 20693.72688741961,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1693895.4467263755,
             "unit": "ns"
           }
         ]
