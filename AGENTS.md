@@ -14,12 +14,13 @@
   1. All new and existing unit/integration tests cover changes.
   2. All documentation is kept in sync with the current features.
   3. Default configuration templates (like `default_config_content()` in `src/main.rs`) and comment lists are fully updated with new options.
+  4. If the GitHub wiki exists, clone it (`https://github.com/l1a/retch.wiki.git`) and update any affected pages before submitting the PR.
 - **Documentation & Versioning Updates**: When branching to make changes, ensure the following updates are performed:
   - **Version Bump**: Increment the version in `Cargo.toml`, verify compilation, and run `cargo check` to update `Cargo.lock`.
   - **Man Pages**: Update `docs/retch.1.md` with new parameters/fields and run `just man` to rebuild `docs/retch.1`.
   - **README**: Add new features, command examples, or configuration keys to `README.md`.
   - **Roadmap & History**: Update `AGENTS.md` by bumping the version in the "Current State" header and adding a new release log entry under "Major Achievements".
-  - **GitHub Wiki**: Clone and update the corresponding wiki pages (`Configuration-and-Theming.md`, `Workspace-Architecture.md`, `Home.md`) if configuration parameters or workspace structures change.
+  - **GitHub Wiki**: Clone (`https://github.com/l1a/retch.wiki.git`) and update the corresponding wiki pages (`Configuration-and-Theming.md`, `Workspace-Architecture.md`, `Home.md`) for any changes to configuration parameters, workspace structure, or major features. Push the wiki update before or alongside the PR.
   - **Bumping Strategy**: If the changes are significant (e.g. new subcrates, breaking CLI changes, major architectural redesigns), ALWAYS ask the user whether to perform a major, minor, or patch version bump.
 - **Command Redundancy**: Avoid running `just check && cargo test` sequentially since both build and check the project profiles, causing redundant background compilation cycles. Prefer `cargo test` during iteration and a final check before staging.
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
