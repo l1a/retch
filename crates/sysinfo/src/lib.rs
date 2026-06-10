@@ -14,11 +14,13 @@
 //! - [`battery`] — Cross-platform battery status detection.
 //! - [`display`] — Display detection and EDID parsing.
 //! - [`gpu`] — GPU detection and PCI ID lookup.
+//! - [`network`] — Network interface detection, IP resolution, and Wi-Fi.
 //! - [`fetch`] — Full system information gathering (`SystemInfo`, `CollectOptions`).
 
 pub mod battery;
 pub mod display;
 pub mod fetch;
 pub mod gpu;
+pub mod network;
 
 pub use fetch::{CollectOptions, SystemInfo};
