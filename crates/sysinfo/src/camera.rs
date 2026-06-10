@@ -23,6 +23,7 @@ pub fn clean_camera_name(name: &str) -> String {
     trimmed.to_string()
 }
 
+#[cfg(target_os = "macos")]
 pub fn parse_macos_camera(stdout: &str) -> Vec<String> {
     let mut devices = Vec::new();
     let mut in_cameras = false;
@@ -157,6 +158,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_os = "macos")]
     #[test]
     fn test_parse_macos_camera() {
         let sample = "Camera:\n\n    FaceTime HD Camera:\n\n      Model ID: UVC Camera VendorID_1452 ProductID_34068\n      Unique ID: 0x8020000005ac8514\n";

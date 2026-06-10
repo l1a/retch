@@ -3,6 +3,7 @@
 
 //! Gamepad and joystick controller detection.
 
+#[cfg(target_os = "macos")]
 pub fn parse_macos_gamepad(usb_stdout: &str, bt_stdout: &str) -> Vec<String> {
     let mut gamepads = Vec::new();
     let keywords = [
@@ -123,7 +124,7 @@ pub(crate) fn detect_gamepad() -> Vec<String> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
 
