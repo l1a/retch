@@ -11,12 +11,14 @@
 //!
 //! ## Modules
 //!
+//! - [`audio`] — Audio server and device detection.
 //! - [`battery`] — Cross-platform battery status detection.
 //! - [`display`] — Display detection and EDID parsing.
 //! - [`gpu`] — GPU detection and PCI ID lookup.
 //! - [`network`] — Network interface detection, IP resolution, and Wi-Fi.
 //! - [`fetch`] — Full system information gathering (`SystemInfo`, `CollectOptions`).
 
+pub mod audio;
 pub mod battery;
 pub mod display;
 pub mod fetch;
