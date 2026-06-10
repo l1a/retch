@@ -360,7 +360,7 @@ pub fn detect_wifi() -> Option<String> {
 }
 
 #[cfg(any(target_os = "linux", test))]
-fn parse_proc_net_route(content: &str) -> Option<String> {
+pub fn parse_proc_net_route(content: &str) -> Option<String> {
     for line in content.lines().skip(1) {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 8 {
@@ -442,14 +442,14 @@ fn clean_rate(rate: &str) -> String {
 }
 
 #[derive(Debug, Clone)]
-struct WifiLink {
-    freq: Option<f64>,
-    rx_rate: Option<String>,
-    tx_rate: Option<String>,
+pub struct WifiLink {
+    pub freq: Option<f64>,
+    pub rx_rate: Option<String>,
+    pub tx_rate: Option<String>,
 }
 
 #[allow(dead_code)]
-fn parse_iw_link_output(stdout: &str) -> (Option<String>, Vec<WifiLink>) {
+pub fn parse_iw_link_output(stdout: &str) -> (Option<String>, Vec<WifiLink>) {
     let mut ssid = None;
     let mut links = Vec::new();
     let mut current_link = None;
@@ -501,7 +501,7 @@ fn parse_iw_link_output(stdout: &str) -> (Option<String>, Vec<WifiLink>) {
 }
 
 #[allow(dead_code)]
-fn parse_airport_output(stdout: &str) -> Option<String> {
+pub fn parse_airport_output(stdout: &str) -> Option<String> {
     let mut ssid = None;
     let mut rate = None;
     for line in stdout.lines() {
@@ -536,7 +536,7 @@ fn parse_airport_output(stdout: &str) -> Option<String> {
 }
 
 #[allow(dead_code)]
-fn parse_netsh_output(stdout: &str) -> Option<String> {
+pub fn parse_netsh_output(stdout: &str) -> Option<String> {
     let mut ssid = None;
     let mut rx = None;
     let mut tx = None;

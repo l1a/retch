@@ -356,3 +356,27 @@ fn read_file_to_string<P: AsRef<Path>>(path: P) -> Option<String> {
 fn read_file_to_num<T: std::str::FromStr, P: AsRef<Path>>(path: P) -> Option<T> {
     read_file_to_string(path).and_then(|s| s.parse().ok())
 }
+
+#[cfg(test)]
+mod tests {
+    #[cfg(target_os = "macos")]
+    use super::parse_ioreg_line;
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_parse_ioreg_line() {
+        let line = r#"    | "MaxCapacity" = 5000"#;
+        assert_eq!(
+            parse_ioreg_line(line, "MaxCapacity"),
+            Some("5000".to_string())
+        );
+
+        let line_str = r#"    | "DeviceName" = "DELL BATTERY""#;
+        assert_eq!(
+            parse_ioreg_line(line_str, "DeviceName"),
+            Some("DELL BATTERY".to_string())
+        );
+
+        assert_eq!(parse_ioreg_line(line, "MissingKey"), None);
+    }
+}

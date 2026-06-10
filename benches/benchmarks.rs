@@ -11,13 +11,12 @@ use clap::Parser;
 use retch_cli::cli::Cli;
 use retch_cli::fetch::{CollectOptions, SystemInfo};
 use retch_cli::gpu;
+use retch_sysinfo::audio;
 use retch_sysinfo::display;
+use retch_sysinfo::fetch as sysinfo_fetch;
+use retch_sysinfo::network;
 
 /// Benchmark the full `SystemInfo::collect` pipeline.
-///
-/// This exercises the parallelised scoped-thread path that concurrently
-/// queries GPU info, package counts, public/local IPs, and the active
-/// network interface.
 fn bench_system_info_collect(c: &mut Criterion) {
     let cli = Cli::try_parse_from(["retch"]).unwrap();
 
@@ -29,10 +28,6 @@ fn bench_system_info_collect(c: &mut Criterion) {
 }
 
 /// Benchmark GPU detection in isolation.
-///
-/// On Linux this parses `/sys/bus/pci/devices` and `/usr/share/hwdata/pci.ids`.
-/// On macOS it shells out to `system_profiler`.
-/// On Windows it shells out to `wmic`/`powershell`.
 fn bench_detect_gpus(c: &mut Criterion) {
     c.bench_function("gpu::detect_gpus", |b| {
         b.iter(|| {
@@ -42,12 +37,8 @@ fn bench_detect_gpus(c: &mut Criterion) {
 }
 
 /// Benchmark EDID monitor name parsing.
-///
-/// Constructs a synthetic 128-byte EDID with a Monitor Name Descriptor at
-/// offset 72 and measures how quickly `parse_monitor_name_from_edid` extracts it.
 fn bench_parse_monitor_name_from_edid(c: &mut Criterion) {
     let mut edid = vec![0u8; 128];
-    // Monitor Name Descriptor (tag 0xFC) at offset 72
     edid[72] = 0x00;
     edid[73] = 0x00;
     edid[74] = 0x00;
@@ -65,12 +56,8 @@ fn bench_parse_monitor_name_from_edid(c: &mut Criterion) {
 }
 
 /// Benchmark EDID refresh rate parsing.
-///
-/// Uses a synthetic 1080p @ 60 Hz DTD block to measure the cost of the
-/// fixed-point arithmetic in `parse_refresh_rate_from_edid`.
 fn bench_parse_refresh_rate_from_edid(c: &mut Criterion) {
     let mut edid = vec![0u8; 128];
-    // 1080p60 DTD at offset 54 (pixel clock 148.5 MHz)
     edid[54] = 0x02;
     edid[55] = 0x3A;
     edid[56] = 0x80;
@@ -88,11 +75,8 @@ fn bench_parse_refresh_rate_from_edid(c: &mut Criterion) {
 }
 
 /// Benchmark EDID serial number parsing.
-///
-/// Tests the ASCII-descriptor-first path in `parse_serial_number_from_edid`.
 fn bench_parse_serial_number_from_edid(c: &mut Criterion) {
     let mut edid = vec![0u8; 128];
-    // ASCII Serial Number descriptor (tag 0xFF) at offset 72
     edid[72] = 0x00;
     edid[73] = 0x00;
     edid[74] = 0x00;
@@ -109,7 +93,7 @@ fn bench_parse_serial_number_from_edid(c: &mut Criterion) {
     });
 }
 
-/// Benchmark xrandr output parsing (Linux / non-mac / non-windows only).
+/// Benchmark xrandr output parsing (Linux only).
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn bench_parse_xrandr_displays(c: &mut Criterion) {
     let sample = "Screen 0: minimum 320 x 200, current 5120 x 1440\n\
@@ -127,6 +111,117 @@ fn bench_parse_xrandr_displays(c: &mut Criterion) {
     });
 }
 
+/// Benchmark `/proc/net/route` default-gateway parsing (Linux only).
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn bench_parse_proc_net_route(c: &mut Criterion) {
+    let sample =
+        "Iface\tDestination\tGateway\tFlags\tRefCnt\tUse\tMetric\tMask\tMTU\tWindow\tIRTT\n\
+                  wlan0\t00000000\t0101A8C0\t0003\t0\t0\t600\t00000000\t0\t0\t0\n\
+                  eth0\t0001A8C0\t00000000\t0001\t0\t0\t100\t00FFFFFF\t0\t0\t0\n";
+
+    c.bench_function("network::parse_proc_net_route", |b| {
+        b.iter(|| {
+            let _ = network::parse_proc_net_route(sample);
+        });
+    });
+}
+
+/// Benchmark `iw dev wlan0 link` output parsing.
+fn bench_parse_iw_link_output(c: &mut Criterion) {
+    let sample = "Connected to aa:bb:cc:dd:ee:ff (on wlan0)\n\
+        SSID: MyNetwork\n\
+        freq: 5180\n\
+        RX: 12345678 bytes (98765 packets)\n\
+        TX: 9876543 bytes (54321 packets)\n\
+        signal: -55 dBm\n\
+        rx bitrate: 433.3 MBit/s VHT-MCS 9 80MHz short GI VHT-NSS 2\n\
+        tx bitrate: 433.3 MBit/s VHT-MCS 9 80MHz short GI VHT-NSS 2\n";
+
+    c.bench_function("network::parse_iw_link_output", |b| {
+        b.iter(|| {
+            let _ = network::parse_iw_link_output(sample);
+        });
+    });
+}
+
+/// Benchmark macOS `airport -I` output parsing (macOS only).
+#[cfg(target_os = "macos")]
+fn bench_parse_airport_output(c: &mut Criterion) {
+    let sample = "     agrCtlRSSI: -55\n\
+                       SSID: MyNetwork\n\
+                    lastTxRate: 433\n\
+                       channel: 36,80\n";
+
+    c.bench_function("network::parse_airport_output", |b| {
+        b.iter(|| {
+            let _ = network::parse_airport_output(sample);
+        });
+    });
+}
+
+/// Benchmark Windows `netsh wlan show interfaces` output parsing (Windows only).
+#[cfg(target_os = "windows")]
+fn bench_parse_netsh_output(c: &mut Criterion) {
+    let sample = "    SSID                   : MyNetwork\r\n\
+                       Signal                 : 85%\r\n\
+                       Receive rate (Mbps)    : 433.3\r\n\
+                       Transmit rate (Mbps)   : 433.3\r\n\
+                       Channel                : 36\r\n";
+
+    c.bench_function("network::parse_netsh_output", |b| {
+        b.iter(|| {
+            let _ = network::parse_netsh_output(sample);
+        });
+    });
+}
+
+/// Benchmark `/proc/asound/cards` string fallback parsing (Linux only).
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn bench_parse_asound_cards(c: &mut Criterion) {
+    let sample = " 0 [PCH            ]: HDA-Intel - HDA Intel PCH\n\
+                   1 [NVidia         ]: HDA-Intel - HDA NVIDIA HDMI\n\
+                   2 [sofhdadsp      ]: sof-hda-dsp - sof-hda-dsp\n";
+
+    c.bench_function("audio::parse_asound_cards", |b| {
+        b.iter(|| {
+            let _ = audio::parse_asound_cards(sample, "/nonexistent");
+        });
+    });
+}
+
+/// Benchmark macOS `system_profiler SPCameraDataType` output parsing.
+#[cfg(target_os = "macos")]
+fn bench_parse_macos_camera(c: &mut Criterion) {
+    let sample = "Camera:\n\n    FaceTime HD Camera:\n\n\
+                  Model ID: UVC Camera VendorID_1452 ProductID_34068\n\
+                  Unique ID: 0x8020000005ac8514\n\
+              \n    Continuity Camera:\n\n\
+                  Model ID: Apple Continuity Camera\n";
+
+    c.bench_function("fetch::parse_macos_camera", |b| {
+        b.iter(|| {
+            let _ = sysinfo_fetch::parse_macos_camera(sample);
+        });
+    });
+}
+
+/// Benchmark macOS `system_profiler` gamepad parsing.
+#[cfg(target_os = "macos")]
+fn bench_parse_macos_gamepad(c: &mut Criterion) {
+    let usb_sample = "USB 3.1 Bus:\n\n    Xbox Wireless Controller:\n\n\
+                      Product ID: 0x02e0\n      Vendor ID: 0x045e\n";
+    let bt_sample = "Bluetooth:\n\n      Devices (Connected):\n\
+                         DualSense Wireless Controller:\n\
+                             Address: AA-BB-CC\n\
+                             Connected: Yes\n";
+
+    c.bench_function("fetch::parse_macos_gamepad", |b| {
+        b.iter(|| {
+            let _ = sysinfo_fetch::parse_macos_gamepad(usb_sample, bt_sample);
+        });
+    });
+}
+
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 criterion_group! {
     name = benches;
@@ -138,10 +233,13 @@ criterion_group! {
               bench_parse_monitor_name_from_edid,
               bench_parse_refresh_rate_from_edid,
               bench_parse_serial_number_from_edid,
-              bench_parse_xrandr_displays
+              bench_parse_xrandr_displays,
+              bench_parse_proc_net_route,
+              bench_parse_iw_link_output,
+              bench_parse_asound_cards
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(target_os = "macos")]
 criterion_group! {
     name = benches;
     config = Criterion::default()
@@ -151,7 +249,26 @@ criterion_group! {
               bench_detect_gpus,
               bench_parse_monitor_name_from_edid,
               bench_parse_refresh_rate_from_edid,
-              bench_parse_serial_number_from_edid
+              bench_parse_serial_number_from_edid,
+              bench_parse_iw_link_output,
+              bench_parse_airport_output,
+              bench_parse_macos_camera,
+              bench_parse_macos_gamepad
+}
+
+#[cfg(target_os = "windows")]
+criterion_group! {
+    name = benches;
+    config = Criterion::default()
+        .sample_size(20)
+        .measurement_time(std::time::Duration::from_secs(10));
+    targets = bench_system_info_collect,
+              bench_detect_gpus,
+              bench_parse_monitor_name_from_edid,
+              bench_parse_refresh_rate_from_edid,
+              bench_parse_serial_number_from_edid,
+              bench_parse_iw_link_output,
+              bench_parse_netsh_output
 }
 
 criterion_main!(benches);

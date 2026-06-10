@@ -578,7 +578,7 @@ fn detect_packages() -> Option<usize> {
 }
 
 #[allow(dead_code)]
-fn is_real_camera(name: &str) -> bool {
+pub fn is_real_camera(name: &str) -> bool {
     let name_lower = name.to_lowercase();
     !name_lower.contains("infrared")
         && !name_lower.contains("ir camera")
@@ -588,7 +588,7 @@ fn is_real_camera(name: &str) -> bool {
 }
 
 #[allow(dead_code)]
-fn clean_camera_name(name: &str) -> String {
+pub fn clean_camera_name(name: &str) -> String {
     let trimmed = name.trim();
     if trimmed.starts_with("Integrated Camera:") {
         return "Integrated Camera".to_string();
@@ -600,7 +600,7 @@ fn clean_camera_name(name: &str) -> String {
 }
 
 #[allow(dead_code)]
-fn parse_macos_camera(stdout: &str) -> Vec<String> {
+pub fn parse_macos_camera(stdout: &str) -> Vec<String> {
     let mut devices = Vec::new();
     let mut in_cameras = false;
     for line in stdout.lines() {
@@ -637,7 +637,7 @@ fn parse_macos_camera(stdout: &str) -> Vec<String> {
 }
 
 #[allow(dead_code)]
-fn parse_macos_gamepad(usb_stdout: &str, bt_stdout: &str) -> Vec<String> {
+pub fn parse_macos_gamepad(usb_stdout: &str, bt_stdout: &str) -> Vec<String> {
     let mut gamepads = Vec::new();
     let keywords = [
         "controller",
@@ -2089,6 +2089,34 @@ mod tests {
         assert_eq!(
             parse_shell_version("custom", custom_out),
             Some("1.2.3".to_string())
+        );
+    }
+
+    #[test]
+    fn test_is_real_camera() {
+        assert!(!is_real_camera("Infrared Camera"));
+        assert!(!is_real_camera("IR Camera"));
+        assert!(!is_real_camera("Integrated IR Camera"));
+        assert!(!is_real_camera("Depth Camera"));
+        assert!(is_real_camera("FaceTime HD Camera"));
+        assert!(is_real_camera("Integrated Camera"));
+        assert!(is_real_camera("HD Webcam C920"));
+    }
+
+    #[test]
+    fn test_clean_camera_name() {
+        assert_eq!(
+            clean_camera_name("Integrated Camera: Real"),
+            "Integrated Camera"
+        );
+        assert_eq!(
+            clean_camera_name("Integrated Webcam: HD"),
+            "Integrated Webcam"
+        );
+        assert_eq!(clean_camera_name("  HD Webcam C920  "), "HD Webcam C920");
+        assert_eq!(
+            clean_camera_name("FaceTime HD Camera"),
+            "FaceTime HD Camera"
         );
     }
 

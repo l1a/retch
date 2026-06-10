@@ -107,7 +107,7 @@ pub fn detect_audio(sys: &sysinfo::System) -> Option<String> {
 }
 
 #[allow(dead_code)]
-fn parse_asound_cards(content: &str, asound_dir: &str) -> Vec<String> {
+pub fn parse_asound_cards(content: &str, asound_dir: &str) -> Vec<String> {
     let mut devices = Vec::new();
     if let Ok(entries) = std::fs::read_dir(asound_dir) {
         for entry in entries.filter_map(|e| e.ok()) {
