@@ -26,7 +26,7 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.3.9)
+## Current State (v0.3.10)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -43,6 +43,12 @@
 - **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
 
 ## Major Achievements
+
+### v0.3.10 - Test Coverage and Benchmarks (June 10, 2026)
+- **New Unit Tests**: Added `test_is_real_camera` and `test_clean_camera_name` to `fetch.rs`; added `test_parse_ioreg_line` to `battery.rs` (macOS-only). Covers previously untested camera-filtering and battery key-parsing helpers.
+- **Exposed Parse Helpers**: Made `parse_proc_net_route`, `parse_iw_link_output`, `parse_airport_output`, `parse_netsh_output`, and `WifiLink` pub in `network.rs`; `parse_asound_cards` pub in `audio.rs`; `is_real_camera`, `clean_camera_name`, `parse_macos_camera`, `parse_macos_gamepad` pub in `fetch.rs` — enabling cross-crate benchmarking.
+- **New Benchmarks**: Added `bench_parse_proc_net_route`, `bench_parse_iw_link_output`, `bench_parse_airport_output` (macOS), `bench_parse_netsh_output` (Windows), `bench_parse_asound_cards` (Linux), `bench_parse_macos_camera` (macOS), and `bench_parse_macos_gamepad` (macOS) to `benches/benchmarks.rs`.
+- **Version**: Bumped version to `0.3.10` in `Cargo.toml`, `crates/sysinfo/Cargo.toml` (→ `0.1.10`), and documentation.
 
 ### v0.3.9 - Dependency Updates (June 10, 2026)
 - **Dependency Upgrade**: Bumped `rusqlite` from 0.40.0 to 0.40.1. Bundled SQLite updated to 3.53.2; includes a security fix for SQL injection when SAVEPOINT name is tainted and a clippy fix.
@@ -290,8 +296,8 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 ## Next Steps
 
-1. **crates.io Publishing** — Publish `retch-sysinfo` v0.1.9 and `retch-cli` v0.3.9 to crates.io now that dry-run validations are complete.
+1. **crates.io Publishing** — Publish `retch-sysinfo` v0.1.10 and `retch-cli` v0.3.10 to crates.io now that dry-run validations are complete.
 2. **Platform & Native Probes** — Expand OS support (BSDs/Android) and continue replacing slow command execution paths with direct system/registry FFI calls.
 
 ---
-*Last updated: June 10, 2026 (v0.3.9)*
+*Last updated: June 10, 2026 (v0.3.10)*
