@@ -26,7 +26,7 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.3.7)
+## Current State (v0.3.8)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -44,6 +44,13 @@
 
 ## Major Achievements
 
+### v0.3.8 - Bluetooth Module Isolation (June 9, 2026)
+- **Workspace Refactor**: Extracted all Bluetooth detection logic from `crates/sysinfo/src/fetch.rs` into a new dedicated module `crates/sysinfo/src/bluetooth.rs` within `retch-sysinfo`.
+- **New Module**: `bluetooth.rs` now owns `detect_bluetooth`, `lookup_usb_vendor`, `lookup_usb_device`, `parse_macos_bluetooth`, and `parse_windows_bluetooth_output`. Handles Linux sysfs + bluetoothctl, macOS `system_profiler SPBluetoothDataType`, and Windows PowerShell probing.
+- **Test Migration**: Moved `test_parse_macos_bluetooth` and `test_parse_windows_bluetooth_output` from `fetch.rs` into `bluetooth.rs`.
+- **Zero Regression**: All unit tests and `just check` (fmt + clippy) pass clean.
+- **Version**: Bumped version to `0.3.8` in `Cargo.toml`, `crates/sysinfo/Cargo.toml` (→ `0.1.8`), and documentation.
+
 ### v0.3.7 - Audio Module Isolation (June 9, 2026)
 - **Workspace Refactor**: Extracted all audio detection logic from `crates/sysinfo/src/fetch.rs` into a new dedicated module `crates/sysinfo/src/audio.rs` within `retch-sysinfo`.
 - **New Module**: `audio.rs` now owns `detect_audio` and `parse_asound_cards`. Detects PipeWire/PulseAudio/ALSA on Linux, CoreAudio on macOS, and Windows Audio on Windows.
@@ -54,7 +61,7 @@
 ### v0.3.6 - Network Module Isolation (June 9, 2026)
 - **Workspace Refactor**: Extracted all network-related detection logic from the monolithic `crates/sysinfo/src/fetch.rs` into a new dedicated module `crates/sysinfo/src/network.rs` within `retch-sysinfo`.
 - **New Module**: `network.rs` now owns `detect_active_interface_and_local_ip`, `detect_public_ip`, `detect_networks`, `detect_wifi`, `format_bytes`, `lookup_pci_vendor`, and all Wi-Fi parsing helpers (`parse_proc_net_route`, `parse_iw_link_output`, `parse_airport_output`, `parse_netsh_output`, `freq_to_channel`, `get_wifi_card_model`, `clean_rate`, `WifiLink`).
-- **Shared Utility**: `lookup_pci_vendor` is now `pub` in `network.rs` so `detect_bluetooth` (still in `fetch.rs`) can call it via `crate::network::lookup_pci_vendor`.
+- **Shared Utility**: `lookup_pci_vendor` is now `pub` in `network.rs` so `detect_bluetooth` (in `bluetooth.rs`) can call it via `crate::network::lookup_pci_vendor`.
 - **Test Migration**: Moved 5 unit tests (`test_format_bytes`, `test_parse_proc_net_route`, `test_parse_airport_output`, `test_parse_netsh_output`, `test_parse_iw_link_output`) from `fetch.rs` into `network.rs`.
 - **Zero Regression**: All 35 `retch-sysinfo` unit tests (now split across `fetch`, `display`, `gpu`, and `network` modules), 26 `retch-cli` unit tests, and 8 CLI integration tests pass. `just check` (fmt + clippy) is clean.
 - **Version**: Bumped version to `0.3.6` in `Cargo.toml`, `crates/sysinfo/Cargo.toml` (→ `0.1.6`), and documentation.
@@ -279,9 +286,8 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 ## Next Steps
 
-1. **crates.io Publishing** — Publish `retch-sysinfo` v0.1.7 and `retch-cli` v0.3.7 to crates.io now that dry-run validations are complete.
-2. **Bluetooth Module Isolation** — Extract bluetooth detection and USB/PCI hardware lookup logic from `fetch.rs` into a dedicated `crates/sysinfo/src/bluetooth.rs` module.
-4. **Platform & Native Probes** — Expand OS support (BSDs/Android) and continue replacing slow command execution paths with direct system/registry FFI calls.
+1. **crates.io Publishing** — Publish `retch-sysinfo` v0.1.8 and `retch-cli` v0.3.8 to crates.io now that dry-run validations are complete.
+2. **Platform & Native Probes** — Expand OS support (BSDs/Android) and continue replacing slow command execution paths with direct system/registry FFI calls.
 
 ---
-*Last updated: June 9, 2026 (v0.3.7)*
+*Last updated: June 9, 2026 (v0.3.8)*
