@@ -96,6 +96,10 @@ bench-upload *ARGS:
 install-hooks:
     bash scripts/install_hooks.sh
 
+# One-time repo setup: install git hooks and any other local tooling
+setup: install-hooks
+    @echo "Repo setup complete."
+
 # Full development setup
-dev: fmt lint test build
+dev: setup fmt lint test build
     @echo "Development build complete."
