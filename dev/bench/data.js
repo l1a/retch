@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781073022258,
+  "lastUpdate": 1781073059611,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Linux x64 Benchmarks": [
@@ -2802,6 +2802,85 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 441.1915154143024,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "b7aad0ecc68d947a37cd0e781bc1689f3b53353c",
+          "message": "chore: gitignore .claude/settings.local.json\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "timestamp": "2026-06-09T23:11:11-07:00",
+          "tree_id": "6e3904c23e95d4f1d5ddd0dd2790840ece0051c6",
+          "url": "https://github.com/l1a/retch/commit/b7aad0ecc68d947a37cd0e781bc1689f3b53353c"
+        },
+        "date": 1781073057975,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 25084444.98,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 933132399.2800001,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 838761679.2,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 91.11640800060579,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.8535009247204757,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 93.62660011744681,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__parse_macos_camera",
+            "value": 594.485249410084,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__parse_macos_gamepad",
+            "value": 511.3711068038127,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 234261384.71666664,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_airport_output",
+            "value": 338.42520818647347,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 486.77634748782305,
             "unit": "ns"
           }
         ]
