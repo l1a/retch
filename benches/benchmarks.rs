@@ -12,8 +12,9 @@ use retch_cli::cli::Cli;
 use retch_cli::fetch::{CollectOptions, SystemInfo};
 use retch_cli::gpu;
 use retch_sysinfo::audio;
+use retch_sysinfo::camera;
 use retch_sysinfo::display;
-use retch_sysinfo::fetch as sysinfo_fetch;
+use retch_sysinfo::gamepad;
 use retch_sysinfo::network;
 
 /// Benchmark the full `SystemInfo::collect` pipeline.
@@ -198,9 +199,9 @@ fn bench_parse_macos_camera(c: &mut Criterion) {
               \n    Continuity Camera:\n\n\
                   Model ID: Apple Continuity Camera\n";
 
-    c.bench_function("fetch::parse_macos_camera", |b| {
+    c.bench_function("camera::parse_macos_camera", |b| {
         b.iter(|| {
-            let _ = sysinfo_fetch::parse_macos_camera(sample);
+            let _ = camera::parse_macos_camera(sample);
         });
     });
 }
@@ -215,9 +216,9 @@ fn bench_parse_macos_gamepad(c: &mut Criterion) {
                              Address: AA-BB-CC\n\
                              Connected: Yes\n";
 
-    c.bench_function("fetch::parse_macos_gamepad", |b| {
+    c.bench_function("gamepad::parse_macos_gamepad", |b| {
         b.iter(|| {
-            let _ = sysinfo_fetch::parse_macos_gamepad(usb_sample, bt_sample);
+            let _ = gamepad::parse_macos_gamepad(usb_sample, bt_sample);
         });
     });
 }

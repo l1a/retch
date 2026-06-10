@@ -26,7 +26,7 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages. Use `just bench-upload` to manually push local benchmark results to the dashboard; a `post-merge` hook installed via `just install-hooks` does this automatically after every merge to main. Local results appear as a "Local - &lt;platform&gt; (real hardware)" suite alongside the CI suites. The CI suites run in Docker containers with no physical hardware and are primarily useful for retch's own regression tracking, not for comparing against fastfetch.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.3.10)
+## Current State (v0.3.11)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -44,11 +44,19 @@
 
 ## Major Achievements
 
-### v0.3.11 - Local Benchmark Upload (June 10, 2026)
+### v0.3.11 - Module Isolation Completion (June 10, 2026)
+- **Refactor**: Completed the `retch-sysinfo` module isolation refactor. Extracted all remaining `detect_*` and related helpers from the 2275-line `fetch.rs` into 8 dedicated modules. `fetch.rs` is now 443 lines (struct definitions, `collect()`, and orchestration only).
+- **New Modules**: `camera.rs`, `gamepad.rs`, `packages.rs`, `motherboard.rs`, `bios.rs`, `shell.rs`, `theme.rs`, `terminal.rs`.
+- **Shared Helper**: `win_reg.rs` — Windows registry helpers (shared by motherboard, bios, theme).
+- **New Test**: Added `test_parse_ini_key` to `theme.rs`; sysinfo test count now 36.
+- **Benchmarks**: Updated `benches/benchmarks.rs` — `parse_macos_camera`/`parse_macos_gamepad` now reference `camera`/`gamepad` modules.
+- **Version**: Bumped to `0.3.11` / `retch-sysinfo 0.1.11`.
+
+### v0.3.10+scripts - Local Benchmark Upload (June 10, 2026, infrastructure only — no crate version bump)
 - **Local Benchmark Dashboard**: Added `scripts/upload_local_bench.py` which builds the release binary, runs hyperfine (with optional fastfetch comparison), and pushes results to the gh-pages benchmark dashboard as a "Local - &lt;platform&gt; (real hardware)" suite. Handles concurrent CI push conflicts with exponential-backoff retry and deduplicates by commit SHA.
 - **Post-merge Hook**: Added `scripts/hooks/post-merge` — runs automatically after `git merge` on main. Skips silently if cargo or hyperfine are absent; respects `GIT_NO_BENCH=1` escape hatch.
 - **Hook Installer**: Added `scripts/install_hooks.sh` and `just install-hooks` recipe for one-time hook setup after cloning.
-- **Justfile**: Added `just bench-upload` and `just install-hooks` recipes.
+- **Justfile**: Added `just bench-upload`, `just install-hooks`, and `just setup` recipes.
 
 ### v0.3.10 - Test Coverage and Benchmarks (June 10, 2026)
 - **New Unit Tests**: Added `test_is_real_camera` and `test_clean_camera_name` to `fetch.rs`; added `test_parse_ioreg_line` to `battery.rs` (macOS-only). Covers previously untested camera-filtering and battery key-parsing helpers.
@@ -306,4 +314,4 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 2. **Platform & Native Probes** — Expand OS support (BSDs/Android) and continue replacing slow command execution paths with direct system/registry FFI calls.
 
 ---
-*Last updated: June 10, 2026 (v0.3.10)*
+*Last updated: June 10, 2026 (v0.3.11)*
