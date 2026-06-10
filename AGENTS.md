@@ -26,7 +26,7 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.3.8)
+## Current State (v0.3.9)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -43,6 +43,10 @@
 - **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
 
 ## Major Achievements
+
+### v0.3.9 - Dependency Updates (June 10, 2026)
+- **Dependency Upgrade**: Bumped `rusqlite` from 0.40.0 to 0.40.1. Bundled SQLite updated to 3.53.2; includes a security fix for SQL injection when SAVEPOINT name is tainted and a clippy fix.
+- **Version**: Bumped version to `0.3.9` in `Cargo.toml`, `crates/sysinfo/Cargo.toml` (→ `0.1.9`), and documentation.
 
 ### v0.3.8 - Bluetooth Module Isolation (June 9, 2026)
 - **Workspace Refactor**: Extracted all Bluetooth detection logic from `crates/sysinfo/src/fetch.rs` into a new dedicated module `crates/sysinfo/src/bluetooth.rs` within `retch-sysinfo`.
@@ -286,8 +290,8 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 ## Next Steps
 
-1. **crates.io Publishing** — Publish `retch-sysinfo` v0.1.8 and `retch-cli` v0.3.8 to crates.io now that dry-run validations are complete.
+1. **crates.io Publishing** — Publish `retch-sysinfo` v0.1.9 and `retch-cli` v0.3.9 to crates.io now that dry-run validations are complete.
 2. **Platform & Native Probes** — Expand OS support (BSDs/Android) and continue replacing slow command execution paths with direct system/registry FFI calls.
 
 ---
-*Last updated: June 9, 2026 (v0.3.8)*
+*Last updated: June 10, 2026 (v0.3.9)*
