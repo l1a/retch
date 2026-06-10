@@ -5,6 +5,11 @@
 # Requirements: cargo, hyperfine
 # fastfetch is optional — omitted from the run if not on PATH.
 #
+# Platform notes:
+#   Linux/macOS: works as-is.
+#   Windows (Git Bash): works if Git Bash is your git client.
+#   Windows (native cmd/PowerShell git): bash hooks don't fire; use `just bench-upload` manually.
+#
 # To skip for a single merge: GIT_NO_BENCH=1 git merge ...
 # To disable permanently: remove .git/hooks/post-merge
 

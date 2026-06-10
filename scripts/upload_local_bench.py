@@ -164,6 +164,11 @@ def append_entry(gh_pages_dir, suite, commit_info, benches):
     # Keep at most 100 entries per suite (same as CI max-items-in-chart: 50 + headroom)
     data["entries"][suite] = data["entries"][suite][-100:]
 
+    # Reorder so Local suites render first on the dashboard (Object.keys insertion order)
+    local = {k: v for k, v in data["entries"].items() if k.startswith("Local")}
+    ci = {k: v for k, v in data["entries"].items() if not k.startswith("Local")}
+    data["entries"] = {**local, **ci}
+
     data["lastUpdate"] = int(time.time() * 1000)
 
     with open(data_file, "w") as f:

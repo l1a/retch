@@ -89,8 +89,9 @@ bench-compare:
     eval hyperfine --warmup 3 --runs 10 $CMDS
 
 # Upload local benchmark results to the gh-pages dashboard (requires: hyperfine, gh)
+# On Windows: run from Git Bash, or invoke python scripts/upload_local_bench.py directly.
 bench-upload *ARGS:
-    python3 scripts/upload_local_bench.py {{ARGS}}
+    @python3 scripts/upload_local_bench.py {{ARGS}} 2>/dev/null || python scripts/upload_local_bench.py {{ARGS}}
 
 # Install git hooks (run once after cloning)
 install-hooks:
