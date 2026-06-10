@@ -23,7 +23,7 @@
   - **GitHub Wiki**: Clone (`https://github.com/l1a/retch.wiki.git`) and update the corresponding wiki pages (`Configuration-and-Theming.md`, `Workspace-Architecture.md`, `Home.md`) for any changes to configuration parameters, workspace structure, or major features. Push the wiki update before or alongside the PR.
   - **Bumping Strategy**: If the changes are significant (e.g. new subcrates, breaking CLI changes, major architectural redesigns), ALWAYS ask the user whether to perform a major, minor, or patch version bump.
 - **Command Redundancy**: Avoid running `just check && cargo test` sequentially since both build and check the project profiles, causing redundant background compilation cycles. Prefer `cargo test` during iteration and a final check before staging.
-- **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages.
+- **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages. Use `just bench-upload` to manually push local benchmark results to the dashboard; a `post-merge` hook installed via `just install-hooks` does this automatically after every merge to main. Local results appear as a "Local - &lt;platform&gt; (real hardware)" suite alongside the CI suites. The CI suites run in Docker containers with no physical hardware and are primarily useful for retch's own regression tracking, not for comparing against fastfetch.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
 ## Current State (v0.3.10)
@@ -43,6 +43,12 @@
 - **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
 
 ## Major Achievements
+
+### v0.3.11 - Local Benchmark Upload (June 10, 2026)
+- **Local Benchmark Dashboard**: Added `scripts/upload_local_bench.py` which builds the release binary, runs hyperfine (with optional fastfetch comparison), and pushes results to the gh-pages benchmark dashboard as a "Local - &lt;platform&gt; (real hardware)" suite. Handles concurrent CI push conflicts with exponential-backoff retry and deduplicates by commit SHA.
+- **Post-merge Hook**: Added `scripts/hooks/post-merge` — runs automatically after `git merge` on main. Skips silently if cargo or hyperfine are absent; respects `GIT_NO_BENCH=1` escape hatch.
+- **Hook Installer**: Added `scripts/install_hooks.sh` and `just install-hooks` recipe for one-time hook setup after cloning.
+- **Justfile**: Added `just bench-upload` and `just install-hooks` recipes.
 
 ### v0.3.10 - Test Coverage and Benchmarks (June 10, 2026)
 - **New Unit Tests**: Added `test_is_real_camera` and `test_clean_camera_name` to `fetch.rs`; added `test_parse_ioreg_line` to `battery.rs` (macOS-only). Covers previously untested camera-filtering and battery key-parsing helpers.
