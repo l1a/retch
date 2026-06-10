@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781068503043,
+  "lastUpdate": 1781068989969,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Linux x64 Benchmarks": [
@@ -3321,6 +3321,65 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1365851050,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0f896b26e8e028d7e3da3f7410b8aa71626ccd0a",
+          "message": "Merge pull request #76 from l1a/refactor/bluetooth-module-isolation\n\nrefactor: isolate bluetooth detection into bluetooth.rs (v0.3.8)",
+          "timestamp": "2026-06-09T21:49:44-07:00",
+          "tree_id": "647698914519fc33c11cc2b44a86c80c889bbb2e",
+          "url": "https://github.com/l1a/retch/commit/0f896b26e8e028d7e3da3f7410b8aa71626ccd0a"
+        },
+        "date": 1781068988130,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 30510364,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1544280424.0000002,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 127.91075963773156,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.011948041985532,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 127.34036155119308,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 295040070,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1428242400,
             "unit": "ns"
           }
         ]
