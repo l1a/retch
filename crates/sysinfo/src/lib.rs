@@ -13,6 +13,7 @@
 //!
 //! - [`audio`] — Audio server and device detection.
 //! - [`battery`] — Cross-platform battery status detection.
+//! - [`bluetooth`] — Bluetooth controller state and connected device detection.
 //! - [`display`] — Display detection and EDID parsing.
 //! - [`gpu`] — GPU detection and PCI ID lookup.
 //! - [`network`] — Network interface detection, IP resolution, and Wi-Fi.
@@ -20,6 +21,7 @@
 
 pub mod audio;
 pub mod battery;
+pub mod bluetooth;
 pub mod display;
 pub mod fetch;
 pub mod gpu;
