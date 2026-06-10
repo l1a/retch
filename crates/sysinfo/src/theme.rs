@@ -355,7 +355,10 @@ mod tests {
 
         // Comments are skipped
         let ini_comments = "# this is a comment\n; also a comment\nkey=value\n";
-        assert_eq!(parse_ini_key(ini_comments, "key"), Some("value".to_string()));
+        assert_eq!(
+            parse_ini_key(ini_comments, "key"),
+            Some("value".to_string())
+        );
         assert_eq!(parse_ini_key(ini_comments, "#"), None);
     }
 }
