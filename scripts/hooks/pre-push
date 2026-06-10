@@ -11,23 +11,16 @@ if [ "${GIT_NO_CHECK:-0}" = "1" ]; then
     exit 0
 fi
 
-if ! command -v cargo &>/dev/null; then
+if ! command -v just &>/dev/null; then
     exit 0
 fi
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 
-echo "[check] Running cargo fmt --check..."
-if ! cargo fmt --manifest-path "$REPO_ROOT/Cargo.toml" -- --check; then
+echo "[check] Running just check..."
+if ! just --justfile "$REPO_ROOT/Justfile" check; then
     echo ""
-    echo "[check] Format check failed. Run 'cargo fmt' to fix, then re-push."
-    exit 1
-fi
-
-echo "[check] Running cargo clippy..."
-if ! cargo clippy --manifest-path "$REPO_ROOT/Cargo.toml" -- -D warnings; then
-    echo ""
-    echo "[check] Clippy failed. Fix the warnings above, then re-push."
+    echo "[check] Failed. Run 'just check' to see details, 'cargo fmt' to fix formatting."
     exit 1
 fi
 
