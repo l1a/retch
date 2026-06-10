@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781067372677,
+  "lastUpdate": 1781067650918,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Linux x64 Benchmarks": [
@@ -1413,6 +1413,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 1192631.15916868,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0f896b26e8e028d7e3da3f7410b8aa71626ccd0a",
+          "message": "Merge pull request #76 from l1a/refactor/bluetooth-module-isolation\n\nrefactor: isolate bluetooth detection into bluetooth.rs (v0.3.8)",
+          "timestamp": "2026-06-09T21:49:44-07:00",
+          "tree_id": "647698914519fc33c11cc2b44a86c80c889bbb2e",
+          "url": "https://github.com/l1a/retch/commit/0f896b26e8e028d7e3da3f7410b8aa71626ccd0a"
+        },
+        "date": 1781067650385,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 1742370.2600000002,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 142350533.46000004,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 126854834.6875,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 53.1959979313678,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946941334232137,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 46.59544217565876,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7788.8363407275565,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1192197.6708792693,
             "unit": "ns"
           }
         ]
