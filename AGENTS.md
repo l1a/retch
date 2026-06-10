@@ -311,8 +311,16 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 ## Next Steps
 
-1. **crates.io Publishing** — Publish `retch-sysinfo` v0.1.10 and `retch-cli` v0.3.10 to crates.io now that dry-run validations are complete.
-2. **Platform & Native Probes** — Expand OS support (BSDs/Android) and continue replacing slow command execution paths with direct system/registry FFI calls.
+1. **crates.io Publishing** — Publish `retch-sysinfo` v0.1.11 and `retch-cli` v0.3.11` to crates.io now that dry-run validations are complete.
+2. **Platform & Native Probes** — Replace slow `Command::new` spawns with direct FFI/API calls. Priority order:
+   - **Windows `wmic` (×5 spawns)** — deprecated in modern Windows, ~200-500ms startup cost. Replace with:
+     - GPU (`gpu.rs`): registry under display adapter class GUID `{4d36e968-e325-11ce-bfc1-08002be10318}` (`DriverDesc`, `HardwareInformation.MemorySize`)
+     - Audio (`audio.rs`): registry under media device class GUID `{4d36e96c-e325-11ce-bfc1-08002be10318}` (`DriverDesc`)
+     - Display (`display.rs`): `EnumDisplayDevices` + `EnumDisplaySettings` via user32.dll FFI
+     - Motherboard/BIOS (`motherboard.rs`, `bios.rs`): wmic is already a last-resort fallback after registry; can be dropped entirely
+   - **macOS `system_profiler` (×8 spawns)** — spawns a new process per subsystem. Replace with IOKit/CoreFoundation FFI for GPU, audio, bluetooth, camera, displays, and gamepad.
+   - **macOS `ioreg` (×1, battery)** — replace with `IOKit` FFI (`IOServiceGetMatchingServices`, `IORegistryEntryCreateCFProperties`).
+   - **macOS `sysctl` (×1 remaining)** — extend existing `sysctlbyname` FFI pattern.
 
 ---
 *Last updated: June 10, 2026 (v0.3.11)*
