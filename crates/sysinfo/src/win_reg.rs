@@ -7,6 +7,7 @@ use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 use std::ptr;
 
+#[allow(clippy::upper_case_acronyms)]
 type HKEY = *mut std::ffi::c_void;
 pub const HKEY_LOCAL_MACHINE: HKEY = 0x80000002 as HKEY;
 pub const HKEY_CURRENT_USER: HKEY = 0x80000001 as HKEY;
