@@ -188,6 +188,7 @@ pub fn detect_bluetooth() -> Option<String> {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn lookup_usb_vendor(vendor_id: &str) -> Option<String> {
     let vendor_id = vendor_id.trim_start_matches("0x").to_lowercase();
     let paths = ["/usr/share/hwdata/usb.ids", "/usr/share/misc/usb.ids"];
@@ -210,6 +211,7 @@ fn lookup_usb_vendor(vendor_id: &str) -> Option<String> {
     None
 }
 
+#[cfg(target_os = "linux")]
 fn lookup_usb_device(vendor_id: &str, product_id: &str) -> Option<String> {
     let vendor_id = vendor_id.trim_start_matches("0x").to_lowercase();
     let product_id = product_id.trim_start_matches("0x").to_lowercase();
