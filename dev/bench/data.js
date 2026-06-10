@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781071191557,
+  "lastUpdate": 1781071468941,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Linux x64 Benchmarks": [
@@ -2486,6 +2486,85 @@ window.BENCHMARK_DATA = {
           {
             "name": "gpu__detect_gpus",
             "value": 238908191.7333334,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7b6a7b695d96cacf9bae9f744dd7e0f163af32ee",
+          "message": "Merge pull request #77 from l1a/test/coverage-and-benchmarks\n\ntest: expand unit test coverage and add network/audio/camera benchmarks (v0.3.10)",
+          "timestamp": "2026-06-09T22:46:29-07:00",
+          "tree_id": "a702e4595123a3fc74cefe901ec8127d4700e4d0",
+          "url": "https://github.com/l1a/retch/commit/7b6a7b695d96cacf9bae9f744dd7e0f163af32ee"
+        },
+        "date": 1781071467254,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 43493185.94000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 798174198.04,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 661514270.8,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 72.92325928895741,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.145094258287248,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 70.4778839876614,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__parse_macos_camera",
+            "value": 470.1814437824796,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__parse_macos_gamepad",
+            "value": 500.71903536347617,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 206868356.95,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_airport_output",
+            "value": 262.2284142522679,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 382.4681486668193,
             "unit": "ns"
           }
         ]
