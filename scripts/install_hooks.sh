@@ -23,5 +23,6 @@ install_hook() {
 }
 
 install_hook post-merge
+install_hook pre-push
 
 echo "All hooks installed."
