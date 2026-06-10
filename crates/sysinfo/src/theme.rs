@@ -3,6 +3,7 @@
 
 //! UI theme, icon, cursor, and font detection.
 
+#[cfg(target_os = "linux")]
 fn parse_ini_key(content: &str, key: &str) -> Option<String> {
     for line in content.lines() {
         let line = line.trim();
@@ -325,7 +326,7 @@ pub(crate) fn detect_ui_theme_and_fonts() -> (
     (None, None, None, None)
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 mod tests {
     use super::*;
 
