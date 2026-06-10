@@ -39,4 +39,4 @@ if ! command -v hyperfine &>/dev/null; then
 fi
 
 echo "[bench] Running local benchmarks and uploading to gh-pages..."
-python3 "$REPO_ROOT/scripts/upload_local_bench.py" "$@"
+python3 "$REPO_ROOT/scripts/upload_local_bench.py"
