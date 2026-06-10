@@ -88,6 +88,14 @@ bench-compare:
     if command -v neofetch > /dev/null; then CMDS="$CMDS 'neofetch --off'"; fi; \
     eval hyperfine --warmup 3 --runs 10 $CMDS
 
+# Upload local benchmark results to the gh-pages dashboard (requires: hyperfine, gh)
+bench-upload *ARGS:
+    python3 scripts/upload_local_bench.py {{ARGS}}
+
+# Install git hooks (run once after cloning)
+install-hooks:
+    bash scripts/install_hooks.sh
+
 # Full development setup
 dev: fmt lint test build
     @echo "Development build complete."

@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Post-merge hook: upload local benchmark results to the gh-pages dashboard.
+# Runs automatically after `git merge` (including `git pull` with a merge).
+#
+# Requirements: cargo, hyperfine
+# fastfetch is optional — omitted from the run if not on PATH.
+#
+# To skip for a single merge: GIT_NO_BENCH=1 git merge ...
+# To disable permanently: remove .git/hooks/post-merge
+
+set -euo pipefail
+
+if [ "${GIT_NO_BENCH:-0}" = "1" ]; then
+    exit 0
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Only run on the main branch
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$CURRENT_BRANCH" != "main" ]; then
+    exit 0
+fi
+
+if ! command -v cargo &>/dev/null; then
+    echo "[bench] cargo not found, skipping local benchmark upload."
+    exit 0
+fi
+
+if ! command -v hyperfine &>/dev/null; then
+    echo "[bench] hyperfine not found, skipping local benchmark upload."
+    echo "[bench] Install with: cargo install hyperfine"
+    exit 0
+fi
+
+echo "[bench] Running local benchmarks and uploading to gh-pages..."
+python3 "$REPO_ROOT/scripts/upload_local_bench.py" "$@"
