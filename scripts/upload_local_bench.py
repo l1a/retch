@@ -173,14 +173,14 @@ def append_entry(gh_pages_dir, suite, commit_info, benches):
 
 
 def push_to_gh_pages(benches, commit_info, suite):
-    repo_root = run_capture(["git", "rev-parse", "--show-toplevel"])
+    origin = run_capture(["git", "remote", "get-url", "origin"])
 
     for attempt in range(1, MAX_RETRIES + 1):
         with tempfile.TemporaryDirectory() as tmpdir:
             clone_dir = os.path.join(tmpdir, "gh-pages")
             print(f"Cloning gh-pages (attempt {attempt}/{MAX_RETRIES})...", flush=True)
             run(["git", "clone", "--branch", GH_PAGES_BRANCH, "--single-branch",
-                 "--depth", "1", repo_root, clone_dir])
+                 "--depth", "1", origin, clone_dir])
 
             changed = append_entry(clone_dir, suite, commit_info, benches)
             if not changed:
@@ -190,8 +190,6 @@ def push_to_gh_pages(benches, commit_info, suite):
             run(["git", "-C", clone_dir, "commit", "-m",
                  f"bench: add local results for {commit_info['id'][:8]} [{suite}]"])
 
-            # Push back to origin using gh's credential helper
-            origin = run_capture(["git", "remote", "get-url", "origin"])
             try:
                 run(["git", "-C", clone_dir, "push", origin,
                      f"HEAD:{GH_PAGES_BRANCH}"])
