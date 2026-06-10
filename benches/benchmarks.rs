@@ -12,8 +12,10 @@ use retch_cli::cli::Cli;
 use retch_cli::fetch::{CollectOptions, SystemInfo};
 use retch_cli::gpu;
 use retch_sysinfo::audio;
+#[cfg(target_os = "macos")]
 use retch_sysinfo::camera;
 use retch_sysinfo::display;
+#[cfg(target_os = "macos")]
 use retch_sysinfo::gamepad;
 use retch_sysinfo::network;
 
