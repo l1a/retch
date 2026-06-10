@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781118247668,
+  "lastUpdate": 1781118740608,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4311,6 +4311,85 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 986.2346766933888,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "7895eef6117882a2078c051541be19016a6f0061",
+          "message": "fix: don't forward git hook args to upload script\n\nGit passes a single positional arg to post-merge hooks (0 = merge,\n1 = squash merge). Forwarding it via \"$@\" caused argparse to reject\nit as an unrecognized argument on the first real merge.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "timestamp": "2026-06-10T11:47:00-07:00",
+          "tree_id": "d2d1f4f9986d0168c22966bd9be2a027ae5a8321",
+          "url": "https://github.com/l1a/retch/commit/7895eef6117882a2078c051541be19016a6f0061"
+        },
+        "date": 1781118738629,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 50488097.64000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1293745836.8400002,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 1180733392.65,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 186.7544870116488,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 4.876839108443163,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 201.06968113635165,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__parse_macos_camera",
+            "value": 1186.8037829528425,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__parse_macos_gamepad",
+            "value": 959.3856200167904,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 370831145.3,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_airport_output",
+            "value": 710.7730448033604,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 1024.3650402808205,
             "unit": "ns"
           }
         ]
