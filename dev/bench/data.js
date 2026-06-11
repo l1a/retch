@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781218508739,
+  "lastUpdate": 1781218768551,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6565,6 +6565,75 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1380368295,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "63e90a2cf2ac77c5b976c363ca3e659705a634e9",
+          "message": "chore: merge main with upstream (resolve AGENTS.md conflict, keep v0.3.12 state)\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "timestamp": "2026-06-11T15:21:13-07:00",
+          "tree_id": "59e77b67be39f19c8b6761061a51bdf06c8f6761",
+          "url": "https://github.com/l1a/retch/commit/63e90a2cf2ac77c5b976c363ca3e659705a634e9"
+        },
+        "date": 1781218764572,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 31646905.999999996,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1586476936,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 117.8295402453642,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.732714015697189,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 132.90413893464034,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45353.53524309639,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 669.2741049828869,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 833.8863568242793,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1496709835,
             "unit": "ns"
           }
         ]
