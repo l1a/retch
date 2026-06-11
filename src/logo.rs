@@ -76,53 +76,53 @@ pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
 
     match d.as_deref() {
         Some("arch") => {
-            let logo = include_str!("assets/logos/arch.txt");
+            let logo = include_str!("../assets/logos/arch.txt");
             logo.lines().map(|s| s.to_string()).collect()
         }
         Some("debian") => {
-            let logo = include_str!("assets/logos/debian.txt");
+            let logo = include_str!("../assets/logos/debian.txt");
             logo.lines().map(|s| s.to_string()).collect()
         }
         Some("fedora") => {
-            let logo = include_str!("assets/logos/fedora.txt");
+            let logo = include_str!("../assets/logos/fedora.txt");
             logo.lines().map(|s| s.to_string()).collect()
         }
         Some("nixos") => {
-            let logo = include_str!("assets/logos/nixos.txt");
+            let logo = include_str!("../assets/logos/nixos.txt");
             logo.lines().map(|s| s.to_string()).collect()
         }
         Some("ubuntu") => {
-            let logo = include_str!("assets/logos/ubuntu.txt");
+            let logo = include_str!("../assets/logos/ubuntu.txt");
             logo.lines().map(|s| s.to_string()).collect()
         }
         Some("pop") => {
-            let logo = include_str!("assets/logos/pop.txt");
+            let logo = include_str!("../assets/logos/pop.txt");
             logo.lines().map(|s| s.to_string()).collect()
         }
         Some("manjaro") => {
-            let logo = include_str!("assets/logos/manjaro.txt");
+            let logo = include_str!("../assets/logos/manjaro.txt");
             logo.lines().map(|s| s.to_string()).collect()
         }
         Some("endeavouros") => {
-            let logo = include_str!("assets/logos/endeavouros.txt");
+            let logo = include_str!("../assets/logos/endeavouros.txt");
             logo.lines().map(|s| s.to_string()).collect()
         }
         Some("opensuse") | Some("opensuse-leap") | Some("opensuse-tumbleweed") => {
-            let logo = include_str!("assets/logos/opensuse.txt");
+            let logo = include_str!("../assets/logos/opensuse.txt");
             logo.lines().map(|s| s.to_string()).collect()
         }
         Some("macos") => {
-            let logo = include_str!("assets/logos/macos.txt");
+            let logo = include_str!("../assets/logos/macos.txt");
             logo.lines().map(|s| s.to_string()).collect()
         }
         Some("windows") => {
-            let logo = include_str!("assets/logos/windows.txt");
+            let logo = include_str!("../assets/logos/windows.txt");
             logo.lines().map(|s| s.to_string()).collect()
         }
 
         // Fallback: Tux (Linux)
         _ => {
-            let logo = include_str!("assets/logos/tux.txt");
+            let logo = include_str!("../assets/logos/tux.txt");
             logo.lines().map(|s| s.to_string()).collect()
         }
     }
