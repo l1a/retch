@@ -1,5 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Ken Tobias
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 l1a
 
 //! # retch-sysinfo
 //!
