@@ -79,67 +79,6 @@ pub(crate) fn detect_bios() -> Option<String> {
         if !res.is_empty() {
             return Some(res);
         }
-
-        if let Ok(output) = std::process::Command::new("wmic")
-            .args([
-                "bios",
-                "get",
-                "manufacturer,smbiosbiosversion,releasedate",
-                "/value",
-            ])
-            .output()
-        {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                let mut manufacturer = String::new();
-                let mut version = String::new();
-                let mut date = String::new();
-                for line in stdout.lines() {
-                    let line = line.trim();
-                    if line.starts_with("Manufacturer=") {
-                        manufacturer = line
-                            .strip_prefix("Manufacturer=")
-                            .unwrap_or("")
-                            .trim()
-                            .to_string();
-                    } else if line.starts_with("SMBIOSBIOSVersion=") {
-                        version = line
-                            .strip_prefix("SMBIOSBIOSVersion=")
-                            .unwrap_or("")
-                            .trim()
-                            .to_string();
-                    } else if line.starts_with("ReleaseDate=") {
-                        let raw = line.strip_prefix("ReleaseDate=").unwrap_or("").trim();
-                        if raw.len() >= 8 {
-                            let year = &raw[0..4];
-                            let month = &raw[4..6];
-                            let day = &raw[6..8];
-                            date = format!("{}/{}/{}", month, day, year);
-                        } else {
-                            date = raw.to_string();
-                        }
-                    }
-                }
-
-                let mut parts = Vec::new();
-                if !manufacturer.is_empty() {
-                    parts.push(manufacturer);
-                }
-                if !version.is_empty() {
-                    parts.push(version);
-                }
-                let mut res = parts.join(" ");
-                if !date.is_empty() {
-                    if res.is_empty() {
-                        res = date;
-                    } else {
-                        res = format!("{} ({})", res, date);
-                    }
-                }
-                if !res.is_empty() {
-                    return Some(res);
-                }
-            }
-        }
         None
     }
 

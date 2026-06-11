@@ -7,6 +7,12 @@ on:
       - 'v*'
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag, or SHA to build'
+        required: false
+        default: ''
 
 env:
   CARGO_TERM_COLOR: always
@@ -71,8 +77,8 @@ jobs:
   full-test:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
-    # Only run on version tags pushed to main
-    if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
+    # Run on version tags or manual workflow_dispatch
+    if: (github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')) || github.event_name == 'workflow_dispatch'
 
     strategy:
       matrix:
@@ -139,7 +145,7 @@ jobs:
     needs: full-test
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
-    if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
+    if: (github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')) || github.event_name == 'workflow_dispatch'
 
     strategy:
       matrix:
@@ -218,7 +224,7 @@ jobs:
   release:
     needs: build-release
     runs-on: ubuntu-latest
-    if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
+    if: github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
 
     permissions:
       contents: write   # Required to create GitHub Releases

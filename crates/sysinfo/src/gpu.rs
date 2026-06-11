@@ -226,42 +226,49 @@ pub fn detect_gpus() -> Vec<GpuInfo> {
 
     #[cfg(target_os = "windows")]
     {
-        // Try WMIC first
-        let mut wmic_ok = false;
-        let mut gpus = Vec::new();
-        if let Ok(output) = std::process::Command::new("wmic")
-            .args([
-                "path",
-                "win32_VideoController",
-                "get",
-                "Name,AdapterRAM",
-                "/value",
-            ])
-            .output()
-        {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                gpus = parse_wmi_videocontroller(&stdout);
-                if !gpus.is_empty() {
-                    return gpus;
-                }
-                wmic_ok = true;
-            }
-        }
+        // Read GPU info from the display adapter device class in the registry.
+        // HKLM\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\<NNNN>
+        // Each numbered subkey represents one adapter.
+        use crate::win_reg;
+        const ADAPTER_CLASS: &str =
+            "SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}";
 
-        // Fallback to PowerShell
-        if !wmic_ok {
-            if let Ok(output) = std::process::Command::new("powershell")
-                .args(["-Command", "Get-CimInstance Win32_VideoController | Select-Object Name, AdapterRAM | Format-List"])
-                .output()
-            {
-                if let Ok(stdout) = String::from_utf8(output.stdout) {
-                    gpus = parse_wmi_videocontroller(&stdout);
-                }
+        let mut gpus = Vec::new();
+        for subkey_name in win_reg::enum_reg_subkeys(win_reg::HKEY_LOCAL_MACHINE, ADAPTER_CLASS) {
+            // Skip the "Properties" subkey and any non-numeric entries
+            if subkey_name.eq_ignore_ascii_case("Properties") {
+                continue;
             }
+            let subkey = format!("{}\\{}", ADAPTER_CLASS, subkey_name);
+            let name = win_reg::get_reg_string(win_reg::HKEY_LOCAL_MACHINE, &subkey, "DriverDesc")
+                .unwrap_or_default();
+            if name.is_empty() {
+                continue;
+            }
+            // VRAM is stored as REG_BINARY (little-endian u64) in HardwareInformation.MemorySize
+            let vram_bytes = win_reg::get_reg_binary(
+                win_reg::HKEY_LOCAL_MACHINE,
+                &subkey,
+                "HardwareInformation.MemorySize",
+            )
+            .and_then(|b| {
+                if b.len() >= 8 {
+                    Some(u64::from_le_bytes(b[..8].try_into().ok()?))
+                } else if b.len() >= 4 {
+                    Some(u32::from_le_bytes(b[..4].try_into().ok()?) as u64)
+                } else {
+                    None
+                }
+            })
+            .filter(|&v| v > 0);
+            gpus.push(GpuInfo {
+                name: name.clone(),
+                vram_bytes,
+            });
         }
 
         if gpus.is_empty() {
-            eprintln!("warning: GPU detection failed on Windows (both wmic and powershell query returned no results)");
+            eprintln!("warning: GPU detection failed on Windows (registry adapter class returned no results)");
         }
 
         gpus

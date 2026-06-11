@@ -74,20 +74,24 @@ pub fn detect_audio(sys: &sysinfo::System) -> Option<String> {
     #[cfg(target_os = "windows")]
     {
         let _ = sys;
+        // Read sound device names from the media device class in the registry.
+        // HKLM\SYSTEM\CurrentControlSet\Control\Class\{4d36e96c-e325-11ce-bfc1-08002be10318}\<NNNN>
+        use crate::win_reg;
+        const MEDIA_CLASS: &str =
+            "SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e96c-e325-11ce-bfc1-08002be10318}";
+
         let mut devices = Vec::new();
-        if let Ok(output) = std::process::Command::new("wmic")
-            .args(["path", "Win32_SoundDevice", "get", "Name", "/value"])
-            .output()
-        {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                for line in stdout.lines() {
-                    let line = line.trim();
-                    if line.starts_with("Name=") {
-                        let name = line.strip_prefix("Name=").unwrap_or("").trim().to_string();
-                        if !name.is_empty() && !devices.contains(&name) {
-                            devices.push(name);
-                        }
-                    }
+        for subkey_name in win_reg::enum_reg_subkeys(win_reg::HKEY_LOCAL_MACHINE, MEDIA_CLASS) {
+            if subkey_name.eq_ignore_ascii_case("Properties") {
+                continue;
+            }
+            let subkey = format!("{}\\{}", MEDIA_CLASS, subkey_name);
+            if let Some(name) =
+                win_reg::get_reg_string(win_reg::HKEY_LOCAL_MACHINE, &subkey, "DriverDesc")
+            {
+                let name = name.trim().to_string();
+                if !name.is_empty() && !devices.contains(&name) {
+                    devices.push(name);
                 }
             }
         }
