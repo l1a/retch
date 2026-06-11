@@ -205,6 +205,7 @@ pub fn detect_displays() -> Vec<String> {
             _rest: [u8; 40],
         }
 
+        #[link(name = "user32")]
         extern "system" {
             fn EnumDisplayDevicesW(
                 lpDevice: *const u16,
