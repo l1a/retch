@@ -12,7 +12,7 @@
 //! - **Linux**: Reads natively from `/sys/class/drm` (status, modes, and raw EDID
 //!   bytes). Falls back to `xrandr --current` when no sysfs displays are found.
 //! - **macOS**: Parses `system_profiler SPDisplaysDataType` output.
-//! - **Windows**: Queries `wmic path Win32_VideoController`.
+//! - **Windows**: Calls `EnumDisplayDevicesW` + `EnumDisplaySettingsW` via user32.dll FFI.
 
 /// Parse the monitor's human-readable name from a raw EDID binary blob.
 ///
@@ -160,7 +160,7 @@ pub fn get_monitor_name_for_port(port: &str) -> Option<String> {
 /// Platform-specific implementations:
 /// - **Linux**: Reads `/sys/class/drm` natively; falls back to `xrandr --current`.
 /// - **macOS**: Parses `system_profiler SPDisplaysDataType` output.
-/// - **Windows**: Queries `wmic path Win32_VideoController`.
+/// - **Windows**: Calls `EnumDisplayDevicesW` + `EnumDisplaySettingsW` via user32.dll FFI.
 pub fn detect_displays() -> Vec<String> {
     #[cfg(target_os = "macos")]
     {
@@ -177,63 +177,116 @@ pub fn detect_displays() -> Vec<String> {
 
     #[cfg(target_os = "windows")]
     {
-        let mut displays = Vec::new();
-        if let Ok(output) = std::process::Command::new("wmic")
-            .args([
-                "path",
-                "Win32_VideoController",
-                "get",
-                "Name,CurrentHorizontalResolution,CurrentVerticalResolution,CurrentRefreshRate",
-                "/value",
-            ])
-            .output()
-        {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                let mut name = String::new();
-                let mut width = String::new();
-                let mut height = String::new();
-                let mut refresh = String::new();
-                for line in stdout.lines() {
-                    let line = line.trim();
-                    if line.starts_with("Name=") {
-                        name = line.strip_prefix("Name=").unwrap_or("").trim().to_string();
-                    } else if line.starts_with("CurrentHorizontalResolution=") {
-                        width = line
-                            .strip_prefix("CurrentHorizontalResolution=")
-                            .unwrap_or("")
-                            .trim()
-                            .to_string();
-                    } else if line.starts_with("CurrentVerticalResolution=") {
-                        height = line
-                            .strip_prefix("CurrentVerticalResolution=")
-                            .unwrap_or("")
-                            .trim()
-                            .to_string();
-                    } else if line.starts_with("CurrentRefreshRate=") {
-                        refresh = line
-                            .strip_prefix("CurrentRefreshRate=")
-                            .unwrap_or("")
-                            .trim()
-                            .to_string();
-                    }
+        // Enumerate displays via Win32 EnumDisplayDevicesW + EnumDisplaySettingsW (user32.dll).
+        // This avoids spawning wmic and works on all modern Windows versions.
+        #[repr(C)]
+        struct DisplayDevice {
+            cb: u32,
+            device_name: [u16; 32],
+            device_string: [u16; 128],
+            state_flags: u32,
+            device_id: [u16; 128],
+            device_key: [u16; 128],
+        }
 
-                    if !name.is_empty()
-                        && !width.is_empty()
-                        && !height.is_empty()
-                        && !refresh.is_empty()
-                    {
-                        displays.push(format!("{} ({}x{} @ {}Hz)", name, width, height, refresh));
-                        name.clear();
-                        width.clear();
-                        height.clear();
-                        refresh.clear();
-                    }
+        #[repr(C)]
+        struct DevMode {
+            device_name: [u16; 32],
+            spec_version: u16,
+            driver_version: u16,
+            size: u16,
+            driver_extra: u16,
+            fields: u32,
+            _union_pad: [u8; 16],
+            pels_width: u32,
+            pels_height: u32,
+            bits_per_pel: u32,
+            display_frequency: u32,
+            _rest: [u8; 40],
+        }
+
+        extern "system" {
+            fn EnumDisplayDevicesW(
+                lpDevice: *const u16,
+                iDevNum: u32,
+                lpDisplayDevice: *mut DisplayDevice,
+                dwFlags: u32,
+            ) -> i32;
+
+            fn EnumDisplaySettingsW(
+                lpszDeviceName: *const u16,
+                iModeNum: u32,
+                lpDevMode: *mut DevMode,
+            ) -> i32;
+        }
+
+        const DISPLAY_DEVICE_ACTIVE: u32 = 0x00000001;
+        const ENUM_CURRENT_SETTINGS: u32 = 0xFFFF_FFFF;
+
+        fn u16_to_string(buf: &[u16]) -> String {
+            let len = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+            String::from_utf16_lossy(&buf[..len])
+        }
+
+        let mut displays = Vec::new();
+        let mut dev_num = 0u32;
+        loop {
+            let mut dd = DisplayDevice {
+                cb: std::mem::size_of::<DisplayDevice>() as u32,
+                device_name: [0u16; 32],
+                device_string: [0u16; 128],
+                state_flags: 0,
+                device_id: [0u16; 128],
+                device_key: [0u16; 128],
+            };
+            let ok = unsafe { EnumDisplayDevicesW(std::ptr::null(), dev_num, &mut dd, 0) };
+            if ok == 0 {
+                break;
+            }
+            dev_num += 1;
+
+            if dd.state_flags & DISPLAY_DEVICE_ACTIVE == 0 {
+                continue;
+            }
+
+            let adapter_name = u16_to_string(&dd.device_string);
+
+            let mut dm = DevMode {
+                device_name: [0u16; 32],
+                spec_version: 0,
+                driver_version: 0,
+                size: std::mem::size_of::<DevMode>() as u16,
+                driver_extra: 0,
+                fields: 0,
+                _union_pad: [0u8; 16],
+                pels_width: 0,
+                pels_height: 0,
+                bits_per_pel: 0,
+                display_frequency: 0,
+                _rest: [0u8; 40],
+            };
+            let settings_ok = unsafe {
+                EnumDisplaySettingsW(dd.device_name.as_ptr(), ENUM_CURRENT_SETTINGS, &mut dm)
+            };
+
+            let entry = if settings_ok != 0 && dm.pels_width > 0 && dm.pels_height > 0 {
+                if dm.display_frequency > 0 {
+                    format!(
+                        "{} ({}x{} @ {}Hz)",
+                        adapter_name, dm.pels_width, dm.pels_height, dm.display_frequency
+                    )
+                } else {
+                    format!("{} ({}x{})", adapter_name, dm.pels_width, dm.pels_height)
                 }
-                if !name.is_empty() && !width.is_empty() && !height.is_empty() {
-                    displays.push(format!("{} ({}x{})", name, width, height));
-                }
+            } else {
+                adapter_name
+            };
+
+            if !entry.is_empty() {
+                displays.push(entry);
             }
         }
+
         displays
     }
 
