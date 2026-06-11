@@ -99,39 +99,6 @@ pub(crate) fn detect_motherboard() -> Option<String> {
         } else if !manufacturer.is_empty() {
             return Some(manufacturer.to_string());
         }
-
-        if let Ok(output) = std::process::Command::new("wmic")
-            .args(["baseboard", "get", "manufacturer,product", "/value"])
-            .output()
-        {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                let mut manufacturer = String::new();
-                let mut product = String::new();
-                for line in stdout.lines() {
-                    let line = line.trim();
-                    if line.starts_with("Manufacturer=") {
-                        manufacturer = line
-                            .strip_prefix("Manufacturer=")
-                            .unwrap_or("")
-                            .trim()
-                            .to_string();
-                    } else if line.starts_with("Product=") {
-                        product = line
-                            .strip_prefix("Product=")
-                            .unwrap_or("")
-                            .trim()
-                            .to_string();
-                    }
-                }
-                if !manufacturer.is_empty() && !product.is_empty() {
-                    return Some(format!("{} {}", manufacturer, product));
-                } else if !product.is_empty() {
-                    return Some(product);
-                } else if !manufacturer.is_empty() {
-                    return Some(manufacturer);
-                }
-            }
-        }
         None
     }
 

@@ -12,6 +12,7 @@ type HKEY = *mut std::ffi::c_void;
 pub const HKEY_LOCAL_MACHINE: HKEY = 0x80000002 as HKEY;
 pub const HKEY_CURRENT_USER: HKEY = 0x80000001 as HKEY;
 const KEY_READ: u32 = 0x20019;
+const ERROR_NO_MORE_ITEMS: i32 = 259;
 
 extern "system" {
     fn RegOpenKeyExW(
@@ -29,6 +30,17 @@ extern "system" {
         lpType: *mut u32,
         lpData: *mut u8,
         lpcbData: *mut u32,
+    ) -> i32;
+
+    fn RegEnumKeyExW(
+        hKey: HKEY,
+        dwIndex: u32,
+        lpName: *mut u16,
+        lpcchName: *mut u32,
+        lpReserved: *mut u32,
+        lpClass: *mut u16,
+        lpcchClass: *mut u32,
+        lpftLastWriteTime: *mut u64,
     ) -> i32;
 
     fn RegCloseKey(hKey: HKEY) -> i32;
@@ -127,4 +139,102 @@ pub fn get_reg_u32(hkey: HKEY, subkey: &str, value: &str) -> Option<u32> {
     } else {
         None
     }
+}
+
+/// Read a binary (REG_BINARY) value as raw bytes.
+pub fn get_reg_binary(hkey: HKEY, subkey: &str, value: &str) -> Option<Vec<u8>> {
+    let subkey_w: Vec<u16> = OsStr::new(subkey).encode_wide().chain(Some(0)).collect();
+    let value_w: Vec<u16> = OsStr::new(value).encode_wide().chain(Some(0)).collect();
+    let mut hk: HKEY = ptr::null_mut();
+
+    let res = unsafe { RegOpenKeyExW(hkey, subkey_w.as_ptr(), 0, KEY_READ, &mut hk) };
+    if res != 0 {
+        return None;
+    }
+
+    let mut size: u32 = 0;
+    let mut ty: u32 = 0;
+    unsafe {
+        RegQueryValueExW(
+            hk,
+            value_w.as_ptr(),
+            ptr::null_mut(),
+            &mut ty,
+            ptr::null_mut(),
+            &mut size,
+        );
+    }
+
+    if size == 0 {
+        unsafe {
+            RegCloseKey(hk);
+        }
+        return None;
+    }
+
+    let mut buf = vec![0u8; size as usize];
+    let res = unsafe {
+        RegQueryValueExW(
+            hk,
+            value_w.as_ptr(),
+            ptr::null_mut(),
+            &mut ty,
+            buf.as_mut_ptr(),
+            &mut size,
+        )
+    };
+    unsafe {
+        RegCloseKey(hk);
+    }
+
+    if res == 0 && ty == 3 {
+        // REG_BINARY
+        Some(buf)
+    } else {
+        None
+    }
+}
+
+/// Enumerate immediate subkey names under the given path.
+pub fn enum_reg_subkeys(hkey: HKEY, subkey: &str) -> Vec<String> {
+    let subkey_w: Vec<u16> = OsStr::new(subkey).encode_wide().chain(Some(0)).collect();
+    let mut hk: HKEY = ptr::null_mut();
+
+    let res = unsafe { RegOpenKeyExW(hkey, subkey_w.as_ptr(), 0, KEY_READ, &mut hk) };
+    if res != 0 {
+        return Vec::new();
+    }
+
+    let mut results = Vec::new();
+    let mut index = 0u32;
+    loop {
+        let mut name_buf = vec![0u16; 256];
+        let mut name_len = name_buf.len() as u32;
+        let res = unsafe {
+            RegEnumKeyExW(
+                hk,
+                index,
+                name_buf.as_mut_ptr(),
+                &mut name_len,
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+            )
+        };
+        if res == ERROR_NO_MORE_ITEMS {
+            break;
+        }
+        if res == 0 {
+            if let Ok(name) = String::from_utf16(&name_buf[..name_len as usize]) {
+                results.push(name);
+            }
+        }
+        index += 1;
+    }
+
+    unsafe {
+        RegCloseKey(hk);
+    }
+    results
 }
