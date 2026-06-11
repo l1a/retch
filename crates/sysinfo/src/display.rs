@@ -189,21 +189,44 @@ pub fn detect_displays() -> Vec<String> {
             device_key: [u16; 128],
         }
 
+        // Full DEVMODEW layout (220 bytes). Offsets must match winuser.h exactly
+        // to avoid stack corruption when EnumDisplaySettingsW writes into this.
         #[repr(C)]
         struct DevMode {
-            device_name: [u16; 32],
-            spec_version: u16,
-            driver_version: u16,
-            size: u16,
-            driver_extra: u16,
-            fields: u32,
-            _union_pad: [u8; 16],
-            pels_width: u32,
-            pels_height: u32,
-            bits_per_pel: u32,
-            display_frequency: u32,
-            _rest: [u8; 40],
-        }
+            device_name: [u16; 32], // offset   0, 64 bytes
+            spec_version: u16,      // offset  64
+            driver_version: u16,    // offset  66
+            size: u16,              // offset  68
+            driver_extra: u16,      // offset  70
+            fields: u32,            // offset  72
+            // display union: dmPosition(8) + dmDisplayOrientation(4) + dmDisplayFixedOutput(4)
+            position_x: i32,           // offset  76
+            position_y: i32,           // offset  80
+            display_orientation: u32,  // offset  84
+            display_fixed_output: u32, // offset  88
+            // post-union fields
+            color: u16,             // offset  92
+            duplex: u16,            // offset  94
+            y_resolution: u16,      // offset  96
+            tt_option: u16,         // offset  98
+            collate: u16,           // offset 100
+            form_name: [u16; 32],   // offset 102, 64 bytes
+            log_pixels: u16,        // offset 166
+            bits_per_pel: u32,      // offset 168 (4-byte aligned)
+            pels_width: u32,        // offset 172
+            pels_height: u32,       // offset 176
+            display_flags: u32,     // offset 180
+            display_frequency: u32, // offset 184
+            // extended fields
+            icm_method: u32,     // offset 188
+            icm_intent: u32,     // offset 192
+            media_type: u32,     // offset 196
+            dither_type: u32,    // offset 200
+            reserved1: u32,      // offset 204
+            reserved2: u32,      // offset 208
+            panning_width: u32,  // offset 212
+            panning_height: u32, // offset 216
+        } // total: 220 bytes
 
         #[link(name = "user32")]
         extern "system" {
@@ -252,20 +275,8 @@ pub fn detect_displays() -> Vec<String> {
 
             let adapter_name = u16_to_string(&dd.device_string);
 
-            let mut dm = DevMode {
-                device_name: [0u16; 32],
-                spec_version: 0,
-                driver_version: 0,
-                size: std::mem::size_of::<DevMode>() as u16,
-                driver_extra: 0,
-                fields: 0,
-                _union_pad: [0u8; 16],
-                pels_width: 0,
-                pels_height: 0,
-                bits_per_pel: 0,
-                display_frequency: 0,
-                _rest: [0u8; 40],
-            };
+            let mut dm = unsafe { std::mem::zeroed::<DevMode>() };
+            dm.size = std::mem::size_of::<DevMode>() as u16;
             let settings_ok = unsafe {
                 EnumDisplaySettingsW(dd.device_name.as_ptr(), ENUM_CURRENT_SETTINGS, &mut dm)
             };
