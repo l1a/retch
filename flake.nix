@@ -29,7 +29,7 @@
         };
         inherit (pkgs) lib;
 
-        rustToolchain = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default);
+        rustToolchain = pkgs.rust-bin.stable.latest.default;
 
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
@@ -55,6 +55,9 @@
             rust-analyzer
             just
             rustToolchain
+            pandoc
+            hyperfine
+            python3
           ];
         };
       }
