@@ -52,6 +52,26 @@ retch is under active development with a working core, rich system information o
 cargo install retch-cli
 ```
 
+### With Nix
+
+```sh
+nix run github:l1a/retch
+```
+
+Or add to your NixOS / Home Manager configuration:
+
+```nix
+# flake.nix inputs
+inputs.retch.url = "github:l1a/retch";
+
+# Home Manager module
+programs.retch.enable = true;
+# Optionally configure retch (writes ~/.config/retch/config.toml):
+programs.retch.settings = {
+  theme = "catppuccin";
+};
+```
+
 ### From source
 
 ```sh

@@ -27,7 +27,7 @@
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages. Use `just bench-upload` to manually push local benchmark results to the dashboard; a `post-merge` hook installed via `just install-hooks` does this automatically after every merge to main. Local results appear as a "Local - &lt;platform&gt; (real hardware)" suite alongside the CI suites. The CI suites run in Docker containers with no physical hardware and are primarily useful for retch's own regression tracking, not for comparing against fastfetch.
 - **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
 
-## Current State (v0.3.13)
+## Current State (v0.3.14)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -44,6 +44,11 @@
 - **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
 
 ## Major Achievements
+
+### v0.3.14 - Nix Flake (June 11, 2026)
+- **Nix Flake**: Added `flake.nix` with a `crane`-based package build, a `devShell` with all required tools (`cargo`, `rustc`, `rust-analyzer`, `just`, `pandoc`, `hyperfine`, `python3`), and a `homeManagerModules.default` (`programs.retch`) for declarative NixOS/Home Manager installation. Contributed by @quixaq.
+- **README**: Added Nix installation section with `nix run` and Home Manager module examples.
+- **Version**: Bumped to `0.3.14` / `retch-sysinfo 0.1.14`.
 
 ### v0.3.13 - SPDX Copyright Headers (June 11, 2026)
 - **License Headers**: Replaced informal `// Copyright (C) <year> l1a` with machine-readable `// SPDX-FileCopyrightText: <year> Ken Tobias` in all source files, positioned above `SPDX-License-Identifier` per the SPDX specification. Closes #81.
@@ -323,7 +328,7 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 ## Next Steps
 
-1. **crates.io Publishing** — Publish `retch-sysinfo` v0.1.13 and `retch-cli` v0.3.13` to crates.io now that dry-run validations are complete.
+1. **crates.io Publishing** — Publish `retch-sysinfo` v0.1.14 and `retch-cli` v0.3.14` to crates.io now that dry-run validations are complete.
 2. **Platform & Native Probes** — Replace slow `Command::new` spawns with direct FFI/API calls. Priority order:
    - **Windows `wmic` (×5 spawns)** — deprecated in modern Windows, ~200-500ms startup cost. Replace with:
      - GPU (`gpu.rs`): registry under display adapter class GUID `{4d36e968-e325-11ce-bfc1-08002be10318}` (`DriverDesc`, `HardwareInformation.MemorySize`)
@@ -335,4 +340,4 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
    - **macOS `sysctl` (×1 remaining)** — extend existing `sysctlbyname` FFI pattern.
 
 ---
-*Last updated: June 11, 2026 (v0.3.13)*
+*Last updated: June 11, 2026 (v0.3.14)*
