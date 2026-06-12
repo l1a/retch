@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781231618490,
+  "lastUpdate": 1781231543339,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5916,6 +5916,85 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 1205.8170979448491,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bc2115522b629470d7f515b5636079a768c4a2ef",
+          "message": "docs: replace Copyright (C) with SPDX-FileCopyrightText in all source headers (v0.3.13) (#84)\n\nSwitches from the informal `// Copyright (C) 2026 l1a` form to the\nmachine-readable SPDX standard. FileCopyrightText now appears above\nSPDX-License-Identifier per the SPDX spec. Closes #81.\n\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "timestamp": "2026-06-11T19:04:06-07:00",
+          "tree_id": "73a275088e6c82ea9d136b5bf10979ebb3970013",
+          "url": "https://github.com/l1a/retch/commit/bc2115522b629470d7f515b5636079a768c4a2ef"
+        },
+        "date": 1781231541291,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 62237269.52,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1523485016.92,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 1864715450.8,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 1388.4276446240688,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 259.42580347604775,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.914440023673538,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 224.44668378759502,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 1071.9859050081036,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 518215335.9,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_airport_output",
+            "value": 843.1380202429024,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 1114.601356387347,
             "unit": "ns"
           }
         ]
