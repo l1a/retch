@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781230848374,
+  "lastUpdate": 1781231253742,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1644,6 +1644,85 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 254.07004735019154,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "524b97042b9e49ebfb7d983e5f358473f412439f",
+          "message": "feat: add nix flake with devShell, package, and Home Manager module (v0.3.14) (#85)\n\n* feat: add nix flake\n\n* fix(flake): use stable rust toolchain; add pandoc, hyperfine, python3 to devShell\n\n- Switch from nightly to stable (project builds fine on stable; nightly\n  is unnecessarily fragile and sends the wrong signal to users)\n- Add pandoc (just man), hyperfine (just bench-cli), and python3\n  (just bench-upload) so all just recipes work out of the box in the\n  Nix dev shell\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* feat: add nix flake with devShell, package, and Home Manager module (v0.3.14)\n\n- flake.nix: crane-based package build with assets/ source filter; devShell\n  includes all tools needed by just recipes (pandoc, hyperfine, python3);\n  homeManagerModules.default provides programs.retch with settings wired to\n  xdg.configFile; pinned to stable Rust toolchain\n- README: added Nix installation section (nix run + Home Manager example)\n- Bumped to v0.3.14 / retch-sysinfo v0.1.14\n\nOriginally contributed by @quixaq in #82.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Quixaq <quixaq@tutamail.com>\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "timestamp": "2026-06-11T19:21:21-07:00",
+          "tree_id": "283fba1b1b474682784de817dbb8850b926ca03b",
+          "url": "https://github.com/l1a/retch/commit/524b97042b9e49ebfb7d983e5f358473f412439f"
+        },
+        "date": 1781231253389,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 2674093.62,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 55519510.02000001,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 56798214.79556092,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2158.1088896435417,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 60.18547087744345,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.0341348671551,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 62.148123101065856,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 20759.17820918173,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1691978.980573494,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 364.995577373627,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 266.8207975111534,
             "unit": "ns"
           }
         ]
