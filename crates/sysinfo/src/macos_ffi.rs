@@ -143,11 +143,13 @@ where
 pub type IOService = u32;
 pub type IOIterator = u32;
 pub const MACH_PORT_NULL: u32 = 0;
+// IOKIT_MAIN_PORT == kIOMasterPortDefault == 0 on all macOS versions.
+// IOKIT_MAIN_PORT was introduced as an exported symbol in macOS 12; using the
+// literal avoids a link error when the SDK deployment target is macOS 11.
+const IOKIT_MAIN_PORT: u32 = 0;
 
 #[link(name = "IOKit", kind = "framework")]
 extern "C" {
-    pub static IOMainPortDefault: u32;
-
     pub fn IOServiceMatching(name: *const i8) -> CFMutableDictionaryRef;
     pub fn IOServiceGetMatchingService(main_port: u32, matching: CFDictionaryRef) -> IOService;
     pub fn IOServiceGetMatchingServices(
@@ -264,7 +266,7 @@ pub unsafe fn iokit_property_as_bool(entry: IOService, key: &str) -> Option<bool
 pub fn get_firmware_version() -> Option<String> {
     unsafe {
         let path = b"IODeviceTree:/rom\0";
-        let entry = IORegistryEntryFromPath(IOMainPortDefault, path.as_ptr() as *const i8);
+        let entry = IORegistryEntryFromPath(IOKIT_MAIN_PORT, path.as_ptr() as *const i8);
         if entry == MACH_PORT_NULL {
             return None;
         }
@@ -286,11 +288,8 @@ pub fn get_gpus() -> Vec<(String, Option<u64>)> {
         let matching = IOServiceMatching(agx_name.as_ptr());
         if !matching.is_null() {
             let mut iter: IOIterator = MACH_PORT_NULL;
-            if IOServiceGetMatchingServices(
-                IOMainPortDefault,
-                matching as CFDictionaryRef,
-                &mut iter,
-            ) == 0
+            if IOServiceGetMatchingServices(IOKIT_MAIN_PORT, matching as CFDictionaryRef, &mut iter)
+                == 0
             {
                 loop {
                     let service = IOIteratorNext(iter);
@@ -311,11 +310,8 @@ pub fn get_gpus() -> Vec<(String, Option<u64>)> {
         let matching = IOServiceMatching(pci_name.as_ptr());
         if !matching.is_null() {
             let mut iter: IOIterator = MACH_PORT_NULL;
-            if IOServiceGetMatchingServices(
-                IOMainPortDefault,
-                matching as CFDictionaryRef,
-                &mut iter,
-            ) == 0
+            if IOServiceGetMatchingServices(IOKIT_MAIN_PORT, matching as CFDictionaryRef, &mut iter)
+                == 0
             {
                 loop {
                     let service = IOIteratorNext(iter);
@@ -523,8 +519,7 @@ unsafe fn iokit_display_name(vendor: u32, model: u32) -> Option<String> {
         return None;
     }
     let mut iter: IOIterator = MACH_PORT_NULL;
-    if IOServiceGetMatchingServices(IOMainPortDefault, matching as CFDictionaryRef, &mut iter) != 0
-    {
+    if IOServiceGetMatchingServices(IOKIT_MAIN_PORT, matching as CFDictionaryRef, &mut iter) != 0 {
         return None;
     }
     let mut result = None;
@@ -581,7 +576,7 @@ pub fn get_usb_cameras() -> Vec<String> {
             return cameras;
         }
         let mut iter: IOIterator = MACH_PORT_NULL;
-        if IOServiceGetMatchingServices(IOMainPortDefault, matching as CFDictionaryRef, &mut iter)
+        if IOServiceGetMatchingServices(IOKIT_MAIN_PORT, matching as CFDictionaryRef, &mut iter)
             != 0
         {
             return cameras;
@@ -696,8 +691,7 @@ unsafe fn enumerate_hid_usage(page: u32, usage: u32) -> Vec<String> {
 
     let mut iter: IOIterator = MACH_PORT_NULL;
     // matching dict is consumed by IOServiceGetMatchingServices
-    if IOServiceGetMatchingServices(IOMainPortDefault, matching as CFDictionaryRef, &mut iter) != 0
-    {
+    if IOServiceGetMatchingServices(IOKIT_MAIN_PORT, matching as CFDictionaryRef, &mut iter) != 0 {
         return results;
     }
 
@@ -728,7 +722,7 @@ pub fn get_bluetooth_state() -> Option<(bool, Option<String>)> {
         if matching.is_null() {
             return None;
         }
-        let service = IOServiceGetMatchingService(IOMainPortDefault, matching as CFDictionaryRef);
+        let service = IOServiceGetMatchingService(IOKIT_MAIN_PORT, matching as CFDictionaryRef);
         if service == MACH_PORT_NULL {
             return None;
         }
