@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781239220257,
+  "lastUpdate": 1781239580400,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5538,6 +5538,85 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 446.81299272709373,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "0fa34c02ae6023fc7850129a4f7276016a617ff1",
+          "message": "docs: add just man step to release checklist in AGENTS.md",
+          "timestamp": "2026-06-11T21:28:57-07:00",
+          "tree_id": "66575adca6ab2319c65bcf709c017fcdc86814fa",
+          "url": "https://github.com/l1a/retch/commit/0fa34c02ae6023fc7850129a4f7276016a617ff1"
+        },
+        "date": 1781239578646,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 38503573.26,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 769885223.36,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 699992887.6,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 400.7209078386189,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 66.02799026743686,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.1263171293732572,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 75.87449813666468,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 511.1569790481577,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 233370481.88333336,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_airport_output",
+            "value": 281.68960795670233,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 415.84610424902047,
             "unit": "ns"
           }
         ]
