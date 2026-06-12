@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781299167714,
+  "lastUpdate": 1781299777305,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -9747,6 +9747,75 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1284491975,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "b3c4904083ae5520e4347c02b09b5ef1e7486157",
+          "message": "docs: regenerate man page for v0.3.16\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-12T13:51:18-07:00",
+          "tree_id": "dbf9c7b000ddfa32bbc9dc0c226043ee79b72b50",
+          "url": "https://github.com/l1a/retch/commit/b3c4904083ae5520e4347c02b09b5ef1e7486157"
+        },
+        "date": 1781299774440,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 32358991.999999996,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1620525091.9999998,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 121.54903055307985,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.363553686250536,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 114.3258094046045,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47525.87484940937,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 572.0174957078568,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 803.664690204985,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1727531095,
             "unit": "ns"
           }
         ]
