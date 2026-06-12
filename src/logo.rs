@@ -75,249 +75,56 @@ pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
     let d = distro.map(|s| s.to_lowercase());
 
     match d.as_deref() {
-        // Arch Linux - exact from Fastfetch
-        Some("arch") => vec![
-            "                  -`".to_string(),
-            "                 .o+`".to_string(),
-            "                `ooo/".to_string(),
-            "               `+oooo:".to_string(),
-            "              `+oooooo:".to_string(),
-            "              -+oooooo+:".to_string(),
-            "            `/:-:++oooo+:".to_string(),
-            "           `/++++/+++++++:".to_string(),
-            "          `/++++++++++++++:".to_string(),
-            "         `/+++o${2}oooooooo${1}oooo/`".to_string(),
-            "        ./${2}ooosssso++osssssso${1}+`".to_string(),
-            "${2}       .oossssso-````/ossssss+`".to_string(),
-            "      -osssssso.      :ssssssso.".to_string(),
-            "     :osssssss/        osssso+++.".to_string(),
-            "    /ossssssss/        +ssssooo/-".to_string(),
-            "  `/ossssso+/:-        -:/+osssso+-".to_string(),
-            " `+sso+:-`                 `.-/+oso:".to_string(),
-            "`++:.                           `-/+/".to_string(),
-            ".`                                 `/".to_string(),
-        ],
-
-        // Debian - exact from Fastfetch
-        Some("debian") => vec![
-            "        ${2}_,met$$$$$$$$$$gg.".to_string(),
-            "     ,g$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$P.".to_string(),
-            "   ,g$$$$P\"\"       \"\"\"Y$$$$.\".".to_string(),
-            "  ,$$$$P'              `$$$$$$.".to_string(),
-            "',$$$$P       ,ggs.     `$$$$b:".to_string(),
-            "`d$$$$'     ,$P\"'   ${1}.${2}    $$$$$$".to_string(),
-            " $$$$P      d$'     ${1},${2}    $$$$P".to_string(),
-            " $$$$:      $$$.   ${1}-${2}    ,d$$$$'".to_string(),
-            " $$$$;      Y$b._   _,d$P'".to_string(),
-            " Y$$$$.    ${1}`.${2}`\"Y$$$$$$$$P\"'".to_string(),
-            " `$$$$b      ${1}\"-.__".to_string(),
-            "  ${2}`Y$$$$b".to_string(),
-            "   `Y$$$.".to_string(),
-            "     `$$$$b.".to_string(),
-            "       `Y$$$$b.".to_string(),
-            "         `\"Y$$b._".to_string(),
-            "             `\"\"\"\"".to_string(),
-        ],
-
-        // Fedora - exact from Fastfetch
-        Some("fedora") => vec![
-            "             .',;::::;,'.".to_string(),
-            "         .';:cccccccccccc:;,.".to_string(),
-            "      .;cccccccccccccccccccccc;.".to_string(),
-            "    .:cccccccccccccccccccccccccc:.".to_string(),
-            "  .;ccccccccccccc;${2}.:dddl:${1};ccccccc;.".to_string(),
-            " .:ccccccccccccc;${2}OWMKOOXMWd${1};ccccccc:.".to_string(),
-            ".:ccccccccccccc;${2}KMMc${1};cc;${2}xMMc${1};ccccccc:.".to_string(),
-            ",cccccccccccccc;${2}MMM.${1};cc;${2};WW:${1};cccccccc,".to_string(),
-            ":cccccccccccccc;${2}MMM.${1};cccccccccccccccc:".to_string(),
-            ":ccccccc;${2}oxOOOo${1};${2}MMM000k.${1};cccccccccccc:".to_string(),
-            "cccccc;${2}0MMKxdd:${1};${2}MMMkddc.${1};cccccccccccc;".to_string(),
-            "ccccc;${2}XMO'${1};cccc;${2}MMM.${1};cccccccccccccccc'".to_string(),
-            "ccccc;${2}MMo${1};ccccc;${2}MMW.${1};ccccccccccccccc;".to_string(),
-            "ccccc;${2}0MNc.${1}ccc${2}.xMMd${1};ccccccccccccccc;".to_string(),
-            "cccccc;${2}dNMWXXXWM0:${1};cccccccccccccc:,".to_string(),
-            "cccccccc;${2}.:odl:${1};cccccccccccccc:,.".to_string(),
-            "ccccccccccccccccccccccccccccc:'.".to_string(),
-            ":ccccccccccccccccccccccc:;,..".to_string(),
-            " ':cccccccccccccccc::;,.".to_string(),
-        ],
-
-        // NixOS - exact from Fastfetch
-        Some("nixos") => vec![
-            "          ${1}▗▄▄▄       ${2}▗▄▄▄▄    ▄▄▄▖".to_string(),
-            "          ${1}▜███▙       ${2}▜███▙  ▟███▛".to_string(),
-            "           ${1}▜███▙       ${2}▜███▙▟███▛".to_string(),
-            "            ${1}▜███▙       ${2}▜██████▛".to_string(),
-            "     ${1}▟█████████████████▙ ${2}▜████▛     ${3}▟▙".to_string(),
-            "    ${1}▟███████████████████▙ ${2}▜███▙    ${3}▟██▙".to_string(),
-            "           ${6}▄▄▄▄▖           ${2}▜███▙  ${3}▟███▛".to_string(),
-            "          ${6}▟███▛             ${2}▜██▛ ${3}▟███▛".to_string(),
-            "         ${6}▟███▛               ${2}▜▛ ${3}▟███▛".to_string(),
-            "${6}▟███████████▛                  ${3}▟██████████▙".to_string(),
-            "${6}▜██████████▛                  ${3}▟███████████▛".to_string(),
-            "      ${6}▟███▛ ${5}▟▙               ${3}▟███▛".to_string(),
-            "     ${6}▟███▛ ${5}▟██▙             ${3}▟███▛".to_string(),
-            "    ${6}▟███▛  ${5}▜███▙           ${3}▝▀▀▀▀".to_string(),
-            "    ${6}▜██▛    ${5}▜███▙ ${4}▜██████████████████▛".to_string(),
-            "     ${6}▜▛     ${5}▟████▙ ${4}▜████████████████▛".to_string(),
-            "           ${5}▟██████▙         ${4}▜███▙".to_string(),
-            "          ${5}▟███▛▜███▙         ${4}▜███▙".to_string(),
-            "         ${5}▟███▛  ▜███▙         ${4}▜███▙".to_string(),
-            "         ${5}▝▀▀▀    ▀▀▀▀▘         ${4}▀▀▀▘".to_string(),
-        ],
-
-        // Ubuntu - exact from Fastfetch
-        Some("ubuntu") => vec![
-            "                             ....".to_string(),
-            "              ${2}.',:clooo:  ${1}.:looooo:.".to_string(),
-            "           ${2}.;looooooooc  ${1}.oooooooooo'".to_string(),
-            "        ${2}.;looooool:,''.  ${1}:ooooooooooc".to_string(),
-            "       ${2};looool;.         ${1}'oooooooooo,".to_string(),
-            "      ${2};clool'             ${1}.cooooooc.  ${2},,".to_string(),
-            "         ${2}...                ${1}......  ${2}.:oo,".to_string(),
-            "  ${1}.;clol:,.                        ${2}.loooo'".to_string(),
-            " ${1}:ooooooooo,                        ${2}'ooool".to_string(),
-            "${1}'ooooooooooo.                        ${2}loooo.".to_string(),
-            "${1}'ooooooooool                         ${2}coooo.".to_string(),
-            " ${1},loooooooc.                        ${2}.loooo.".to_string(),
-            "   ${1}.,;;;'.                          ${2};ooooc".to_string(),
-            "       ${2}...                         ${2},ooool.".to_string(),
-            "    ${2}.cooooc.              ${1}..',,'.  ${2}.cooo.".to_string(),
-            "      ${2};ooooo:.           ${1};oooooooc.  ${2}:l.".to_string(),
-            "       ${2}.coooooc,..      ${1}coooooooooo.".to_string(),
-            "         ${2}.:ooooooolc:. ${1}.ooooooooooo'".to_string(),
-            "           ${2}.':loooooo;  ${1},oooooooooc".to_string(),
-            "               ${2}..';::c'  ${1}.;loooo:'".to_string(),
-        ],
-
-        Some("pop") => vec![
-            "             /////////////".to_string(),
-            "         /////////////////////".to_string(),
-            "      ///////${2}*767${1}////////////////".to_string(),
-            "    //////${2}7676767676*${1}//////////////".to_string(),
-            "   /////${2}76767${1}//${2}7676767${1}//////////////".to_string(),
-            "  /////${2}767676${1}///${2}*76767${1}///////////////".to_string(),
-            " ///////${2}767676${1}///${2}76767${1}.///${2}7676*${1}///////".to_string(),
-            "/////////${2}767676${1}//${2}76767${1}///${2}767676${1}////////".to_string(),
-            "//////////${2}76767676767${1}////${2}76767${1}/////////".to_string(),
-            "///////////${2}76767676${1}//////${2}7676${1}//////////".to_string(),
-            "////////////,${2}7676${1},///////${2}767${1}///////////".to_string(),
-            "/////////////*${2}7676${1}///////${2}76${1}////////////".to_string(),
-            "///////////////${2}7676${1}////////////////////".to_string(),
-            " ///////////////${2}7676${1}///${2}767${1}////////////".to_string(),
-            "  //////////////////////${2}'${1}////////////".to_string(),
-            "   //////${2}.7676767676767676767,${1}//////".to_string(),
-            "    /////${2}767676767676767676767${1}/////".to_string(),
-            "      ///////////////////////////".to_string(),
-            "         /////////////////////".to_string(),
-            "             /////////////".to_string(),
-        ],
-
-        Some("manjaro") => vec![
-            "██████████████████  ████████".to_string(),
-            "██████████████████  ████████".to_string(),
-            "██████████████████  ████████".to_string(),
-            "██████████████████  ████████".to_string(),
-            "████████            ████████".to_string(),
-            "████████  ████████  ████████".to_string(),
-            "████████  ████████  ████████".to_string(),
-            "████████  ████████  ████████".to_string(),
-            "████████  ████████  ████████".to_string(),
-            "████████  ████████  ████████".to_string(),
-            "████████  ████████  ████████".to_string(),
-            "████████  ████████  ████████".to_string(),
-            "████████  ████████  ████████".to_string(),
-            "████████  ████████  ████████".to_string(),
-        ],
-
-        Some("endeavouros") => vec![
-            "                     ${2}./${1}o${3}.".to_string(),
-            "                   ${2}./${1}sssso${3}-".to_string(),
-            "                 ${2}`:${1}osssssss+${3}-".to_string(),
-            "               ${2}`:+${1}sssssssssso${3}/.".to_string(),
-            "             ${2}`-/o${1}ssssssssssssso${3}/.".to_string(),
-            "           ${2}`-/+${1}sssssssssssssssso${3}+:`".to_string(),
-            "         ${2}`-:/+${1}sssssssssssssssssso${3}+/.".to_string(),
-            "       ${2}`.://o${1}sssssssssssssssssssso${3}++-".to_string(),
-            "      ${2}.://+${1}ssssssssssssssssssssssso${3}++:".to_string(),
-            "    ${2}.:///o${1}ssssssssssssssssssssssssso${3}++:".to_string(),
-            "  ${2}`:////${1}ssssssssssssssssssssssssssso${3}+++.".to_string(),
-            "${2}`-////+${1}ssssssssssssssssssssssssssso${3}++++-".to_string(),
-            " ${2}`..-+${1}oosssssssssssssssssssssssso${3}+++++/`".to_string(),
-            "   ${3}./++++++++++++++++++++++++++++++/:.".to_string(),
-            "  `:::::::::::::::::::::::::------``".to_string(),
-        ],
-
-        Some("opensuse") | Some("opensuse-leap") | Some("opensuse-tumbleweed") => vec![
-            "           ${2}.;ldkO0000Okdl;.".to_string(),
-            "       .;d00xl:^''''''^:ok00d;.".to_string(),
-            "     .d00l'                'o00d.".to_string(),
-            "   .d0Kd'${1}  Okxol:;,.          ${2}:O0d".to_string(),
-            "  .OK${1}KKK0kOKKKKKKKKKKOxo:,      ${2}lKO.".to_string(),
-            " ,0K${1}KKKKKKKKKKKKKKK0P^${2},,,${1}^dx:${2}    ;00,".to_string(),
-            ".OK${1}KKKKKKKKKKKKKKKk'${2}.oOPPb.${1}'0k.${2}   cKO.".to_string(),
-            ":KK${1}KKKKKKKKKKKKKKK: ${2}kKx..dd ${1}lKd${2}   'OK:".to_string(),
-            "dKK${1}KKKKKKKKKOx0KKKd ${2}^0KKKO' ${1}kKKc${2}   dKd".to_string(),
-            "dKK${1}KKKKKKKKKK;.;oOKx,..${2}^${1}..;kKKK0.${2}  dKd".to_string(),
-            ":KK${1}KKKKKKKKKK0o;...^cdxxOK0O/^^'  ${2}.0K:".to_string(),
-            " kKK${1}KKKKKKKKKKKKK0x;,,......,;od  ${2}lKk".to_string(),
-            " '0K${1}KKKKKKKKKKKKKKKKKKKK00KKOo^  ${2}c00'".to_string(),
-            "  'kK${1}KKOxddxkOO00000Okxoc;''   ${2}.dKk'".to_string(),
-            "    l0Ko.                    .c00l'".to_string(),
-            "     'l0Kk:.              .;xK0l'".to_string(),
-            "        'lkK0xl:;,,,,;:ldO0kl'".to_string(),
-            "            '^:ldxkkkkxdl:^'".to_string(),
-        ],
-
-        Some("macos") => vec![
-            "                     ..'".to_string(),
-            "                 ,xNMM.".to_string(),
-            "               .OMMMMo".to_string(),
-            "               lMM\"".to_string(),
-            "     .;loddo:.  .olloddol;.".to_string(),
-            "   cKMMMMMMMMMMNWMMMMMMMMMM0:".to_string(),
-            " ${2}.KMMMMMMMMMMMMMMMMMMMMMMMWd.".to_string(),
-            " XMMMMMMMMMMMMMMMMMMMMMMMX.".to_string(),
-            "${3};MMMMMMMMMMMMMMMMMMMMMMMM:".to_string(),
-            ":MMMMMMMMMMMMMMMMMMMMMMMM:".to_string(),
-            "${4}.MMMMMMMMMMMMMMMMMMMMMMMMX.".to_string(),
-            " kMMMMMMMMMMMMMMMMMMMMMMMMWd.".to_string(),
-            " ${5}'XMMMMMMMMMMMMMMMMMMMMMMMMMMk".to_string(),
-            "  'XMMMMMMMMMMMMMMMMMMMMMMMMK.".to_string(),
-            "    ${6}kMMMMMMMMMMMMMMMMMMMMMMd".to_string(),
-            "     ;KMMMMMMMWXXWMMMMMMMk.".to_string(),
-            "       \"cooc*\"    \"*coo'\"".to_string(),
-        ],
-
-        Some("windows") => vec![
-            "${1}        ,.=:!!t3Z3z.,".to_string(),
-            "       :tt:::tt333EE3".to_string(),
-            "${1}       Et:::ztt33EEEL${2} @Ee.,      ..,".to_string(),
-            "${1}      ;tt:::tt333EE7${2} ;EEEEEEttttt33#".to_string(),
-            "${1}     :Et:::zt333EEQ.${2} $EEEEEttttt33QL".to_string(),
-            "${1}     it::::tt333EEF${2} @EEEEEEttttt33F".to_string(),
-            "${1}    ;3=*^```\"*4EEV${2} :EEEEEEttttt33@.".to_string(),
-            "${3}    ,.=::::!t=., ${1}`${2} @EEEEEEtttz33QF".to_string(),
-            "${3}   ;::::::::zt33)${2}   \"4EEEtttji3P*".to_string(),
-            "${3}  :t::::::::tt33.${4}:Z3z..${2}  ``${4} ,..g.".to_string(),
-            "${3}  i::::::::zt33F${4} AEEEtttt::::ztF".to_string(),
-            "${3} ;:::::::::t33V${4} ;EEEttttt::::t3".to_string(),
-            "${3} E::::::::zt33L${4} @EEEtttt::::z3F".to_string(),
-            "${3}{3=*^```\"*4E3)${4} ;EEEtttt:::::tZ`".to_string(),
-            "${3}             `${4} :EEEEtttt::::z7".to_string(),
-            "                 \"VEzjt:;;z>*`".to_string(),
-        ],
+        Some("arch") => {
+            let logo = include_str!("../assets/logos/arch.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
+        Some("debian") => {
+            let logo = include_str!("../assets/logos/debian.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
+        Some("fedora") => {
+            let logo = include_str!("../assets/logos/fedora.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
+        Some("nixos") => {
+            let logo = include_str!("../assets/logos/nixos.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
+        Some("ubuntu") => {
+            let logo = include_str!("../assets/logos/ubuntu.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
+        Some("pop") => {
+            let logo = include_str!("../assets/logos/pop.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
+        Some("manjaro") => {
+            let logo = include_str!("../assets/logos/manjaro.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
+        Some("endeavouros") => {
+            let logo = include_str!("../assets/logos/endeavouros.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
+        Some("opensuse") | Some("opensuse-leap") | Some("opensuse-tumbleweed") => {
+            let logo = include_str!("../assets/logos/opensuse.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
+        Some("macos") => {
+            let logo = include_str!("../assets/logos/macos.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
+        Some("windows") => {
+            let logo = include_str!("../assets/logos/windows.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
 
         // Fallback: Tux (Linux)
-        _ => vec![
-            "    ${2}.--.".to_string(),
-            "   ${2}|${3}o${2}_${3}o${2} |".to_string(),
-            "   ${2}|${3}:${2}_/ |".to_string(),
-            "  ${2}//   \\ \\".to_string(),
-            " (|     | )".to_string(),
-            "/'\\_   _/`\\".to_string(),
-            "\\___)=(___/".to_string(),
-        ],
+        _ => {
+            let logo = include_str!("../assets/logos/tux.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
     }
 }
 

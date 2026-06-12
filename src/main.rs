@@ -189,7 +189,7 @@ fn main() -> anyhow::Result<()> {
 
 fn default_config_content() -> String {
     r##"# retch configuration file
-# 
+#
 # This file uses TOML syntax.
 # All settings below are commented out by default.
 # Uncomment and modify as needed.
