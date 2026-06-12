@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781236115872,
+  "lastUpdate": 1781238893658,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1915,6 +1915,85 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 274.12554992750177,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "394da60071765f4d9efab25aaafafff97ac905d0",
+          "message": "docs: regenerate man page for v0.3.15",
+          "timestamp": "2026-06-11T21:27:33-07:00",
+          "tree_id": "6d78629257961e76ac60e9623a003fd7ba065726",
+          "url": "https://github.com/l1a/retch/commit/394da60071765f4d9efab25aaafafff97ac905d0"
+        },
+        "date": 1781238893317,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 2422624.7199999997,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 45116888.620000005,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 42698850.07319471,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2060.197513956562,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 57.22068853334004,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.867330333004684,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 56.69534385327847,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 17738.157492418464,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1569379.7639080342,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 364.8616716169196,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 282.2141950755607,
             "unit": "ns"
           }
         ]
