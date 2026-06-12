@@ -66,11 +66,7 @@ extern "C" {
         the_type: i32,
         value_ptr: *const c_void,
     ) -> CFNumberRef;
-    pub fn CFDictionarySetValue(
-        the_dict: CFMutableDictionaryRef,
-        key: CFTypeRef,
-        value: CFTypeRef,
-    );
+    pub fn CFDictionarySetValue(the_dict: CFMutableDictionaryRef, key: CFTypeRef, value: CFTypeRef);
     pub fn CFRelease(cf: CFTypeRef);
 }
 
@@ -98,7 +94,12 @@ pub unsafe fn cf_string_to_rust(s: CFStringRef) -> Option<String> {
     // Each UTF-8 char can be up to 4 bytes; add room for null terminator.
     let buf_size = (len * 4 + 1) as usize;
     let mut buf = vec![0i8; buf_size];
-    let ok = CFStringGetCString(s, buf.as_mut_ptr(), buf_size as isize, kCFStringEncodingUTF8);
+    let ok = CFStringGetCString(
+        s,
+        buf.as_mut_ptr(),
+        buf_size as isize,
+        kCFStringEncodingUTF8,
+    );
     if !ok {
         return None;
     }
@@ -153,10 +154,7 @@ extern "C" {
     pub static IOMainPortDefault: u32;
 
     pub fn IOServiceMatching(name: *const i8) -> CFMutableDictionaryRef;
-    pub fn IOServiceGetMatchingService(
-        main_port: u32,
-        matching: CFDictionaryRef,
-    ) -> IOService;
+    pub fn IOServiceGetMatchingService(main_port: u32, matching: CFDictionaryRef) -> IOService;
     pub fn IOServiceGetMatchingServices(
         main_port: u32,
         matching: CFDictionaryRef,
@@ -231,8 +229,16 @@ pub unsafe fn iokit_property_as_u64(entry: IOService, key: &str) -> Option<u64> 
         }
     } else if type_id == CFNumberGetTypeID() {
         let mut v: i64 = 0;
-        CFNumberGetValue(val as CFNumberRef, 4 /* kCFNumberSInt64Type */, &mut v as *mut i64 as *mut c_void);
-        if v > 0 { Some(v as u64) } else { None }
+        CFNumberGetValue(
+            val as CFNumberRef,
+            4, /* kCFNumberSInt64Type */
+            &mut v as *mut i64 as *mut c_void,
+        );
+        if v > 0 {
+            Some(v as u64)
+        } else {
+            None
+        }
     } else {
         None
     }
@@ -285,10 +291,17 @@ pub fn get_gpus() -> Vec<(String, Option<u64>)> {
         let matching = IOServiceMatching(agx_name.as_ptr());
         if !matching.is_null() {
             let mut iter: IOIterator = MACH_PORT_NULL;
-            if IOServiceGetMatchingServices(IOMainPortDefault, matching as CFDictionaryRef, &mut iter) == 0 {
+            if IOServiceGetMatchingServices(
+                IOMainPortDefault,
+                matching as CFDictionaryRef,
+                &mut iter,
+            ) == 0
+            {
                 loop {
                     let service = IOIteratorNext(iter);
-                    if service == MACH_PORT_NULL { break; }
+                    if service == MACH_PORT_NULL {
+                        break;
+                    }
                     if let Some(name) = iokit_property_as_string(service, "model") {
                         gpus.push((name, None)); // Unified memory; no discrete VRAM
                     }
@@ -303,19 +316,32 @@ pub fn get_gpus() -> Vec<(String, Option<u64>)> {
         let matching = IOServiceMatching(pci_name.as_ptr());
         if !matching.is_null() {
             let mut iter: IOIterator = MACH_PORT_NULL;
-            if IOServiceGetMatchingServices(IOMainPortDefault, matching as CFDictionaryRef, &mut iter) == 0 {
+            if IOServiceGetMatchingServices(
+                IOMainPortDefault,
+                matching as CFDictionaryRef,
+                &mut iter,
+            ) == 0
+            {
                 loop {
                     let service = IOIteratorNext(iter);
-                    if service == MACH_PORT_NULL { break; }
+                    if service == MACH_PORT_NULL {
+                        break;
+                    }
 
                     // Check PCI class code: 4-byte big-endian; byte[0] == 0x03 → display
                     let is_display = with_cfstring("class-code", |k| {
                         let v = IORegistryEntryCreateCFProperty(service, k, kCFAllocatorDefault, 0);
-                        if v.is_null() { return false; }
+                        if v.is_null() {
+                            return false;
+                        }
                         let _owned = OwnedCF(v);
-                        if CFGetTypeID(v) != CFDataGetTypeID() { return false; }
+                        if CFGetTypeID(v) != CFDataGetTypeID() {
+                            return false;
+                        }
                         let len = CFDataGetLength(v as CFDataRef);
-                        if len < 1 { return false; }
+                        if len < 1 {
+                            return false;
+                        }
                         let ptr = CFDataGetBytePtr(v as CFDataRef);
                         // PCI class stored little-endian: byte[3] is class
                         *ptr.add((len - 1) as usize) == 0x03
@@ -324,8 +350,8 @@ pub fn get_gpus() -> Vec<(String, Option<u64>)> {
                     if is_display {
                         if let Some(name) = iokit_property_as_string(service, "model") {
                             // Try VRAM properties (discrete GPUs only)
-                            let vram = iokit_property_as_u64(service, "VRAM,totalsize")
-                                .or_else(|| {
+                            let vram =
+                                iokit_property_as_u64(service, "VRAM,totalsize").or_else(|| {
                                     iokit_property_as_u64(service, "VRAM,totalMB")
                                         .map(|mb| mb * 1024 * 1024)
                                 });
@@ -391,9 +417,12 @@ pub fn get_audio_device_names() -> Vec<String> {
         if AudioObjectGetPropertyDataSize(
             K_AUDIO_OBJECT_SYSTEM_OBJECT,
             &devices_addr,
-            0, ptr::null(),
+            0,
+            ptr::null(),
             &mut data_size,
-        ) != 0 || data_size == 0 {
+        ) != 0
+            || data_size == 0
+        {
             return names;
         }
 
@@ -402,10 +431,12 @@ pub fn get_audio_device_names() -> Vec<String> {
         if AudioObjectGetPropertyData(
             K_AUDIO_OBJECT_SYSTEM_OBJECT,
             &devices_addr,
-            0, ptr::null(),
+            0,
+            ptr::null(),
             &mut data_size,
             device_ids.as_mut_ptr() as *mut c_void,
-        ) != 0 {
+        ) != 0
+        {
             return names;
         }
 
@@ -421,10 +452,13 @@ pub fn get_audio_device_names() -> Vec<String> {
             if AudioObjectGetPropertyData(
                 device_id,
                 &name_addr,
-                0, ptr::null(),
+                0,
+                ptr::null(),
                 &mut name_size,
                 &mut name_ref as *mut CFStringRef as *mut c_void,
-            ) == 0 && !name_ref.is_null() {
+            ) == 0
+                && !name_ref.is_null()
+            {
                 if let Some(name) = cf_string_to_rust(name_ref) {
                     if !name.is_empty() && !names.contains(&name) {
                         names.push(name);
@@ -471,7 +505,9 @@ fn get_active_displays() -> Vec<(usize, usize, f64, u32, u32)> {
             let w = CGDisplayPixelsWide(id);
             let h = CGDisplayPixelsHigh(id);
             let mode = CGDisplayCopyDisplayMode(id);
-            let refresh = if mode.is_null() { 0.0 } else {
+            let refresh = if mode.is_null() {
+                0.0
+            } else {
                 let r = CGDisplayModeGetRefreshRate(mode);
                 CGDisplayModeRelease(mode);
                 r
@@ -492,13 +528,16 @@ unsafe fn iokit_display_name(vendor: u32, model: u32) -> Option<String> {
         return None;
     }
     let mut iter: IOIterator = MACH_PORT_NULL;
-    if IOServiceGetMatchingServices(IOMainPortDefault, matching as CFDictionaryRef, &mut iter) != 0 {
+    if IOServiceGetMatchingServices(IOMainPortDefault, matching as CFDictionaryRef, &mut iter) != 0
+    {
         return None;
     }
     let mut result = None;
     loop {
         let service = IOIteratorNext(iter);
-        if service == MACH_PORT_NULL { break; }
+        if service == MACH_PORT_NULL {
+            break;
+        }
         // Read DisplayVendorID and DisplayProductID
         let v = iokit_property_as_u64(service, "DisplayVendorID").unwrap_or(0) as u32;
         let m = iokit_property_as_u64(service, "DisplayProductID").unwrap_or(0) as u32;
@@ -517,17 +556,20 @@ unsafe fn iokit_display_name(vendor: u32, model: u32) -> Option<String> {
 /// Return human-readable display descriptions: `"Name (WxH @ RRHz)"` or `"Display N (WxH @ RRHz)"`.
 pub fn get_displays() -> Vec<String> {
     let raw = get_active_displays();
-    raw.into_iter().enumerate().map(|(i, (w, h, refresh, vendor, model))| {
-        let name = unsafe { iokit_display_name(vendor, model) }
-            .unwrap_or_else(|| format!("Display {}", i + 1));
-        let res = format!("{}x{}", w, h);
-        if refresh > 0.0 {
-            let rr = crate::display::format_refresh_rate(refresh);
-            format!("{} ({} @ {}Hz)", name, res, rr)
-        } else {
-            format!("{} ({})", name, res)
-        }
-    }).collect()
+    raw.into_iter()
+        .enumerate()
+        .map(|(i, (w, h, refresh, vendor, model))| {
+            let name = unsafe { iokit_display_name(vendor, model) }
+                .unwrap_or_else(|| format!("Display {}", i + 1));
+            let res = format!("{}x{}", w, h);
+            if refresh > 0.0 {
+                let rr = crate::display::format_refresh_rate(refresh);
+                format!("{} ({} @ {}Hz)", name, res, rr)
+            } else {
+                format!("{} ({})", name, res)
+            }
+        })
+        .collect()
 }
 
 // ─── IOKit — USB Cameras ──────────────────────────────────────────────────────
@@ -544,12 +586,16 @@ pub fn get_usb_cameras() -> Vec<String> {
             return cameras;
         }
         let mut iter: IOIterator = MACH_PORT_NULL;
-        if IOServiceGetMatchingServices(IOMainPortDefault, matching as CFDictionaryRef, &mut iter) != 0 {
+        if IOServiceGetMatchingServices(IOMainPortDefault, matching as CFDictionaryRef, &mut iter)
+            != 0
+        {
             return cameras;
         }
         loop {
             let service = IOIteratorNext(iter);
-            if service == MACH_PORT_NULL { break; }
+            if service == MACH_PORT_NULL {
+                break;
+            }
 
             // Check if any child interface has bInterfaceClass == 0x0E (Video)
             let has_video = has_video_interface(service);
@@ -577,7 +623,9 @@ unsafe fn has_video_interface(device: IOService) -> bool {
     let mut found = false;
     loop {
         let child = IOIteratorNext(child_iter);
-        if child == MACH_PORT_NULL { break; }
+        if child == MACH_PORT_NULL {
+            break;
+        }
         if let Some(class) = iokit_property_as_u64(child, "bInterfaceClass") {
             if class == USB_VIDEO_CLASS {
                 found = true;
@@ -621,10 +669,26 @@ unsafe fn enumerate_hid_usage(page: u32, usage: u32) -> Vec<String> {
     // Add usage page and usage filters to the matching dict
     let page_key = CString::new("DeviceUsagePage").unwrap();
     let usage_key = CString::new("DeviceUsage").unwrap();
-    let page_cf_key = CFStringCreateWithCString(kCFAllocatorDefault, page_key.as_ptr(), kCFStringEncodingUTF8);
-    let usage_cf_key = CFStringCreateWithCString(kCFAllocatorDefault, usage_key.as_ptr(), kCFStringEncodingUTF8);
-    let page_val = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &(page as i32) as *const i32 as *const c_void);
-    let usage_val = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &(usage as i32) as *const i32 as *const c_void);
+    let page_cf_key = CFStringCreateWithCString(
+        kCFAllocatorDefault,
+        page_key.as_ptr(),
+        kCFStringEncodingUTF8,
+    );
+    let usage_cf_key = CFStringCreateWithCString(
+        kCFAllocatorDefault,
+        usage_key.as_ptr(),
+        kCFStringEncodingUTF8,
+    );
+    let page_val = CFNumberCreate(
+        kCFAllocatorDefault,
+        kCFNumberSInt32Type,
+        &(page as i32) as *const i32 as *const c_void,
+    );
+    let usage_val = CFNumberCreate(
+        kCFAllocatorDefault,
+        kCFNumberSInt32Type,
+        &(usage as i32) as *const i32 as *const c_void,
+    );
 
     CFDictionarySetValue(matching, page_cf_key as CFTypeRef, page_val as CFTypeRef);
     CFDictionarySetValue(matching, usage_cf_key as CFTypeRef, usage_val as CFTypeRef);
@@ -637,13 +701,16 @@ unsafe fn enumerate_hid_usage(page: u32, usage: u32) -> Vec<String> {
 
     let mut iter: IOIterator = MACH_PORT_NULL;
     // matching dict is consumed by IOServiceGetMatchingServices
-    if IOServiceGetMatchingServices(IOMainPortDefault, matching as CFDictionaryRef, &mut iter) != 0 {
+    if IOServiceGetMatchingServices(IOMainPortDefault, matching as CFDictionaryRef, &mut iter) != 0
+    {
         return results;
     }
 
     loop {
         let service = IOIteratorNext(iter);
-        if service == MACH_PORT_NULL { break; }
+        if service == MACH_PORT_NULL {
+            break;
+        }
         if let Some(name) = iokit_property_as_string(service, "Product") {
             if !name.is_empty() {
                 results.push(name);
@@ -670,8 +737,8 @@ pub fn get_bluetooth_state() -> Option<(bool, Option<String>)> {
         if service == MACH_PORT_NULL {
             return None;
         }
-        let power = iokit_property_as_bool(service, "BluetoothControllerPowerIsOn")
-            .unwrap_or(false);
+        let power =
+            iokit_property_as_bool(service, "BluetoothControllerPowerIsOn").unwrap_or(false);
         // Try several property names for chipset/product string
         let chipset = iokit_property_as_string(service, "HardwareTransportCurrentSetting")
             .or_else(|| iokit_property_as_string(service, "ProductName"))
