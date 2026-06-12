@@ -25,7 +25,23 @@
   - **Bumping Strategy**: If the changes are significant (e.g. new subcrates, breaking CLI changes, major architectural redesigns), ALWAYS ask the user whether to perform a major, minor, or patch version bump.
 - **Command Redundancy**: Avoid running `just check && cargo test` sequentially since both build and check the project profiles, causing redundant background compilation cycles. Prefer `cargo test` during iteration and a final check before staging.
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages. Use `just bench-upload` to manually push local benchmark results to the dashboard; a `post-merge` hook installed via `just install-hooks` does this automatically after every merge to main. Local results appear as a "Local - &lt;platform&gt; (real hardware)" suite alongside the CI suites. The CI suites run in Docker containers with no physical hardware and are primarily useful for retch's own regression tracking, not for comparing against fastfetch.
-- **Releases & Tagging**: Always use `gh` if available to tag commits and trigger releases on GitHub (`gh release create v<version> --title "v<version>" --notes "Release v<version>"`). Pushing tags locally via git is discouraged as it is less integrated with GitHub's release management flow.
+- **Releases & Tagging**: Releases are triggered by pushing a `v*` tag to main. The CI pipeline runs `full-test` → `build-release` → `release` automatically.
+  - **Full release** (creates GitHub Release with binaries):
+    ```
+    git tag v<version> && git push origin v<version>
+    ```
+    The `release` job attaches all platform binaries and the man page to a GitHub Release. Only runs when the tag name contains no `-`.
+  - **Pre-release** (generates artifacts without a GitHub Release):
+    ```
+    git tag v<version>-rc.N && git push origin v<version>-rc.N
+    ```
+    Triggers `full-test` and `build-release` identically, but skips the `release` job (guarded by `!contains(github.ref_name, '-')`). Artifacts are downloadable from the GitHub Actions run page (Actions → the workflow run → Artifacts section). Use this to test cross-platform binaries before cutting a final release. Delete rc tags after merging: `git tag -d v<version>-rc.N && git push origin :refs/tags/v<version>-rc.N`.
+  - **Publish to crates.io** (manual, after the GitHub Release):
+    ```
+    cargo publish -p retch-sysinfo
+    cargo publish -p retch-cli
+    ```
+    Publish `retch-sysinfo` first since `retch-cli` depends on it.
 
 ## Current State (v0.3.15)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
