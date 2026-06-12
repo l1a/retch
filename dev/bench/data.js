@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781286694018,
+  "lastUpdate": 1781287146285,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10786,6 +10786,75 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1137538910,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c4633dd7ab0a57810eef8b0f53a397a0286b9452",
+          "message": "refactor(macos): replace all system_profiler spawns with native FFI (v0.3.16) (#87)\n\n* refactor(macos): replace all system_profiler spawns with native FFI (v0.3.16)\n\nAdd macos_ffi.rs with safe wrappers for CoreFoundation, IOKit, CoreAudio,\nand CoreGraphics. Zero system_profiler spawns on macOS:\n\n- bios: IODeviceTree:/rom firmware version via IOKit\n- audio: CoreAudio AudioObjectGetPropertyData device enumeration\n- display: CoreGraphics CGGetActiveDisplayList + IODisplayConnect names\n- gpu: IOKit AGXAccelerator (Apple Silicon) + IOPCIDevice class 0x03\n- camera: IOKit USB bInterfaceClass=0x0E (UVC) enumeration\n- gamepad: IOKit HID usage page 0x01 / usages 0x04+0x05\n- bluetooth: IOBluetoothHCIController power state + chipset\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* style: cargo fmt\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix: wrap enumerate_hid_usage call in unsafe block\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix: remove unused CFArray and kCFBooleanTrue declarations\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix(macos): add build.rs to propagate framework link directives\n\n#[link(kind = \"framework\")] in lib crates does not reliably propagate\nto the final binary link step. Emit cargo:rustc-link-lib directives\nfrom build.rs instead.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix(macos): replace IOMainPortDefault extern static with literal 0\n\nIOMainPortDefault was introduced as an exported symbol in macOS 12.0.\nThe CI SDK targets macOS 11.0 where it does not exist, causing a link\nerror. Both kIOMasterPortDefault and IOMainPortDefault are always 0, so\nuse a Rust constant instead of the extern static.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "timestamp": "2026-06-12T10:10:04-07:00",
+          "tree_id": "303651b63023cd37e41aceaa61bc2ce4c9861863",
+          "url": "https://github.com/l1a/retch/commit/c4633dd7ab0a57810eef8b0f53a397a0286b9452"
+        },
+        "date": 1781287142652,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 257637746,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1276764026,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 99.20445307165534,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9492118636956284,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 99.9102584245663,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46034.06538834925,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 503.6272745826118,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 750.917641191192,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1172443205,
             "unit": "ns"
           }
         ]
