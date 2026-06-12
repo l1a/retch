@@ -6,24 +6,7 @@
 pub(crate) fn detect_bios() -> Option<String> {
     #[cfg(target_os = "macos")]
     {
-        if let Ok(output) = std::process::Command::new("system_profiler")
-            .arg("SPHardwareDataType")
-            .output()
-        {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                for line in stdout.lines() {
-                    let line = line.trim();
-                    if line.starts_with("System Firmware Version:")
-                        || line.starts_with("Boot ROM Version:")
-                    {
-                        if let Some(val) = line.split(':').nth(1) {
-                            return Some(val.trim().to_string());
-                        }
-                    }
-                }
-            }
-        }
-        None
+        crate::macos_ffi::get_firmware_version()
     }
 
     #[cfg(target_os = "windows")]

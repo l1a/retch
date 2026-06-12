@@ -45,7 +45,7 @@
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
 
-## Current State (v0.3.15)
+## Current State (v0.3.16)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -62,6 +62,18 @@
 - **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
 
 ## Major Achievements
+
+### v0.3.16 - macOS Native Probes: system_profiler Elimination (June 11, 2026)
+- **New Module**: Added `crates/sysinfo/src/macos_ffi.rs` — a safe FFI wrapper for CoreFoundation, IOKit, CoreAudio, and CoreGraphics. Follows the `win_reg.rs` pattern: raw `extern "C"` blocks at module level followed by safe public functions.
+- **BIOS**: Replaced `system_profiler SPHardwareDataType` with `IORegistryEntryFromPath("IODeviceTree:/rom")` → `version` property.
+- **Audio**: Replaced `system_profiler SPAudioDataType` with `AudioObjectGetPropertyData` via CoreAudio framework FFI.
+- **Display**: Replaced `system_profiler SPDisplaysDataType` with `CGGetActiveDisplayList` + `CGDisplayPixelsWide/High/Mode` + IODisplayConnect name lookup.
+- **GPU**: Replaced `system_profiler SPDisplaysDataType` with IOKit enumeration of `AGXAccelerator` (Apple Silicon) and `IOPCIDevice` with PCI class 0x03 (discrete/Intel).
+- **Camera**: Replaced `system_profiler SPCameraDataType` with IOKit USB enumeration matching `bInterfaceClass = 0x0E` (UVC). Note: built-in cameras on Apple Silicon use AVFoundation layer and will not appear (USB webcams fully supported).
+- **Gamepad**: Replaced both `system_profiler SPUSBDataType` and `system_profiler SPBluetoothDataType` spawns with IOKit HID device matching (usage page 0x01, usages 0x04/0x05).
+- **Bluetooth**: Replaced `system_profiler SPBluetoothDataType` with `IOBluetoothHCIController` IOKit service for power state and chipset. Connected device names not available without Obj-C IOBluetooth runtime; shows "connected devices unknown" instead.
+- **Zero `system_profiler` spawns** on macOS — all detection is now native framework FFI.
+- **Version**: Bumped to `0.3.16` / `retch-sysinfo 0.1.16`.
 
 ### v0.3.15 - CLI Refactor: Logo Externalization and Module Cleanup (June 11, 2026)
 - **Logo Files**: Moved all distro ASCII logos from hardcoded Rust string vectors in `logo.rs` to external `.txt` files under `assets/logos/`, loaded at compile time via `include_str!`. Contributed by @quixaq.

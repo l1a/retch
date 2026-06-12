@@ -85,15 +85,10 @@ pub(crate) fn detect_camera() -> Vec<String> {
 
     #[cfg(target_os = "macos")]
     {
-        if let Ok(output) = std::process::Command::new("system_profiler")
-            .arg("SPCameraDataType")
-            .output()
-        {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                return parse_macos_camera(&stdout);
-            }
-        }
-        Vec::new()
+        let mut cameras = crate::macos_ffi::get_usb_cameras();
+        // Filter out IR/depth cameras that match USB UVC class but aren't real cameras
+        cameras.retain(|name| is_real_camera(name));
+        cameras
     }
 
     #[cfg(target_os = "windows")]

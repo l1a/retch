@@ -153,15 +153,22 @@ pub fn detect_bluetooth() -> Option<String> {
 
     #[cfg(target_os = "macos")]
     {
-        if let Ok(output) = std::process::Command::new("system_profiler")
-            .arg("SPBluetoothDataType")
-            .output()
-        {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                return parse_macos_bluetooth(&stdout);
+        if let Some((power_on, chipset)) = crate::macos_ffi::get_bluetooth_state() {
+            let state = if power_on { "On" } else { "Off" };
+            let mut info_str = state.to_string();
+            if let Some(ch) = chipset {
+                info_str.push_str(&format!(" (Apple {})", ch));
+            } else {
+                info_str.push_str(" (Apple Bluetooth)");
             }
+            // Connected device names require Obj-C IOBluetooth; not available via C IOKit.
+            if power_on {
+                info_str.push_str(" - connected devices unknown");
+            }
+            Some(info_str)
+        } else {
+            None
         }
-        None
     }
 
     #[cfg(target_os = "windows")]

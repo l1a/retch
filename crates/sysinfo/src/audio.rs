@@ -34,36 +34,7 @@ pub fn detect_audio(sys: &sysinfo::System) -> Option<String> {
     #[cfg(target_os = "macos")]
     {
         let _ = sys;
-        let mut devices = Vec::new();
-        if let Ok(output) = std::process::Command::new("system_profiler")
-            .arg("SPAudioDataType")
-            .output()
-        {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                let mut in_devices = false;
-                for line in stdout.lines() {
-                    let trimmed = line.trim();
-                    let indent = line.len() - line.trim_start().len();
-                    if trimmed.starts_with("Devices:") {
-                        in_devices = true;
-                        continue;
-                    }
-                    if in_devices {
-                        if indent <= 4 && !trimmed.is_empty() && !trimmed.starts_with("Devices:") {
-                            in_devices = false;
-                            continue;
-                        }
-                        if indent == 8 && trimmed.ends_with(':') {
-                            let name = trimmed.trim_end_matches(':').trim().to_string();
-                            if !name.is_empty() && !devices.contains(&name) {
-                                devices.push(name);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
+        let devices = crate::macos_ffi::get_audio_device_names();
         if !devices.is_empty() {
             Some(format!("CoreAudio ({})", devices.join(", ")))
         } else {

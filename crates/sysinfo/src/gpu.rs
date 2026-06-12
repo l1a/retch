@@ -206,22 +206,10 @@ pub fn parse_wmi_videocontroller(output: &str) -> Vec<GpuInfo> {
 pub fn detect_gpus() -> Vec<GpuInfo> {
     #[cfg(target_os = "macos")]
     {
-        match std::process::Command::new("system_profiler")
-            .arg("SPDisplaysDataType")
-            .output()
-        {
-            Ok(output) => {
-                if let Ok(stdout) = String::from_utf8(output.stdout) {
-                    return parse_system_profiler_displays(&stdout);
-                } else {
-                    eprintln!("warning: system_profiler output was not valid UTF-8");
-                }
-            }
-            Err(e) => {
-                eprintln!("warning: failed to run system_profiler SPDisplaysDataType: {} (GPU detection skipped)", e);
-            }
-        }
-        Vec::new()
+        crate::macos_ffi::get_gpus()
+            .into_iter()
+            .map(|(name, vram_bytes)| GpuInfo { name, vram_bytes })
+            .collect()
     }
 
     #[cfg(target_os = "windows")]

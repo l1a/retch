@@ -80,21 +80,7 @@ pub(crate) fn detect_gamepad() -> Vec<String> {
 
     #[cfg(target_os = "macos")]
     {
-        let usb_stdout = std::process::Command::new("system_profiler")
-            .arg("SPUSBDataType")
-            .output()
-            .ok()
-            .and_then(|o| String::from_utf8(o.stdout).ok())
-            .unwrap_or_default();
-
-        let bt_stdout = std::process::Command::new("system_profiler")
-            .arg("SPBluetoothDataType")
-            .output()
-            .ok()
-            .and_then(|o| String::from_utf8(o.stdout).ok())
-            .unwrap_or_default();
-
-        parse_macos_gamepad(&usb_stdout, &bt_stdout)
+        crate::macos_ffi::get_hid_gamepads()
     }
 
     #[cfg(target_os = "windows")]
