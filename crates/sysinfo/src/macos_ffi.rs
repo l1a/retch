@@ -26,8 +26,6 @@ pub type CFAllocatorRef = *const c_void;
 pub type CFDataRef = *const c_void;
 pub type CFBooleanRef = *const c_void;
 pub type CFNumberRef = *const c_void;
-pub type CFArrayRef = *const c_void;
-
 #[allow(non_upper_case_globals)]
 pub const kCFNumberSInt32Type: i32 = 3;
 #[allow(non_upper_case_globals)]
@@ -36,7 +34,6 @@ pub const kCFStringEncodingUTF8: u32 = 0x08000100;
 #[link(name = "CoreFoundation", kind = "framework")]
 extern "C" {
     pub static kCFAllocatorDefault: CFAllocatorRef;
-    pub static kCFBooleanTrue: CFBooleanRef;
 
     pub fn CFStringCreateWithCString(
         alloc: CFAllocatorRef,
@@ -59,8 +56,6 @@ extern "C" {
     pub fn CFNumberGetTypeID() -> usize;
     pub fn CFBooleanGetValue(boolean: CFBooleanRef) -> bool;
     pub fn CFNumberGetValue(number: CFNumberRef, the_type: i32, value_ptr: *mut c_void) -> bool;
-    pub fn CFArrayGetCount(the_array: CFArrayRef) -> isize;
-    pub fn CFArrayGetValueAtIndex(the_array: CFArrayRef, idx: isize) -> CFTypeRef;
     pub fn CFNumberCreate(
         alloc: CFAllocatorRef,
         the_type: i32,
