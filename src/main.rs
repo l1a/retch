@@ -5,12 +5,12 @@
 //!
 //! Handles CLI initialization, completion generation, and main execution flow.
 
-use crate::cli::{Cli, CompletionShell};
-use crate::config::Config;
-use crate::display;
-use crate::fetch::{CollectOptions, SystemInfo};
 use clap::{CommandFactory, Parser};
 use clap_complete::generate;
+use retch_cli::cli::{Cli, CompletionShell};
+use retch_cli::config::Config;
+use retch_cli::display;
+use retch_cli::fetch::{CollectOptions, SystemInfo};
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
