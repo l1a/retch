@@ -33,6 +33,7 @@
 
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
+        # Include assets/ (logo files) in addition to standard Cargo sources
         filter =
           path: type: (builtins.match ".*assets/.*$" path != null) || (craneLib.filterCargoSources path type);
         cleanSrc = lib.cleanSourceWith {
