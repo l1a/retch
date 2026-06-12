@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781238893658,
+  "lastUpdate": 1781238900929,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1994,6 +1994,85 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 282.2141950755607,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "0fa34c02ae6023fc7850129a4f7276016a617ff1",
+          "message": "docs: add just man step to release checklist in AGENTS.md",
+          "timestamp": "2026-06-11T21:28:57-07:00",
+          "tree_id": "66575adca6ab2319c65bcf709c017fcdc86814fa",
+          "url": "https://github.com/l1a/retch/commit/0fa34c02ae6023fc7850129a4f7276016a617ff1"
+        },
+        "date": 1781238900579,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 2586650.36,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 47867066.46000001,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 44853641.0571643,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2170.213972921563,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 60.98653693618718,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.043588941369078,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 63.28929083476523,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 20600.572134298523,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1685089.3206560542,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 369.42872506803957,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 279.5379250820901,
             "unit": "ns"
           }
         ]
