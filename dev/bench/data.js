@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781234213664,
+  "lastUpdate": 1781234328112,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5030,6 +5030,85 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 412.02246495760403,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2b20e8fa8d79d8aad90c2fe8f2f4facc213b2a21",
+          "message": "refactor: code cleanup — logo files, module consolidation (v0.3.15) (#86)\n\n* refactor: use crate:: for internal paths\n\n* refactor(retch-cli): nest re-export modules in lib.rs\n\n* refactor(retch-cli): include_str! the logos instead of keeping them in code\n\n* fix: missing ../ in paths\n\n* refactor: code cleanup — logo files, module consolidation, version bump (v0.3.15)\n\n- Fix crate:: → retch_cli:: imports in main.rs (binary crates cannot use\n  crate:: to reference their own lib; was causing unresolved import errors)\n- Move distro ASCII logos to assets/logos/*.txt, loaded via include_str!\n- Inline fetch/gpu re-export shims into lib.rs; delete src/fetch.rs and src/gpu.rs\n- Bump to v0.3.15 / retch-sysinfo v0.1.15\n\nOriginally contributed by @quixaq in #83.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Quixaq <quixaq@tutamail.com>\nCo-authored-by: quixaq <152917245+quixaq@users.noreply.github.com>\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "timestamp": "2026-06-11T20:00:39-07:00",
+          "tree_id": "e98beefb8ab4e909c5f6e61dc38869137a0584ab",
+          "url": "https://github.com/l1a/retch/commit/2b20e8fa8d79d8aad90c2fe8f2f4facc213b2a21"
+        },
+        "date": 1781234326763,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 40808689.06,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 750337830.6600002,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 758431685.5,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 408.3192987084332,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 69.62041338542603,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.0470265387903366,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 64.8565682282817,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 436.37238509707515,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 270093068.725,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_airport_output",
+            "value": 333.1347163405699,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 447.96834472639614,
             "unit": "ns"
           }
         ]
