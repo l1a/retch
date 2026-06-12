@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781240353804,
+  "lastUpdate": 1781240657461,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -8840,6 +8840,75 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1334427935,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "0fa34c02ae6023fc7850129a4f7276016a617ff1",
+          "message": "docs: add just man step to release checklist in AGENTS.md",
+          "timestamp": "2026-06-11T21:28:57-07:00",
+          "tree_id": "66575adca6ab2319c65bcf709c017fcdc86814fa",
+          "url": "https://github.com/l1a/retch/commit/0fa34c02ae6023fc7850129a4f7276016a617ff1"
+        },
+        "date": 1781240655288,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 30988208,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1560494437.9999998,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 116.61436873270728,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.306113800733633,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 115.3635065635746,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41579.716810724596,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 553.9692340704061,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 814.6929507579259,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1312210035,
             "unit": "ns"
           }
         ]
