@@ -28,6 +28,8 @@
 - **Releases & Tagging**: Releases are triggered by pushing a `v*` tag to main. The CI pipeline runs `full-test` → `build-release` → `release` automatically.
   - **Full release** (creates GitHub Release with binaries):
     ```
+    just man          # ensure man page is up to date
+    git add docs/retch.1 && git commit -m "docs: regenerate man page for v<version>"  # if changed
     git tag v<version> && git push origin v<version>
     ```
     The `release` job attaches all platform binaries and the man page to a GitHub Release. Only runs when the tag name contains no `-`.
