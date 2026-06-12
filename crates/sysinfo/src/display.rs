@@ -164,15 +164,7 @@ pub fn get_monitor_name_for_port(port: &str) -> Option<String> {
 pub fn detect_displays() -> Vec<String> {
     #[cfg(target_os = "macos")]
     {
-        if let Ok(output) = std::process::Command::new("system_profiler")
-            .arg("SPDisplaysDataType")
-            .output()
-        {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                return parse_macos_displays(&stdout);
-            }
-        }
-        Vec::new()
+        crate::macos_ffi::get_displays()
     }
 
     #[cfg(target_os = "windows")]
