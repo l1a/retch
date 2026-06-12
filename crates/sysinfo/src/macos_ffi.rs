@@ -647,7 +647,7 @@ pub fn get_hid_gamepads() -> Vec<String> {
     let mut gamepads = Vec::new();
     for usage in [0x04u32, 0x05u32] {
         // Enumerate separately for joystick and gamepad usages
-        let mut found = enumerate_hid_usage(0x01, usage);
+        let mut found = unsafe { enumerate_hid_usage(0x01, usage) };
         for name in found.drain(..) {
             if !gamepads.contains(&name) {
                 gamepads.push(name);
