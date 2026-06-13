@@ -61,6 +61,13 @@
 - **WiFi & Bluetooth**: Integrated detailed connection parameters, link rates, MLO bands, adapter hardware names, power states, and connected Bluetooth device profiles.
 - **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
 
+## Future Work / Backlog
+
+- **Package repository submissions**: Submit retch to AUR (Arch User Repository) and nixpkgs so it appears in the [Repology](https://repology.org/project/retch/versions) packaging status widget. The Nix flake (contributed by @quixaq) is a useful starting point for the nixpkgs submission.
+- **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
+- **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
+- **crates.io publish**: Publish `retch-sysinfo` and `retch-cli` to crates.io (pending post-release testing). Publish `retch-sysinfo` first.
+
 ## Major Achievements
 
 ### v0.3.17 - macOS Native Probes: Process-Spawn Elimination Complete (June 13, 2026)
