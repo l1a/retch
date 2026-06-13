@@ -238,19 +238,7 @@ pub(crate) fn detect_ui_theme_and_fonts() -> (
     Option<String>,
     Option<String>,
 ) {
-    let interface_style = std::process::Command::new("defaults")
-        .args(["read", "-g", "AppleInterfaceStyle"])
-        .output()
-        .ok()
-        .and_then(|o| {
-            if o.status.success() {
-                Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
-            } else {
-                None
-            }
-        });
-
-    let theme = match interface_style {
+    let theme = match crate::macos_ffi::get_macos_appearance() {
         Some(style) => Some(format!("Aqua ({})", style)),
         None => Some("Aqua (Light)".to_string()),
     };

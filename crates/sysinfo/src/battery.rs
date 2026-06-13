@@ -135,54 +135,10 @@ pub fn get_battery_info() -> Option<BatteryInfo> {
 
 #[cfg(target_os = "macos")]
 pub fn get_battery_info() -> Option<BatteryInfo> {
-    let output = std::process::Command::new("ioreg")
-        .args(["-r", "-c", "AppleSmartBattery"])
-        .output()
-        .ok()?;
+    let raw = crate::macos_ffi::get_battery_raw()?;
 
-    if !output.status.success() {
-        return None;
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    if stdout.trim().is_empty() {
-        return None;
-    }
-
-    let mut current_capacity: Option<f32> = None;
-    let mut max_capacity: Option<f32> = None;
-    let mut raw_max_capacity: Option<f32> = None;
-    let mut design_capacity: Option<f32> = None;
-    let mut is_charging = false;
-    let mut fully_charged = false;
-    let mut time_remaining_mins: Option<i32> = None;
-    let mut vendor: Option<String> = None;
-    let mut model: Option<String> = None;
-
-    for line in stdout.lines() {
-        if let Some(val) = parse_ioreg_line(line, "CurrentCapacity") {
-            current_capacity = val.parse().ok();
-        } else if let Some(val) = parse_ioreg_line(line, "MaxCapacity") {
-            max_capacity = val.parse().ok();
-        } else if let Some(val) = parse_ioreg_line(line, "AppleRawMaxCapacity") {
-            raw_max_capacity = val.parse().ok();
-        } else if let Some(val) = parse_ioreg_line(line, "DesignCapacity") {
-            design_capacity = val.parse().ok();
-        } else if let Some(val) = parse_ioreg_line(line, "IsCharging") {
-            is_charging = val == "Yes";
-        } else if let Some(val) = parse_ioreg_line(line, "FullyCharged") {
-            fully_charged = val == "Yes";
-        } else if let Some(val) = parse_ioreg_line(line, "TimeRemaining") {
-            time_remaining_mins = val.parse().ok();
-        } else if let Some(val) = parse_ioreg_line(line, "Manufacturer") {
-            vendor = Some(val);
-        } else if let Some(val) = parse_ioreg_line(line, "DeviceName") {
-            model = Some(val);
-        }
-    }
-
-    let max_cap = max_capacity?;
-    let cur_cap = current_capacity?;
+    let max_cap = raw.max_mah? as f32;
+    let cur_cap = raw.current_mah? as f32;
 
     let percentage = if max_cap > 0.0 {
         (cur_cap / max_cap) * 100.0
@@ -190,52 +146,34 @@ pub fn get_battery_info() -> Option<BatteryInfo> {
         0.0
     };
 
-    let mut health = None;
-    if let Some(design_cap) = design_capacity {
-        if design_cap > 0.0 {
-            let h_max = raw_max_capacity.or(max_capacity);
-            if let Some(health_max) = h_max {
-                health = Some((health_max / design_cap) * 100.0);
-            }
+    let health = raw.design_mah.and_then(|design| {
+        if design == 0 {
+            return None;
         }
-    }
+        let h_max = raw.raw_max_mah.or(raw.max_mah)? as f32;
+        Some((h_max / design as f32) * 100.0)
+    });
 
-    let state = if fully_charged {
+    let state = if raw.fully_charged {
         BatteryState::Full
-    } else if is_charging {
+    } else if raw.is_charging {
         BatteryState::Charging
     } else {
         BatteryState::Discharging
     };
 
-    let mut time_remaining = None;
-    if let Some(mins) = time_remaining_mins {
-        if mins > 0 && mins < 65535 {
-            time_remaining = Some(std::time::Duration::from_secs((mins * 60) as u64));
-        }
-    }
+    let time_remaining = raw
+        .time_remaining_mins
+        .map(|m| std::time::Duration::from_secs(m * 60));
 
     Some(BatteryInfo {
         percentage,
         health,
         state,
         time_remaining,
-        vendor,
-        model,
+        vendor: raw.vendor,
+        model: raw.model,
     })
-}
-
-#[cfg(target_os = "macos")]
-fn parse_ioreg_line(line: &str, key: &str) -> Option<String> {
-    if let Some(pos) = line.find(&format!("\"{}\"", key)) {
-        let after_key = &line[pos + key.len() + 2..];
-        if let Some(equals_pos) = after_key.find('=') {
-            let val = &after_key[equals_pos + 1..];
-            let val = val.trim().trim_matches('"');
-            return Some(val.to_string());
-        }
-    }
-    None
 }
 
 #[cfg(target_os = "windows")]
@@ -355,28 +293,4 @@ fn read_file_to_string<P: AsRef<Path>>(path: P) -> Option<String> {
 #[cfg(target_os = "linux")]
 fn read_file_to_num<T: std::str::FromStr, P: AsRef<Path>>(path: P) -> Option<T> {
     read_file_to_string(path).and_then(|s| s.parse().ok())
-}
-
-#[cfg(test)]
-mod tests {
-    #[cfg(target_os = "macos")]
-    use super::parse_ioreg_line;
-
-    #[test]
-    #[cfg(target_os = "macos")]
-    fn test_parse_ioreg_line() {
-        let line = r#"    | "MaxCapacity" = 5000"#;
-        assert_eq!(
-            parse_ioreg_line(line, "MaxCapacity"),
-            Some("5000".to_string())
-        );
-
-        let line_str = r#"    | "DeviceName" = "DELL BATTERY""#;
-        assert_eq!(
-            parse_ioreg_line(line_str, "DeviceName"),
-            Some("DELL BATTERY".to_string())
-        );
-
-        assert_eq!(parse_ioreg_line(line, "MissingKey"), None);
-    }
 }

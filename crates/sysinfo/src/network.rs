@@ -329,15 +329,7 @@ pub fn detect_wifi() -> Option<String> {
 
     #[cfg(target_os = "macos")]
     {
-        if let Ok(output) = std::process::Command::new("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport")
-            .arg("-I")
-            .output()
-        {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                return parse_airport_output(&stdout);
-            }
-        }
-        None
+        crate::macos_ffi::get_wifi_ssid()
     }
 
     #[cfg(target_os = "windows")]
@@ -501,41 +493,6 @@ pub fn parse_iw_link_output(stdout: &str) -> (Option<String>, Vec<WifiLink>) {
 }
 
 #[allow(dead_code)]
-pub fn parse_airport_output(stdout: &str) -> Option<String> {
-    let mut ssid = None;
-    let mut rate = None;
-    for line in stdout.lines() {
-        let trimmed = line.trim();
-        if trimmed.starts_with("SSID:") {
-            let val = trimmed.strip_prefix("SSID:").unwrap().trim().to_string();
-            if !val.is_empty() {
-                ssid = Some(val);
-            }
-        } else if trimmed.starts_with("lastTxRate:") {
-            let val = trimmed
-                .strip_prefix("lastTxRate:")
-                .unwrap()
-                .trim()
-                .to_string();
-            if !val.is_empty() {
-                rate = Some(val);
-            }
-        }
-    }
-    match (ssid, rate) {
-        (Some(s), Some(r)) => {
-            if r != "0" && !r.starts_with("0 ") && r != "0 Mbps" && r != "0 Mbit/s" {
-                Some(format!("{} (↑{} Mbps)", s, r))
-            } else {
-                Some(s)
-            }
-        }
-        (Some(s), None) => Some(s),
-        _ => None,
-    }
-}
-
-#[allow(dead_code)]
 pub fn parse_netsh_output(stdout: &str) -> Option<String> {
     let mut ssid = None;
     let mut rx = None;
@@ -626,21 +583,6 @@ mod tests {
             "Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT\n\
                                  wlan0\t0000A8C0\t00000000\t0001\t0\t0\t600\t0000FFFF\t0\t0\t0\n";
         assert_eq!(parse_proc_net_route(sample_no_default), None);
-    }
-
-    #[test]
-    fn test_parse_airport_output() {
-        let sample = "     agrCtlRSSI: -45\n     lastTxRate: 866\n           SSID: MyHomeWiFi\n";
-        assert_eq!(
-            parse_airport_output(sample),
-            Some("MyHomeWiFi (↑866 Mbps)".to_string())
-        );
-
-        let sample_no_rate = "     agrCtlRSSI: -45\n           SSID: GuestNetwork\n";
-        assert_eq!(
-            parse_airport_output(sample_no_rate),
-            Some("GuestNetwork".to_string())
-        );
     }
 
     #[test]

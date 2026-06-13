@@ -45,7 +45,7 @@
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
 
-## Current State (v0.3.16)
+## Current State (v0.3.17)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -62,6 +62,13 @@
 - **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
 
 ## Major Achievements
+
+### v0.3.17 - macOS Native Probes: Process-Spawn Elimination Complete (June 13, 2026)
+- **Battery**: Replaced `ioreg -r -c AppleSmartBattery` process spawn with direct IOKit `AppleSmartBattery` service enumeration via `IOServiceMatching` + `IORegistryEntryCreateCFProperty`. All fields (capacity, health, charge state, time remaining, vendor, model) read natively.
+- **Theme**: Replaced `defaults read -g AppleInterfaceStyle` process spawn with `CFPreferencesCopyValue(kCFPreferencesAnyApplication, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)` CoreFoundation FFI.
+- **WiFi**: Replaced private `airport -I` binary with `SCDynamicStoreCopyValue` from the SystemConfiguration framework, reading `State:/Network/Interface/<iface>/AirPort` for the `SSID_STR` key. New framework dependency: SystemConfiguration (added to `build.rs`).
+- **Zero process spawns on macOS** — all detection is now native framework FFI (CoreFoundation, IOKit, CoreAudio, CoreGraphics, SystemConfiguration).
+- **Version**: Bumped to `0.3.17` / `retch-sysinfo 0.1.17`.
 
 ### v0.3.16 - macOS Native Probes: system_profiler Elimination (June 11, 2026)
 - **New Module**: Added `crates/sysinfo/src/macos_ffi.rs` — a safe FFI wrapper for CoreFoundation, IOKit, CoreAudio, and CoreGraphics. Follows the `win_reg.rs` pattern: raw `extern "C"` blocks at module level followed by safe public functions.

@@ -62,7 +62,18 @@ extern "C" {
         value_ptr: *const c_void,
     ) -> CFNumberRef;
     pub fn CFDictionarySetValue(the_dict: CFMutableDictionaryRef, key: CFTypeRef, value: CFTypeRef);
+    pub fn CFDictionaryGetValue(dict: CFDictionaryRef, key: CFTypeRef) -> CFTypeRef;
     pub fn CFRelease(cf: CFTypeRef);
+
+    pub static kCFPreferencesAnyApplication: CFStringRef;
+    pub static kCFPreferencesCurrentUser: CFStringRef;
+    pub static kCFPreferencesAnyHost: CFStringRef;
+    pub fn CFPreferencesCopyValue(
+        key: CFStringRef,
+        application_id: CFStringRef,
+        user_name: CFStringRef,
+        host_name: CFStringRef,
+    ) -> CFTypeRef;
 }
 
 // ─── CoreFoundation safe helpers ─────────────────────────────────────────────
@@ -734,5 +745,154 @@ pub fn get_bluetooth_state() -> Option<(bool, Option<String>)> {
             .or_else(|| iokit_property_as_string(service, "ChipsetString"));
         IOObjectRelease(service);
         Some((power, chipset))
+    }
+}
+
+// ─── IOKit — Battery (AppleSmartBattery) ─────────────────────────────────────
+
+/// Raw battery data read directly from the AppleSmartBattery IOKit service.
+pub struct MacBatteryRaw {
+    pub current_mah: Option<u64>,
+    pub max_mah: Option<u64>,
+    pub raw_max_mah: Option<u64>,
+    pub design_mah: Option<u64>,
+    pub is_charging: bool,
+    pub fully_charged: bool,
+    /// Minutes remaining; None if unknown (65535) or unavailable.
+    pub time_remaining_mins: Option<u64>,
+    pub vendor: Option<String>,
+    pub model: Option<String>,
+}
+
+/// Read battery data from the AppleSmartBattery IOKit service.
+pub fn get_battery_raw() -> Option<MacBatteryRaw> {
+    unsafe {
+        let svc_name = CString::new("AppleSmartBattery").unwrap();
+        let matching = IOServiceMatching(svc_name.as_ptr());
+        if matching.is_null() {
+            return None;
+        }
+        let service = IOServiceGetMatchingService(IOKIT_MAIN_PORT, matching as CFDictionaryRef);
+        if service == MACH_PORT_NULL {
+            return None;
+        }
+
+        let current_mah = iokit_property_as_u64(service, "CurrentCapacity");
+        let max_mah = iokit_property_as_u64(service, "MaxCapacity");
+        let raw_max_mah = iokit_property_as_u64(service, "AppleRawMaxCapacity");
+        let design_mah = iokit_property_as_u64(service, "DesignCapacity");
+        let is_charging = iokit_property_as_bool(service, "IsCharging").unwrap_or(false);
+        let fully_charged = iokit_property_as_bool(service, "FullyCharged").unwrap_or(false);
+        // 65535 means unknown/unlimited (AC connected with no estimate); filter it out.
+        let time_remaining_mins =
+            iokit_property_as_u64(service, "TimeRemaining").filter(|&m| m < 65535);
+        let vendor = iokit_property_as_string(service, "Manufacturer");
+        let model = iokit_property_as_string(service, "DeviceName");
+
+        IOObjectRelease(service);
+
+        if current_mah.is_none() && max_mah.is_none() {
+            return None;
+        }
+
+        Some(MacBatteryRaw {
+            current_mah,
+            max_mah,
+            raw_max_mah,
+            design_mah,
+            is_charging,
+            fully_charged,
+            time_remaining_mins,
+            vendor,
+            model,
+        })
+    }
+}
+
+// ─── CoreFoundation — Preferences (theme) ────────────────────────────────────
+
+/// Read the macOS appearance preference ("Dark" or nil for Light) from the global domain.
+/// Equivalent to `defaults read -g AppleInterfaceStyle`.
+pub fn get_macos_appearance() -> Option<String> {
+    unsafe {
+        with_cfstring("AppleInterfaceStyle", |key| {
+            let val = CFPreferencesCopyValue(
+                key,
+                kCFPreferencesAnyApplication,
+                kCFPreferencesCurrentUser,
+                kCFPreferencesAnyHost,
+            );
+            if val.is_null() {
+                return None;
+            }
+            let _owned = OwnedCF(val);
+            if CFGetTypeID(val) == CFStringGetTypeID() {
+                cf_string_to_rust(val as CFStringRef)
+            } else {
+                None
+            }
+        })
+    }
+}
+
+// ─── SystemConfiguration — Wi-Fi ─────────────────────────────────────────────
+
+type SCDynamicStoreRef = *const c_void;
+
+#[link(name = "SystemConfiguration", kind = "framework")]
+extern "C" {
+    fn SCDynamicStoreCreate(
+        allocator: CFAllocatorRef,
+        name: CFStringRef,
+        callout: *const c_void,
+        context: *const c_void,
+    ) -> SCDynamicStoreRef;
+    fn SCDynamicStoreCopyValue(store: SCDynamicStoreRef, key: CFStringRef) -> CFTypeRef;
+}
+
+/// Return the SSID of the connected Wi-Fi network, if any.
+/// Uses the SystemConfiguration dynamic store; tries common interface names en0–en3.
+pub fn get_wifi_ssid() -> Option<String> {
+    unsafe {
+        with_cfstring("retch", |name| {
+            let store = SCDynamicStoreCreate(
+                kCFAllocatorDefault as CFAllocatorRef,
+                name,
+                ptr::null(),
+                ptr::null(),
+            );
+            if store.is_null() {
+                return None;
+            }
+            let _store_owned = OwnedCF(store as CFTypeRef);
+
+            for iface in ["en0", "en1", "en2", "en3"] {
+                let key_str = format!("State:/Network/Interface/{}/AirPort", iface);
+                let result = with_cfstring(&key_str, |key| {
+                    let dict = SCDynamicStoreCopyValue(store, key);
+                    if dict.is_null() {
+                        return None;
+                    }
+                    let _dict_owned = OwnedCF(dict);
+                    // SSID_STR is the human-readable SSID as a CFString
+                    with_cfstring("SSID_STR", |ssid_key| {
+                        let ssid_ref =
+                            CFDictionaryGetValue(dict as CFDictionaryRef, ssid_key as CFTypeRef);
+                        if ssid_ref.is_null() {
+                            return None;
+                        }
+                        if CFGetTypeID(ssid_ref) == CFStringGetTypeID() {
+                            cf_string_to_rust(ssid_ref as CFStringRef)
+                        } else {
+                            None
+                        }
+                    })
+                });
+                if result.is_some() {
+                    return result;
+                }
+            }
+            None
+        })
     }
 }
