@@ -850,9 +850,16 @@ extern "C" {
     fn SCDynamicStoreCopyValue(store: SCDynamicStoreRef, key: CFStringRef) -> CFTypeRef;
 }
 
-/// Return the SSID of the connected Wi-Fi network, if any.
-/// Uses the SystemConfiguration dynamic store; tries common interface names en0–en3.
-pub fn get_wifi_ssid() -> Option<String> {
+/// Return `(ssid, rate_mbps)` for the connected Wi-Fi network.
+/// SSID comes from the SystemConfiguration dynamic store (en0–en3).
+/// Link rate comes from the IO80211Interface IOKit service.
+pub fn get_wifi_info() -> Option<(String, Option<u64>)> {
+    let ssid = get_wifi_ssid_sc()?;
+    let rate = get_wifi_rate_iokit();
+    Some((ssid, rate))
+}
+
+fn get_wifi_ssid_sc() -> Option<String> {
     unsafe {
         with_cfstring("retch", |name| {
             let store = SCDynamicStoreCreate(
@@ -874,7 +881,6 @@ pub fn get_wifi_ssid() -> Option<String> {
                         return None;
                     }
                     let _dict_owned = OwnedCF(dict);
-                    // SSID_STR is the human-readable SSID as a CFString
                     with_cfstring("SSID_STR", |ssid_key| {
                         let ssid_ref =
                             CFDictionaryGetValue(dict as CFDictionaryRef, ssid_key as CFTypeRef);
@@ -894,5 +900,40 @@ pub fn get_wifi_ssid() -> Option<String> {
             }
             None
         })
+    }
+}
+
+/// Try to read the current Wi-Fi transmit rate in Mbps from the IO80211Interface IOKit service.
+fn get_wifi_rate_iokit() -> Option<u64> {
+    unsafe {
+        let iface_name = CString::new("IO80211Interface").unwrap();
+        let matching = IOServiceMatching(iface_name.as_ptr());
+        if matching.is_null() {
+            return None;
+        }
+        let mut iter: IOIterator = MACH_PORT_NULL;
+        if IOServiceGetMatchingServices(IOKIT_MAIN_PORT, matching as CFDictionaryRef, &mut iter)
+            != 0
+        {
+            return None;
+        }
+        let mut rate = None;
+        loop {
+            let service = IOIteratorNext(iter);
+            if service == MACH_PORT_NULL {
+                break;
+            }
+            let r = iokit_property_as_u64(service, "IO80211TxRate")
+                .or_else(|| iokit_property_as_u64(service, "IO80211LastTxRate"))
+                .or_else(|| iokit_property_as_u64(service, "IO80211CurrentNetworkRate"));
+            IOObjectRelease(service);
+            if let Some(v) = r {
+                // Values > 100_000 are likely in bps rather than Mbps — normalise.
+                rate = Some(if v > 100_000 { v / 1_000_000 } else { v });
+                break;
+            }
+        }
+        IOObjectRelease(iter);
+        rate
     }
 }
