@@ -147,21 +147,6 @@ fn bench_parse_iw_link_output(c: &mut Criterion) {
     });
 }
 
-/// Benchmark macOS `airport -I` output parsing (macOS only).
-#[cfg(target_os = "macos")]
-fn bench_parse_airport_output(c: &mut Criterion) {
-    let sample = "     agrCtlRSSI: -55\n\
-                       SSID: MyNetwork\n\
-                    lastTxRate: 433\n\
-                       channel: 36,80\n";
-
-    c.bench_function("network::parse_airport_output", |b| {
-        b.iter(|| {
-            let _ = network::parse_airport_output(sample);
-        });
-    });
-}
-
 /// Benchmark Windows `netsh wlan show interfaces` output parsing (Windows only).
 #[cfg(target_os = "windows")]
 fn bench_parse_netsh_output(c: &mut Criterion) {
@@ -254,7 +239,6 @@ criterion_group! {
               bench_parse_refresh_rate_from_edid,
               bench_parse_serial_number_from_edid,
               bench_parse_iw_link_output,
-              bench_parse_airport_output,
               bench_parse_macos_camera,
               bench_parse_macos_gamepad
 }
