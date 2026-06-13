@@ -850,12 +850,29 @@ extern "C" {
     fn SCDynamicStoreCopyValue(store: SCDynamicStoreRef, key: CFStringRef) -> CFTypeRef;
 }
 
+// ─── CoreWLAN — Wi-Fi link rate ──────────────────────────────────────────────
+
+#[link(name = "CoreWLAN", kind = "framework")]
+extern "C" {}
+
+#[link(name = "objc")]
+extern "C" {
+    fn objc_getClass(name: *const i8) -> *mut c_void;
+    fn sel_registerName(str: *const i8) -> *mut c_void;
+    fn objc_msgSend(self_: *mut c_void, op: *mut c_void, ...) -> *mut c_void;
+}
+
+extern "C" {
+    #[link_name = "objc_msgSend"]
+    fn objc_msgSend_f64(self_: *mut c_void, op: *mut c_void) -> f64;
+}
+
 /// Return `(ssid, rate_mbps)` for the connected Wi-Fi network.
 /// SSID comes from the SystemConfiguration dynamic store (en0–en3).
-/// Link rate comes from the IO80211Interface IOKit service.
+/// Link rate comes from CoreWLAN `CWInterface.transmitRate`.
 pub fn get_wifi_info() -> Option<(String, Option<u64>)> {
     let ssid = get_wifi_ssid_sc()?;
-    let rate = get_wifi_rate_iokit();
+    let rate = get_wifi_rate_corewlan();
     Some((ssid, rate))
 }
 
@@ -903,37 +920,35 @@ fn get_wifi_ssid_sc() -> Option<String> {
     }
 }
 
-/// Try to read the current Wi-Fi transmit rate in Mbps from the IO80211Interface IOKit service.
-fn get_wifi_rate_iokit() -> Option<u64> {
+/// Read the current Wi-Fi transmit rate in Mbps via CoreWLAN.
+/// `IO80211Interface` IOKit properties are restricted on macOS 12+; CoreWLAN
+/// `CWInterface.transmitRate` is the supported API.
+fn get_wifi_rate_corewlan() -> Option<u64> {
     unsafe {
-        let iface_name = CString::new("IO80211Interface").unwrap();
-        let matching = IOServiceMatching(iface_name.as_ptr());
-        if matching.is_null() {
+        let cls_name = CString::new("CWWiFiClient").unwrap();
+        let cls = objc_getClass(cls_name.as_ptr());
+        if cls.is_null() {
             return None;
         }
-        let mut iter: IOIterator = MACH_PORT_NULL;
-        if IOServiceGetMatchingServices(IOKIT_MAIN_PORT, matching as CFDictionaryRef, &mut iter)
-            != 0
-        {
+        let shared_name = CString::new("sharedWiFiClient").unwrap();
+        let shared_sel = sel_registerName(shared_name.as_ptr());
+        let client = objc_msgSend(cls, shared_sel);
+        if client.is_null() {
             return None;
         }
-        let mut rate = None;
-        loop {
-            let service = IOIteratorNext(iter);
-            if service == MACH_PORT_NULL {
-                break;
-            }
-            let r = iokit_property_as_u64(service, "IO80211TxRate")
-                .or_else(|| iokit_property_as_u64(service, "IO80211LastTxRate"))
-                .or_else(|| iokit_property_as_u64(service, "IO80211CurrentNetworkRate"));
-            IOObjectRelease(service);
-            if let Some(v) = r {
-                // Values > 100_000 are likely in bps rather than Mbps — normalise.
-                rate = Some(if v > 100_000 { v / 1_000_000 } else { v });
-                break;
-            }
+        let iface_name = CString::new("interface").unwrap();
+        let iface_sel = sel_registerName(iface_name.as_ptr());
+        let iface = objc_msgSend(client, iface_sel);
+        if iface.is_null() {
+            return None;
         }
-        IOObjectRelease(iter);
-        rate
+        let rate_name = CString::new("transmitRate").unwrap();
+        let rate_sel = sel_registerName(rate_name.as_ptr());
+        let rate = objc_msgSend_f64(iface, rate_sel);
+        if rate > 0.0 {
+            Some(rate as u64)
+        } else {
+            None
+        }
     }
 }
