@@ -147,7 +147,6 @@ fn bench_parse_iw_link_output(c: &mut Criterion) {
     });
 }
 
-
 /// Benchmark Windows `netsh wlan show interfaces` output parsing (Windows only).
 #[cfg(target_os = "windows")]
 fn bench_parse_netsh_output(c: &mut Criterion) {
