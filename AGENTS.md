@@ -73,7 +73,7 @@
 ### v0.3.17 - macOS Native Probes: Process-Spawn Elimination Complete (June 13, 2026)
 - **Battery**: Replaced `ioreg -r -c AppleSmartBattery` process spawn with direct IOKit `AppleSmartBattery` service enumeration via `IOServiceMatching` + `IORegistryEntryCreateCFProperty`. All fields (capacity, health, charge state, time remaining, vendor, model) read natively.
 - **Theme**: Replaced `defaults read -g AppleInterfaceStyle` process spawn with `CFPreferencesCopyValue(kCFPreferencesAnyApplication, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)` CoreFoundation FFI.
-- **WiFi**: Replaced private `airport -I` binary with `SCDynamicStoreCopyValue` from the SystemConfiguration framework, reading `State:/Network/Interface/<iface>/AirPort` for the `SSID_STR` key. New framework dependency: SystemConfiguration (added to `build.rs`).
+- **WiFi**: Replaced private `airport -I` binary with `SCDynamicStoreCopyValue` from the SystemConfiguration framework, reading `State:/Network/Interface/<iface>/AirPort` for the `SSID_STR` key. New framework dependency: SystemConfiguration (added to `build.rs`). Link rate restored via `IO80211Interface` IOKit service (`IO80211TxRate` / `IO80211LastTxRate`); displayed as `SSID (↑N Mbps)` when available.
 - **Zero process spawns on macOS** — all detection is now native framework FFI (CoreFoundation, IOKit, CoreAudio, CoreGraphics, SystemConfiguration).
 - **Version**: Bumped to `0.3.17` / `retch-sysinfo 0.1.17`.
 
