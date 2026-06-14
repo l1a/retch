@@ -26,7 +26,7 @@ retch is under active development with a working core, rich system information o
   - **Disks & Temp**: Measures active disk mounts (hiding loopback/temporary volumes) and temperature sensors.
 - **Advanced Networking & Wireless**:
   - **Network Interfaces**: Outputs IPv4 & IPv6 addresses for active interfaces.
-  - **Wi-Fi**: Details SSID, band frequency, channel, RX/TX link rates, adapter hardware, and Wi-Fi 7 Multi-Link Operation (MLO) bands.
+  - **Wi-Fi**: Details SSID, band frequency, channel, link rates (RX/TX on Linux, TX-only on macOS), adapter hardware, and Wi-Fi 7 Multi-Link Operation (MLO) bands.
   - **Bluetooth**: Reports adapter controller state, manufacturer/model, and connected device names/counts.
 - **Battery Info**: Uses a custom, native implementation (no heavy dependencies) to extract capacity, vendor/model, time remaining, and battery health.
 - **Software & Desktop Environment**:
