@@ -835,6 +835,10 @@ pub fn get_macos_appearance() -> Option<String> {
 }
 
 // ─── CoreWLAN — Wi-Fi SSID and link rate ─────────────────────────────────────
+//
+// The SystemConfiguration dynamic store key `State:/Network/Interface/*/AirPort`
+// is not populated on macOS 15 Sequoia, so we use CoreWLAN for both SSID and
+// transmit rate. `NSString` is toll-free bridged with `CFStringRef`.
 
 #[link(name = "CoreWLAN", kind = "framework")]
 extern "C" {}
@@ -853,8 +857,13 @@ extern "C" {
 }
 
 /// Return `(ssid, rate_mbps)` for the connected Wi-Fi network via CoreWLAN.
-/// `CWInterface.ssid` and `.transmitRate` work for unsigned CLI tools on macOS 15;
-/// the SC dynamic store AirPort key is no longer populated on Sequoia.
+///
+/// macOS 10.15+ restricts SSID access to processes with Location Services
+/// authorization. `CWInterface.ssid` returns nil and `ipconfig getsummary`
+/// returns the literal string `<redacted>` when authorization is absent.
+/// When the SSID is genuinely unavailable but `transmitRate > 0` confirms an
+/// active association, we return `"Connected"` as the display name so the
+/// Wi-Fi line still appears with the rate.
 pub fn get_wifi_info() -> Option<(String, Option<u64>)> {
     unsafe {
         let cls_name = CString::new("CWWiFiClient").unwrap();
@@ -862,34 +871,98 @@ pub fn get_wifi_info() -> Option<(String, Option<u64>)> {
         if cls.is_null() {
             return None;
         }
-        let shared_name = CString::new("sharedWiFiClient").unwrap();
-        let shared_sel = sel_registerName(shared_name.as_ptr());
+        let shared_sel = sel_registerName(CString::new("sharedWiFiClient").unwrap().as_ptr());
         let client = objc_msgSend(cls, shared_sel);
         if client.is_null() {
             return None;
         }
-        let iface_sel_name = CString::new("interface").unwrap();
-        let iface_sel = sel_registerName(iface_sel_name.as_ptr());
+        let iface_sel = sel_registerName(CString::new("interface").unwrap().as_ptr());
         let iface = objc_msgSend(client, iface_sel);
         if iface.is_null() {
             return None;
         }
 
+        // transmitRate does not require Location Services.
+        let rate_sel = sel_registerName(CString::new("transmitRate").unwrap().as_ptr());
+        let rate_f = objc_msgSend_f64(iface, rate_sel);
+        let rate = if rate_f > 0.0 {
+            Some(rate_f as u64)
+        } else {
+            None
+        };
+
         // SSID: NSString is toll-free bridged with CFString.
-        let ssid_sel_name = CString::new("ssid").unwrap();
-        let ssid_sel = sel_registerName(ssid_sel_name.as_ptr());
+        // Returns nil when Location Services is not granted.
+        let ssid_sel = sel_registerName(CString::new("ssid").unwrap().as_ptr());
         let ssid_ns = objc_msgSend(iface, ssid_sel) as CFStringRef;
-        if ssid_ns.is_null() {
-            return None;
+        if let Some(ssid) = cf_string_to_rust(ssid_ns) {
+            return Some((ssid, rate));
         }
-        let ssid = cf_string_to_rust(ssid_ns)?;
 
-        // Transmit rate (Mbps as f64).
-        let rate_name = CString::new("transmitRate").unwrap();
-        let rate_sel = sel_registerName(rate_name.as_ptr());
-        let rate = objc_msgSend_f64(iface, rate_sel);
-        let rate = if rate > 0.0 { Some(rate as u64) } else { None };
+        // Fallback: read SSID from configd via ipconfig getsummary <iface>.
+        // On macOS 10.15+ without Location Services, ipconfig returns the
+        // literal string "<redacted>" — filter that out.
+        let iface_name_sel = sel_registerName(CString::new("interfaceName").unwrap().as_ptr());
+        let iface_name_ns = objc_msgSend(iface, iface_name_sel) as CFStringRef;
+        let iface_bsd = cf_string_to_rust(iface_name_ns).unwrap_or_else(|| "en0".to_string());
 
-        Some((ssid, rate))
+        if let Ok(out) = std::process::Command::new("/usr/sbin/ipconfig")
+            .args(["getsummary", &iface_bsd])
+            .output()
+        {
+            let text = String::from_utf8_lossy(&out.stdout);
+            if let Some(ssid) = parse_ipconfig_ssid(&text) {
+                return Some((ssid, rate));
+            }
+        }
+
+        // SSID unavailable (Location Services not granted). If the rate
+        // confirms an active association, surface that rather than hiding
+        // the Wi-Fi line entirely.
+        rate.map(|r| ("Connected".to_string(), Some(r)))
+    }
+}
+
+/// Parse the SSID from `ipconfig getsummary <iface>` output.
+///
+/// Returns `None` when the SSID line is absent, empty, or the literal string
+/// `<redacted>` (which macOS substitutes when Location Services is not
+/// granted to the calling process).
+pub fn parse_ipconfig_ssid(output: &str) -> Option<String> {
+    output
+        .lines()
+        .find_map(|l| {
+            l.trim()
+                .strip_prefix("SSID :")
+                .map(|s| s.trim().to_string())
+        })
+        .filter(|s| !s.is_empty() && s != "<redacted>")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_ipconfig_ssid() {
+        let normal = "  SSID : MyNetwork\n  BSSID : aa:bb:cc:dd:ee:ff\n";
+        assert_eq!(parse_ipconfig_ssid(normal), Some("MyNetwork".to_string()));
+
+        // macOS 10.15+ redacts SSID when Location Services is not granted
+        let redacted = "  BSSID : <redacted>\n  SSID : <redacted>\n";
+        assert_eq!(parse_ipconfig_ssid(redacted), None);
+
+        // SSID with spaces must be preserved
+        let spaces = "  SSID : My Home Network\n";
+        assert_eq!(
+            parse_ipconfig_ssid(spaces),
+            Some("My Home Network".to_string())
+        );
+
+        let empty_value = "  SSID : \n";
+        assert_eq!(parse_ipconfig_ssid(empty_value), None);
+
+        let no_ssid = "  BSSID : aa:bb:cc:dd:ee:ff\n  Channel : 149\n";
+        assert_eq!(parse_ipconfig_ssid(no_ssid), None);
     }
 }

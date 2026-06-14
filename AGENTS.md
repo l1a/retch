@@ -45,20 +45,20 @@
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
 
-## Current State (v0.3.17)
+## Current State (v0.3.18)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
 - **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
-- **Quality**: Strict `just check` (fmt + lint), unit test coverage (35 `retch-sysinfo` and 26 `retch-cli` passing unit tests), and automated CLI integration test suite (8 tests).
+- **Quality**: Strict `just check` (fmt + lint), unit test coverage (34 `retch-sysinfo` and 26 `retch-cli` passing unit tests), and automated CLI integration test suite (8 tests).
 - **CI/CD**: Multi-platform build/testing on Linux (Fedora & Ubuntu), macOS, and Windows. Releases compiled for Fedora (x86_64/ARM), macOS (ARM), and Windows (x86_64/ARM) on native host/container runner environments.
 - **Documentation**: Full internal Rustdoc coverage and updated README/man pages.
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
 - **UX**: Improved error visibility for slow external queries (GPU detection, RPM packages, chafa).
 - **Battery**: Added time remaining, health, vendor/model, and improved formatting.
 - **Network**: Added local IPv4 and larger-scoped IPv6 address display for all "Up" interfaces with loopback and link-local filtering.
-- **WiFi & Bluetooth**: Integrated detailed connection parameters, link rates, MLO bands, adapter hardware names, power states, and connected Bluetooth device profiles.
+- **WiFi & Bluetooth**: Integrated detailed connection parameters, link rates (macOS: TX only via CoreWLAN), MLO bands, adapter hardware names, power states, and connected Bluetooth device profiles.
 - **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
 
 ## Future Work / Backlog
@@ -70,10 +70,19 @@
 
 ## Major Achievements
 
+### v0.3.18 - macOS WiFi: CoreWLAN SSID + Link Rate (June 14, 2026)
+- **WiFi overhaul**: Replaced the broken v0.3.17 approach (SC dynamic store + `IO80211Interface` IOKit) with CoreWLAN Objective-C runtime FFI. Uses `CWWiFiClient.sharedWiFiClient.interface` (`CWInterface`) to read the SSID and transmit rate.
+- **macOS Location Services restriction**: `CWInterface.ssid` returns `nil` and the SC dynamic store `SSID_STR` entry is an empty CFString on macOS 10.15+ when the calling process has not been granted Location Services authorization. `IO80211Interface` IOKit properties are restricted entirely on macOS 12+. Receive rate is not exposed by any public CoreWLAN or IOKit API.
+- **SSID fallback chain**: (1) `CWInterface.ssid` via CoreWLAN (works when Location Services granted); (2) `/usr/sbin/ipconfig getsummary <iface>` which reads from the root-privileged configd daemon (works without Location Services, but macOS substitutes the literal `<redacted>` string when blocked); (3) if both return nil/`<redacted>` but `transmitRate > 0` confirms an active association, displays `"Connected (↑N Mbps)"`.
+- **Transmit rate only**: `CWInterface` exposes only `transmitRate` (TX). No receive rate is available from any public macOS API — `IO80211Interface` IOKit services are absent on macOS 12+, and `class_copyMethodList` on `CWInterface` confirms no private receive-rate method exists.
+- **Framework changes**: Removed `SystemConfiguration` framework dependency; added `CoreWLAN` and `objc` (Objective-C runtime) links. `build.rs` updated accordingly.
+- **Test**: Added `test_parse_ipconfig_ssid` covering normal SSID, `<redacted>`, SSID with spaces, empty value, and missing key.
+- **Version**: Bumped to `0.3.18` / `retch-sysinfo 0.1.18`.
+
 ### v0.3.17 - macOS Native Probes: Process-Spawn Elimination Complete (June 13, 2026)
 - **Battery**: Replaced `ioreg -r -c AppleSmartBattery` process spawn with direct IOKit `AppleSmartBattery` service enumeration via `IOServiceMatching` + `IORegistryEntryCreateCFProperty`. All fields (capacity, health, charge state, time remaining, vendor, model) read natively.
 - **Theme**: Replaced `defaults read -g AppleInterfaceStyle` process spawn with `CFPreferencesCopyValue(kCFPreferencesAnyApplication, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)` CoreFoundation FFI.
-- **WiFi**: Replaced private `airport -I` binary with `SCDynamicStoreCopyValue` from the SystemConfiguration framework, reading `State:/Network/Interface/<iface>/AirPort` for the `SSID_STR` key. New framework dependency: SystemConfiguration (added to `build.rs`). Link rate restored via `IO80211Interface` IOKit service (`IO80211TxRate` / `IO80211LastTxRate`); displayed as `SSID (↑N Mbps)` when available.
+- **WiFi**: Replaced private `airport -I` binary with `SCDynamicStoreCopyValue` from the SystemConfiguration framework, reading `State:/Network/Interface/<iface>/AirPort` for the `SSID_STR` key. Link rate attempted via `IO80211Interface` IOKit service (`IO80211TxRate`). Note: both approaches are broken on macOS 12+/15 Sequoia (SC dynamic store key not populated; IO80211Interface restricted) — fixed in v0.3.18.
 - **Zero process spawns on macOS** — all detection is now native framework FFI (CoreFoundation, IOKit, CoreAudio, CoreGraphics, SystemConfiguration).
 - **Version**: Bumped to `0.3.17` / `retch-sysinfo 0.1.17`.
 
