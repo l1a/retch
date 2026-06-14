@@ -11,6 +11,13 @@ if [ "${GIT_NO_CHECK:-0}" = "1" ]; then
     exit 0
 fi
 
+# Skip for branches that carry no Rust source (e.g. gh-pages).
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+    case "$remote_ref" in
+        refs/heads/gh-pages|gh-pages) exit 0 ;;
+    esac
+done
+
 if ! command -v just &>/dev/null; then
     exit 0
 fi
