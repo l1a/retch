@@ -26,7 +26,6 @@ pub type CFAllocatorRef = *const c_void;
 pub type CFDataRef = *const c_void;
 pub type CFBooleanRef = *const c_void;
 pub type CFNumberRef = *const c_void;
-pub type CFArrayRef = *const c_void;
 #[allow(non_upper_case_globals)]
 pub const kCFNumberSInt32Type: i32 = 3;
 #[allow(non_upper_case_globals)]
@@ -69,9 +68,6 @@ extern "C" {
     pub static kCFPreferencesAnyApplication: CFStringRef;
     pub static kCFPreferencesCurrentUser: CFStringRef;
     pub static kCFPreferencesAnyHost: CFStringRef;
-    pub fn CFArrayGetCount(the_array: CFArrayRef) -> isize;
-    pub fn CFArrayGetValueAtIndex(the_array: CFArrayRef, idx: isize) -> CFTypeRef;
-
     pub fn CFPreferencesCopyValue(
         key: CFStringRef,
         application_id: CFStringRef,
@@ -839,23 +835,7 @@ pub fn get_macos_appearance() -> Option<String> {
     }
 }
 
-// ─── SystemConfiguration — Wi-Fi ─────────────────────────────────────────────
-
-type SCDynamicStoreRef = *const c_void;
-
-#[link(name = "SystemConfiguration", kind = "framework")]
-extern "C" {
-    fn SCDynamicStoreCreate(
-        allocator: CFAllocatorRef,
-        name: CFStringRef,
-        callout: *const c_void,
-        context: *const c_void,
-    ) -> SCDynamicStoreRef;
-    fn SCDynamicStoreCopyValue(store: SCDynamicStoreRef, key: CFStringRef) -> CFTypeRef;
-    fn SCDynamicStoreCopyKeyList(store: SCDynamicStoreRef, pattern: CFStringRef) -> CFArrayRef;
-}
-
-// ─── CoreWLAN — Wi-Fi link rate ──────────────────────────────────────────────
+// ─── CoreWLAN — Wi-Fi SSID and link rate ─────────────────────────────────────
 
 #[link(name = "CoreWLAN", kind = "framework")]
 extern "C" {}
@@ -873,70 +853,10 @@ extern "C" {
     fn objc_msgSend_f64(self_: *mut c_void, op: *mut c_void) -> f64;
 }
 
-/// Return `(ssid, rate_mbps)` for the connected Wi-Fi network.
-/// SSID comes from the SystemConfiguration dynamic store (en0–en3).
-/// Link rate comes from CoreWLAN `CWInterface.transmitRate`.
+/// Return `(ssid, rate_mbps)` for the connected Wi-Fi network via CoreWLAN.
+/// `CWInterface.ssid` and `.transmitRate` work for unsigned CLI tools on macOS 15;
+/// the SC dynamic store AirPort key is no longer populated on Sequoia.
 pub fn get_wifi_info() -> Option<(String, Option<u64>)> {
-    let ssid = get_wifi_ssid_sc()?;
-    let rate = get_wifi_rate_corewlan();
-    Some((ssid, rate))
-}
-
-fn get_wifi_ssid_sc() -> Option<String> {
-    unsafe {
-        with_cfstring("retch", |name| {
-            let store = SCDynamicStoreCreate(
-                kCFAllocatorDefault as CFAllocatorRef,
-                name,
-                ptr::null(),
-                ptr::null(),
-            );
-            if store.is_null() {
-                return None;
-            }
-            let _store_owned = OwnedCF(store as CFTypeRef);
-
-            // Discover all AirPort interface keys rather than guessing interface names.
-            with_cfstring("State:/Network/Interface/.*/AirPort", |pattern| {
-                let keys = SCDynamicStoreCopyKeyList(store, pattern);
-                if keys.is_null() {
-                    return None;
-                }
-                let _keys_owned = OwnedCF(keys);
-                let count = CFArrayGetCount(keys);
-                for i in 0..count {
-                    let key = CFArrayGetValueAtIndex(keys, i) as CFStringRef;
-                    let dict = SCDynamicStoreCopyValue(store, key);
-                    if dict.is_null() {
-                        continue;
-                    }
-                    let _dict_owned = OwnedCF(dict);
-                    let result = with_cfstring("SSID_STR", |ssid_key| {
-                        let ssid_ref =
-                            CFDictionaryGetValue(dict as CFDictionaryRef, ssid_key as CFTypeRef);
-                        if ssid_ref.is_null() {
-                            return None;
-                        }
-                        if CFGetTypeID(ssid_ref) == CFStringGetTypeID() {
-                            cf_string_to_rust(ssid_ref as CFStringRef)
-                        } else {
-                            None
-                        }
-                    });
-                    if result.is_some() {
-                        return result;
-                    }
-                }
-                None
-            })
-        })
-    }
-}
-
-/// Read the current Wi-Fi transmit rate in Mbps via CoreWLAN.
-/// `IO80211Interface` IOKit properties are restricted on macOS 12+; CoreWLAN
-/// `CWInterface.transmitRate` is the supported API.
-fn get_wifi_rate_corewlan() -> Option<u64> {
     unsafe {
         let cls_name = CString::new("CWWiFiClient").unwrap();
         let cls = objc_getClass(cls_name.as_ptr());
@@ -949,19 +869,28 @@ fn get_wifi_rate_corewlan() -> Option<u64> {
         if client.is_null() {
             return None;
         }
-        let iface_name = CString::new("interface").unwrap();
-        let iface_sel = sel_registerName(iface_name.as_ptr());
+        let iface_sel_name = CString::new("interface").unwrap();
+        let iface_sel = sel_registerName(iface_sel_name.as_ptr());
         let iface = objc_msgSend(client, iface_sel);
         if iface.is_null() {
             return None;
         }
+
+        // SSID: NSString is toll-free bridged with CFString.
+        let ssid_sel_name = CString::new("ssid").unwrap();
+        let ssid_sel = sel_registerName(ssid_sel_name.as_ptr());
+        let ssid_ns = objc_msgSend(iface, ssid_sel) as CFStringRef;
+        if ssid_ns.is_null() {
+            return None;
+        }
+        let ssid = cf_string_to_rust(ssid_ns)?;
+
+        // Transmit rate (Mbps as f64).
         let rate_name = CString::new("transmitRate").unwrap();
         let rate_sel = sel_registerName(rate_name.as_ptr());
         let rate = objc_msgSend_f64(iface, rate_sel);
-        if rate > 0.0 {
-            Some(rate as u64)
-        } else {
-            None
-        }
+        let rate = if rate > 0.0 { Some(rate as u64) } else { None };
+
+        Some((ssid, rate))
     }
 }
