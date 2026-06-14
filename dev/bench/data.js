@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781450382788,
+  "lastUpdate": 1781450834257,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -12157,6 +12157,75 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1141627845,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "70165e2478e9da227bdaf759836f8a8a3a63f014",
+          "message": "fix(hooks): skip pre-push check for gh-pages branch\n\ngh-pages carries no Rust source, so running just check from a worktree\nfails with \"Justfile not found\". Read the remote ref from stdin (standard\npre-push protocol) and exit 0 immediately for gh-pages pushes.\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-14T07:53:44-07:00",
+          "tree_id": "eb56eb4960dae3e3ea6b92d0671bc250ba9efd96",
+          "url": "https://github.com/l1a/retch/commit/70165e2478e9da227bdaf759836f8a8a3a63f014"
+        },
+        "date": 1781450831430,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 263060098.00000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1318588097.9999998,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 98.35421307407088,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9477701872717095,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 99.53207751969315,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46102.51588579618,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 504.0446255784115,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 772.8430112473882,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1188926040,
             "unit": "ns"
           }
         ]
