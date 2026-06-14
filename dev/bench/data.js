@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781479015540,
+  "lastUpdate": 1781479467764,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -11182,6 +11182,75 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1210664200,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "66c5e95b9dcd54e66f5cf5b135b3ac38e294a6ba",
+          "message": "fix(bench): gate audio import for non-Linux/non-macOS targets (#91)\n\n`retch_sysinfo::audio` is only used by the `bench_parse_asound_cards`\nbenchmark, which was already cfg-gated. The bare import caused an\nunused-import warning on Windows benchmark runs.\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-14T15:51:27-07:00",
+          "tree_id": "c60d5cb556af666b413c832506d9caa5ba9614d7",
+          "url": "https://github.com/l1a/retch/commit/66c5e95b9dcd54e66f5cf5b135b3ac38e294a6ba"
+        },
+        "date": 1781479465050,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 276357988,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1379640398.0000002,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 98.43522745395099,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947255545971428,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 99.46276206387581,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 43958.35651562094,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 500.50653631012904,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 760.7935141073395,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1224409610,
             "unit": "ns"
           }
         ]
