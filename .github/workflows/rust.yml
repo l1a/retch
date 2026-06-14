@@ -252,3 +252,19 @@ jobs:
             release/retch-windows-arm64.exe
             release/retch.1
           generate_release_notes: true
+
+      - name: Clean up rc pre-releases and prune old releases (keep 10)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.ref_name }}"
+
+          # Delete all rc pre-releases for this version
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName \
+            --jq --arg v "$VERSION" '.[] | select(.tagName | startswith($v + "-rc.")) | .tagName' \
+          | xargs -r -I{} gh release delete {} --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+
+          # Keep only the 10 most recent stable releases
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,isPrerelease \
+            --jq '[.[] | select(.isPrerelease | not)][10:][].tagName' \
+          | xargs -r -I{} gh release delete {} --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
