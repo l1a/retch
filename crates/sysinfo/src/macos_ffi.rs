@@ -62,7 +62,6 @@ extern "C" {
         value_ptr: *const c_void,
     ) -> CFNumberRef;
     pub fn CFDictionarySetValue(the_dict: CFMutableDictionaryRef, key: CFTypeRef, value: CFTypeRef);
-    pub fn CFDictionaryGetValue(dict: CFDictionaryRef, key: CFTypeRef) -> CFTypeRef;
     pub fn CFRelease(cf: CFTypeRef);
 
     pub static kCFPreferencesAnyApplication: CFStringRef;
