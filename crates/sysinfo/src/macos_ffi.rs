@@ -862,6 +862,7 @@ extern "C" {
     fn objc_msgSend(self_: *mut c_void, op: *mut c_void, ...) -> *mut c_void;
 }
 
+#[allow(clashing_extern_declarations)]
 extern "C" {
     #[link_name = "objc_msgSend"]
     fn objc_msgSend_f64(self_: *mut c_void, op: *mut c_void) -> f64;
