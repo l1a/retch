@@ -26,6 +26,7 @@ pub type CFAllocatorRef = *const c_void;
 pub type CFDataRef = *const c_void;
 pub type CFBooleanRef = *const c_void;
 pub type CFNumberRef = *const c_void;
+pub type CFArrayRef = *const c_void;
 #[allow(non_upper_case_globals)]
 pub const kCFNumberSInt32Type: i32 = 3;
 #[allow(non_upper_case_globals)]
@@ -68,6 +69,9 @@ extern "C" {
     pub static kCFPreferencesAnyApplication: CFStringRef;
     pub static kCFPreferencesCurrentUser: CFStringRef;
     pub static kCFPreferencesAnyHost: CFStringRef;
+    pub fn CFArrayGetCount(the_array: CFArrayRef) -> isize;
+    pub fn CFArrayGetValueAtIndex(the_array: CFArrayRef, idx: isize) -> CFTypeRef;
+
     pub fn CFPreferencesCopyValue(
         key: CFStringRef,
         application_id: CFStringRef,
@@ -848,6 +852,7 @@ extern "C" {
         context: *const c_void,
     ) -> SCDynamicStoreRef;
     fn SCDynamicStoreCopyValue(store: SCDynamicStoreRef, key: CFStringRef) -> CFTypeRef;
+    fn SCDynamicStoreCopyKeyList(store: SCDynamicStoreRef, pattern: CFStringRef) -> CFArrayRef;
 }
 
 // ─── CoreWLAN — Wi-Fi link rate ──────────────────────────────────────────────
@@ -891,15 +896,22 @@ fn get_wifi_ssid_sc() -> Option<String> {
             }
             let _store_owned = OwnedCF(store as CFTypeRef);
 
-            for iface in ["en0", "en1", "en2", "en3"] {
-                let key_str = format!("State:/Network/Interface/{}/AirPort", iface);
-                let result = with_cfstring(&key_str, |key| {
+            // Discover all AirPort interface keys rather than guessing interface names.
+            with_cfstring("State:/Network/Interface/.*/AirPort", |pattern| {
+                let keys = SCDynamicStoreCopyKeyList(store, pattern);
+                if keys.is_null() {
+                    return None;
+                }
+                let _keys_owned = OwnedCF(keys);
+                let count = CFArrayGetCount(keys);
+                for i in 0..count {
+                    let key = CFArrayGetValueAtIndex(keys, i) as CFStringRef;
                     let dict = SCDynamicStoreCopyValue(store, key);
                     if dict.is_null() {
-                        return None;
+                        continue;
                     }
                     let _dict_owned = OwnedCF(dict);
-                    with_cfstring("SSID_STR", |ssid_key| {
+                    let result = with_cfstring("SSID_STR", |ssid_key| {
                         let ssid_ref =
                             CFDictionaryGetValue(dict as CFDictionaryRef, ssid_key as CFTypeRef);
                         if ssid_ref.is_null() {
@@ -910,13 +922,13 @@ fn get_wifi_ssid_sc() -> Option<String> {
                         } else {
                             None
                         }
-                    })
-                });
-                if result.is_some() {
-                    return result;
+                    });
+                    if result.is_some() {
+                        return result;
+                    }
                 }
-            }
-            None
+                None
+            })
         })
     }
 }
