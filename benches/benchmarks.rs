@@ -11,6 +11,7 @@ use clap::Parser;
 use retch_cli::cli::Cli;
 use retch_cli::fetch::{CollectOptions, SystemInfo};
 use retch_cli::gpu;
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 use retch_sysinfo::audio;
 #[cfg(target_os = "macos")]
 use retch_sysinfo::camera;
