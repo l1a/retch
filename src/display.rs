@@ -62,6 +62,8 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             "kernel".to_string(),
             "host".to_string(),
             "cpu".to_string(),
+            "cpu-cache".to_string(),
+            "cpu-usage".to_string(),
             "motherboard".to_string(),
             "bios".to_string(),
             "gpu".to_string(),
@@ -118,9 +120,15 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         print_line("User", user);
     }
     print_line("Arch", &info.arch);
-    print_line("CPU", &format!("{} ({} cores)", info.cpu, info.cpu_cores));
+    print_line("CPU", &format!("{} ({})", info.cpu, info.cpu_core_info));
     if let Some(freq) = &info.cpu_freq {
         print_line("CPU Freq", freq);
+    }
+    if let Some(cache) = &info.cpu_cache {
+        print_line("CPU Cache", cache);
+    }
+    if let Some(usage) = &info.cpu_usage {
+        print_line("CPU Usage", usage);
     }
     if let Some(motherboard) = &info.motherboard {
         print_line("Motherboard", motherboard);

@@ -16,6 +16,7 @@ use retch_sysinfo::audio;
 #[cfg(target_os = "macos")]
 use retch_sysinfo::camera;
 use retch_sysinfo::display;
+use retch_sysinfo::fetch::{detect_cpu_cache, detect_cpu_freq_range, format_cpu_cores};
 #[cfg(target_os = "macos")]
 use retch_sysinfo::gamepad;
 use retch_sysinfo::network;
@@ -27,6 +28,35 @@ fn bench_system_info_collect(c: &mut Criterion) {
     c.bench_function("SystemInfo::collect", |b| {
         b.iter(|| {
             let _ = SystemInfo::collect(CollectOptions { long: cli.long });
+        });
+    });
+}
+
+/// Benchmark CPU cache detection from sysfs/sysctlbyname.
+#[cfg(not(target_os = "windows"))]
+fn bench_detect_cpu_cache(c: &mut Criterion) {
+    c.bench_function("fetch::detect_cpu_cache", |b| {
+        b.iter(|| {
+            let _ = detect_cpu_cache();
+        });
+    });
+}
+
+/// Benchmark CPU freq range detection from sysfs cpufreq.
+#[cfg(target_os = "linux")]
+fn bench_detect_cpu_freq_range(c: &mut Criterion) {
+    c.bench_function("fetch::detect_cpu_freq_range", |b| {
+        b.iter(|| {
+            let _ = detect_cpu_freq_range();
+        });
+    });
+}
+
+/// Benchmark CPU core topology formatting.
+fn bench_format_cpu_cores(c: &mut Criterion) {
+    c.bench_function("fetch::format_cpu_cores", |b| {
+        b.iter(|| {
+            let _ = format_cpu_cores(16, Some(8));
         });
     });
 }
@@ -219,6 +249,9 @@ criterion_group! {
         .measurement_time(std::time::Duration::from_secs(10));
     targets = bench_system_info_collect,
               bench_detect_gpus,
+              bench_detect_cpu_cache,
+              bench_detect_cpu_freq_range,
+              bench_format_cpu_cores,
               bench_parse_monitor_name_from_edid,
               bench_parse_refresh_rate_from_edid,
               bench_parse_serial_number_from_edid,
@@ -236,6 +269,8 @@ criterion_group! {
         .measurement_time(std::time::Duration::from_secs(10));
     targets = bench_system_info_collect,
               bench_detect_gpus,
+              bench_detect_cpu_cache,
+              bench_format_cpu_cores,
               bench_parse_monitor_name_from_edid,
               bench_parse_refresh_rate_from_edid,
               bench_parse_serial_number_from_edid,
@@ -252,6 +287,7 @@ criterion_group! {
         .measurement_time(std::time::Duration::from_secs(10));
     targets = bench_system_info_collect,
               bench_detect_gpus,
+              bench_format_cpu_cores,
               bench_parse_monitor_name_from_edid,
               bench_parse_refresh_rate_from_edid,
               bench_parse_serial_number_from_edid,

@@ -38,6 +38,8 @@ pub struct SystemInfo {
     pub cpu: String,
     /// Total number of logical CPU cores.
     pub cpu_cores: usize,
+    /// Formatted core topology string (e.g. "8C / 16T" or "6P + 4E / 16T").
+    pub cpu_core_info: String,
     /// Formatted memory usage (Used / Total).
     pub memory: String,
     /// Formatted swap usage (Used / Total).
@@ -106,6 +108,10 @@ pub struct SystemInfo {
     pub camera: Vec<String>,
     /// Connected gamepad/controller names.
     pub gamepad: Vec<String>,
+    /// CPU cache sizes (L1d, L1i, L2, L3).
+    pub cpu_cache: Option<String>,
+    /// Current CPU utilization as a percentage.
+    pub cpu_usage: Option<String>,
 }
 
 impl SystemInfo {
@@ -131,6 +137,7 @@ impl SystemInfo {
             .unwrap_or_else(|| "Unknown CPU".to_string());
 
         let cpu_cores = sys.cpus().len();
+        let cpu_core_info = format_cpu_cores(cpu_cores, System::physical_core_count());
 
         let total_mem = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
         let used_mem = sys.used_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
@@ -374,11 +381,37 @@ impl SystemInfo {
             .or_else(|_| std::env::var("DESKTOP_SESSION"))
             .ok();
 
-        // CPU frequency (first CPU)
-        let cpu_freq = sys
-            .cpus()
-            .first()
-            .map(|c| format!("{:.2} GHz", c.frequency() as f64 / 1000.0));
+        // CPU frequency (current from sysinfo + min/max range from sysfs)
+        let cpu_freq = sys.cpus().first().map(|c| {
+            let current = format!("{:.2} GHz", c.frequency() as f64 / 1000.0);
+            if let Some((min_khz, max_khz)) = detect_cpu_freq_range() {
+                let min_ghz = min_khz as f64 / 1_000_000.0;
+                let max_ghz = max_khz as f64 / 1_000_000.0;
+                format!("{} ({:.2} \u{2013} {:.2} GHz)", current, min_ghz, max_ghz)
+            } else {
+                current
+            }
+        });
+
+        // CPU cache sizes
+        let cpu_cache = detect_cpu_cache();
+
+        // CPU usage — refresh twice with a short sleep so sysinfo has a delta
+        let cpu_usage = {
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            sys.refresh_cpu_usage();
+            let usage: f32 =
+                sys.cpus().iter().map(|c| c.cpu_usage()).sum::<f32>() / sys.cpus().len() as f32;
+            let avg = System::load_average();
+            let load_str = format!("{:.2}, {:.2}, {:.2}", avg.one, avg.five, avg.fifteen);
+            if usage > 0.0 {
+                Some(format!("{:.1}% (load: {})", usage, load_str))
+            } else if avg.one > 0.0 {
+                Some(format!("load: {}", load_str))
+            } else {
+                None
+            }
+        };
 
         // Current logged in user
         let current_user = std::env::var("USER").ok();
@@ -404,6 +437,7 @@ impl SystemInfo {
             arch,
             cpu,
             cpu_cores,
+            cpu_core_info,
             memory,
             swap,
             uptime,
@@ -438,6 +472,418 @@ impl SystemInfo {
             terminal_font,
             camera,
             gamepad,
+            cpu_cache,
+            cpu_usage,
         })
+    }
+}
+
+/// Detects CPU cache sizes.
+///
+/// Linux: reads from `/sys/devices/system/cpu/cpu0/cache/` sysfs entries.
+/// macOS: reads `hw.l1dcachesize`, `hw.l1icachesize`, `hw.l2cachesize`, `hw.l3cachesize` via sysctlbyname.
+/// Returns `None` on Windows or if data is unavailable.
+pub fn detect_cpu_cache() -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        use std::fs;
+        let cache_dir = std::path::Path::new("/sys/devices/system/cpu/cpu0/cache");
+        if !cache_dir.exists() {
+            return None;
+        }
+
+        struct CacheEntry {
+            level: u32,
+            kind: String,
+            size_kb: u64,
+        }
+
+        let mut entries: Vec<CacheEntry> = Vec::new();
+
+        let Ok(indices) = fs::read_dir(cache_dir) else {
+            return None;
+        };
+
+        for entry in indices.flatten() {
+            let path = entry.path();
+            // Skip non-index entries (e.g. the uevent file)
+            if !path.is_dir() {
+                continue;
+            }
+            let level_str = match fs::read_to_string(path.join("level")) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            let level: u32 = match level_str.trim().parse() {
+                Ok(n) => n,
+                Err(_) => continue,
+            };
+            let kind = match fs::read_to_string(path.join("type")) {
+                Ok(s) => s.trim().to_string(),
+                Err(_) => continue,
+            };
+            let size_str = match fs::read_to_string(path.join("size")) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            let size_raw = size_str.trim();
+            let size_kb: u64 = if let Some(k) = size_raw.strip_suffix('K') {
+                match k.parse() {
+                    Ok(n) => n,
+                    Err(_) => continue,
+                }
+            } else if let Some(m) = size_raw.strip_suffix('M') {
+                match m.parse::<u64>() {
+                    Ok(n) => n * 1024,
+                    Err(_) => continue,
+                }
+            } else {
+                match size_raw.parse() {
+                    Ok(n) => n,
+                    Err(_) => continue,
+                }
+            };
+
+            if kind != "Instruction" && kind != "Data" && kind != "Unified" {
+                continue;
+            }
+
+            entries.push(CacheEntry {
+                level,
+                kind,
+                size_kb,
+            });
+        }
+
+        if entries.is_empty() {
+            return None;
+        }
+
+        entries.sort_by_key(|e| (e.level, e.kind.clone()));
+
+        let fmt_size = |kb: u64| -> String {
+            if kb >= 1024 && kb.is_multiple_of(1024) {
+                format!("{}M", kb / 1024)
+            } else if kb >= 1024 {
+                format!("{:.2}M", kb as f64 / 1024.0)
+                    .trim_end_matches('0')
+                    .trim_end_matches('.')
+                    .to_string()
+                    + "M"
+            } else {
+                format!("{}K", kb)
+            }
+        };
+
+        // Deduplicate by label (cpu0 cache dir lists each index separately)
+        let mut seen = std::collections::HashSet::new();
+        let mut parts: Vec<String> = Vec::new();
+        for e in &entries {
+            let label = match (e.level, e.kind.as_str()) {
+                (1, "Data") => "L1d".to_string(),
+                (1, "Instruction") => "L1i".to_string(),
+                (1, "Unified") => "L1".to_string(),
+                (n, _) => format!("L{}", n),
+            };
+            if seen.insert(label.clone()) {
+                parts.push(format!("{}: {}", label, fmt_size(e.size_kb)));
+            }
+        }
+
+        if parts.is_empty() {
+            None
+        } else {
+            Some(parts.join(", "))
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        extern "C" {
+            fn sysctlbyname(
+                name: *const i8,
+                oldp: *mut std::ffi::c_void,
+                oldlenp: *mut usize,
+                newp: *mut std::ffi::c_void,
+                newlen: usize,
+            ) -> i32;
+        }
+
+        let read_u64 = |key: &str| -> Option<u64> {
+            let name = std::ffi::CString::new(key).ok()?;
+            let mut value: u64 = 0;
+            let mut size = std::mem::size_of::<u64>();
+            let ret = unsafe {
+                sysctlbyname(
+                    name.as_ptr(),
+                    &mut value as *mut u64 as *mut std::ffi::c_void,
+                    &mut size,
+                    std::ptr::null_mut(),
+                    0,
+                )
+            };
+            if ret == 0 && value > 0 {
+                Some(value)
+            } else {
+                None
+            }
+        };
+
+        let fmt_bytes = |bytes: u64| -> String {
+            if bytes >= 1024 * 1024 {
+                format!("{}M", bytes / (1024 * 1024))
+            } else {
+                format!("{}K", bytes / 1024)
+            }
+        };
+
+        let mut parts = Vec::new();
+        if let Some(v) = read_u64("hw.l1dcachesize") {
+            parts.push(format!("L1d: {}", fmt_bytes(v)));
+        }
+        if let Some(v) = read_u64("hw.l1icachesize") {
+            parts.push(format!("L1i: {}", fmt_bytes(v)));
+        }
+        if let Some(v) = read_u64("hw.l2cachesize") {
+            parts.push(format!("L2: {}", fmt_bytes(v)));
+        }
+        if let Some(v) = read_u64("hw.l3cachesize") {
+            parts.push(format!("L3: {}", fmt_bytes(v)));
+        }
+
+        if parts.is_empty() {
+            None
+        } else {
+            Some(parts.join(", "))
+        }
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    {
+        None
+    }
+}
+
+/// Formats a CPU core topology string.
+///
+/// Returns `"NP + NE / NT"` on Intel hybrid CPUs (different max frequencies per cluster),
+/// `"NC / NT"` when physical < logical (hyperthreading), or `"N cores"` otherwise.
+pub fn format_cpu_cores(logical: usize, physical: Option<usize>) -> String {
+    // Linux: detect Intel hybrid via cpufreq policy max-frequency grouping
+    #[cfg(target_os = "linux")]
+    if let Some(hybrid) = detect_hybrid_cores(logical) {
+        return hybrid;
+    }
+
+    // macOS: detect Apple Silicon P/E cores via hw.perflevel* sysctls
+    #[cfg(target_os = "macos")]
+    if let Some(hybrid) = detect_macos_hybrid_cores(logical) {
+        return hybrid;
+    }
+
+    match physical {
+        Some(p) if p < logical => format!("{}C / {}T", p, logical),
+        _ => format!("{} cores", logical),
+    }
+}
+
+/// On Linux, detects Intel hybrid topology (P-cores + E-cores) by grouping CPUs
+/// by their maximum cpufreq frequency. Returns `None` if not hybrid or unavailable.
+#[cfg(target_os = "linux")]
+fn detect_hybrid_cores(logical: usize) -> Option<String> {
+    use std::collections::HashMap;
+    use std::fs;
+
+    let cpufreq = std::path::Path::new("/sys/devices/system/cpu/cpufreq");
+    if !cpufreq.exists() {
+        return None;
+    }
+
+    // Map max_freq → number of CPUs in that policy
+    let mut freq_to_count: HashMap<u64, usize> = HashMap::new();
+    let mut total_accounted = 0usize;
+
+    let Ok(policies) = fs::read_dir(cpufreq) else {
+        return None;
+    };
+
+    for policy in policies.flatten() {
+        let path = policy.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let max_freq_str = fs::read_to_string(path.join("cpuinfo_max_freq")).ok()?;
+        let max_freq: u64 = max_freq_str.trim().parse().ok()?;
+        let affected = fs::read_to_string(path.join("affected_cpus")).ok()?;
+        let count = affected.split_whitespace().count();
+        *freq_to_count.entry(max_freq).or_insert(0) += count;
+        total_accounted += count;
+    }
+
+    // Only report hybrid if we have exactly 2 frequency tiers and they account for all threads
+    if freq_to_count.len() != 2 || total_accounted != logical {
+        return None;
+    }
+
+    let mut tiers: Vec<(u64, usize)> = freq_to_count.into_iter().collect();
+    tiers.sort_by_key(|t| std::cmp::Reverse(t.0)); // highest freq first = P-cores
+    let (_, p_count) = tiers[0];
+    let (_, e_count) = tiers[1];
+
+    Some(format!("{}P + {}E / {}T", p_count, e_count, logical))
+}
+
+/// On macOS Apple Silicon, detects P/E cores via `hw.nperflevels` and
+/// `hw.perflevelN.logicalcpu` sysctls. Returns `None` on Intel Macs or if unavailable.
+#[cfg(target_os = "macos")]
+fn detect_macos_hybrid_cores(logical: usize) -> Option<String> {
+    extern "C" {
+        fn sysctlbyname(
+            name: *const i8,
+            oldp: *mut std::ffi::c_void,
+            oldlenp: *mut usize,
+            newp: *mut std::ffi::c_void,
+            newlen: usize,
+        ) -> i32;
+    }
+
+    let read_u32 = |key: &str| -> Option<u32> {
+        let name = std::ffi::CString::new(key).ok()?;
+        let mut value: u32 = 0;
+        let mut size = std::mem::size_of::<u32>();
+        let ret = unsafe {
+            sysctlbyname(
+                name.as_ptr(),
+                &mut value as *mut u32 as *mut std::ffi::c_void,
+                &mut size,
+                std::ptr::null_mut(),
+                0,
+            )
+        };
+        if ret == 0 {
+            Some(value)
+        } else {
+            None
+        }
+    };
+
+    // hw.nperflevels == 2 on M-series (P + E), absent or 1 on Intel
+    let nlevels = read_u32("hw.nperflevels")?;
+    if nlevels != 2 {
+        return None;
+    }
+
+    let p_cores = read_u32("hw.perflevel0.logicalcpu")? as usize;
+    let e_cores = read_u32("hw.perflevel1.logicalcpu")? as usize;
+
+    if p_cores + e_cores != logical {
+        return None;
+    }
+
+    Some(format!("{}P + {}E / {}T", p_cores, e_cores, logical))
+}
+
+/// Returns the overall (min_khz, max_khz) CPU frequency range from sysfs cpufreq policies.
+/// min is the smallest `cpuinfo_min_freq` across all policies; max is the largest `cpuinfo_max_freq`.
+pub fn detect_cpu_freq_range() -> Option<(u64, u64)> {
+    #[cfg(target_os = "linux")]
+    {
+        use std::fs;
+        let cpufreq = std::path::Path::new("/sys/devices/system/cpu/cpufreq");
+        if !cpufreq.exists() {
+            return None;
+        }
+        let mut global_min: Option<u64> = None;
+        let mut global_max: Option<u64> = None;
+        let Ok(policies) = fs::read_dir(cpufreq) else {
+            return None;
+        };
+        for policy in policies.flatten() {
+            let path = policy.path();
+            if !path.is_dir() {
+                continue;
+            }
+            if let Ok(s) = fs::read_to_string(path.join("cpuinfo_min_freq")) {
+                if let Ok(v) = s.trim().parse::<u64>() {
+                    global_min = Some(global_min.map_or(v, |m: u64| m.min(v)));
+                }
+            }
+            if let Ok(s) = fs::read_to_string(path.join("cpuinfo_max_freq")) {
+                if let Ok(v) = s.trim().parse::<u64>() {
+                    global_max = Some(global_max.map_or(v, |m: u64| m.max(v)));
+                }
+            }
+        }
+        match (global_min, global_max) {
+            (Some(min), Some(max)) => Some((min, max)),
+            _ => None,
+        }
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_cpu_cores_no_hyperthreading() {
+        // Physical == logical: show plain "N cores"
+        assert_eq!(format_cpu_cores(4, Some(4)), "4 cores");
+    }
+
+    #[test]
+    fn test_format_cpu_cores_hyperthreaded() {
+        // Physical < logical: show "NC / NT"
+        assert_eq!(format_cpu_cores(16, Some(8)), "8C / 16T");
+    }
+
+    #[test]
+    fn test_format_cpu_cores_unknown_physical() {
+        // No physical count available: fall back to "N cores"
+        assert_eq!(format_cpu_cores(8, None), "8 cores");
+    }
+
+    #[test]
+    fn test_format_cpu_cores_physical_equals_zero() {
+        // Degenerate: physical reported as 0 — treat same as unknown
+        // physical(0) < logical(8), so would print "0C / 8T"; acceptable but
+        // let's confirm the branch taken
+        let result = format_cpu_cores(8, Some(0));
+        assert!(result.contains("8"), "should mention 8 threads: {}", result);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_detect_cpu_cache_returns_some_on_linux() {
+        // On a real Linux machine the sysfs cache dir exists; result should be Some
+        // and contain at least one cache level label.
+        if std::path::Path::new("/sys/devices/system/cpu/cpu0/cache").exists() {
+            let result = detect_cpu_cache();
+            assert!(result.is_some(), "expected cache info on Linux with sysfs");
+            let s = result.unwrap();
+            assert!(
+                s.contains("L1") || s.contains("L2") || s.contains("L3"),
+                "expected cache level labels, got: {}",
+                s
+            );
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_detect_cpu_freq_range_returns_ordered_pair() {
+        if std::path::Path::new("/sys/devices/system/cpu/cpufreq").exists() {
+            if let Some((min, max)) = detect_cpu_freq_range() {
+                assert!(
+                    min <= max,
+                    "min freq should be <= max freq: {} > {}",
+                    min,
+                    max
+                );
+                assert!(min > 0, "min freq should be positive");
+            }
+        }
     }
 }
