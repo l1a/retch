@@ -261,7 +261,7 @@ jobs:
 
           # Delete all rc pre-releases for this version
           gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName \
-            --jq --arg v "$VERSION" '.[] | select(.tagName | startswith($v + "-rc.")) | .tagName' \
+            --jq ".[] | select(.tagName | startswith(\"${VERSION}-rc.\")) | .tagName" \
           | xargs -r -I{} gh release delete {} --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
 
           # Keep only the 10 most recent stable releases
