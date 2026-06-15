@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781499938278,
+  "lastUpdate": 1781500504564,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -11020,6 +11020,75 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1329209785,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3dd0a1d0ac85449cfffe313ca180098107b28bd2",
+          "message": "feat: add MX Linux, Mint, Kali, Zorin, Garuda logos (#96)\n\n* feat: add MX Linux, Mint, Kali, Zorin, Garuda logos\n\nASCII logos sourced from fastfetch-cli/fastfetch. PNG logos converted\nfrom Wikimedia SVGs via ImageMagick. Adds get_embedded_logo,\nget_ascii_logo, get_distro_colors entries and tests for all five distros.\n\nAssisted-By: Claude Sonnet 4.6\n\n* chore: bump to v0.3.19, regenerate man page, update AGENTS.md\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: add new distros to --print-logos; sort alphabetically, OS last\n\nThe hardcoded logo list in main.rs was not updated when new distros were\nadded to logo.rs. Also sorts Linux distros alphabetically with macOS,\nWindows, and Tux at the end.\n\nAssisted-By: Claude Sonnet 4.6\n\n* docs: add --print-logos verification step to AGENTS.md checklist\n\nCaught by missing main.rs update when adding new distro logos in #96.\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-14T21:46:31-07:00",
+          "tree_id": "05b5c418513d8c480fd45321bc4c2389a503b58e",
+          "url": "https://github.com/l1a/retch/commit/3dd0a1d0ac85449cfffe313ca180098107b28bd2"
+        },
+        "date": 1781500501850,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 35271854.00000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1940161593.9999998,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 117.61407416593663,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.773431058847672,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 118.5724776564613,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42509.498998732604,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 873.1076196375383,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 889.1665658118843,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1370024375,
             "unit": "ns"
           }
         ]
