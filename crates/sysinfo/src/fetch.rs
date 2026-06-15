@@ -402,14 +402,25 @@ impl SystemInfo {
             sys.refresh_cpu_usage();
             let usage: f32 =
                 sys.cpus().iter().map(|c| c.cpu_usage()).sum::<f32>() / sys.cpus().len() as f32;
-            let avg = System::load_average();
-            let load_str = format!("{:.2}, {:.2}, {:.2}", avg.one, avg.five, avg.fifteen);
-            if usage > 0.0 {
-                Some(format!("{:.1}% (load: {})", usage, load_str))
-            } else if avg.one > 0.0 {
-                Some(format!("load: {}", load_str))
-            } else {
-                None
+            #[cfg(not(target_os = "windows"))]
+            {
+                let avg = System::load_average();
+                let load_str = format!("{:.2}, {:.2}, {:.2}", avg.one, avg.five, avg.fifteen);
+                if usage > 0.0 {
+                    Some(format!("{:.1}% (load: {})", usage, load_str))
+                } else if avg.one > 0.0 {
+                    Some(format!("load: {}", load_str))
+                } else {
+                    None
+                }
+            }
+            #[cfg(target_os = "windows")]
+            {
+                if usage > 0.0 {
+                    Some(format!("{:.1}%", usage))
+                } else {
+                    None
+                }
             }
         };
 
