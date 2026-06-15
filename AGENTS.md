@@ -15,6 +15,7 @@
   2. All documentation is kept in sync with the current features.
   3. Default configuration templates (like `default_config_content()` in `src/main.rs`) and comment lists are fully updated with new options.
   4. If the GitHub wiki exists, clone it (`https://github.com/l1a/retch.wiki.git`) and update any affected pages before submitting the PR.
+  5. When adding distro logos, run `cargo run -- --print-logos --ascii-logo` and confirm every new distro appears in the output. The hardcoded list in `src/main.rs` must be updated alongside `src/logo.rs`.
 - **PR Test Plans**: After opening a PR, immediately run each item in the test plan checklist and update the PR body via `gh pr edit` to check off passed items. Do not leave all boxes unchecked. Items requiring manual human verification (e.g. runtime output) should be left unchecked with a note.
 - **Documentation & Versioning Updates**: When branching to make changes, ensure the following updates are performed:
   - **Version Bump**: Increment the version in `Cargo.toml`, verify compilation, and run `cargo check` to update `Cargo.lock`.
