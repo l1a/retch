@@ -228,8 +228,8 @@ impl Theme {
             return Self::neutral();
         }
 
-        // Try to read GTK settings
         if let Some(config_dir) = dirs::config_dir() {
+            // GTK / GNOME: gtk-3.0/settings.ini
             let gtk_settings = config_dir.join("gtk-3.0").join("settings.ini");
             if gtk_settings.exists() {
                 if let Ok(contents) = std::fs::read_to_string(&gtk_settings) {
@@ -244,9 +244,42 @@ impl Theme {
                     }
                 }
             }
+
+            // KDE / Plasma: kdeglobals [Colors:Window] BackgroundNormal luminance
+            let kdeglobals = config_dir.join("kdeglobals");
+            if kdeglobals.exists() {
+                if let Ok(contents) = std::fs::read_to_string(&kdeglobals) {
+                    let mut in_colors_window = false;
+                    for line in contents.lines() {
+                        let trimmed = line.trim();
+                        if trimmed.starts_with('[') {
+                            in_colors_window = trimmed == "[Colors:Window]";
+                            continue;
+                        }
+                        if in_colors_window {
+                            if let Some(val) = trimmed.strip_prefix("BackgroundNormal=") {
+                                let rgb: Vec<u8> = val
+                                    .split(',')
+                                    .filter_map(|s| s.trim().parse().ok())
+                                    .collect();
+                                if rgb.len() == 3 {
+                                    let luminance = rgb[0] as f32 * 0.299
+                                        + rgb[1] as f32 * 0.587
+                                        + rgb[2] as f32 * 0.114;
+                                    return if luminance < 128.0 {
+                                        Self::dark()
+                                    } else {
+                                        Self::light()
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
-        // Has a display but no GTK preference found (e.g. KDE) — assume dark
-        Self::dark()
+        // No preference detected
+        Self::neutral()
     }
 
     /// Build a new theme by applying custom color overrides to an existing base theme.
