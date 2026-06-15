@@ -1551,7 +1551,7 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
 name = "retch-cli"
-version = "0.3.18"
+version = "0.3.19"
 dependencies = [
  "anyhow",
  "base64",
@@ -1571,7 +1571,7 @@ dependencies = [
 
 [[package]]
 name = "retch-sysinfo"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "anyhow",
  "chrono",
