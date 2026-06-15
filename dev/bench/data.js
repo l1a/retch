@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781492373088,
+  "lastUpdate": 1781492641030,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7896,6 +7896,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 328.76422621307364,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d21a97a20b1c1f7556ff181c3f5d00450d349058",
+          "message": "chore: v0.3.18 release cleanup — version bump, man page, AGENTS.md (#93)\n\nItems overlooked by not following AGENTS.md release checklist and\nsaved memories:\n\n- Bump retch-cli 0.3.17 → 0.3.18 and retch-sysinfo 0.1.17 → 0.1.18\n  (should have been on PR #90 branch before merging)\n- Run `just man` to regenerate docs/retch.1 with updated version\n  (required by the man-page-timing memory and AGENTS.md §Man Pages)\n- Update AGENTS.md \"Last updated\" footer from v0.3.15 to v0.3.18\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-14T19:47:54-07:00",
+          "tree_id": "375a36de8d75b5634fc7c6de9cdd52b5b8dba77c",
+          "url": "https://github.com/l1a/retch/commit/d21a97a20b1c1f7556ff181c3f5d00450d349058"
+        },
+        "date": 1781492639364,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 21542301.740000002,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 169303976.84,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 124216091.15,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 365.01245499059985,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 63.70466018120986,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.7163653375600962,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 64.40140414758018,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 413.85780422977916,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 75278.57164242674,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 343.11196124491244,
             "unit": "ns"
           }
         ]
