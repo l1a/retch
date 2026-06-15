@@ -390,8 +390,49 @@
 
 Below is a comparison of information gathered by `fastfetch` that is currently missing in `retch`:
 
+### Hardware
+- **CPUCache**: L1/L2/L3 cache sizes
+- **CPUUsage**: Live CPU utilization %
+- **Brightness**: Monitor brightness level
+- **Keyboard**: Connected keyboards
+- **Mouse**: Connected mice
+- **PhysicalDisk**: Physical disk model, size, type
+- **PhysicalMemory**: RAM slot count, type (DDR5 etc.), speed
+- **PowerAdapter**: Charger name and wattage
+- **TPM**: Trusted Platform Module device info
+
+### GPU / Graphics
+- **OpenCL / OpenGL / Vulkan**: Highest supported API versions
+
+### Storage & Filesystems
+- **Btrfs**: Btrfs volume info
+- **Zpool**: ZFS storage pool info
+- **DiskIO**: Disk I/O throughput
+
+### Network
+- **DNS**: Configured DNS servers
+- **NetIO**: Network I/O throughput
+
 ### Desktop Environment & UI
-- (All desktop UI features currently match Fastfetch)
+- **WM**: Window manager name and version
+- **WMTheme**: Window manager theme
+- **LM**: Login manager (GDM, SDDM, etc.)
+- **Wallpaper**: Current wallpaper file path
+- **TerminalSize**: Terminal dimensions (columns × rows)
+- **TerminalTheme**: Terminal foreground/background colors
+
+### System
+- **InitSystem**: PID 1 / init system (systemd, runit, etc.)
+- **Chassis**: Chassis type (desktop, laptop, server, etc.)
+- **Locale**: System locale
+- **Bootmgr**: Second-stage bootloader (GRUB, systemd-boot, etc.)
+
+### Media
+- **Media / Player**: Currently playing song and active music player
+
+### Misc
+- **Editor**: Default editor (`$VISUAL` / `$EDITOR`)
+- **Weather**: Weather information (requires network)
 
 ---
 *Last updated: June 15, 2026 (v0.3.20)*
