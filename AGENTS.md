@@ -398,4 +398,4 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
    - **macOS `sysctl` (×1 remaining)** — extend existing `sysctlbyname` FFI pattern.
 
 ---
-*Last updated: June 11, 2026 (v0.3.15)*
+*Last updated: June 14, 2026 (v0.3.18)*
