@@ -66,7 +66,6 @@
 - **Package repository submissions**: Submit retch to AUR (Arch User Repository) and nixpkgs so it appears in the [Repology](https://repology.org/project/retch/versions) packaging status widget. The Nix flake (contributed by @quixaq) is a useful starting point for the nixpkgs submission.
 - **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
-- **crates.io publish**: Publish `retch-sysinfo` and `retch-cli` to crates.io (pending post-release testing). Publish `retch-sysinfo` first.
 
 ## Major Achievements
 
@@ -384,18 +383,5 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ### Desktop Environment & UI
 - (All desktop UI features currently match Fastfetch)
 
-## Next Steps
-
-1. **crates.io Publishing** — Publish `retch-sysinfo` v0.1.15 and `retch-cli` v0.3.15` to crates.io now that dry-run validations are complete.
-2. **Platform & Native Probes** — Replace slow `Command::new` spawns with direct FFI/API calls. Priority order:
-   - **Windows `wmic` (×5 spawns)** — deprecated in modern Windows, ~200-500ms startup cost. Replace with:
-     - GPU (`gpu.rs`): registry under display adapter class GUID `{4d36e968-e325-11ce-bfc1-08002be10318}` (`DriverDesc`, `HardwareInformation.MemorySize`)
-     - Audio (`audio.rs`): registry under media device class GUID `{4d36e96c-e325-11ce-bfc1-08002be10318}` (`DriverDesc`)
-     - Display (`display.rs`): `EnumDisplayDevices` + `EnumDisplaySettings` via user32.dll FFI
-     - Motherboard/BIOS (`motherboard.rs`, `bios.rs`): wmic is already a last-resort fallback after registry; can be dropped entirely
-   - **macOS `system_profiler` (×8 spawns)** — spawns a new process per subsystem. Replace with IOKit/CoreFoundation FFI for GPU, audio, bluetooth, camera, displays, and gamepad.
-   - **macOS `ioreg` (×1, battery)** — replace with `IOKit` FFI (`IOServiceGetMatchingServices`, `IORegistryEntryCreateCFProperties`).
-   - **macOS `sysctl` (×1 remaining)** — extend existing `sysctlbyname` FFI pattern.
-
 ---
-*Last updated: June 14, 2026 (v0.3.18)*
+*Last updated: June 15, 2026 (v0.3.18)*
