@@ -215,8 +215,15 @@ impl Theme {
 
     /// Detect system dark/light preference (currently supports GTK settings).
     ///
-    /// Falls back to `Self::dark()` if detection fails.
+    /// Falls back to `Self::neutral()` if detection fails.
     pub fn detect_system_theme() -> Self {
+        // Skip GTK detection when running headless (SSH, mosh, no display server)
+        let has_display =
+            std::env::var_os("DISPLAY").is_some() || std::env::var_os("WAYLAND_DISPLAY").is_some();
+        if !has_display {
+            return Self::neutral();
+        }
+
         // Try to read GTK settings
         if let Some(config_dir) = dirs::config_dir() {
             let gtk_settings = config_dir.join("gtk-3.0").join("settings.ini");
@@ -234,8 +241,8 @@ impl Theme {
                 }
             }
         }
-        // Default fallback
-        Self::dark()
+        // Default fallback — neutral works on any terminal background
+        Self::neutral()
     }
 
     /// Build a new theme by applying custom color overrides to an existing base theme.
