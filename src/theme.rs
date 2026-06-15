@@ -215,10 +215,21 @@ impl Theme {
 
     /// Detect system dark/light preference (currently supports GTK settings).
     ///
-    /// Falls back to `Self::dark()` if detection fails.
+    /// Falls back to `Self::neutral()` when headless, `Self::dark()` when a display is present but no GTK preference is found.
     pub fn detect_system_theme() -> Self {
-        // Try to read GTK settings
+        // Skip GTK detection when running over SSH/mosh or without a display server.
+        // Shell profiles often set $DISPLAY even in SSH sessions, so check SSH vars too.
+        let is_ssh = std::env::var_os("SSH_CLIENT").is_some()
+            || std::env::var_os("SSH_TTY").is_some()
+            || std::env::var_os("SSH_CONNECTION").is_some();
+        let has_display =
+            std::env::var_os("DISPLAY").is_some() || std::env::var_os("WAYLAND_DISPLAY").is_some();
+        if is_ssh || !has_display {
+            return Self::neutral();
+        }
+
         if let Some(config_dir) = dirs::config_dir() {
+            // GTK / GNOME: gtk-3.0/settings.ini
             let gtk_settings = config_dir.join("gtk-3.0").join("settings.ini");
             if gtk_settings.exists() {
                 if let Ok(contents) = std::fs::read_to_string(&gtk_settings) {
@@ -233,9 +244,42 @@ impl Theme {
                     }
                 }
             }
+
+            // KDE / Plasma: kdeglobals [Colors:Window] BackgroundNormal luminance
+            let kdeglobals = config_dir.join("kdeglobals");
+            if kdeglobals.exists() {
+                if let Ok(contents) = std::fs::read_to_string(&kdeglobals) {
+                    let mut in_colors_window = false;
+                    for line in contents.lines() {
+                        let trimmed = line.trim();
+                        if trimmed.starts_with('[') {
+                            in_colors_window = trimmed == "[Colors:Window]";
+                            continue;
+                        }
+                        if in_colors_window {
+                            if let Some(val) = trimmed.strip_prefix("BackgroundNormal=") {
+                                let rgb: Vec<u8> = val
+                                    .split(',')
+                                    .filter_map(|s| s.trim().parse().ok())
+                                    .collect();
+                                if rgb.len() == 3 {
+                                    let luminance = rgb[0] as f32 * 0.299
+                                        + rgb[1] as f32 * 0.587
+                                        + rgb[2] as f32 * 0.114;
+                                    return if luminance < 128.0 {
+                                        Self::dark()
+                                    } else {
+                                        Self::light()
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
-        // Default fallback
-        Self::dark()
+        // No preference detected
+        Self::neutral()
     }
 
     /// Build a new theme by applying custom color overrides to an existing base theme.
