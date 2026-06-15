@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781545638035,
+  "lastUpdate": 1781545915089,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -9158,6 +9158,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 345.220887007236,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "89a895803a7b3b271e4570afe6d7d8e054e9630c",
+          "message": "Modify Claude workflow with new permissions and tools\n\nUpdated permissions for actions and pull requests. Added installation of build dependencies and configured allowed tools for Claude.",
+          "timestamp": "2026-06-15T10:36:13-07:00",
+          "tree_id": "5869205f964101cfb3c5c4b764f0324c023c403c",
+          "url": "https://github.com/l1a/retch/commit/89a895803a7b3b271e4570afe6d7d8e054e9630c"
+        },
+        "date": 1781545913300,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 21803274.04,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 148574607.34000003,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 128443780.225,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 372.4627626174688,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 64.90700181977701,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.8127929817487485,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 60.98955206476137,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 417.01200704539133,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 72360.97048947398,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 354.55649155502067,
             "unit": "ns"
           }
         ]
