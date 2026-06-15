@@ -15,6 +15,7 @@
   2. All documentation is kept in sync with the current features.
   3. Default configuration templates (like `default_config_content()` in `src/main.rs`) and comment lists are fully updated with new options.
   4. If the GitHub wiki exists, clone it (`https://github.com/l1a/retch.wiki.git`) and update any affected pages before submitting the PR.
+  5. When adding distro logos, run `cargo run -- --print-logos --ascii-logo` and confirm every new distro appears in the output. The hardcoded list in `src/main.rs` must be updated alongside `src/logo.rs`.
 - **PR Test Plans**: After opening a PR, immediately run each item in the test plan checklist and update the PR body via `gh pr edit` to check off passed items. Do not leave all boxes unchecked. Items requiring manual human verification (e.g. runtime output) should be left unchecked with a note.
 - **Documentation & Versioning Updates**: When branching to make changes, ensure the following updates are performed:
   - **Version Bump**: Increment the version in `Cargo.toml`, verify compilation, and run `cargo check` to update `Cargo.lock`.
@@ -45,7 +46,7 @@
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
 
-## Current State (v0.3.18)
+## Current State (v0.3.19)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -68,6 +69,11 @@
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
 
 ## Major Achievements
+
+### v0.3.19 - New Distro Logos: MX Linux, Mint, Kali, Zorin, Garuda (June 15, 2026)
+- **New logos**: Added ASCII art, PNG, and color palettes for the 5 most popular previously-unsupported Linux distros: MX Linux (`mx`), Linux Mint (`linuxmint`), Kali Linux (`kali`), Zorin OS (`zorin`), and Garuda Linux (`garuda`).
+- **Source**: ASCII logos sourced from Fastfetch; PNGs converted from official Wikimedia SVGs.
+- **Version**: Bumped to `0.3.19` / `retch-sysinfo 0.1.19`.
 
 ### v0.3.18 - macOS WiFi: CoreWLAN SSID + Link Rate (June 14, 2026)
 - **WiFi overhaul**: Replaced the broken v0.3.17 approach (SC dynamic store + `IO80211Interface` IOKit) with CoreWLAN Objective-C runtime FFI. Uses `CWWiFiClient.sharedWiFiClient.interface` (`CWInterface`) to read the SSID and transmit rate.
@@ -384,4 +390,4 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - (All desktop UI features currently match Fastfetch)
 
 ---
-*Last updated: June 15, 2026 (v0.3.18)*
+*Last updated: June 15, 2026 (v0.3.19)*

@@ -32,6 +32,11 @@ pub fn get_embedded_logo(distro: Option<&str>) -> Option<&'static [u8]> {
         Some("opensuse") | Some("opensuse-leap") | Some("opensuse-tumbleweed") => {
             Some(include_bytes!("../assets/logos/opensuse.png"))
         }
+        Some("mx") => Some(include_bytes!("../assets/logos/mx.png")),
+        Some("linuxmint") => Some(include_bytes!("../assets/logos/linuxmint.png")),
+        Some("kali") => Some(include_bytes!("../assets/logos/kali.png")),
+        Some("zorin") => Some(include_bytes!("../assets/logos/zorin.png")),
+        Some("garuda") => Some(include_bytes!("../assets/logos/garuda.png")),
         Some("macos") => Some(include_bytes!("../assets/logos/macos.png")),
         Some("windows") => Some(include_bytes!("../assets/logos/windows.png")),
         _ => Some(include_bytes!("../assets/logos/tux.png")),
@@ -111,6 +116,26 @@ pub fn get_ascii_logo(distro: Option<&str>) -> Vec<String> {
             let logo = include_str!("../assets/logos/opensuse.txt");
             logo.lines().map(|s| s.to_string()).collect()
         }
+        Some("mx") => {
+            let logo = include_str!("../assets/logos/mx.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
+        Some("linuxmint") => {
+            let logo = include_str!("../assets/logos/linuxmint.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
+        Some("kali") => {
+            let logo = include_str!("../assets/logos/kali.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
+        Some("zorin") => {
+            let logo = include_str!("../assets/logos/zorin.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
+        Some("garuda") => {
+            let logo = include_str!("../assets/logos/garuda.txt");
+            logo.lines().map(|s| s.to_string()).collect()
+        }
         Some("macos") => {
             let logo = include_str!("../assets/logos/macos.txt");
             logo.lines().map(|s| s.to_string()).collect()
@@ -145,6 +170,11 @@ pub fn get_distro_colors(distro: Option<&str>) -> Vec<&'static str> {
         Some("opensuse") | Some("opensuse-leap") | Some("opensuse-tumbleweed") => {
             vec!["\x1b[32m", "\x1b[37m"]
         }
+        Some("mx") => vec!["\x1b[34m", "\x1b[37m"],
+        Some("linuxmint") => vec!["\x1b[32m", "\x1b[37m"],
+        Some("kali") => vec!["\x1b[34m", "\x1b[37m"],
+        Some("zorin") => vec!["\x1b[36m", "\x1b[37m"],
+        Some("garuda") => vec!["\x1b[35m", "\x1b[36m"],
         Some("macos") => vec!["\x1b[32m", "\x1b[33m", "\x1b[31m", "\x1b[35m", "\x1b[34m"],
         Some("windows") => vec!["\x1b[36m"],
         _ => vec!["\x1b[30m", "\x1b[37m", "\x1b[33m"], // Tux
@@ -667,6 +697,16 @@ mod tests {
         assert!(logo.is_some());
         let logo = get_embedded_logo(Some("opensuse-tumbleweed"));
         assert!(logo.is_some());
+        let logo = get_embedded_logo(Some("mx"));
+        assert!(logo.is_some());
+        let logo = get_embedded_logo(Some("linuxmint"));
+        assert!(logo.is_some());
+        let logo = get_embedded_logo(Some("kali"));
+        assert!(logo.is_some());
+        let logo = get_embedded_logo(Some("zorin"));
+        assert!(logo.is_some());
+        let logo = get_embedded_logo(Some("garuda"));
+        assert!(logo.is_some());
         let logo = get_embedded_logo(Some("macos"));
         assert!(logo.is_some());
         let logo = get_embedded_logo(Some("windows"));
@@ -704,5 +744,29 @@ mod tests {
         assert!(windows
             .iter()
             .any(|line| line.contains("AEEEtttt::::ztF") || line.contains("tt:::tt333EE3")));
+
+        let mx = get_ascii_logo(Some("mx"));
+        assert!(!mx.is_empty());
+        assert!(mx
+            .iter()
+            .any(|line| line.contains("MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNMMMMMMMMM")));
+
+        let linuxmint = get_ascii_logo(Some("linuxmint"));
+        assert!(!linuxmint.is_empty());
+        assert!(linuxmint.iter().any(|line| line.contains("oOOOOOOOOOOo")));
+
+        let kali = get_ascii_logo(Some("kali"));
+        assert!(!kali.is_empty());
+        assert!(kali.iter().any(|line| line.contains(":ccc")));
+
+        let zorin = get_ascii_logo(Some("zorin"));
+        assert!(!zorin.is_empty());
+        assert!(zorin
+            .iter()
+            .any(|line| line.contains("osssssssssssssssssssso")));
+
+        let garuda = get_ascii_logo(Some("garuda"));
+        assert!(!garuda.is_empty());
+        assert!(garuda.iter().any(|line| line.contains("888:8898898")));
     }
 }
