@@ -46,7 +46,7 @@
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
 
-## Current State (v0.3.20)
+## Current State (v0.3.21)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -69,6 +69,12 @@
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
 
 ## Major Achievements
+
+### v0.3.21 - CPU Cache and CPU Usage (June 15, 2026)
+- **CPU Cache**: Added `CPUCache` field showing L1d/L1i/L2/L3 sizes parsed from `/sys/devices/system/cpu/cpu0/cache/` on Linux (e.g. `L1d: 32K, L1i: 32K, L2: 1M, L3: 16M`). Returns `None` on non-Linux.
+- **CPU Usage**: Added `CPUUsage` field showing current CPU utilization percentage, computed via a 200ms sysinfo refresh delta.
+- Both fields appear in the default output set between `CPU Freq` and `Motherboard`.
+- **Version**: Bumped to `0.3.21` / `retch-sysinfo 0.1.21`.
 
 ### v0.3.20 - Fix `auto` theme headless fallback (June 15, 2026)
 - **Bug fix**: `theme = "auto"` now returns `neutral` instead of `dark` when no display server is present (`$DISPLAY`/`$WAYLAND_DISPLAY` unset), preventing incorrect `light` theme rendering over SSH/mosh when the remote machine's GTK settings have `prefer-dark-theme=false`.
@@ -391,8 +397,6 @@
 Below is a comparison of information gathered by `fastfetch` that is currently missing in `retch`:
 
 ### Hardware
-- **CPUCache**: L1/L2/L3 cache sizes
-- **CPUUsage**: Live CPU utilization %
 - **Brightness**: Monitor brightness level
 - **Keyboard**: Connected keyboards
 - **Mouse**: Connected mice
@@ -435,4 +439,4 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - **Weather**: Weather information (requires network)
 
 ---
-*Last updated: June 15, 2026 (v0.3.20)*
+*Last updated: June 15, 2026 (v0.3.21)*
