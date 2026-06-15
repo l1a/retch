@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781556809389,
+  "lastUpdate": 1781557144288,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6788,6 +6788,85 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 262.74753858148176,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "bdcbee0ad126dac6c44176fed7ec5c0bf076a3ff",
+          "message": "docs: expand feature gap section with full fastfetch module comparison\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-15T13:47:26-07:00",
+          "tree_id": "80a706b7b87343d8a7df71d6ef6e269689f5506c",
+          "url": "https://github.com/l1a/retch/commit/bdcbee0ad126dac6c44176fed7ec5c0bf076a3ff"
+        },
+        "date": 1781557143547,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 1843905.5,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 275718751.8000001,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 79813756.20772848,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 988.527181081894,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 46.68888474968765,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946454756119505,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 54.07676666356673,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7705.346362607035,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1214564.393077338,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 353.1255220858545,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 253.25223632832754,
             "unit": "ns"
           }
         ]
