@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781498208067,
+  "lastUpdate": 1781498644869,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -12695,6 +12695,75 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1165667590,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a68bf2355d3df73a1a4d3667d7017782f3a25dd8",
+          "message": "docs: clean up AGENTS.md — remove stale Next Steps and completed backlog items (#95)\n\n- Removed stale Next Steps section (crates.io publishing done as of\n  v0.3.18; platform native probe work completed in v0.3.12–v0.3.17)\n- Removed completed crates.io publish item from Future Work backlog\n- Updated Last updated date\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-14T21:11:54-07:00",
+          "tree_id": "b0f7b06a29635af747a00e106e37dabac13f6e16",
+          "url": "https://github.com/l1a/retch/commit/a68bf2355d3df73a1a4d3667d7017782f3a25dd8"
+        },
+        "date": 1781498642575,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 272583480,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1358300400,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 96.80335882982702,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9485906307816023,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 98.00959292762059,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46033.212589047675,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 491.33938575367927,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 744.0918067587905,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1211772620,
             "unit": "ns"
           }
         ]
