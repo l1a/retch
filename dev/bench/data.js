@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781497083823,
+  "lastUpdate": 1781497315940,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10463,6 +10463,75 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1322379650,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9579fdcccbf2a4736c850349812353866edf554d",
+          "message": "fix(ci): use shell interpolation in jq for rc tag cleanup (#94)\n\n`gh release list --jq` does not support passing jq's `--arg` flag —\nit treats `--arg` as the jq expression, causing 'unknown command \"v\"'.\nUse shell variable interpolation directly in the jq string instead.\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-14T20:54:52-07:00",
+          "tree_id": "d0c90c88d30c1050a0210829448529484307069e",
+          "url": "https://github.com/l1a/retch/commit/9579fdcccbf2a4736c850349812353866edf554d"
+        },
+        "date": 1781497312999,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 30603804,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1465625284.0000002,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 119.54987960666556,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.033101776822712,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 118.73437723058721,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42490.12595126503,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 564.725983811054,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 811.4202442261699,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1255973925,
             "unit": "ns"
           }
         ]
