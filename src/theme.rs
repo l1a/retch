@@ -215,7 +215,7 @@ impl Theme {
 
     /// Detect system dark/light preference (currently supports GTK settings).
     ///
-    /// Falls back to `Self::neutral()` if detection fails.
+    /// Falls back to `Self::neutral()` when headless, `Self::dark()` when a display is present but no GTK preference is found.
     pub fn detect_system_theme() -> Self {
         // Skip GTK detection when running headless (SSH, mosh, no display server)
         let has_display =
@@ -241,8 +241,8 @@ impl Theme {
                 }
             }
         }
-        // Default fallback — neutral works on any terminal background
-        Self::neutral()
+        // Has a display but no GTK preference found (e.g. KDE) — assume dark
+        Self::dark()
     }
 
     /// Build a new theme by applying custom color overrides to an existing base theme.
