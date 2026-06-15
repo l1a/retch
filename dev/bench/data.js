@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781558089159,
+  "lastUpdate": 1781558554198,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14578,6 +14578,75 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1140165255,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "bdcbee0ad126dac6c44176fed7ec5c0bf076a3ff",
+          "message": "docs: expand feature gap section with full fastfetch module comparison\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-15T13:47:26-07:00",
+          "tree_id": "80a706b7b87343d8a7df71d6ef6e269689f5506c",
+          "url": "https://github.com/l1a/retch/commit/bdcbee0ad126dac6c44176fed7ec5c0bf076a3ff"
+        },
+        "date": 1781558550361,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 248231864.00000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1208302423.9999998,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 97.06519156111992,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9465597196021154,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 96.78208967287587,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 44692.13765419601,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 499.95238271480065,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 743.974057352192,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1070301185,
             "unit": "ns"
           }
         ]
