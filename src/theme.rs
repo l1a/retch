@@ -217,10 +217,14 @@ impl Theme {
     ///
     /// Falls back to `Self::neutral()` when headless, `Self::dark()` when a display is present but no GTK preference is found.
     pub fn detect_system_theme() -> Self {
-        // Skip GTK detection when running headless (SSH, mosh, no display server)
+        // Skip GTK detection when running over SSH/mosh or without a display server.
+        // Shell profiles often set $DISPLAY even in SSH sessions, so check SSH vars too.
+        let is_ssh = std::env::var_os("SSH_CLIENT").is_some()
+            || std::env::var_os("SSH_TTY").is_some()
+            || std::env::var_os("SSH_CONNECTION").is_some();
         let has_display =
             std::env::var_os("DISPLAY").is_some() || std::env::var_os("WAYLAND_DISPLAY").is_some();
-        if !has_display {
+        if is_ssh || !has_display {
             return Self::neutral();
         }
 
