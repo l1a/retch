@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781650079044,
+  "lastUpdate": 1781650602565,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15447,6 +15447,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1381840740,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f35f42d253ad9e8e1cc3e34d4c38726b2323d21b",
+          "message": "chore: add publish and publish-check just recipes (#102)\n\nWraps the two-step crates.io publish sequence (sysinfo first, then CLI)\nso it can be run with a single command.\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-16T15:18:41-07:00",
+          "tree_id": "8472fa8c0437e8868d8e91f26af72d90809dc8e0",
+          "url": "https://github.com/l1a/retch/commit/f35f42d253ad9e8e1cc3e34d4c38726b2323d21b"
+        },
+        "date": 1781650599038,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 384047260.00000006,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1753254390,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 97.81594801706136,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9484804497428336,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 98.37764375375103,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 77.9321361837054,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46221.989885670075,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 482.61966088871014,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 773.9917416661849,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1421660700,
             "unit": "ns"
           }
         ]
