@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781648731491,
+  "lastUpdate": 1781649110237,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7183,6 +7183,100 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 270.6535751762267,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f35f42d253ad9e8e1cc3e34d4c38726b2323d21b",
+          "message": "chore: add publish and publish-check just recipes (#102)\n\nWraps the two-step crates.io publish sequence (sysinfo first, then CLI)\nso it can be run with a single command.\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-16T15:18:41-07:00",
+          "tree_id": "8472fa8c0437e8868d8e91f26af72d90809dc8e0",
+          "url": "https://github.com/l1a/retch/commit/f35f42d253ad9e8e1cc3e34d4c38726b2323d21b"
+        },
+        "date": 1781649109298,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 1580173.06,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 332419995.25999993,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 338574351.425,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 979.0268131601039,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 47.56775244746031,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946397232299018,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 47.578766063448526,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7618.459143385709,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 69589.93519360267,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4703.055307751118,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4754.1681663832405,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1201399.7925687202,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 349.9695278020158,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 253.69860617038324,
             "unit": "ns"
           }
         ]
