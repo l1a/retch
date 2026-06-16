@@ -137,6 +137,13 @@ jobs:
     - name: Format check
       run: cargo fmt -- --check
 
+    - name: Run fetcher (dry run)
+      run: cargo run --release -- --long
+
+    - name: Print system_profiler SPDisplaysDataType (macOS)
+      if: runner.os == 'macOS'
+      run: system_profiler SPDisplaysDataType
+
     - name: Generate man page
       shell: bash
       run: just man || echo "Man page generation skipped (just may not be installed)"
