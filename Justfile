@@ -104,3 +104,13 @@ setup: install-hooks
 # Full development setup
 dev: setup fmt lint test build
     @echo "Development build complete."
+
+# Dry-run publish check for both crates (no upload)
+publish-check:
+    cargo publish --dry-run --manifest-path crates/sysinfo/Cargo.toml
+    cargo publish --dry-run --manifest-path Cargo.toml
+
+# Publish both crates to crates.io (sysinfo first, then CLI)
+publish:
+    cargo publish --manifest-path crates/sysinfo/Cargo.toml
+    cargo publish --manifest-path Cargo.toml
