@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781646889965,
+  "lastUpdate": 1781647242207,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -9952,6 +9952,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 365.02501179362014,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "152d458bb9475caf4f944421182e2c542a451393",
+          "message": "feat: add CPU cache, usage, topology, and freq range fields (v0.3.21) (#101)\n\n* feat: add CPU cache, usage, topology, and freq range fields\n\nCPUCache: Linux reads sysfs /sys/devices/system/cpu/cpu0/cache/;\nmacOS reads hw.l1dcachesize/l1icachesize/l2cachesize/l3cachesize via\nsysctlbyname. Returns None on Windows.\n\nCPUUsage: instantaneous utilization % combined with 1/5/15 min load\naverages — e.g. \"12.8% (load: 0.45, 1.23, 0.87)\".\n\nCPU topology: uses sysinfo physical_core_count() to show \"8C / 16T\"\ninstead of a raw thread count.\n- Linux Intel 12th gen+: groups cpufreq policies by max frequency to\n  detect P/E cores — \"6P + 4E / 16T\".\n- macOS Apple Silicon: reads hw.nperflevels / hw.perflevel0.logicalcpu /\n  hw.perflevel1.logicalcpu — \"4P + 4E / 8T\" on M-series.\n\nCPU Freq (long mode): now includes min–max hardware range from sysfs\ncpufreq on Linux — e.g. \"2.38 GHz (0.42 – 5.13 GHz)\".\n\nTests: format_cpu_cores (3 cases), detect_cpu_cache (Linux sysfs\npresence check), detect_cpu_freq_range (ordered pair assertion).\n\nBenchmarks: detect_cpu_cache (Linux+macOS), detect_cpu_freq_range\n(Linux), format_cpu_cores (all platforms).\n\nAssisted-By: Claude Sonnet 4.6\n\n* ci: add dry-run fetcher step to full-test job\n\nRC tag builds now execute the binary with --long on every platform,\nmatching the visibility the build job provides on PRs.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix(cpu-usage): show instantaneous % on Windows without load average\n\nWindows has no load average concept; sysinfo returns zeros. On Windows,\ndisplay just the usage percentage rather than suppressing the field.\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-16T14:41:43-07:00",
+          "tree_id": "bf24aa1ba36c56763b1bb1c4cc56933d6673dfac",
+          "url": "https://github.com/l1a/retch/commit/152d458bb9475caf4f944421182e2c542a451393"
+        },
+        "date": 1781647239837,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 32652729.38000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 402056079.08000004,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 379086456.275,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 405.59361813406565,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 61.851759453641954,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.800030455773499,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 75.24457086981845,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5208.583364996821,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1323.680437123356,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 415.7453814682268,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 78368.60362260013,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 425.7071510856541,
             "unit": "ns"
           }
         ]
