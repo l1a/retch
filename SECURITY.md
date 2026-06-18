@@ -1,14 +1,5 @@
 # Security Policy
 
-## Supported Versions
-
-We currently provide security updates for the following versions:
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
-| < 0.1.0 | :x:                |
-
 ## Reporting a Vulnerability
 
 We take the security of `retch` seriously. If you believe you have found a security vulnerability, please do **not** open a public issue. Instead, please report it privately.
