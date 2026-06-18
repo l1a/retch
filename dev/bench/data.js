@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781743189983,
+  "lastUpdate": 1781743303478,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4095,6 +4095,100 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 271.7440022179737,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "05af388aff244d23650c76125cf654f8e8c0e378",
+          "message": "Update reporting process instructions in SECURITY.md",
+          "timestamp": "2026-06-17T17:34:53-07:00",
+          "tree_id": "042e6e58c597f41829fa63d91478a53a73937965",
+          "url": "https://github.com/l1a/retch/commit/05af388aff244d23650c76125cf654f8e8c0e378"
+        },
+        "date": 1781743302971,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 2416023.2400000007,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 248671240.84000003,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 245976465.84999996,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2066.502479594496,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 62.40627602957736,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.8750226877391425,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 60.16156056489184,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 17854.056434809936,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 185333.8437074518,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12577.694191729006,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 12697.375040018322,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1617942.207083389,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 385.6843769742107,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 257.6512274900485,
             "unit": "ns"
           }
         ]
