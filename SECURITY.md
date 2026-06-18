@@ -15,7 +15,7 @@ We take the security of `retch` seriously. If you believe you have found a secur
 
 ### Reporting Process
 
-Please use GitHub's private security reporting by "Report a vulnerability" button under your repository's Security tab. 
+Please use GitHub's private security reporting by "Report a vulnerability" button above. 
 
 *Note: Since this is a personal project, please allow for a few days for a response.*
 
