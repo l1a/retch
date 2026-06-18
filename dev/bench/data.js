@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781743850544,
+  "lastUpdate": 1781743890902,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10872,6 +10872,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 353.18289890811553,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "712d094222d82460bc02d04c0d23df44f329b29a",
+          "message": "Revise security vulnerability reporting process\n\nUpdated the reporting process for security vulnerabilities.",
+          "timestamp": "2026-06-17T17:32:56-07:00",
+          "tree_id": "ca5bc7c66309c25546d56f5d05882075967797bd",
+          "url": "https://github.com/l1a/retch/commit/712d094222d82460bc02d04c0d23df44f329b29a"
+        },
+        "date": 1781743889022,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 33352884.920000006,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 519231097.4200001,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 398270384.425,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 376.0042725754995,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 83.12609887523944,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.8446334389192325,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 96.63643218592867,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6339.012009698966,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1575.3172738588062,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 552.5989143130862,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 109327.55885856817,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 439.5975519298606,
             "unit": "ns"
           }
         ]
