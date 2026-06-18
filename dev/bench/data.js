@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781744504086,
+  "lastUpdate": 1781744583732,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13977,6 +13977,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2458945550,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "05af388aff244d23650c76125cf654f8e8c0e378",
+          "message": "Update reporting process instructions in SECURITY.md",
+          "timestamp": "2026-06-17T17:34:53-07:00",
+          "tree_id": "042e6e58c597f41829fa63d91478a53a73937965",
+          "url": "https://github.com/l1a/retch/commit/05af388aff244d23650c76125cf654f8e8c0e378"
+        },
+        "date": 1781744580950,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 28551497.999999996,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2148032758,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 114.84839196272665,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.6551923536174495,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 131.51122706443397,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 93.46453019888884,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42441.51702698086,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 608.3753012700092,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 878.1068364722303,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1923848665,
             "unit": "ns"
           }
         ]
