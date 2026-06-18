@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781744583732,
+  "lastUpdate": 1781744745568,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14051,6 +14051,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1923848665,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c1e57ab633ff499ba3b5c403f76c3a7759099fed",
+          "message": "Remove supported versions section from SECURITY.md\n\nRemoved the section listing supported versions for security updates.",
+          "timestamp": "2026-06-17T17:38:28-07:00",
+          "tree_id": "21593a997c5d3bf2a5bbdb06616374cba90615c4",
+          "url": "https://github.com/l1a/retch/commit/c1e57ab633ff499ba3b5c403f76c3a7759099fed"
+        },
+        "date": 1781744741793,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 30072804,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2161145234,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 115.77781341524997,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.329568458945674,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 116.7409689948478,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 92.197464097085,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42170.98290871645,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 569.900422047114,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 825.7838060453956,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1956210460,
             "unit": "ns"
           }
         ]
