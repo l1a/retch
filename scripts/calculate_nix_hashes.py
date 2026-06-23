@@ -13,12 +13,10 @@ import base64
 import codecs
 import time
 
-def hex_to_sri(hex_str):
-    # Convert hex string to bytes
-    hash_bytes = codecs.decode(hex_str.strip(), 'hex')
-    # Base64 encode
-    b64_str = base64.b64encode(hash_bytes).decode('utf-8')
-    return f"sha256-{b64_str}"
+def to_sri(hash_str):
+    # Run nix hash to-sri to convert hash format to SRI
+    res = run_cmd(["nix", "hash", "to-sri", "--type", "sha256", hash_str.strip()])
+    return res.stdout.strip()
 
 def run_cmd(cmd, check=True):
     res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -66,9 +64,9 @@ def main():
     src_hash_sri = None
     # Add retry loop for potential GitHub archive generation delay
     for attempt in range(1, 4):
-        res = run_cmd(["nix-prefetch-url", "--unpack", "--type", "sha256", url], check=False)
+        res = run_cmd(["nix-prefetch-url", "--unpack", url], check=False)
         if res.returncode == 0:
-            src_hash_sri = hex_to_sri(res.stdout.strip())
+            src_hash_sri = to_sri(res.stdout.strip())
             break
         print(f"Attempt {attempt} failed. Retrying in 5 seconds...", file=sys.stderr)
         time.sleep(5)
