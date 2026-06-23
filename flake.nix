@@ -56,7 +56,7 @@
             rust-analyzer
             just
             rustToolchain
-            pandoc
+            mandown
             hyperfine
             python3
           ];

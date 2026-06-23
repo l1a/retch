@@ -8,7 +8,7 @@
 - **Repository**: https://github.com/l1a/retch
 
 ## Development Guidelines
-- **Man Pages**: Do NOT edit `docs/retch.1` directly. It is generated from `docs/retch.1.md` using pandoc via the `just man` command. The version number in the man page is dynamically extracted from `Cargo.toml`. Always run `just man` after updating the package version.
+- **Man Pages**: Do NOT edit `docs/retch.1` directly. It is generated from `docs/retch.1.md` using mandown via the `just man` command. The version number in the man page is dynamically extracted from `Cargo.toml`. Always run `just man` after updating the package version.
 - **Quality & Linting**: Use `just check` to run formatting (`cargo fmt -- --check`) and linting (`cargo clippy -- -D warnings`) checks locally before committing. This matches the checks performed in the CI/CD pipeline.
 - **Verification Routine**: Before proposing a push or Pull Request, always verify:
   1. All new and existing unit/integration tests cover changes.
@@ -46,13 +46,13 @@
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
 
-## Current State (v0.3.21)
+## Current State (v0.3.22)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
 - **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
 - **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
-- **Quality**: Strict `just check` (fmt + lint), unit test coverage (34 `retch-sysinfo` and 26 `retch-cli` passing unit tests), and automated CLI integration test suite (8 tests).
+- **Quality**: Strict `just check` (fmt + lint), unit test coverage (39 `retch-sysinfo` and 26 `retch-cli` passing unit tests), and automated CLI integration test suite (8 tests).
 - **CI/CD**: Multi-platform build/testing on Linux (Fedora & Ubuntu), macOS, and Windows. Releases compiled for Fedora (x86_64/ARM), macOS (ARM), and Windows (x86_64/ARM) on native host/container runner environments.
 - **Documentation**: Full internal Rustdoc coverage and updated README/man pages.
 - **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
@@ -69,6 +69,11 @@
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
 
 ## Major Achievements
+
+### v0.3.22 - Packaging Configurations (June 23, 2026)
+- **AUR & Nixpkgs**: Created package configuration files for Arch User Repository (`packaging/aur/PKGBUILD`) and Nixpkgs (`packaging/nixpkgs/package.nix`) to simplify repository submissions.
+- **Dynamic Completions**: Integrated dynamic shell completion generation and installation into packaging build steps.
+- **Version**: Bumped to `0.3.22` / `retch-sysinfo 0.1.22`.
 
 ### v0.3.21 - CPU Cache and CPU Usage (June 15, 2026)
 - **CPU Cache**: Added `CPUCache` field showing L1d/L1i/L2/L3 sizes parsed from `/sys/devices/system/cpu/cpu0/cache/` on Linux (e.g. `L1d: 32K, L1i: 32K, L2: 1M, L3: 16M`). Returns `None` on non-Linux.
@@ -119,7 +124,7 @@
 - **Version**: Bumped to `0.3.15` / `retch-sysinfo 0.1.15`.
 
 ### v0.3.14 - Nix Flake (June 11, 2026)
-- **Nix Flake**: Added `flake.nix` with a `crane`-based package build, a `devShell` with all required tools (`cargo`, `rustc`, `rust-analyzer`, `just`, `pandoc`, `hyperfine`, `python3`), and a `homeManagerModules.default` (`programs.retch`) for declarative NixOS/Home Manager installation. Contributed by @quixaq.
+- **Nix Flake**: Added `flake.nix` with a `crane`-based package build, a `devShell` with all required tools (`cargo`, `rustc`, `rust-analyzer`, `just`, `mandown`, `hyperfine`, `python3`), and a `homeManagerModules.default` (`programs.retch`) for declarative NixOS/Home Manager installation. Contributed by @quixaq.
 - **README**: Added Nix installation section with `nix run` and Home Manager module examples.
 - **Version**: Bumped to `0.3.14` / `retch-sysinfo 0.1.14`.
 

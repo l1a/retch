@@ -1,7 +1,3 @@
-% RETCH(1) | System Information Fetcher
-% retch developers
-% June 2026
-
 # NAME
 
 retch - a fast, feature-rich system information fetcher

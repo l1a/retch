@@ -46,6 +46,22 @@ retch is under active development with a working core, rich system information o
 
 ## Installation
 
+### On Arch Linux (AUR)
+
+You can install `retch` from the AUR using an AUR helper (e.g., `yay` or `paru`):
+
+```sh
+yay -S retch
+```
+
+> [!NOTE]
+> **AUR Registration Outage**: New account registrations on the Arch User Repository are temporarily suspended by Arch Linux. While registrations are down, you can still build and install the package locally using the provided configuration:
+> ```sh
+> cd packaging/aur && makepkg -si
+> ```
+
+*(AUR package configuration files are available in [packaging/aur](packaging/aur/PKGBUILD)).*
+
 ### From crates.io
 
 ```sh
@@ -58,7 +74,7 @@ cargo install retch-cli
 nix run github:l1a/retch
 ```
 
-Or add to your NixOS / Home Manager configuration:
+Or add it to your NixOS / Home Manager configuration using the provided Flake:
 
 ```nix
 # flake.nix inputs
@@ -71,6 +87,8 @@ programs.retch.settings = {
   theme = "catppuccin";
 };
 ```
+
+*(Nixpkgs package derivation expression is available in [packaging/nixpkgs](packaging/nixpkgs/package.nix)).*
 
 ### From source
 
