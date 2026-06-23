@@ -114,3 +114,7 @@ publish-check:
 publish:
     cargo publish --manifest-path crates/sysinfo/Cargo.toml
     cargo publish --manifest-path Cargo.toml
+
+# Automatically calculate and update Nixpkgs hashes in packaging/nixpkgs/package.nix (requires Nix)
+nix-update VERSION="":
+    @python3 scripts/calculate_nix_hashes.py {{VERSION}}

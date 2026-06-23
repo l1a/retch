@@ -239,12 +239,23 @@ jobs:
       contents: write   # Required to create GitHub Releases
 
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
       - name: Download release assets
         uses: actions/download-artifact@v8
         with:
           path: release
           pattern: release-assets-*
           merge-multiple: true
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Calculate Nixpkgs Hashes
+        id: nix_hashes
+        run: python3 scripts/calculate_nix_hashes.py
 
       - name: Create Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
@@ -253,6 +264,14 @@ jobs:
           name: retch ${{ github.ref_name }}
           draft: false
           prerelease: false
+          body: |
+            ### Nixpkgs Submission Info
+            To update the package in Nixpkgs, use the following settings in `package.nix`:
+            ```nix
+            version = "${{ steps.nix_hashes.outputs.version }}";
+            hash = "${{ steps.nix_hashes.outputs.src_hash }}";
+            cargoHash = "${{ steps.nix_hashes.outputs.cargo_hash }}";
+            ```
           files: |
             release/retch-linux-x86_64
             release/retch-linux-arm64
