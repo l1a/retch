@@ -66,7 +66,7 @@ def main():
     src_hash_sri = None
     # Add retry loop for potential GitHub archive generation delay
     for attempt in range(1, 4):
-        res = run_cmd(["nix-prefetch-url", "--unpack", url], check=False)
+        res = run_cmd(["nix-prefetch-url", "--unpack", "--type", "sha256", url], check=False)
         if res.returncode == 0:
             src_hash_sri = hex_to_sri(res.stdout.strip())
             break
