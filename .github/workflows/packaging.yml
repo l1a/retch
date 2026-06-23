@@ -33,7 +33,7 @@ jobs:
     steps:
       - name: Install system dependencies
         run: |
-          pacman -Syu --noconfirm git base-devel cargo pandoc sudo
+          pacman -Syu --noconfirm git base-devel cargo pandoc sqlite sudo
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
@@ -56,5 +56,5 @@ jobs:
           
           chown -R builduser:builduser .
           
-          # Run makepkg
-          sudo -u builduser makepkg -s --noconfirm
+          # Run makepkg (unsetting any runner-inherited cargo linker configs)
+          sudo -u builduser env -u CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER makepkg -s --noconfirm
