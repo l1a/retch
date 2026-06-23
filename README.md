@@ -54,6 +54,12 @@ You can install `retch` from the AUR using an AUR helper (e.g., `yay` or `paru`)
 yay -S retch
 ```
 
+> [!NOTE]
+> **AUR Registration Outage**: New account registrations on the Arch User Repository are temporarily suspended by Arch Linux. While registrations are down, you can still build and install the package locally using the provided configuration:
+> ```sh
+> cd packaging/aur && makepkg -si
+> ```
+
 *(AUR package configuration files are available in [packaging/aur](packaging/aur/PKGBUILD)).*
 
 ### From crates.io
