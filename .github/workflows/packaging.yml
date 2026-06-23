@@ -46,7 +46,8 @@ jobs:
           cd packaging/aur
           
           # Package local source to avoid downloading tag that doesn't exist yet
-          tar --exclude=packaging/aur/cargo-home --exclude=target --exclude=.git -czf retch.tar.gz -C ../.. .
+          tar --exclude=packaging/aur/cargo-home --exclude=target --exclude=.git -czf /tmp/retch.tar.gz -C ../.. .
+          mv /tmp/retch.tar.gz retch.tar.gz
           
           # Patch PKGBUILD for local build
           sed -i 's|source=.*|source=("retch.tar.gz")|' PKGBUILD
