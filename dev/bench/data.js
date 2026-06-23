@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782252653691,
+  "lastUpdate": 1782252929088,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -8340,50 +8340,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "distinct": true,
-          "id": "4be849d2c552d060db86bbc11683a8fd251f0c0b",
-          "message": "Configure git safe directory inside Fedora containers",
-          "timestamp": "2026-06-03T09:54:28-07:00",
-          "tree_id": "bef608005f117a8a29ffa44e7f42771ecd3cd4b0",
-          "url": "https://github.com/l1a/retch/commit/4be849d2c552d060db86bbc11683a8fd251f0c0b"
-        },
-        "date": 1780506481052,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 75272364.03999999,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 807709951.64,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 699583877.1,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 238081344.8,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
           "id": "10396be118bf4df2bef9664e6b79dcfa48c6328f",
           "message": "Disable fail-on-alert to tolerate VM noise",
           "timestamp": "2026-06-03T10:13:15-07:00",
@@ -11728,6 +11684,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 367.84620179688176,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "01cff50855f67afef7c41650489cfb3113951b41",
+          "message": "Use nix hash to-sri to convert prefetch (#105)\n\nReplace hex_to_sri with to_sri helper that invokes native nix hash to-sri. This handles Nix's base32 output format natively and robustly without manual base-16 decoding.\n\nAssisted-By: Gemini 3.5 Flash",
+          "timestamp": "2026-06-23T14:55:59-07:00",
+          "tree_id": "02d2c565ab74b7d19cf0433027a69ad08308b311",
+          "url": "https://github.com/l1a/retch/commit/01cff50855f67afef7c41650489cfb3113951b41"
+        },
+        "date": 1782252927637,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 22925560.939999998,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 498166273.34000003,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 448879098.95,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 343.1743916556847,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 61.489948627681486,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.7180500350013634,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 61.38170937228058,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4288.72927506101,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1029.237701639768,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 384.4841572770426,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 67412.20641584121,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 346.5321670449906,
             "unit": "ns"
           }
         ]
