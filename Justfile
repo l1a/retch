@@ -42,15 +42,15 @@ audit:
 install: install-man
     cargo install --path .
 
-# Generate man page from Markdown using pandoc.
+# Generate man page from Markdown using mandown.
 # The version is dynamically read from Cargo.toml and placed in the footer.
 man:
     @mkdir -p docs
     @VERSION=$(grep '^version' Cargo.toml | head -1 | cut -d '"' -f2); \
-    pandoc docs/retch.1.md \
-        -s -t man \
-        --variable=footer="retch $VERSION" \
-        -o docs/retch.1
+    DATE=$(date +"%B %Y"); \
+    mandown docs/retch.1.md RETCH 1 | sed -e 's/\\fB\\fB/\\fB/g' -e 's/\\fP\\fP/\\fP/g' -e "s/\\.TH \"RETCH\" 1/\\.TH \"RETCH\" \"1\" \"$DATE\" \"retch $VERSION\" \"System Information Fetcher\"/" > docs/retch.1
+
+
 
 # Install man page to XDG user location (~/.local/share/man)
 install-man: man

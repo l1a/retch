@@ -33,7 +33,7 @@ jobs:
     steps:
       - name: Install system dependencies
         run: |
-          pacman -Syu --noconfirm git base-devel cargo pandoc sqlite sudo
+          pacman -Syu --noconfirm git base-devel cargo mandown sqlite sudo
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 

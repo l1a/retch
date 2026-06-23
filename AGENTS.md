@@ -8,7 +8,7 @@
 - **Repository**: https://github.com/l1a/retch
 
 ## Development Guidelines
-- **Man Pages**: Do NOT edit `docs/retch.1` directly. It is generated from `docs/retch.1.md` using pandoc via the `just man` command. The version number in the man page is dynamically extracted from `Cargo.toml`. Always run `just man` after updating the package version.
+- **Man Pages**: Do NOT edit `docs/retch.1` directly. It is generated from `docs/retch.1.md` using mandown via the `just man` command. The version number in the man page is dynamically extracted from `Cargo.toml`. Always run `just man` after updating the package version.
 - **Quality & Linting**: Use `just check` to run formatting (`cargo fmt -- --check`) and linting (`cargo clippy -- -D warnings`) checks locally before committing. This matches the checks performed in the CI/CD pipeline.
 - **Verification Routine**: Before proposing a push or Pull Request, always verify:
   1. All new and existing unit/integration tests cover changes.
@@ -124,7 +124,7 @@
 - **Version**: Bumped to `0.3.15` / `retch-sysinfo 0.1.15`.
 
 ### v0.3.14 - Nix Flake (June 11, 2026)
-- **Nix Flake**: Added `flake.nix` with a `crane`-based package build, a `devShell` with all required tools (`cargo`, `rustc`, `rust-analyzer`, `just`, `pandoc`, `hyperfine`, `python3`), and a `homeManagerModules.default` (`programs.retch`) for declarative NixOS/Home Manager installation. Contributed by @quixaq.
+- **Nix Flake**: Added `flake.nix` with a `crane`-based package build, a `devShell` with all required tools (`cargo`, `rustc`, `rust-analyzer`, `just`, `mandown`, `hyperfine`, `python3`), and a `homeManagerModules.default` (`programs.retch`) for declarative NixOS/Home Manager installation. Contributed by @quixaq.
 - **README**: Added Nix installation section with `nix run` and Home Manager module examples.
 - **Version**: Bumped to `0.3.14` / `retch-sysinfo 0.1.14`.
 

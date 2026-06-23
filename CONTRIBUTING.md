@@ -30,7 +30,7 @@ First off, thank you for considering contributing to `retch`! It's people like y
 
 - [Rust](https://www.rust-lang.org/tools/install) (latest stable)
 - [just](https://github.com/casey/just) (command runner)
-- [pandoc](https://pandoc.org/installing.html) (for generating man pages)
+- [mandown](https://crates.io/crates/mandown) (for generating man pages)
 - [hyperfine](https://github.com/sharkdp/hyperfine) (optional, for CLI benchmarking recipes)
 
 ### Build and Run

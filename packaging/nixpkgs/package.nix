@@ -3,7 +3,7 @@
 , fetchFromGitHub
 , pkg-config
 , installShellFiles
-, pandoc
+, mandown
 }:
 
 rustPlatform.buildRustPackage rec {
@@ -22,12 +22,13 @@ rustPlatform.buildRustPackage rec {
   nativeBuildInputs = [
     pkg-config
     installShellFiles
-    pandoc
+    mandown
   ];
 
   postBuild = ''
     # Generate man page
-    pandoc docs/retch.1.md -s -t man --variable=footer="retch ${version}" -o docs/retch.1
+    DATE="June 2026"
+    mandown docs/retch.1.md RETCH 1 | sed -e 's/\\fB\\fB/\\fB/g' -e 's/\\fP\\fP/\\fP/g' -e "s/\\.TH \"RETCH\" 1/\\.TH \"RETCH\" \"1\" \"$DATE\" \"retch ${version}\" \"System Information Fetcher\"/" > docs/retch.1
   '';
 
   postInstall = ''

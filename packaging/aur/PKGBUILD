@@ -7,7 +7,7 @@ arch=('x86_64' 'aarch64')
 url="https://github.com/l1a/retch"
 license=('GPL3')
 depends=('gcc-libs' 'glibc')
-makedepends=('cargo' 'pandoc')
+makedepends=('cargo' 'mandown')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('0214f64d5b2ce55990ba0f121b1e0cfc3f8637a1e447b91bb25d4f9b6ac6d541')
 
@@ -23,7 +23,8 @@ build() {
   cargo build --release --frozen
   
   # Generate man page
-  pandoc docs/retch.1.md -s -t man --variable=footer="retch $pkgver" -o docs/retch.1
+  DATE=$(date +"%B %Y")
+  mandown docs/retch.1.md RETCH 1 | sed -e 's/\\fB\\fB/\\fB/g' -e 's/\\fP\\fP/\\fP/g' -e "s/\\.TH \"RETCH\" 1/\\.TH \"RETCH\" \"1\" \"\$DATE\" \"retch \$pkgver\" \"System Information Fetcher\"/" > docs/retch.1
 }
 
 check() {
