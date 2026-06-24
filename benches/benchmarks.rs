@@ -16,7 +16,9 @@ use retch_sysinfo::audio;
 #[cfg(target_os = "macos")]
 use retch_sysinfo::camera;
 use retch_sysinfo::display;
-use retch_sysinfo::fetch::{detect_cpu_cache, detect_cpu_freq_range, format_cpu_cores};
+#[cfg(target_os = "linux")]
+use retch_sysinfo::fetch::detect_cpu_freq_range;
+use retch_sysinfo::fetch::{detect_cpu_cache, format_cpu_cores};
 #[cfg(target_os = "macos")]
 use retch_sysinfo::gamepad;
 use retch_sysinfo::network;
