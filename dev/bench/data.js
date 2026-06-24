@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782331720598,
+  "lastUpdate": 1782332430214,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -16566,50 +16566,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "distinct": true,
-          "id": "56e8e6e804cf08fa3d7d32e61b35c7c70da8716a",
-          "message": "Update Windows battery query to PowerShell and configure 6-job benchmark CI matrix",
-          "timestamp": "2026-06-03T09:37:53-07:00",
-          "tree_id": "e5b6f8512a14b049491db31d512ef83085fd9620",
-          "url": "https://github.com/l1a/retch/commit/56e8e6e804cf08fa3d7d32e61b35c7c70da8716a"
-        },
-        "date": 1780506911632,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 270537630,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1404880000.0000002,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 296142327.5,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1261151065,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
           "id": "248b7b5a9f9a1a3eb5b62512ffa362eac159b756",
           "message": "Configure Windows PATH in benchmark jobs",
           "timestamp": "2026-06-03T11:23:32-07:00",
@@ -19859,6 +19815,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1380498555,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "485da1be8ba30a6409d4220e303ee1380f4c8937",
+          "message": "docs: document default set notes in NOTES\n\nAssisted-By: Gemini 2.5 Pro",
+          "timestamp": "2026-06-24T12:31:27-07:00",
+          "tree_id": "ca4119acbfdfeee6b90c27723a146c8529d0cef2",
+          "url": "https://github.com/l1a/retch/commit/485da1be8ba30a6409d4220e303ee1380f4c8937"
+        },
+        "date": 1782332425118,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 96.61758739632278,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946825002343431,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 96.79261608229427,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 79.31214353444103,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47020.360633353,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 482.1440510091742,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 746.9015069226948,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1313774420,
             "unit": "ns"
           }
         ]
