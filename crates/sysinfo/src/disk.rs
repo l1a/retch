@@ -107,19 +107,20 @@ fn detect_macos() -> Vec<String> {
         return Vec::new();
     }
 
-    // Extract disk identifiers from the AllDisksAndPartitions array.
-    // We use simple text parsing of the plist XML to avoid a plist dependency.
+    // Use simple text parsing of the plist XML to avoid a plist dependency.
     let text = String::from_utf8_lossy(&out.stdout);
 
-    // Collect whole-disk identifiers (e.g. "disk0", "disk1") — not partitions
+    // Parse the WholeDisks array — macOS pre-filters this to whole-disk identifiers
+    // (e.g. "disk0", "disk1"), excluding partitions like "disk0s1".
     let mut disk_ids: Vec<String> = Vec::new();
-    let mut in_all_disks = false;
+    let mut in_whole_disks = false;
     for line in text.lines() {
         let trimmed = line.trim();
-        if trimmed.contains("AllDisks") {
-            in_all_disks = true;
+        if trimmed == "<key>WholeDisks</key>" {
+            in_whole_disks = true;
+            continue;
         }
-        if in_all_disks {
+        if in_whole_disks {
             if trimmed == "</array>" {
                 break;
             }
@@ -127,10 +128,7 @@ fn detect_macos() -> Vec<String> {
                 .strip_prefix("<string>")
                 .and_then(|s| s.strip_suffix("</string>"))
             {
-                // Only include whole disks, not partitions (diskNsM)
-                if inner.starts_with("disk") && !inner.contains('s') {
-                    disk_ids.push(inner.to_string());
-                }
+                disk_ids.push(inner.to_string());
             }
         }
     }
