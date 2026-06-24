@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782277153778,
+  "lastUpdate": 1782277165239,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4788,50 +4788,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "b13e968dc483454c9fbb632a9714d46474bdc678",
-          "message": "Merge pull request #66 from l1a/feature/multi-platform-benchmarks\n\nv0.3.2 - macOS Battery/Bluetooth Fixes & Multi-Platform Benchmarks",
-          "timestamp": "2026-06-03T12:36:18-07:00",
-          "tree_id": "150eb86f6551ec2ce10a0920f17d572403943ffe",
-          "url": "https://github.com/l1a/retch/commit/b13e968dc483454c9fbb632a9714d46474bdc678"
-        },
-        "date": 1780515864545,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 1645353.9199999997,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 79994650.52,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 79248902.03224066,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1171900.1484419117,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "046c8e0b0137a548dcb51d46fef7703b46efe9cc",
           "message": "v0.3.3 - Native OS Queries & Performance Optimization (#68)\n\n* Implement native queries for route, displays, reg\n\n* Allow clippy upper_case_acronyms for win_reg\n\n* Bump version to 0.3.3 and rebuild man pages\n\n* Test route parsing and wire up helper\n\n* Restrict route parser to Linux or tests",
           "timestamp": "2026-06-04T08:16:04-07:00",
@@ -8671,6 +8627,100 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 259.4515413212881,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "220df5465b33d99038bf92cb7e1a29bea0b75fb6",
+          "message": "deps(deps): bump sysinfo in the cargo-dependencies group (#109)\n\nBumps the cargo-dependencies group with 1 update: [sysinfo](https://github.com/GuillaumeGomez/sysinfo).\n\n\nUpdates `sysinfo` from 0.39.3 to 0.39.5\n- [Changelog](https://github.com/GuillaumeGomez/sysinfo/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/GuillaumeGomez/sysinfo/compare/v0.39.3...v0.39.5)\n\n---\nupdated-dependencies:\n- dependency-name: sysinfo\n  dependency-version: 0.39.5\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: cargo-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-06-23T21:41:04-07:00",
+          "tree_id": "d0637dc2f48db2f5807ba1634a9d71a51b466c96",
+          "url": "https://github.com/l1a/retch/commit/220df5465b33d99038bf92cb7e1a29bea0b75fb6"
+        },
+        "date": 1782277164495,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 1581933.3800000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 272828466.4800001,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 272844111.95,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 978.4527002084,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 47.601537375420016,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9468566794025195,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 47.64875027442868,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7768.591327199023,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71054.19897696606,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4782.582638725272,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4864.294900852815,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1199882.044388771,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 349.226123777695,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 252.85332798495898,
             "unit": "ns"
           }
         ]
