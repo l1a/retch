@@ -227,11 +227,12 @@ fn default_config_content() -> String {
 # long = true      # Show all fields
 
 # List of fields to display (leave empty or omit to show all)
+# Note: "phys-mem" requires running as root (sudo) on Linux to read DMI memory tables.
 # fields = [
 #     "os", "kernel", "host", "arch", "cpu", "cpu-freq", "gpu",
 #     "motherboard", "bios", "display", "audio", "camera", "gamepad",
-#     "memory", "swap", "uptime", "procs", "load",
-#     "disk", "temp", "net", "wifi", "bluetooth", "battery",
+#     "memory", "phys-mem", "swap", "uptime", "procs", "load",
+#     "disk", "phys-disk", "temp", "net", "wifi", "bluetooth", "battery",
 #     "shell", "terminal", "desktop", "theme", "icons", "cursor", "font", "users", "packages"
 # ]
 "##

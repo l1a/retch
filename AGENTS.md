@@ -7,6 +7,58 @@
 - **License**: GPLv3
 - **Repository**: https://github.com/l1a/retch
 
+## WIP.md — Cross-Machine Work Handoff
+
+`WIP.md` is a Syncthing-synced, git-ignored file in the repo root. It is the canonical source
+of truth for in-progress work across machines. **Any agent starting a session on this repo must
+read `WIP.md` before doing anything else.**
+
+### Purpose
+
+Because this repo is synced via Syncthing across multiple machines, development may be paused
+on one machine and resumed on another. `WIP.md` carries the context that cannot be inferred
+from git history alone: what is partially done, what bugs were encountered and how they were
+fixed, what the next steps are, and what caveats apply to this specific checkout.
+
+### When to Update WIP.md
+
+Update `WIP.md` at every significant stopping point:
+- When switching to a new branch (clear old content, write new context)
+- Before switching machines or ending a session
+- After pushing commits that change the state of the work
+- After a PR is merged (record that the branch is done, set "Active Branch: none")
+- Whenever the next-step checklist changes
+
+### What to Include
+
+Every WIP.md entry should contain:
+1. **Machine** — the OS, distro, and architecture of the machine where work was last saved
+   (e.g. "Linux Fedora 44 x86_64", "macOS 15 arm64"). This matters because some bugs and
+   build quirks are machine-specific (e.g. the `target-cpu=native` SIGILL issue on Fedora).
+2. **Active branch name** and the PR URL (if one is open)
+3. **Latest commit hash** and its message
+4. **What was implemented** — a concise description of new files/modules and changed files
+5. **Bugs fixed** — what went wrong and exactly how it was resolved (so the same fix isn't
+   re-derived from scratch)
+6. **Current CI state** — passing or failing, and the run ID / job IDs to check
+7. **Open tasks** — a checkbox list of what remains before the work is complete
+8. **How to resume** — exact shell commands to check out, build, and verify the branch
+9. **Why this work** — a one-paragraph note on what motivated the change, so an agent
+   understands the intent without reading the full backlog
+
+### Format
+
+Use the template already in `WIP.md`. Keep it under ~150 lines. Older sessions can be
+truncated or removed once the branch is merged. Only one "Current Session" block at a time.
+
+### What NOT to Put in WIP.md
+
+- Full file contents or large code diffs (those belong in git)
+- Detailed architecture docs (those belong in AGENTS.md or inline Rustdoc)
+- Anything that should survive a branch merge — put that in AGENTS.md instead
+
+---
+
 ## Development Guidelines
 - **Man Pages**: Do NOT edit `docs/retch.1` directly. It is generated from `docs/retch.1.md` using mandown via the `just man` command. The version number in the man page is dynamically extracted from `Cargo.toml`. Always run `just man` after updating the package version.
 - **Quality & Linting**: Use `just check` to run formatting (`cargo fmt -- --check`) and linting (`cargo clippy -- -D warnings`) checks locally before committing. This matches the checks performed in the CI/CD pipeline.
@@ -46,7 +98,7 @@
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
 
-## Current State (v0.3.22)
+## Current State (v0.3.23)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -64,11 +116,18 @@
 
 ## Future Work / Backlog
 
+- **Windows PhysDisk and PhysMem**: `detect_physical_disks()` and `detect_physical_memory()` both return empty on Windows (no implementation). PhysDisk should use `Get-PhysicalDisk` (WMI/PowerShell) or the `StoragePort` WMI class; PhysMem should use `Win32_PhysicalMemory` WMI. Both should follow the same no-wmic pattern as the rest of the Windows probes (prefer registry/native APIs or PowerShell, avoid `wmic`).
 - **Package repository submissions**: Submit retch to AUR (Arch User Repository) and nixpkgs so it appears in the [Repology](https://repology.org/project/retch/versions) packaging status widget. The Nix flake (contributed by @quixaq) is a useful starting point for the nixpkgs submission.
 - **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
 
 ## Major Achievements
+
+### v0.3.23 - Physical Disk and Physical Memory Fields (June 23, 2026)
+- **Physical Disk**: Added `PhysDisk` field showing physical disk model, size, and type (NVMe SSD, SSD, or HDD). Linux reads from `/sys/class/block/` sysfs entries; macOS spawns `diskutil list -plist` and `diskutil info -plist <disk>`. New module `crates/sysinfo/src/disk.rs`.
+- **Physical Memory**: Added `PhysMem` field showing RAM slot details — type (DDR4, DDR5, LPDDR5, etc.), speed (MT/s), and per-slot capacity, with deduplication ("2× 8 GB DDR5 4800 MT/s"). Linux spawns `dmidecode --type 17` (gracefully returns `None` without root); macOS spawns `system_profiler SPMemoryDataType`. New module `crates/sysinfo/src/memory.rs`.
+- Both fields run concurrently in the scoped-thread pipeline and appear in the default output set.
+- **Version**: Bumped to `0.3.23` / `retch-sysinfo 0.1.23`.
 
 ### v0.3.22 - Packaging Configurations (June 23, 2026)
 - **AUR & Nixpkgs**: Created package configuration files for Arch User Repository (`packaging/aur/PKGBUILD`) and Nixpkgs (`packaging/nixpkgs/package.nix`) to simplify repository submissions.
@@ -405,8 +464,6 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - **Brightness**: Monitor brightness level
 - **Keyboard**: Connected keyboards
 - **Mouse**: Connected mice
-- **PhysicalDisk**: Physical disk model, size, type
-- **PhysicalMemory**: RAM slot count, type (DDR5 etc.), speed
 - **PowerAdapter**: Charger name and wattage
 - **TPM**: Trusted Platform Module device info
 
@@ -444,4 +501,4 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - **Weather**: Weather information (requires network)
 
 ---
-*Last updated: June 15, 2026 (v0.3.21)*
+*Last updated: June 23, 2026 (v0.3.23)*

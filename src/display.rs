@@ -72,9 +72,11 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             "camera".to_string(),
             "gamepad".to_string(),
             "memory".to_string(),
+            "phys-mem".to_string(),
             "swap".to_string(),
             "load".to_string(),
             "disk".to_string(),
+            "phys-disk".to_string(),
             "net".to_string(),
             "uptime".to_string(),
         ])
@@ -160,6 +162,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         }
     }
     print_line("Memory", &info.memory);
+    if let Some(phys_mem) = &info.physical_memory {
+        print_line("Phys Mem", phys_mem);
+    }
     print_line("Swap", &info.swap);
     print_line("Procs", &info.processes.to_string());
     if let Some(load) = &info.load_avg {
@@ -169,6 +174,12 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if should_show("Disk") {
         for disk in &info.disks {
             print_line("Disk", disk);
+        }
+    }
+
+    if should_show("Phys Disk") {
+        for disk in &info.physical_disks {
+            print_line("Phys Disk", disk);
         }
     }
 

@@ -8,8 +8,12 @@
 default:
     @just --list
 
-# Build the project
+# Build the project (debug mode)
 build:
+    cargo build
+
+# Build the project (release mode)
+build-release:
     cargo build --release
 
 # Run tests
