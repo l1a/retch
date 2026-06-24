@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782325911963,
+  "lastUpdate": 1782326013512,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19329,6 +19329,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1312267270,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "d89aa928c05f9ff70640a355b7aa104df5933a86",
+          "message": "docs: update NOTES for v0.3.23 release and nixpkgs PR\n\nAssisted-By: Gemini 3.5 Flash",
+          "timestamp": "2026-06-24T10:56:28-07:00",
+          "tree_id": "4de75ab73dd70c0da1ffc10be9ba0f151bfd5c5f",
+          "url": "https://github.com/l1a/retch/commit/d89aa928c05f9ff70640a355b7aa104df5933a86"
+        },
+        "date": 1782326008295,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 286100266,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1585276695.9999998,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 96.76205477207026,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9497500073659615,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 102.45087450555816,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 80.72111045683906,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46710.460659783814,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 501.2545139647738,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 763.1274821198751,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1415258645,
             "unit": "ns"
           }
         ]
