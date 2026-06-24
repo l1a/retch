@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782324656662,
+  "lastUpdate": 1782324963187,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -8964,50 +8964,6 @@ window.BENCHMARK_DATA = {
       {
         "commit": {
           "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "585270b923d52522281c533fb0763203d8a90b40",
-          "message": "Update CLI flags for short, long, and mode options (#70)",
-          "timestamp": "2026-06-04T09:08:05-07:00",
-          "tree_id": "0ea02c92aac1141943ac5f8df9742e9e9034f14f",
-          "url": "https://github.com/l1a/retch/commit/585270b923d52522281c533fb0763203d8a90b40"
-        },
-        "date": 1780590003385,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 22603521.88,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 635073225.88,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 652311333.4,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 254923886.475,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
             "email": "49699333+dependabot[bot]@users.noreply.github.com",
             "name": "dependabot[bot]",
             "username": "dependabot[bot]"
@@ -12602,6 +12558,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 343.75942285097176,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "d89aa928c05f9ff70640a355b7aa104df5933a86",
+          "message": "docs: update NOTES for v0.3.23 release and nixpkgs PR\n\nAssisted-By: Gemini 3.5 Flash",
+          "timestamp": "2026-06-24T10:56:28-07:00",
+          "tree_id": "4de75ab73dd70c0da1ffc10be9ba0f151bfd5c5f",
+          "url": "https://github.com/l1a/retch/commit/d89aa928c05f9ff70640a355b7aa104df5933a86"
+        },
+        "date": 1782324961387,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 22937344.12,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 783473894.22,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 705724958.4,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 350.4902061907593,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 71.34842424156469,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.6545359630059089,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 59.573370549734136,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4074.854359203497,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 977.0743976806174,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 386.2468083386995,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 63834.51111837911,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 324.20975302781824,
             "unit": "ns"
           }
         ]
