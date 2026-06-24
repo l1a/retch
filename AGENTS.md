@@ -116,6 +116,7 @@ truncated or removed once the branch is merged. Only one "Current Session" block
 
 ## Future Work / Backlog
 
+- **Windows PhysDisk and PhysMem**: `detect_physical_disks()` and `detect_physical_memory()` both return empty on Windows (no implementation). PhysDisk should use `Get-PhysicalDisk` (WMI/PowerShell) or the `StoragePort` WMI class; PhysMem should use `Win32_PhysicalMemory` WMI. Both should follow the same no-wmic pattern as the rest of the Windows probes (prefer registry/native APIs or PowerShell, avoid `wmic`).
 - **Package repository submissions**: Submit retch to AUR (Arch User Repository) and nixpkgs so it appears in the [Repology](https://repology.org/project/retch/versions) packaging status widget. The Nix flake (contributed by @quixaq) is a useful starting point for the nixpkgs submission.
 - **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
