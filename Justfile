@@ -87,10 +87,24 @@ bench-cli:
 bench-compare:
     @python3 scripts/install_hyperfine.py 2>/dev/null || python scripts/install_hyperfine.py
     cargo build --release
-    @CMDS="'./target/release/retch'"; \
-    if command -v fastfetch > /dev/null; then CMDS="$CMDS 'fastfetch'"; fi; \
-    if command -v neofetch > /dev/null; then CMDS="$CMDS 'neofetch --off'"; fi; \
-    eval hyperfine --warmup 3 --runs 10 $CMDS
+    @echo "=== Comparing Standard/Default ==="
+    @if command -v fastfetch > /dev/null; then \
+        hyperfine --warmup 3 --runs 10 './target/release/retch' 'fastfetch'; \
+    else \
+        hyperfine --warmup 3 --runs 10 './target/release/retch'; \
+    fi
+    @echo "=== Comparing Short ==="
+    @if command -v fastfetch > /dev/null; then \
+        hyperfine --warmup 3 --runs 10 './target/release/retch --short' 'fastfetch -c none'; \
+    else \
+        hyperfine --warmup 3 --runs 10 './target/release/retch --short'; \
+    fi
+    @echo "=== Comparing Long ==="
+    @if command -v fastfetch > /dev/null; then \
+        hyperfine --warmup 3 --runs 10 './target/release/retch --long' 'fastfetch -c all'; \
+    else \
+        hyperfine --warmup 3 --runs 10 './target/release/retch --long'; \
+    fi
 
 # Upload local benchmark results to the gh-pages dashboard (requires: hyperfine, gh)
 # On Windows: run from Git Bash, or invoke python scripts/upload_local_bench.py directly.

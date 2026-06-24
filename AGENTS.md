@@ -98,7 +98,7 @@ truncated or removed once the branch is merged. Only one "Current Session" block
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
 
-## Current State (v0.3.23)
+## Current State (v0.3.24)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -122,6 +122,12 @@ truncated or removed once the branch is merged. Only one "Current Session" block
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
 
 ## Major Achievements
+
+### v0.3.24 - Benchmark Mode Mappings and Metric Fetch Optimizations (June 24, 2026)
+- **Metric Collection Optimization**: Restricted metric gathering in `SystemInfo::collect` to only fetch fields specified in configuration or CLI flags. Prevents costly subprocess spawns, network lookups, and CPU refresh delays (200ms sleep) for fields not requested.
+- **Benchmark Mappings**: Configured sequential pairwise comparisons for standard, short, and long modes across `Justfile` and `scripts/upload_local_bench.py`. Placed `fastfetch -c all` as the direct counterpart of `retch --long`, `fastfetch -c none` for `retch --short`, and standard `fastfetch` for standard `retch`.
+- **CI / CD integration**: Updated `.github/workflows/benchmark.yml` and `scripts/parse_criterion.py` to compile and parse all three modes sequentially.
+- **Version**: Bumped to `0.3.24` / `retch-sysinfo 0.1.24`.
 
 ### v0.3.23 - Physical Disk and Physical Memory Fields (June 23, 2026)
 - **Physical Disk**: Added `PhysDisk` field showing physical disk model, size, and type (NVMe SSD, SSD, or HDD). Linux reads from `/sys/class/block/` sysfs entries; macOS spawns `diskutil list -plist` and `diskutil info -plist <disk>`. New module `crates/sysinfo/src/disk.rs`.
@@ -501,4 +507,4 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - **Weather**: Weather information (requires network)
 
 ---
-*Last updated: June 23, 2026 (v0.3.23)*
+*Last updated: June 24, 2026 (v0.3.24)*
