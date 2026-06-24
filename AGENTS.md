@@ -32,15 +32,18 @@ Update `WIP.md` at every significant stopping point:
 ### What to Include
 
 Every WIP.md entry should contain:
-1. **Active branch name** and the PR URL (if one is open)
-2. **Latest commit hash** and its message
-3. **What was implemented** — a concise description of new files/modules and changed files
-4. **Bugs fixed** — what went wrong and exactly how it was resolved (so the same fix isn't
+1. **Machine** — the OS, distro, and architecture of the machine where work was last saved
+   (e.g. "Linux Fedora 44 x86_64", "macOS 15 arm64"). This matters because some bugs and
+   build quirks are machine-specific (e.g. the `target-cpu=native` SIGILL issue on Fedora).
+2. **Active branch name** and the PR URL (if one is open)
+3. **Latest commit hash** and its message
+4. **What was implemented** — a concise description of new files/modules and changed files
+5. **Bugs fixed** — what went wrong and exactly how it was resolved (so the same fix isn't
    re-derived from scratch)
-5. **Current CI state** — passing or failing, and the run ID / job IDs to check
-6. **Open tasks** — a checkbox list of what remains before the work is complete
-7. **How to resume** — exact shell commands to check out, build, and verify the branch
-8. **Why this work** — a one-paragraph note on what motivated the change, so an agent
+6. **Current CI state** — passing or failing, and the run ID / job IDs to check
+7. **Open tasks** — a checkbox list of what remains before the work is complete
+8. **How to resume** — exact shell commands to check out, build, and verify the branch
+9. **Why this work** — a one-paragraph note on what motivated the change, so an agent
    understands the intent without reading the full backlog
 
 ### Format
