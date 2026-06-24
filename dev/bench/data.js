@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782331107723,
+  "lastUpdate": 1782331720598,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13074,65 +13074,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "distinct": true,
-          "id": "d1a535b0061e46fe228bbc6bc6750aaa1a3d682a",
-          "message": "docs: update AGENTS.md wiki instructions and fix man page version\n\nAdd explicit wiki clone URL and expand wiki update guidance in AGENTS.md.\nRegenerate docs/retch.1 to correct version header (0.3.4 → 0.3.5).\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-          "timestamp": "2026-06-08T19:47:53-07:00",
-          "tree_id": "475ab89487f022b32be2a0ef3c9080b336f41d0a",
-          "url": "https://github.com/l1a/retch/commit/d1a535b0061e46fe228bbc6bc6750aaa1a3d682a"
-        },
-        "date": 1780975258029,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 34949872.00000001,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 2421996821.9999995,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 128.53462946855262,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 6.023028651622483,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 138.00219690262344,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 283410972.5,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1407471070,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
           "id": "6365e661aa70ab10a23ae29fda01d1c7a2afb036",
           "message": "chore: add Claude Code project settings\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
           "timestamp": "2026-06-08T19:50:21-07:00",
@@ -16542,6 +16483,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1277857775,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "485da1be8ba30a6409d4220e303ee1380f4c8937",
+          "message": "docs: document default set notes in NOTES\n\nAssisted-By: Gemini 2.5 Pro",
+          "timestamp": "2026-06-24T12:31:27-07:00",
+          "tree_id": "ca4119acbfdfeee6b90c27723a146c8529d0cef2",
+          "url": "https://github.com/l1a/retch/commit/485da1be8ba30a6409d4220e303ee1380f4c8937"
+        },
+        "date": 1782331717201,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 115.18432207004348,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.323312802669122,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 119.93095694013138,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 124.6791865957211,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45387.840364360025,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 601.1460746849307,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 853.6273142998316,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1593761485,
             "unit": "ns"
           }
         ]
