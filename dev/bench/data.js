@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782330719521,
+  "lastUpdate": 1782330841336,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19775,6 +19775,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1375962100,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "447f7796abf0b7810da7499a874504400076dfb6",
+          "message": "Merge pull request #111 from l1a/fix/performance-regression\n\nperf: fix performance regression and align hyperfine mode comparisons",
+          "timestamp": "2026-06-24T12:14:54-07:00",
+          "tree_id": "40e34e3cc0a351717b334d171164482fee0e379a",
+          "url": "https://github.com/l1a/retch/commit/447f7796abf0b7810da7499a874504400076dfb6"
+        },
+        "date": 1782330838615,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 96.42742454737068,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9468082015966406,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 96.49626072025013,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 79.37048145912203,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47247.42730073445,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 483.2227021554645,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 735.4185824856269,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1380498555,
             "unit": "ns"
           }
         ]
