@@ -18,6 +18,8 @@ use sysinfo::{Components, Disks, System, Users};
 pub struct CollectOptions {
     /// Whether to collect all fields (long mode) or only the primary/default ones.
     pub long: bool,
+    /// List of fields that are requested to be displayed. If None, all fields are collected.
+    pub fields: Option<Vec<String>>,
 }
 
 /// Comprehensive system information data structure.
@@ -124,8 +126,44 @@ impl SystemInfo {
     /// This method aggregates data from the operating system, hardware,
     /// and current user environment into a `SystemInfo` struct.
     pub fn collect(opts: CollectOptions) -> anyhow::Result<Self> {
-        let mut sys = System::new_all();
-        sys.refresh_all();
+        let should_collect = |field_name: &str| -> bool {
+            if opts.long {
+                return true;
+            }
+            match &opts.fields {
+                Some(fields) => {
+                    let norm_field = field_name.to_lowercase().replace(['-', '_'], " ");
+                    let norm_field_no_spaces = norm_field.replace(' ', "");
+                    fields.iter().any(|f| {
+                        let norm_f = f.to_lowercase().replace(['-', '_'], " ");
+                        norm_f == norm_field || norm_f.replace(' ', "") == norm_field_no_spaces
+                    })
+                }
+                None => true,
+            }
+        };
+
+        let mut refresh_kind = sysinfo::RefreshKind::nothing();
+        if should_collect("cpu")
+            || should_collect("cpu usage")
+            || should_collect("cpu-usage")
+            || should_collect("cpu cache")
+            || should_collect("cpu-cache")
+        {
+            refresh_kind = refresh_kind.with_cpu(sysinfo::CpuRefreshKind::everything());
+        }
+        if should_collect("memory")
+            || should_collect("swap")
+            || should_collect("phys mem")
+            || should_collect("phys-mem")
+        {
+            refresh_kind = refresh_kind.with_memory(sysinfo::MemoryRefreshKind::everything());
+        }
+        if should_collect("procs") || should_collect("audio") {
+            refresh_kind = refresh_kind.with_processes(sysinfo::ProcessRefreshKind::nothing());
+        }
+
+        let mut sys = System::new_with_specifics(refresh_kind);
 
         let os = System::long_os_version()
             .or_else(System::name)
@@ -134,151 +172,182 @@ impl SystemInfo {
         let kernel = System::kernel_version();
         let hostname = System::host_name();
 
-        let cpu = sys
-            .cpus()
-            .first()
-            .map(|c| c.brand().to_string())
-            .unwrap_or_else(|| "Unknown CPU".to_string());
-
-        let cpu_cores = sys.cpus().len();
-        let cpu_core_info = format_cpu_cores(cpu_cores, System::physical_core_count());
-
-        let total_mem = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
-        let used_mem = sys.used_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
-        let memory = format!("{:.1} / {:.1} GB", used_mem, total_mem);
-
-        let total_swap = sys.total_swap() as f64 / 1024.0 / 1024.0 / 1024.0;
-        let used_swap = sys.used_swap() as f64 / 1024.0 / 1024.0 / 1024.0;
-        let swap = if total_swap > 0.0 {
-            format!("{:.1} / {:.1} GB", used_swap, total_swap)
+        let cpu = if should_collect("cpu") {
+            sys.cpus()
+                .first()
+                .map(|c| c.brand().to_string())
+                .unwrap_or_else(|| "Unknown CPU".to_string())
         } else {
-            "No swap".to_string()
+            String::new()
+        };
+
+        let cpu_cores = if should_collect("cpu") {
+            sys.cpus().len()
+        } else {
+            0
+        };
+        let cpu_core_info = if should_collect("cpu") {
+            format_cpu_cores(cpu_cores, System::physical_core_count())
+        } else {
+            String::new()
+        };
+
+        let memory = if should_collect("memory") {
+            let total_mem = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
+            let used_mem = sys.used_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
+            format!("{:.1} / {:.1} GB", used_mem, total_mem)
+        } else {
+            String::new()
+        };
+
+        let swap = if should_collect("swap") {
+            let total_swap = sys.total_swap() as f64 / 1024.0 / 1024.0 / 1024.0;
+            let used_swap = sys.used_swap() as f64 / 1024.0 / 1024.0 / 1024.0;
+            if total_swap > 0.0 {
+                format!("{:.1} / {:.1} GB", used_swap, total_swap)
+            } else {
+                "No swap".to_string()
+            }
+        } else {
+            String::new()
         };
 
         let uptime = format!("{}s", System::uptime());
 
-        let disks_list = Disks::new_with_refreshed_list();
-        let disks: Vec<String> = if !opts.long {
-            let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("/"));
-            let mut best_match: Option<&sysinfo::Disk> = None;
-            for disk in disks_list.iter() {
-                if home.starts_with(disk.mount_point()) {
-                    if let Some(best) = best_match {
-                        if disk.mount_point().components().count()
-                            > best.mount_point().components().count()
-                        {
+        let disks: Vec<String> = if should_collect("disk") {
+            let disks_list = Disks::new_with_refreshed_list();
+            if !opts.long {
+                let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("/"));
+                let mut best_match: Option<&sysinfo::Disk> = None;
+                for disk in disks_list.iter() {
+                    if home.starts_with(disk.mount_point()) {
+                        if let Some(best) = best_match {
+                            if disk.mount_point().components().count()
+                                > best.mount_point().components().count()
+                            {
+                                best_match = Some(disk);
+                            }
+                        } else {
                             best_match = Some(disk);
                         }
-                    } else {
-                        best_match = Some(disk);
                     }
                 }
-            }
-            let selected_disks = if let Some(best) = best_match {
-                vec![best]
-            } else {
-                disks_list.iter().collect::<Vec<_>>()
-            };
+                let selected_disks = if let Some(best) = best_match {
+                    vec![best]
+                } else {
+                    disks_list.iter().collect::<Vec<_>>()
+                };
 
-            selected_disks
-                .iter()
-                .map(|d| {
-                    let total = d.total_space() as f64 / 1024.0 / 1024.0 / 1024.0;
-                    let avail = d.available_space() as f64 / 1024.0 / 1024.0 / 1024.0;
-                    let fs = d.file_system().to_string_lossy();
-                    format!(
-                        "{} ({}): {:.1} GB free / {:.1} GB",
-                        d.mount_point().display(),
-                        fs,
-                        avail,
-                        total
-                    )
-                })
-                .collect()
+                selected_disks
+                    .iter()
+                    .map(|d| {
+                        let total = d.total_space() as f64 / 1024.0 / 1024.0 / 1024.0;
+                        let avail = d.available_space() as f64 / 1024.0 / 1024.0 / 1024.0;
+                        let fs = d.file_system().to_string_lossy();
+                        format!(
+                            "{} ({}): {:.1} GB free / {:.1} GB",
+                            d.mount_point().display(),
+                            fs,
+                            avail,
+                            total
+                        )
+                    })
+                    .collect()
+            } else {
+                disks_list
+                    .iter()
+                    .map(|d| {
+                        let total = d.total_space() as f64 / 1024.0 / 1024.0 / 1024.0;
+                        let avail = d.available_space() as f64 / 1024.0 / 1024.0 / 1024.0;
+                        let fs = d.file_system().to_string_lossy();
+                        format!(
+                            "{} ({}): {:.1} GB free / {:.1} GB",
+                            d.mount_point().display(),
+                            fs,
+                            avail,
+                            total
+                        )
+                    })
+                    .collect()
+            }
         } else {
-            disks_list
-                .iter()
-                .map(|d| {
-                    let total = d.total_space() as f64 / 1024.0 / 1024.0 / 1024.0;
-                    let avail = d.available_space() as f64 / 1024.0 / 1024.0 / 1024.0;
-                    let fs = d.file_system().to_string_lossy();
-                    format!(
-                        "{} ({}): {:.1} GB free / {:.1} GB",
-                        d.mount_point().display(),
-                        fs,
-                        avail,
-                        total
-                    )
-                })
-                .collect()
+            Vec::new()
         };
 
-        let battery = crate::battery::get_battery_info().map(|bat| {
-            let pct = bat.percentage;
-            let state = match bat.state {
-                crate::battery::BatteryState::Charging => "charging",
-                crate::battery::BatteryState::Discharging => "discharging",
-                crate::battery::BatteryState::Full => "full",
-                _ => "not charging",
-            };
-            let vendor = bat.vendor;
-            let model = bat.model;
+        let battery = if should_collect("battery") {
+            crate::battery::get_battery_info().map(|bat| {
+                let pct = bat.percentage;
+                let state = match bat.state {
+                    crate::battery::BatteryState::Charging => "charging",
+                    crate::battery::BatteryState::Discharging => "discharging",
+                    crate::battery::BatteryState::Full => "full",
+                    _ => "not charging",
+                };
+                let vendor = bat.vendor;
+                let model = bat.model;
 
-            // Format time remaining as "Xh Ym" or "Xd Yh"
-            let time_str = match bat.state {
-                crate::battery::BatteryState::Charging => bat.time_remaining.map(|d| {
-                    let total_mins = d.as_secs() / 60;
-                    let hours = total_mins / 60;
-                    let mins = total_mins % 60;
-                    if hours >= 24 {
-                        let days = hours / 24;
-                        let rem_hours = hours % 24;
-                        format!("{}d {}h until full", days, rem_hours)
-                    } else if hours > 0 {
-                        format!("{}h {}m until full", hours, mins)
-                    } else {
-                        format!("{}m until full", mins)
-                    }
-                }),
-                crate::battery::BatteryState::Discharging => bat.time_remaining.map(|d| {
-                    let total_mins = d.as_secs() / 60;
-                    let hours = total_mins / 60;
-                    let mins = total_mins % 60;
-                    if hours >= 24 {
-                        let days = hours / 24;
-                        let rem_hours = hours % 24;
-                        format!("{}d {}h remaining", days, rem_hours)
-                    } else if hours > 0 {
-                        format!("{}h {}m remaining", hours, mins)
-                    } else {
-                        format!("{}m remaining", mins)
-                    }
-                }),
-                _ => None,
-            };
+                // Format time remaining as "Xh Ym" or "Xd Yh"
+                let time_str = match bat.state {
+                    crate::battery::BatteryState::Charging => bat.time_remaining.map(|d| {
+                        let total_mins = d.as_secs() / 60;
+                        let hours = total_mins / 60;
+                        let mins = total_mins % 60;
+                        if hours >= 24 {
+                            let days = hours / 24;
+                            let rem_hours = hours % 24;
+                            format!("{}d {}h until full", days, rem_hours)
+                        } else if hours > 0 {
+                            format!("{}h {}m until full", hours, mins)
+                        } else {
+                            format!("{}m until full", mins)
+                        }
+                    }),
+                    crate::battery::BatteryState::Discharging => bat.time_remaining.map(|d| {
+                        let total_mins = d.as_secs() / 60;
+                        let hours = total_mins / 60;
+                        let mins = total_mins % 60;
+                        if hours >= 24 {
+                            let days = hours / 24;
+                            let rem_hours = hours % 24;
+                            format!("{}d {}h remaining", days, rem_hours)
+                        } else if hours > 0 {
+                            format!("{}h {}m remaining", hours, mins)
+                        } else {
+                            format!("{}m remaining", mins)
+                        }
+                    }),
+                    _ => None,
+                };
 
-            let mut parts = vec![state.to_string()];
-            if let Some(t) = time_str {
-                parts.insert(0, t);
-            }
-            if let Some(health) = bat.health {
-                if health < 99.0 {
-                    parts.push(format!("{:.0}% health", health));
+                let mut parts = vec![state.to_string()];
+                if let Some(t) = time_str {
+                    parts.insert(0, t);
                 }
-            }
+                if let Some(health) = bat.health {
+                    if health < 99.0 {
+                        parts.push(format!("{:.0}% health", health));
+                    }
+                }
 
-            let base = format!("{:.0}% ({})", pct, parts.join(", "));
+                let base = format!("{:.0}% ({})", pct, parts.join(", "));
 
-            match (vendor, model) {
-                (Some(v), Some(m)) => format!("{} [{} {}]", base, v, m),
-                (Some(v), None) => format!("{} [{}]", base, v),
-                _ => base,
-            }
-        });
+                match (vendor, model) {
+                    (Some(v), Some(m)) => format!("{} [{} {}]", base, v, m),
+                    (Some(v), None) => format!("{} [{}]", base, v),
+                    _ => base,
+                }
+            })
+        } else {
+            None
+        };
 
         let arch = System::cpu_arch();
 
-        let processes = sys.processes().len();
+        let processes = if should_collect("procs") || should_collect("audio") {
+            sys.processes().len()
+        } else {
+            0
+        };
 
         let load_avg = {
             let avg = System::load_average();
@@ -310,60 +379,140 @@ impl SystemInfo {
             physical_disks,
             physical_memory,
         ) = std::thread::scope(|s| {
-            let gpu_handle = s.spawn(|| {
-                gpu::detect_gpus()
-                    .into_iter()
-                    .map(|g| g.format())
-                    .collect::<Vec<String>>()
-            });
-            let packages_handle = s.spawn(crate::packages::detect_packages);
-            let public_ip_handle = s.spawn(crate::network::detect_public_ip);
-            let network_ips_handle = s.spawn(crate::network::detect_active_interface_and_local_ip);
-            let motherboard_handle = s.spawn(crate::motherboard::detect_motherboard);
-            let bios_handle = s.spawn(crate::bios::detect_bios);
-            let displays_handle = s.spawn(crate::display::detect_displays);
-            let audio_handle = s.spawn(|| crate::audio::detect_audio(&sys));
-            let wifi_handle = s.spawn(crate::network::detect_wifi);
-            let bluetooth_handle = s.spawn(crate::bluetooth::detect_bluetooth);
-            let ui_theme_and_fonts_handle = s.spawn(crate::theme::detect_ui_theme_and_fonts);
-            let camera_handle = s.spawn(crate::camera::detect_camera);
-            let gamepad_handle = s.spawn(crate::gamepad::detect_gamepad);
-            let physical_disks_handle = s.spawn(crate::disk::detect_physical_disks);
-            let physical_memory_handle = s.spawn(crate::memory::detect_physical_memory);
+            let gpu_handle = if should_collect("gpu") {
+                Some(s.spawn(|| {
+                    gpu::detect_gpus()
+                        .into_iter()
+                        .map(|g| g.format())
+                        .collect::<Vec<String>>()
+                }))
+            } else {
+                None
+            };
+            let packages_handle = if should_collect("packages") {
+                Some(s.spawn(crate::packages::detect_packages))
+            } else {
+                None
+            };
+            let public_ip_handle = if should_collect("public ip") {
+                Some(s.spawn(crate::network::detect_public_ip))
+            } else {
+                None
+            };
+            let network_ips_handle = if should_collect("net") {
+                Some(s.spawn(crate::network::detect_active_interface_and_local_ip))
+            } else {
+                None
+            };
+            let motherboard_handle = if should_collect("motherboard") {
+                Some(s.spawn(crate::motherboard::detect_motherboard))
+            } else {
+                None
+            };
+            let bios_handle = if should_collect("bios") {
+                Some(s.spawn(crate::bios::detect_bios))
+            } else {
+                None
+            };
+            let displays_handle = if should_collect("display") {
+                Some(s.spawn(crate::display::detect_displays))
+            } else {
+                None
+            };
+            let audio_handle = if should_collect("audio") {
+                Some(s.spawn(|| crate::audio::detect_audio(&sys)))
+            } else {
+                None
+            };
+            let wifi_handle = if should_collect("wifi") {
+                Some(s.spawn(crate::network::detect_wifi))
+            } else {
+                None
+            };
+            let bluetooth_handle = if should_collect("bluetooth") {
+                Some(s.spawn(crate::bluetooth::detect_bluetooth))
+            } else {
+                None
+            };
+            let ui_theme_and_fonts_handle = if should_collect("theme")
+                || should_collect("icons")
+                || should_collect("cursor")
+                || should_collect("font")
+            {
+                Some(s.spawn(crate::theme::detect_ui_theme_and_fonts))
+            } else {
+                None
+            };
+            let camera_handle = if should_collect("camera") {
+                Some(s.spawn(crate::camera::detect_camera))
+            } else {
+                None
+            };
+            let gamepad_handle = if should_collect("gamepad") {
+                Some(s.spawn(crate::gamepad::detect_gamepad))
+            } else {
+                None
+            };
+            let physical_disks_handle = if should_collect("phys disk") {
+                Some(s.spawn(crate::disk::detect_physical_disks))
+            } else {
+                None
+            };
+            let physical_memory_handle = if should_collect("phys mem") {
+                Some(s.spawn(crate::memory::detect_physical_memory))
+            } else {
+                None
+            };
 
             (
-                gpu_handle.join().unwrap_or_default(),
-                packages_handle.join().ok().flatten(),
-                public_ip_handle.join().ok().flatten(),
-                network_ips_handle.join().unwrap_or((None, None)),
-                motherboard_handle.join().ok().flatten(),
-                bios_handle.join().ok().flatten(),
-                displays_handle.join().unwrap_or_default(),
-                audio_handle.join().ok().flatten(),
-                wifi_handle.join().ok().flatten(),
-                bluetooth_handle.join().ok().flatten(),
+                gpu_handle
+                    .map(|h| h.join().unwrap_or_default())
+                    .unwrap_or_default(),
+                packages_handle.and_then(|h| h.join().ok().flatten()),
+                public_ip_handle.and_then(|h| h.join().ok().flatten()),
+                network_ips_handle
+                    .map(|h| h.join().unwrap_or((None, None)))
+                    .unwrap_or((None, None)),
+                motherboard_handle.and_then(|h| h.join().ok().flatten()),
+                bios_handle.and_then(|h| h.join().ok().flatten()),
+                displays_handle
+                    .map(|h| h.join().unwrap_or_default())
+                    .unwrap_or_default(),
+                audio_handle.and_then(|h| h.join().ok().flatten()),
+                wifi_handle.and_then(|h| h.join().ok().flatten()),
+                bluetooth_handle.and_then(|h| h.join().ok().flatten()),
                 ui_theme_and_fonts_handle
-                    .join()
+                    .map(|h| h.join().unwrap_or((None, None, None, None)))
                     .unwrap_or((None, None, None, None)),
-                camera_handle.join().unwrap_or_default(),
-                gamepad_handle.join().unwrap_or_default(),
-                physical_disks_handle.join().unwrap_or_default(),
-                physical_memory_handle.join().ok().flatten(),
+                camera_handle
+                    .map(|h| h.join().unwrap_or_default())
+                    .unwrap_or_default(),
+                gamepad_handle
+                    .map(|h| h.join().unwrap_or_default())
+                    .unwrap_or_default(),
+                physical_disks_handle
+                    .map(|h| h.join().unwrap_or_default())
+                    .unwrap_or_default(),
+                physical_memory_handle.and_then(|h| h.join().ok().flatten()),
             )
         });
 
-        let mut temps: Vec<String> = Components::new_with_refreshed_list()
-            .iter()
-            .filter_map(|c| {
-                c.temperature().and_then(|t| {
-                    if t > 0.0 {
-                        Some(format!("{}: {:.0}°C", c.label(), t))
-                    } else {
-                        None
-                    }
+        let mut temps: Vec<String> = if should_collect("temp") {
+            Components::new_with_refreshed_list()
+                .iter()
+                .filter_map(|c| {
+                    c.temperature().and_then(|t| {
+                        if t > 0.0 {
+                            Some(format!("{}: {:.0}°C", c.label(), t))
+                        } else {
+                            None
+                        }
+                    })
                 })
-            })
-            .collect();
+                .collect()
+        } else {
+            Vec::new()
+        };
 
         // Sort so CPU temperatures appear first
         temps.sort_by(|a, b| {
@@ -372,8 +521,11 @@ impl SystemInfo {
             b_cpu.cmp(&a_cpu)
         });
 
-        let networks =
-            crate::network::detect_networks(active_interface.as_deref(), local_ip.as_deref());
+        let networks = if should_collect("net") {
+            crate::network::detect_networks(active_interface.as_deref(), local_ip.as_deref())
+        } else {
+            Vec::new()
+        };
 
         let boot_timestamp = System::boot_time();
         let boot_dt = chrono::Local
@@ -384,30 +536,66 @@ impl SystemInfo {
         let boot_time = boot_dt;
 
         // Environment-based info
-        let shell = crate::shell::detect_shell(&sys);
-        let terminal = crate::terminal::detect_terminal(&sys);
-        let terminal_font = crate::terminal::detect_terminal_font(terminal.as_deref());
-        let desktop = std::env::var("XDG_CURRENT_DESKTOP")
-            .or_else(|_| std::env::var("DESKTOP_SESSION"))
-            .ok();
+        let shell = if should_collect("shell") {
+            crate::shell::detect_shell(&sys)
+        } else {
+            None
+        };
+        let terminal = if should_collect("terminal") {
+            crate::terminal::detect_terminal(&sys)
+        } else {
+            None
+        };
+        let terminal_font = if should_collect("terminal font")
+            || should_collect("terminal-font")
+            || should_collect("terminal_font")
+        {
+            crate::terminal::detect_terminal_font(terminal.as_deref())
+        } else {
+            None
+        };
+        let desktop = if should_collect("desktop") {
+            std::env::var("XDG_CURRENT_DESKTOP")
+                .or_else(|_| std::env::var("DESKTOP_SESSION"))
+                .ok()
+        } else {
+            None
+        };
 
         // CPU frequency (current from sysinfo + min/max range from sysfs)
-        let cpu_freq = sys.cpus().first().map(|c| {
-            let current = format!("{:.2} GHz", c.frequency() as f64 / 1000.0);
-            if let Some((min_khz, max_khz)) = detect_cpu_freq_range() {
-                let min_ghz = min_khz as f64 / 1_000_000.0;
-                let max_ghz = max_khz as f64 / 1_000_000.0;
-                format!("{} ({:.2} \u{2013} {:.2} GHz)", current, min_ghz, max_ghz)
-            } else {
-                current
-            }
-        });
+        let cpu_freq = if should_collect("cpu-freq")
+            || should_collect("cpu freq")
+            || should_collect("cpu_freq")
+        {
+            sys.cpus().first().map(|c| {
+                let current = format!("{:.2} GHz", c.frequency() as f64 / 1000.0);
+                if let Some((min_khz, max_khz)) = detect_cpu_freq_range() {
+                    let min_ghz = min_khz as f64 / 1_000_000.0;
+                    let max_ghz = max_khz as f64 / 1_000_000.0;
+                    format!("{} ({:.2} \u{2013} {:.2} GHz)", current, min_ghz, max_ghz)
+                } else {
+                    current
+                }
+            })
+        } else {
+            None
+        };
 
         // CPU cache sizes
-        let cpu_cache = detect_cpu_cache();
+        let cpu_cache = if should_collect("cpu-cache")
+            || should_collect("cpu cache")
+            || should_collect("cpu_cache")
+        {
+            detect_cpu_cache()
+        } else {
+            None
+        };
 
         // CPU usage — refresh twice with a short sleep so sysinfo has a delta
-        let cpu_usage = {
+        let cpu_usage = if should_collect("cpu-usage")
+            || should_collect("cpu usage")
+            || should_collect("cpu_usage")
+        {
             std::thread::sleep(std::time::Duration::from_millis(200));
             sys.refresh_cpu_usage();
             let usage: f32 =
@@ -432,24 +620,30 @@ impl SystemInfo {
                     None
                 }
             }
+        } else {
+            None
         };
 
         // Current logged in user
         let current_user = std::env::var("USER").ok();
 
         // Number of interactive users (UID >= 1000, excluding system accounts)
-        let users = Users::new_with_refreshed_list()
-            .iter()
-            .filter(|user| {
-                // UID is exposed via Display
-                let uid_str = user.id().to_string();
-                if let Ok(uid) = uid_str.parse::<u32>() {
-                    uid >= 1000
-                } else {
-                    false
-                }
-            })
-            .count();
+        let users = if should_collect("users") {
+            Users::new_with_refreshed_list()
+                .iter()
+                .filter(|user| {
+                    // UID is exposed via Display
+                    let uid_str = user.id().to_string();
+                    if let Ok(uid) = uid_str.parse::<u32>() {
+                        uid >= 1000
+                    } else {
+                        false
+                    }
+                })
+                .count()
+        } else {
+            0
+        };
 
         Ok(Self {
             os,

@@ -29,7 +29,10 @@ fn bench_system_info_collect(c: &mut Criterion) {
 
     c.bench_function("SystemInfo::collect", |b| {
         b.iter(|| {
-            let _ = SystemInfo::collect(CollectOptions { long: cli.long });
+            let _ = SystemInfo::collect(CollectOptions {
+                long: cli.long,
+                fields: None,
+            });
         });
     });
 }
