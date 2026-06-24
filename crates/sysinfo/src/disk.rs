@@ -159,6 +159,7 @@ fn diskutil_info(disk_id: &str) -> Option<String> {
     let mut size_bytes: Option<u64> = None;
     let mut is_ssd = false;
     let mut protocol = String::new();
+    let mut virtual_or_physical = String::new();
 
     let mut last_key = String::new();
     for line in text.lines() {
@@ -181,6 +182,7 @@ fn diskutil_info(disk_id: &str) -> Option<String> {
                     }
                 }
                 "BusProtocol" => protocol = val.to_string(),
+                "VirtualOrPhysical" => virtual_or_physical = val.to_string(),
                 _ => {}
             }
         }
@@ -195,6 +197,11 @@ fn diskutil_info(disk_id: &str) -> Option<String> {
         if trimmed == "<true/>" && last_key == "SolidState" {
             is_ssd = true;
         }
+    }
+
+    // Skip APFS synthesized and other virtual disk objects
+    if virtual_or_physical == "Virtual" {
+        return None;
     }
 
     let kind =

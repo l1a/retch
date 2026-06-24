@@ -231,7 +231,13 @@ pub fn parse_system_profiler_memory(text: &str) -> Option<String> {
             continue;
         }
 
-        if let Some(rest) = trimmed.strip_prefix("Size:") {
+        // "Size:" is used on physical Macs; VMs report the total as "Memory:" instead
+        let size_rest = trimmed.strip_prefix("Size:").or_else(|| {
+            trimmed
+                .strip_prefix("Memory:")
+                .filter(|s| !s.trim().is_empty())
+        });
+        if let Some(rest) = size_rest {
             let rest = rest.trim();
             if rest.contains("Empty") || rest == "Unknown" {
                 current_size_mb = Some(0);
