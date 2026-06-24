@@ -1,3 +1,17 @@
+# Session Notes — June 24, 2026
+
+## Current Task
+
+Release `v0.3.23` (Physical Memory and Disk support).
+
+## Status: Tagged & Pushed
+
+* Tag `v0.3.23` has been created and pushed to origin.
+* CI/CD packaging and release run is active.
+* Nixpkgs submission is currently skipped for this version because the initial PR to `NixOS/nixpkgs` (#534754, init at `v0.3.22`) is still pending approval.
+
+---
+
 # Session Notes — June 14, 2026
 
 ## Current Task
