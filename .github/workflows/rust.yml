@@ -73,12 +73,6 @@ jobs:
     - name: Print system_profiler SPDisplaysDataType (macOS)
       if: runner.os == 'macOS'
       run: system_profiler SPDisplaysDataType
-    - name: Print system_profiler SPMemoryDataType (macOS)
-      if: runner.os == 'macOS'
-      run: system_profiler SPMemoryDataType
-    - name: Print diskutil list (macOS)
-      if: runner.os == 'macOS'
-      run: diskutil list -plist
 
   full-test:
     runs-on: ${{ matrix.os }}

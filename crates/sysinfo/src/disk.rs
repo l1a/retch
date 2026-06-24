@@ -176,7 +176,12 @@ fn diskutil_info(disk_id: &str) -> Option<String> {
             .and_then(|s| s.strip_suffix("</string>"))
         {
             match last_key.as_str() {
-                "MediaName" | "IORegistryEntryName" => {
+                "MediaName" => {
+                    if !val.is_empty() {
+                        model = val.to_string();
+                    }
+                }
+                "IORegistryEntryName" => {
                     if model.is_empty() && !val.is_empty() {
                         model = val.to_string();
                     }
