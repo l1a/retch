@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782329603278,
+  "lastUpdate": 1782329695443,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -9262,65 +9262,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "03f2f059fb0ad385d838b489f3e4ac1b62e6855b",
-          "message": "refactor: isolate display parsing into display.rs, expand tests and benchmarks (v0.3.5)\n\nExtracts all display detection and EDID parsing from fetch.rs into crates/sysinfo/src/display.rs. Adds 13 new unit tests (22→35) covering edge cases and 4 new criterion benchmarks for the pure EDID parsing functions. Bumps retch-cli to 0.3.5, retch-sysinfo to 0.1.5.",
-          "timestamp": "2026-06-08T11:57:39-07:00",
-          "tree_id": "7f7cbba8a52f301fe9a06fec1ddbf7bae7034a21",
-          "url": "https://github.com/l1a/retch/commit/03f2f059fb0ad385d838b489f3e4ac1b62e6855b"
-        },
-        "date": 1780945985858,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 38992835.74000001,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 764596056.8400002,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 581159804.05,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 68.95178764408351,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.1326906217146795,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 78.86113093156361,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 221724628.5166667,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "906c5abfb8923400935698c0e78970d34b0db97c",
           "message": "Update AGENTS.md progress and next steps (#72)",
           "timestamp": "2026-06-08T12:33:05-07:00",
@@ -12970,6 +12911,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 363.1539320461909,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "447f7796abf0b7810da7499a874504400076dfb6",
+          "message": "Merge pull request #111 from l1a/fix/performance-regression\n\nperf: fix performance regression and align hyperfine mode comparisons",
+          "timestamp": "2026-06-24T12:14:54-07:00",
+          "tree_id": "40e34e3cc0a351717b334d171164482fee0e379a",
+          "url": "https://github.com/l1a/retch/commit/447f7796abf0b7810da7499a874504400076dfb6"
+        },
+        "date": 1782329693708,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 751054791.7,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 433.596794107278,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 80.29001647965403,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.2489857066509527,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 64.92173591998898,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6282.74249748275,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1702.3677635017516,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 444.0235277623909,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 97201.22439008334,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 436.4236937237285,
             "unit": "ns"
           }
         ]
