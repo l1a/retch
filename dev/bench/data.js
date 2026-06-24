@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782322699354,
+  "lastUpdate": 1782323092089,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -8874,50 +8874,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "046c8e0b0137a548dcb51d46fef7703b46efe9cc",
-          "message": "v0.3.3 - Native OS Queries & Performance Optimization (#68)\n\n* Implement native queries for route, displays, reg\n\n* Allow clippy upper_case_acronyms for win_reg\n\n* Bump version to 0.3.3 and rebuild man pages\n\n* Test route parsing and wire up helper\n\n* Restrict route parser to Linux or tests",
-          "timestamp": "2026-06-04T08:16:04-07:00",
-          "tree_id": "969803f451b805de37c1b56fbebdded3f6c125d3",
-          "url": "https://github.com/l1a/retch/commit/046c8e0b0137a548dcb51d46fef7703b46efe9cc"
-        },
-        "date": 1780586912988,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 48269025.02000001,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 662474504.3199999,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 553133452.25,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 180303960.4166667,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "585270b923d52522281c533fb0763203d8a90b40",
           "message": "Update CLI flags for short, long, and mode options (#70)",
           "timestamp": "2026-06-04T09:08:05-07:00",
@@ -12462,6 +12418,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 359.59996133226525,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ce1e6d15e07936c6632ff5fcc156d23aac99e347",
+          "message": "Merge pull request #110 from l1a/feature/physical-memory-disk\n\nfeat: add PhysDisk and PhysMem fields (v0.3.23)",
+          "timestamp": "2026-06-24T10:24:48-07:00",
+          "tree_id": "53e59729a4c4d031fa6462ce01421b02d939e8ac",
+          "url": "https://github.com/l1a/retch/commit/ce1e6d15e07936c6632ff5fcc156d23aac99e347"
+        },
+        "date": 1782323089498,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 39663144.10000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 899719427.5000002,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 710831406.25,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 351.9861672105528,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 69.94855499726665,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.8989311175604389,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 65.1030984448058,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6384.0531929488825,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1434.3952564105907,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 426.5693870065412,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 98651.64621035423,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 343.75942285097176,
             "unit": "ns"
           }
         ]
