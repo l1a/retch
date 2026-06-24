@@ -7,6 +7,55 @@
 - **License**: GPLv3
 - **Repository**: https://github.com/l1a/retch
 
+## WIP.md — Cross-Machine Work Handoff
+
+`WIP.md` is a Syncthing-synced, git-ignored file in the repo root. It is the canonical source
+of truth for in-progress work across machines. **Any agent starting a session on this repo must
+read `WIP.md` before doing anything else.**
+
+### Purpose
+
+Because this repo is synced via Syncthing across multiple machines, development may be paused
+on one machine and resumed on another. `WIP.md` carries the context that cannot be inferred
+from git history alone: what is partially done, what bugs were encountered and how they were
+fixed, what the next steps are, and what caveats apply to this specific checkout.
+
+### When to Update WIP.md
+
+Update `WIP.md` at every significant stopping point:
+- When switching to a new branch (clear old content, write new context)
+- Before switching machines or ending a session
+- After pushing commits that change the state of the work
+- After a PR is merged (record that the branch is done, set "Active Branch: none")
+- Whenever the next-step checklist changes
+
+### What to Include
+
+Every WIP.md entry should contain:
+1. **Active branch name** and the PR URL (if one is open)
+2. **Latest commit hash** and its message
+3. **What was implemented** — a concise description of new files/modules and changed files
+4. **Bugs fixed** — what went wrong and exactly how it was resolved (so the same fix isn't
+   re-derived from scratch)
+5. **Current CI state** — passing or failing, and the run ID / job IDs to check
+6. **Open tasks** — a checkbox list of what remains before the work is complete
+7. **How to resume** — exact shell commands to check out, build, and verify the branch
+8. **Why this work** — a one-paragraph note on what motivated the change, so an agent
+   understands the intent without reading the full backlog
+
+### Format
+
+Use the template already in `WIP.md`. Keep it under ~150 lines. Older sessions can be
+truncated or removed once the branch is merged. Only one "Current Session" block at a time.
+
+### What NOT to Put in WIP.md
+
+- Full file contents or large code diffs (those belong in git)
+- Detailed architecture docs (those belong in AGENTS.md or inline Rustdoc)
+- Anything that should survive a branch merge — put that in AGENTS.md instead
+
+---
+
 ## Development Guidelines
 - **Man Pages**: Do NOT edit `docs/retch.1` directly. It is generated from `docs/retch.1.md` using mandown via the `just man` command. The version number in the man page is dynamically extracted from `Cargo.toml`. Always run `just man` after updating the package version.
 - **Quality & Linting**: Use `just check` to run formatting (`cargo fmt -- --check`) and linting (`cargo clippy -- -D warnings`) checks locally before committing. This matches the checks performed in the CI/CD pipeline.
