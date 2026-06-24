@@ -15,6 +15,7 @@ pub fn detect_physical_memory() -> Option<String> {
 }
 
 /// Represents one DIMM slot as parsed from DMI type-17 output.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 #[derive(Debug, PartialEq)]
 pub struct DimmSlot {
     pub size_mb: u64,
@@ -23,6 +24,7 @@ pub struct DimmSlot {
 }
 
 /// Parses `dmidecode --type 17` text output into a list of populated DIMM slots.
+#[cfg(target_os = "linux")]
 pub fn parse_dmidecode_type17(output: &str) -> Vec<DimmSlot> {
     let mut slots = Vec::new();
     let mut size_mb: Option<u64> = None;
@@ -89,6 +91,7 @@ pub fn parse_dmidecode_type17(output: &str) -> Vec<DimmSlot> {
 }
 
 /// Formats a list of DIMM slots into a human-readable summary string.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 pub fn format_dimm_slots(slots: &[DimmSlot]) -> Option<String> {
     if slots.is_empty() {
         return None;
@@ -184,6 +187,7 @@ fn detect_macos() -> Option<String> {
 }
 
 /// Parses `system_profiler SPMemoryDataType` text output into a summary string.
+#[cfg(target_os = "macos")]
 pub fn parse_system_profiler_memory(text: &str) -> Option<String> {
     // Example output:
     //   Memory:
@@ -273,6 +277,7 @@ pub fn parse_system_profiler_memory(text: &str) -> Option<String> {
 mod tests {
     use super::*;
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn test_parse_dmidecode_two_slots() {
         let input = r#"
@@ -296,6 +301,7 @@ Memory Device
         assert_eq!(summary, "2× 8 GB DDR5 4800 MT/s");
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn test_parse_dmidecode_gib_units() {
         // dmidecode reports GiB on some systems (e.g. LPDDR5 laptops)
@@ -320,6 +326,7 @@ Memory Device
         assert_eq!(summary, "2× 2 GB LPDDR5 6400 MT/s");
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn test_parse_dmidecode_empty_slot() {
         let input = r#"
@@ -339,6 +346,7 @@ Memory Device
         assert_eq!(summary, "16 GB DDR4 3200 MT/s");
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn test_parse_dmidecode_mixed_sizes() {
         let input = r#"
@@ -360,6 +368,7 @@ Memory Device
         assert!(summary.contains("32 GB DDR5 5600 MT/s"));
     }
 
+    #[cfg(target_os = "macos")]
     #[test]
     fn test_parse_system_profiler_apple_silicon() {
         let input = r#"
@@ -373,6 +382,7 @@ Memory:
         assert_eq!(result, Some("16 GB LPDDR5 6400 MT/s".to_string()));
     }
 
+    #[cfg(target_os = "macos")]
     #[test]
     fn test_parse_system_profiler_multi_slot() {
         let input = r#"

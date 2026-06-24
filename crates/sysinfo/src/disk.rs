@@ -221,6 +221,7 @@ fn diskutil_info(disk_id: &str) -> Option<String> {
 
 /// Strips a trailing size token (e.g. "1024GB", "512GB", "2TB") from a model string.
 /// Many NVMe vendors embed the capacity in the model name; we compute it separately.
+#[cfg(target_os = "linux")]
 fn strip_embedded_size(model: &str) -> &str {
     let bytes = model.as_bytes();
     // Walk backwards over digits, then a unit suffix (GB/TB/MB), then optional space
@@ -251,6 +252,7 @@ fn strip_embedded_size(model: &str) -> &str {
     model
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn format_size(bytes: u64) -> String {
     const TB: u64 = 1_000_000_000_000;
     const GB: u64 = 1_000_000_000;
@@ -263,8 +265,12 @@ fn format_size(bytes: u64) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{format_size, strip_embedded_size};
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    use super::format_size;
+    #[cfg(target_os = "linux")]
+    use super::strip_embedded_size;
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn test_strip_embedded_size() {
         assert_eq!(
@@ -284,16 +290,19 @@ mod tests {
         assert_eq!(strip_embedded_size("Some Drive 256GB"), "Some Drive");
     }
 
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     #[test]
     fn test_format_size_gb() {
         assert_eq!(format_size(512_110_190_592), "512 GB");
     }
 
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     #[test]
     fn test_format_size_tb() {
         assert_eq!(format_size(1_000_204_886_016), "1.0 TB");
     }
 
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     #[test]
     fn test_format_size_2tb() {
         assert_eq!(format_size(2_000_398_934_016), "2.0 TB");
