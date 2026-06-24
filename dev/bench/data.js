@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782278521885,
+  "lastUpdate": 1782278524825,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18667,6 +18667,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1386222025,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3386d46e7b612993957b9aec731e7cb6c823c6b7",
+          "message": "ci(deps): bump cachix/install-nix-action from 27 to 31 (#108)\n\nBumps [cachix/install-nix-action](https://github.com/cachix/install-nix-action) from 27 to 31.\n- [Release notes](https://github.com/cachix/install-nix-action/releases)\n- [Changelog](https://github.com/cachix/install-nix-action/blob/master/RELEASE.md)\n- [Commits](https://github.com/cachix/install-nix-action/compare/v27...v31)\n\n---\nupdated-dependencies:\n- dependency-name: cachix/install-nix-action\n  dependency-version: '31'\n  dependency-type: direct:production\n  update-type: version-update:semver-major\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-06-23T21:40:57-07:00",
+          "tree_id": "9e82cb04434e6f6f68fe35f70ce025c17f3e333e",
+          "url": "https://github.com/l1a/retch/commit/3386d46e7b612993957b9aec731e7cb6c823c6b7"
+        },
+        "date": 1782278522013,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 288803379.99999994,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1619447620,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 104.03683475504383,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948321182817801,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.93739864285621,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 78.88708520911196,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 44432.984649678445,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 492.03716488222574,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 758.9269531762081,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1450879255,
             "unit": "ns"
           }
         ]
