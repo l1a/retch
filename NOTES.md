@@ -1,4 +1,22 @@
-# Session Notes — June 24, 2026
+# Session Notes — June 24, 2026 (v0.3.24)
+
+## Current Task
+
+Fix performance regression and align hyperfine mode comparisons.
+
+## Status: Tagged & Pushed
+
+* Tag `v0.3.24` has been created and pushed to origin.
+* CI/CD release run is active.
+* Local benchmark uploads have been updated to run sequential pairwise comparisons for standard (`retch` vs `fastfetch`), short (`retch --short` vs `fastfetch -c none`), and long (`retch --long` vs `fastfetch -c all`) modes.
+
+## Notes & Future Decisions
+
+* **Default Output Set**: The new Physical Disk and Physical Memory modules should not be shown in the default set (they should only be shown in long/custom fields) to preserve the default CLI runtime speed and avoid unnecessary overhead.
+
+---
+
+# Session Notes — June 24, 2026 (v0.3.23)
 
 ## Current Task
 
