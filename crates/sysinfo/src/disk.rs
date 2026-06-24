@@ -154,7 +154,13 @@ fn diskutil_info(disk_id: &str) -> Option<String> {
     }
 
     let text = String::from_utf8_lossy(&output.stdout);
+    parse_diskutil_info_plist(&text)
+}
 
+/// Parses a `diskutil info -plist` XML text into a formatted disk label string.
+/// Returns `None` for virtual disks or unparseable output.
+#[cfg(target_os = "macos")]
+pub fn parse_diskutil_info_plist(text: &str) -> Option<String> {
     let mut model = String::new();
     let mut size_bytes: Option<u64> = None;
     let mut is_ssd = false;
@@ -176,6 +182,8 @@ fn diskutil_info(disk_id: &str) -> Option<String> {
             .and_then(|s| s.strip_suffix("</string>"))
         {
             match last_key.as_str() {
+                // MediaName gives the clean model string (e.g. "APPLE SSD AP1024Z");
+                // IORegistryEntryName appends " Media" and is used only as a fallback.
                 "MediaName" => {
                     if !val.is_empty() {
                         model = val.to_string();
@@ -316,5 +324,75 @@ mod tests {
     #[test]
     fn test_format_size_2tb() {
         assert_eq!(format_size(2_000_398_934_016), "2.0 TB");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_parse_diskutil_info_plist_apple_silicon() {
+        // Matches real output from an Apple M-series Mac (disk0).
+        // IORegistryEntryName comes before MediaName in the plist; MediaName must win.
+        let plist = r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BusProtocol</key>
+	<string>Apple Fabric</string>
+	<key>IORegistryEntryName</key>
+	<string>APPLE SSD AP1024Z Media</string>
+	<key>MediaName</key>
+	<string>APPLE SSD AP1024Z</string>
+	<key>SolidState</key>
+	<true/>
+	<key>TotalSize</key>
+	<integer>1000555581440</integer>
+	<key>VirtualOrPhysical</key>
+	<string>Unknown</string>
+</dict>
+</plist>"#;
+        let result = super::parse_diskutil_info_plist(plist);
+        assert_eq!(result, Some("APPLE SSD AP1024Z 1.0 TB [SSD]".to_string()));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_parse_diskutil_info_plist_nvme() {
+        let plist = r#"<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+	<key>BusProtocol</key>
+	<string>PCIe</string>
+	<key>MediaName</key>
+	<string>Samsung SSD 990 Pro</string>
+	<key>SolidState</key>
+	<true/>
+	<key>TotalSize</key>
+	<integer>2000398934016</integer>
+	<key>VirtualOrPhysical</key>
+	<string>Physical</string>
+</dict>
+</plist>"#;
+        let result = super::parse_diskutil_info_plist(plist);
+        assert_eq!(
+            result,
+            Some("Samsung SSD 990 Pro 2.0 TB [NVMe SSD]".to_string())
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_parse_diskutil_info_plist_virtual_skipped() {
+        let plist = r#"<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+	<key>MediaName</key>
+	<string>APFS Container Disk</string>
+	<key>TotalSize</key>
+	<integer>500000000000</integer>
+	<key>VirtualOrPhysical</key>
+	<string>Virtual</string>
+</dict>
+</plist>"#;
+        let result = super::parse_diskutil_info_plist(plist);
+        assert_eq!(result, None);
     }
 }
