@@ -283,9 +283,18 @@ pub fn detect_wifi() -> Option<String> {
             }
         }
 
-        // Fallback to nmcli
+        // Fallback to nmcli (using --rescan no to avoid slow hardware channel scans)
         if let Ok(output) = std::process::Command::new("nmcli")
-            .args(["-t", "-f", "active,ssid,rate", "dev", "wifi"])
+            .args([
+                "-t",
+                "-f",
+                "active,ssid,rate",
+                "device",
+                "wifi",
+                "list",
+                "--rescan",
+                "no",
+            ])
             .output()
         {
             if let Ok(stdout) = String::from_utf8(output.stdout) {

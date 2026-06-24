@@ -252,6 +252,19 @@ pub fn supports_sixel() -> bool {
     false
 }
 
+static CHAFA_SUPPORTS_PROBE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+
+/// Checks if the `chafa` command-line tool supports the `--probe` option.
+pub fn chafa_supports_probe() -> bool {
+    *CHAFA_SUPPORTS_PROBE.get_or_init(|| {
+        std::process::Command::new("chafa")
+            .args(["--probe", "off", "--version"])
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    })
+}
+
 /// Checks if the `chafa` command-line tool is available in the system path.
 pub fn chafa_available() -> bool {
     std::process::Command::new("chafa")
@@ -273,13 +286,17 @@ fn write_temp_logo(bytes: &[u8]) -> std::io::Result<std::path::PathBuf> {
 /// Chafa renders images using high-quality Unicode symbols, providing a
 /// good graphical fallback for many terminal emulators.
 pub fn print_with_chafa(path: &std::path::Path) -> bool {
-    let output = std::process::Command::new("chafa")
-        .arg("--format")
+    let mut cmd = std::process::Command::new("chafa");
+    cmd.arg("--format")
         .arg("symbols")
         .arg("--size")
-        .arg("40x20")
-        .arg(path)
-        .output();
+        .arg("40x20");
+
+    if chafa_supports_probe() {
+        cmd.arg("--probe").arg("off");
+    }
+
+    let output = cmd.arg(path).output();
 
     match output {
         Ok(out) if out.status.success() => {
@@ -299,14 +316,17 @@ pub fn print_with_chafa(path: &std::path::Path) -> bool {
 
 /// Attempts to get Chafa output as a list of lines.
 pub fn get_chafa_logo_lines(path: &std::path::Path) -> Option<Vec<String>> {
-    let output = std::process::Command::new("chafa")
-        .arg("--format")
+    let mut cmd = std::process::Command::new("chafa");
+    cmd.arg("--format")
         .arg("symbols")
         .arg("--size")
-        .arg("40x20")
-        .arg(path)
-        .output()
-        .ok()?;
+        .arg("40x20");
+
+    if chafa_supports_probe() {
+        cmd.arg("--probe").arg("off");
+    }
+
+    let output = cmd.arg(path).output().ok()?;
     if output.status.success() {
         let content = String::from_utf8_lossy(&output.stdout);
         Some(content.lines().map(|s| s.to_string()).collect())

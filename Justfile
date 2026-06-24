@@ -122,3 +122,13 @@ publish:
 # Automatically calculate and update Nixpkgs hashes in packaging/nixpkgs/package.nix (requires Nix)
 nix-update VERSION="":
     @python3 scripts/calculate_nix_hashes.py {{VERSION}}
+
+# Generate a flamegraph for execution profiling (requires perf on Linux or dtrace on macOS)
+flamegraph *ARGS="":
+    @command -v cargo-flamegraph >/dev/null || (echo "Installing cargo-flamegraph..." && cargo install flamegraph)
+    @if [ "$(uname)" = "Linux" ] && ! command -v perf >/dev/null; then \
+        echo "Error: 'perf' is not installed. Please install 'perf' (e.g., 'sudo dnf install perf' on Fedora)"; \
+        exit 1; \
+    fi
+    cargo flamegraph --profile profiling -- {{ARGS}}
+
