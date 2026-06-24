@@ -183,8 +183,54 @@ fn main() -> anyhow::Result<()> {
     let config = Config::load(cli.config.as_deref())?;
     let config = config.merge_with_cli(&cli);
 
+    // Determine which fields are active to collect only necessary data
+    let allowed_fields = if cli.long {
+        None
+    } else if cli.short {
+        Some(vec![
+            "os".to_string(),
+            "kernel".to_string(),
+            "host".to_string(),
+            "cpu".to_string(),
+            "gpu".to_string(),
+            "memory".to_string(),
+            "disk".to_string(),
+            "net".to_string(),
+        ])
+    } else if let Some(fields) = &config.fields {
+        Some(fields.iter().map(|s| s.to_lowercase()).collect())
+    } else {
+        // Default set
+        Some(vec![
+            "os".to_string(),
+            "kernel".to_string(),
+            "host".to_string(),
+            "cpu".to_string(),
+            "cpu-cache".to_string(),
+            "cpu-usage".to_string(),
+            "motherboard".to_string(),
+            "bios".to_string(),
+            "gpu".to_string(),
+            "display".to_string(),
+            "audio".to_string(),
+            "camera".to_string(),
+            "gamepad".to_string(),
+            "memory".to_string(),
+            "phys-mem".to_string(),
+            "swap".to_string(),
+            "load".to_string(),
+            "disk".to_string(),
+            "phys-disk".to_string(),
+            "net".to_string(),
+            "uptime".to_string(),
+        ])
+    };
+
     // Collect system information
-    let info = SystemInfo::collect(CollectOptions { long: cli.long })?;
+    let info = SystemInfo::collect(CollectOptions {
+        long: cli.long,
+        fields: allowed_fields,
+    })?;
 
     // Display output
     display::display(&info, &cli, &config)?;

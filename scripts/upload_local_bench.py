@@ -92,38 +92,57 @@ def run_hyperfine(warmup, runs):
         retch_cmd = r".\target\release\retch.exe"
     else:
         retch_cmd = "./target/release/retch"
-
-    cmds = [retch_cmd]
-    if has_fastfetch:
-        cmds.append("fastfetch")
-
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
-        tmp_path = f.name
-
-    try:
-        run([
-            "hyperfine",
-            "--warmup", str(warmup),
-            "--runs", str(runs),
-            "--export-json", tmp_path,
-        ] + cmds)
-
-        with open(tmp_path) as f:
-            data = json.load(f)
-    finally:
-        os.unlink(tmp_path)
+    # Define pairs to run sequentially: (retch, fastfetch)
+    pairs = [
+        (retch_cmd, "fastfetch"),
+        (f"{retch_cmd} --short", "fastfetch -c none"),
+        (f"{retch_cmd} --long", "fastfetch -c all")
+    ]
 
     results = []
-    for res in data.get("results", []):
-        cmd = res["command"]
-        if "retch" in cmd:
-            label = "CLI execution - retch"
-        elif "fastfetch" in cmd:
-            label = "CLI execution - fastfetch"
-        else:
-            label = f"CLI execution - {cmd}"
-        val_ns = res["mean"] * 1_000_000_000
-        results.append({"name": label, "unit": "ns", "value": val_ns})
+    for r_cmd, ff_cmd in pairs:
+        cmds = [r_cmd]
+        if has_fastfetch and ff_cmd:
+            cmds.append(ff_cmd)
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
+            tmp_path = f.name
+
+        try:
+            print(f"\nComparing: {' vs '.join(cmds)}", flush=True)
+            run([
+                "hyperfine",
+                "--warmup", str(warmup),
+                "--runs", str(runs),
+                "--export-json", tmp_path,
+            ] + cmds)
+
+            with open(tmp_path) as f:
+                data = json.load(f)
+            
+            for res in data.get("results", []):
+                cmd = res["command"]
+                if "retch" in cmd:
+                    if "--short" in cmd:
+                        label = "CLI execution - retch --short"
+                    elif "--long" in cmd:
+                        label = "CLI execution - retch --long"
+                    else:
+                        label = "CLI execution - retch"
+                elif "fastfetch" in cmd:
+                    if "-c none" in cmd:
+                        label = "CLI execution - fastfetch -c none"
+                    elif "-c all" in cmd:
+                        label = "CLI execution - fastfetch -c all"
+                    else:
+                        label = "CLI execution - fastfetch"
+                else:
+                    label = f"CLI execution - {cmd}"
+                val_ns = res["mean"] * 1_000_000_000
+                results.append({"name": label, "unit": "ns", "value": val_ns})
+        finally:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
 
     return results
 

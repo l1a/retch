@@ -37,10 +37,20 @@ def main():
             for res in hp_data.get("results", []):
                 cmd = res.get("command")
                 # Map command name to a cleaner label
-                if cmd == "./target/release/retch" or "retch" in cmd:
-                    name = "CLI execution - retch"
-                elif cmd == "fastfetch":
-                    name = "CLI execution - fastfetch"
+                if "retch" in cmd:
+                    if "--short" in cmd:
+                        name = "CLI execution - retch --short"
+                    elif "--long" in cmd:
+                        name = "CLI execution - retch --long"
+                    else:
+                        name = "CLI execution - retch"
+                elif "fastfetch" in cmd:
+                    if "-c none" in cmd:
+                        name = "CLI execution - fastfetch -c none"
+                    elif "-c all" in cmd:
+                        name = "CLI execution - fastfetch -c all"
+                    else:
+                        name = "CLI execution - fastfetch"
                 else:
                     name = f"CLI execution - {cmd}"
                 
