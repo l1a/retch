@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782276796053,
+  "lastUpdate": 1782276857722,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4788,50 +4788,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "distinct": true,
-          "id": "10396be118bf4df2bef9664e6b79dcfa48c6328f",
-          "message": "Disable fail-on-alert to tolerate VM noise",
-          "timestamp": "2026-06-03T10:13:15-07:00",
-          "tree_id": "fe92c928d5f66c210b9dae49414504acb40aa04f",
-          "url": "https://github.com/l1a/retch/commit/10396be118bf4df2bef9664e6b79dcfa48c6328f"
-        },
-        "date": 1780507287970,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 1642810.24,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 141917269.94,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 122871702.35,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1171179.1325786265,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
           "id": "99579ba9289002ec5b191f0921b65bfa9ed8570e",
           "message": "Import os in hyperfine installer",
           "timestamp": "2026-06-03T10:50:50-07:00",
@@ -8521,6 +8477,100 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 257.2055442732759,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2ea8eef12172b7d1c643984c52d0c670cbad2538",
+          "message": "ci(deps): bump actions/checkout from 4 to 7 (#106)\n\nBumps [actions/checkout](https://github.com/actions/checkout) from 4 to 7.\n- [Release notes](https://github.com/actions/checkout/releases)\n- [Commits](https://github.com/actions/checkout/compare/v4...v7)\n\n---\nupdated-dependencies:\n- dependency-name: actions/checkout\n  dependency-version: '7'\n  dependency-type: direct:production\n  update-type: version-update:semver-major\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-06-23T21:40:32-07:00",
+          "tree_id": "490e53aae932bb315993b7fb274be44b13dd6d46",
+          "url": "https://github.com/l1a/retch/commit/2ea8eef12172b7d1c643984c52d0c670cbad2538"
+        },
+        "date": 1782276856379,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 1561816.2,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 359394672.2,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 357573116.35,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 984.1702942705033,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 47.440150817680504,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9466991310195305,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 47.72942798534407,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7632.236942967998,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 69512.47653478148,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4690.876973691284,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4801.260562956498,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1201849.5492111745,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 353.0445727395476,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 272.2291088448061,
             "unit": "ns"
           }
         ]
