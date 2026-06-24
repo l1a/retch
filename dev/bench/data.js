@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782325145275,
+  "lastUpdate": 1782325526172,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -12701,50 +12701,6 @@ window.BENCHMARK_DATA = {
       {
         "commit": {
           "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "585270b923d52522281c533fb0763203d8a90b40",
-          "message": "Update CLI flags for short, long, and mode options (#70)",
-          "timestamp": "2026-06-04T09:08:05-07:00",
-          "tree_id": "0ea02c92aac1141943ac5f8df9742e9e9034f14f",
-          "url": "https://github.com/l1a/retch/commit/585270b923d52522281c533fb0763203d8a90b40"
-        },
-        "date": 1780590908646,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 30595539.999999996,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 2067972789.9999998,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 277110190,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1848106950,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
             "email": "49699333+dependabot[bot]@users.noreply.github.com",
             "name": "dependabot[bot]",
             "username": "dependabot[bot]"
@@ -16109,6 +16065,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1541062130,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "d89aa928c05f9ff70640a355b7aa104df5933a86",
+          "message": "docs: update NOTES for v0.3.23 release and nixpkgs PR\n\nAssisted-By: Gemini 3.5 Flash",
+          "timestamp": "2026-06-24T10:56:28-07:00",
+          "tree_id": "4de75ab73dd70c0da1ffc10be9ba0f151bfd5c5f",
+          "url": "https://github.com/l1a/retch/commit/d89aa928c05f9ff70640a355b7aa104df5933a86"
+        },
+        "date": 1782325522597,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 28561424.000000004,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1586627174.0000002,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 118.21923265140882,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 4.990495041019619,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 118.29070852633338,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 95.18184003936355,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42545.840769114475,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 558.5477504035614,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 848.0332987625623,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1481088935,
             "unit": "ns"
           }
         ]
