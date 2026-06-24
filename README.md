@@ -202,11 +202,12 @@ title_color = "bright_yellow"
 separator_color = "bright_black"
 
 # Ordered list of system information fields to display
+# Note: "phys-mem" requires root (sudo) on Linux to read DMI memory tables.
 fields = [
     "os", "kernel", "host", "arch", "cpu", "cpu-freq", "gpu",
     "motherboard", "bios", "display", "audio",
-    "memory", "swap", "uptime", "procs", "load",
-    "disk", "temp", "net", "wifi", "bluetooth", "battery",
+    "memory", "phys-mem", "swap", "uptime", "procs", "load",
+    "disk", "phys-disk", "temp", "net", "wifi", "bluetooth", "battery",
     "shell", "terminal", "terminal_font", "desktop", "theme", "icons", "cursor", "font", "users", "packages"
 ]
 ```

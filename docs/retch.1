@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "June 2026" "retch 0.3.22" "System Information Fetcher"
+.TH "RETCH" "1" "June 2026" "retch 0.3.23" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -204,6 +204,10 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
+`\f[CR]phys\-mem\fP`: Physical RAM slot details \-\- type (DDR5, LPDDR5, etc\.), speed, and per\-slot capacity\. On Linux, requires root (`\f[CR]sudo\fP`) to read DMI memory tables via `\f[CR]dmidecode\fP`\.
+.El
+.Bl
+.IP \(bu 4
 `\f[CR]swap\fP`: System SWAP usage and capacity\.
 .El
 .Bl
@@ -221,6 +225,10 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .Bl
 .IP \(bu 4
 `\f[CR]disk\fP`: Mounted disk capacity, usage, and mountpoint\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]phys\-disk\fP`: Physical disk model, size, and type (NVMe SSD, SSD, HDD)\.
 .El
 .Bl
 .IP \(bu 4

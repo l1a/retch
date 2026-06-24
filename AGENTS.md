@@ -46,7 +46,7 @@
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
 
-## Current State (v0.3.22)
+## Current State (v0.3.23)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -69,6 +69,12 @@
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
 
 ## Major Achievements
+
+### v0.3.23 - Physical Disk and Physical Memory Fields (June 23, 2026)
+- **Physical Disk**: Added `PhysDisk` field showing physical disk model, size, and type (NVMe SSD, SSD, or HDD). Linux reads from `/sys/class/block/` sysfs entries; macOS spawns `diskutil list -plist` and `diskutil info -plist <disk>`. New module `crates/sysinfo/src/disk.rs`.
+- **Physical Memory**: Added `PhysMem` field showing RAM slot details — type (DDR4, DDR5, LPDDR5, etc.), speed (MT/s), and per-slot capacity, with deduplication ("2× 8 GB DDR5 4800 MT/s"). Linux spawns `dmidecode --type 17` (gracefully returns `None` without root); macOS spawns `system_profiler SPMemoryDataType`. New module `crates/sysinfo/src/memory.rs`.
+- Both fields run concurrently in the scoped-thread pipeline and appear in the default output set.
+- **Version**: Bumped to `0.3.23` / `retch-sysinfo 0.1.23`.
 
 ### v0.3.22 - Packaging Configurations (June 23, 2026)
 - **AUR & Nixpkgs**: Created package configuration files for Arch User Repository (`packaging/aur/PKGBUILD`) and Nixpkgs (`packaging/nixpkgs/package.nix`) to simplify repository submissions.
@@ -405,8 +411,6 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - **Brightness**: Monitor brightness level
 - **Keyboard**: Connected keyboards
 - **Mouse**: Connected mice
-- **PhysicalDisk**: Physical disk model, size, type
-- **PhysicalMemory**: RAM slot count, type (DDR5 etc.), speed
 - **PowerAdapter**: Charger name and wattage
 - **TPM**: Trusted Platform Module device info
 
@@ -444,4 +448,4 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - **Weather**: Weather information (requires network)
 
 ---
-*Last updated: June 15, 2026 (v0.3.21)*
+*Last updated: June 23, 2026 (v0.3.23)*

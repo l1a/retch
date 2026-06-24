@@ -112,6 +112,10 @@ pub struct SystemInfo {
     pub cpu_cache: Option<String>,
     /// Current CPU utilization as a percentage.
     pub cpu_usage: Option<String>,
+    /// Physical disk models, sizes, and types.
+    pub physical_disks: Vec<String>,
+    /// Physical memory (RAM) slot summary — type, speed, capacity.
+    pub physical_memory: Option<String>,
 }
 
 impl SystemInfo {
@@ -303,6 +307,8 @@ impl SystemInfo {
             (ui_theme, icons, cursor, font),
             camera,
             gamepad,
+            physical_disks,
+            physical_memory,
         ) = std::thread::scope(|s| {
             let gpu_handle = s.spawn(|| {
                 gpu::detect_gpus()
@@ -322,6 +328,8 @@ impl SystemInfo {
             let ui_theme_and_fonts_handle = s.spawn(crate::theme::detect_ui_theme_and_fonts);
             let camera_handle = s.spawn(crate::camera::detect_camera);
             let gamepad_handle = s.spawn(crate::gamepad::detect_gamepad);
+            let physical_disks_handle = s.spawn(crate::disk::detect_physical_disks);
+            let physical_memory_handle = s.spawn(crate::memory::detect_physical_memory);
 
             (
                 gpu_handle.join().unwrap_or_default(),
@@ -339,6 +347,8 @@ impl SystemInfo {
                     .unwrap_or((None, None, None, None)),
                 camera_handle.join().unwrap_or_default(),
                 gamepad_handle.join().unwrap_or_default(),
+                physical_disks_handle.join().unwrap_or_default(),
+                physical_memory_handle.join().ok().flatten(),
             )
         });
 
@@ -485,6 +495,8 @@ impl SystemInfo {
             gamepad,
             cpu_cache,
             cpu_usage,
+            physical_disks,
+            physical_memory,
         })
     }
 }
