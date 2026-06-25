@@ -287,17 +287,36 @@ fn detect_windows() -> Option<String> {
     let cmd = "Get-CimInstance Win32_PhysicalMemory | \
                Select-Object Capacity,SMBIOSMemoryType,Speed | \
                ConvertTo-Csv -NoTypeInformation";
-    let Ok(output) = std::process::Command::new("powershell")
+    if let Ok(output) = std::process::Command::new("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", cmd])
+        .output()
+    {
+        if output.status.success() {
+            let text = String::from_utf8_lossy(&output.stdout);
+            if let Some(result) = parse_win32_physical_memory(&text) {
+                return Some(result);
+            }
+        }
+    }
+
+    // Hyper-V and other VMs don't expose DIMM rows in Win32_PhysicalMemory.
+    // Fall back to the total from Win32_ComputerSystem so the field still appears.
+    let fb_cmd = "(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory";
+    let Ok(fb) = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", fb_cmd])
         .output()
     else {
         return None;
     };
-    if !output.status.success() {
+    if !fb.status.success() {
         return None;
     }
-    let text = String::from_utf8_lossy(&output.stdout);
-    parse_win32_physical_memory(&text)
+    let total_bytes: u64 = String::from_utf8_lossy(&fb.stdout).trim().parse().ok()?;
+    if total_bytes == 0 {
+        return None;
+    }
+    let gb = total_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+    Some(format!("{:.0} GB", gb))
 }
 
 /// Parses `Get-CimInstance Win32_PhysicalMemory | ConvertTo-Csv` output.
