@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782419673578,
+  "lastUpdate": 1782420279011,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13258,65 +13258,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "0f896b26e8e028d7e3da3f7410b8aa71626ccd0a",
-          "message": "Merge pull request #76 from l1a/refactor/bluetooth-module-isolation\n\nrefactor: isolate bluetooth detection into bluetooth.rs (v0.3.8)",
-          "timestamp": "2026-06-09T21:49:44-07:00",
-          "tree_id": "647698914519fc33c11cc2b44a86c80c889bbb2e",
-          "url": "https://github.com/l1a/retch/commit/0f896b26e8e028d7e3da3f7410b8aa71626ccd0a"
-        },
-        "date": 1781068988130,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 30510364,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1544280424.0000002,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 127.91075963773156,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.011948041985532,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 127.34036155119308,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 295040070,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1428242400,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "7b6a7b695d96cacf9bae9f744dd7e0f163af32ee",
           "message": "Merge pull request #77 from l1a/test/coverage-and-benchmarks\n\ntest: expand unit test coverage and add network/audio/camera benchmarks (v0.3.10)",
           "timestamp": "2026-06-09T22:46:29-07:00",
@@ -16736,6 +16677,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2919451805,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "616ce0be9684e55037a517f1c5b4e646f9d395c1",
+          "message": "chore: add just nixpkgs-release automation script (#114)\n\nAutomates the full retch → nixpkgs release pipeline without requiring\na local Nix installation: tags the version, polls the GitHub release for\nCI-computed hashes, updates the nixpkgs fork branch, and opens a PR.\n\nUsage: just nixpkgs-release [VERSION]\nOverride fork path with NIXPKGS_DIR env var.\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-25T13:14:18-07:00",
+          "tree_id": "1aa03e00e034b8c11e50ecbc06a482e87c8275ef",
+          "url": "https://github.com/l1a/retch/commit/616ce0be9684e55037a517f1c5b4e646f9d395c1"
+        },
+        "date": 1782420275959,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 96.46772758873905,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.784895418329288,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 99.53317765413514,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 73.41934322178646,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 33149.53235576488,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 416.05006774688974,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 629.9860537234488,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2206506405,
             "unit": "ns"
           }
         ]
