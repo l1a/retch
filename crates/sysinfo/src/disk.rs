@@ -10,7 +10,10 @@ pub fn detect_physical_disks() -> Vec<String> {
     #[cfg(target_os = "macos")]
     return detect_macos();
 
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(target_os = "windows")]
+    return detect_windows();
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     return Vec::new();
 }
 
@@ -270,7 +273,7 @@ fn strip_embedded_size(model: &str) -> &str {
     model
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 fn format_size(bytes: u64) -> String {
     const TB: u64 = 1_000_000_000_000;
     const GB: u64 = 1_000_000_000;
@@ -279,6 +282,73 @@ fn format_size(bytes: u64) -> String {
     } else {
         format!("{:.0} GB", bytes as f64 / GB as f64)
     }
+}
+
+#[cfg(target_os = "windows")]
+fn detect_windows() -> Vec<String> {
+    let cmd = "Get-PhysicalDisk | \
+               Select-Object FriendlyName,Size,MediaType,BusType | \
+               ConvertTo-Csv -NoTypeInformation";
+    let Ok(output) = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", cmd])
+        .output()
+    else {
+        return Vec::new();
+    };
+    if !output.status.success() {
+        return Vec::new();
+    }
+    let text = String::from_utf8_lossy(&output.stdout);
+    parse_get_physical_disk(&text)
+}
+
+/// Parses `Get-PhysicalDisk | ConvertTo-Csv` output into formatted disk labels.
+///
+/// Expected CSV header: `"FriendlyName","Size","MediaType","BusType"`
+#[cfg(target_os = "windows")]
+pub fn parse_get_physical_disk(csv: &str) -> Vec<String> {
+    let mut lines = csv.lines();
+    lines.next(); // skip header
+    let mut disks = Vec::new();
+    for line in lines {
+        let fields = unquoted_csv_fields(line);
+        if fields.len() < 4 {
+            continue;
+        }
+        let name = fields[0].trim();
+        let size_bytes: Option<u64> = fields[1].trim().parse().ok();
+        let media_type = fields[2].trim();
+        let bus_type = fields[3].trim();
+
+        let kind = if bus_type.eq_ignore_ascii_case("NVMe") {
+            "NVMe SSD"
+        } else if media_type.eq_ignore_ascii_case("SSD") {
+            "SSD"
+        } else if media_type.eq_ignore_ascii_case("HDD") {
+            "HDD"
+        } else {
+            // "Unspecified" with no NVMe bus — treat as SSD (e.g. eMMC, SD)
+            "SSD"
+        };
+
+        let size_str = size_bytes.map(format_size).unwrap_or_default();
+        let label = if name.is_empty() {
+            format!("{} [{}]", size_str, kind)
+        } else {
+            format!("{} {} [{}]", name, size_str, kind)
+        };
+        disks.push(label.trim().to_string());
+    }
+    disks
+}
+
+/// Splits one PowerShell `ConvertTo-Csv` line into unquoted fields.
+///
+/// `ConvertTo-Csv` wraps every value in double quotes: `"val1","val2",...`
+#[cfg(target_os = "windows")]
+fn unquoted_csv_fields(line: &str) -> Vec<String> {
+    let line = line.trim().trim_matches('"');
+    line.split("\",\"").map(|s| s.to_string()).collect()
 }
 
 #[cfg(test)]
@@ -394,5 +464,49 @@ mod tests {
 </plist>"#;
         let result = super::parse_diskutil_info_plist(plist);
         assert_eq!(result, None);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_parse_get_physical_disk_nvme() {
+        let csv = r#""FriendlyName","Size","MediaType","BusType"
+"Samsung SSD 980 Pro 1TB","1000204886016","SSD","NVMe"
+"#;
+        let disks = super::parse_get_physical_disk(csv);
+        assert_eq!(disks, vec!["Samsung SSD 980 Pro 1TB 1.0 TB [NVMe SSD]"]);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_parse_get_physical_disk_hdd() {
+        let csv = r#""FriendlyName","Size","MediaType","BusType"
+"WD Blue 2TB","2000398934016","HDD","SATA"
+"#;
+        let disks = super::parse_get_physical_disk(csv);
+        assert_eq!(disks, vec!["WD Blue 2TB 2.0 TB [HDD]"]);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_parse_get_physical_disk_unspecified_sata_ssd() {
+        // Some SATA SSDs report MediaType as "Unspecified" but BusType as "SATA"
+        let csv = r#""FriendlyName","Size","MediaType","BusType"
+"Crucial CT500MX500SSD1","500107862016","Unspecified","SATA"
+"#;
+        let disks = super::parse_get_physical_disk(csv);
+        assert_eq!(disks, vec!["Crucial CT500MX500SSD1 500 GB [SSD]"]);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_parse_get_physical_disk_multi() {
+        let csv = r#""FriendlyName","Size","MediaType","BusType"
+"Samsung SSD 980 Pro","1000204886016","SSD","NVMe"
+"WD Blue","2000398934016","HDD","SATA"
+"#;
+        let disks = super::parse_get_physical_disk(csv);
+        assert_eq!(disks.len(), 2);
+        assert_eq!(disks[0], "Samsung SSD 980 Pro 1.0 TB [NVMe SSD]");
+        assert_eq!(disks[1], "WD Blue 2.0 TB [HDD]");
     }
 }

@@ -10,12 +10,15 @@ pub fn detect_physical_memory() -> Option<String> {
     #[cfg(target_os = "macos")]
     return detect_macos();
 
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(target_os = "windows")]
+    return detect_windows();
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     return None;
 }
 
 /// Represents one DIMM slot as parsed from DMI type-17 output.
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 #[derive(Debug, PartialEq)]
 pub struct DimmSlot {
     pub size_mb: u64,
@@ -91,7 +94,7 @@ pub fn parse_dmidecode_type17(output: &str) -> Vec<DimmSlot> {
 }
 
 /// Formats a list of DIMM slots into a human-readable summary string.
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 pub fn format_dimm_slots(slots: &[DimmSlot]) -> Option<String> {
     if slots.is_empty() {
         return None;
@@ -279,6 +282,100 @@ pub fn parse_system_profiler_memory(text: &str) -> Option<String> {
     format_dimm_slots(&slots)
 }
 
+#[cfg(target_os = "windows")]
+fn detect_windows() -> Option<String> {
+    let cmd = "Get-CimInstance Win32_PhysicalMemory | \
+               Select-Object Capacity,SMBIOSMemoryType,Speed | \
+               ConvertTo-Csv -NoTypeInformation";
+    if let Ok(output) = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", cmd])
+        .output()
+    {
+        if output.status.success() {
+            let text = String::from_utf8_lossy(&output.stdout);
+            if let Some(result) = parse_win32_physical_memory(&text) {
+                return Some(result);
+            }
+        }
+    }
+
+    // Hyper-V and other VMs don't expose DIMM rows in Win32_PhysicalMemory.
+    // Fall back to the total from Win32_ComputerSystem so the field still appears.
+    let fb_cmd = "(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory";
+    let Ok(fb) = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", fb_cmd])
+        .output()
+    else {
+        return None;
+    };
+    if !fb.status.success() {
+        return None;
+    }
+    let total_bytes: u64 = String::from_utf8_lossy(&fb.stdout).trim().parse().ok()?;
+    if total_bytes == 0 {
+        return None;
+    }
+    let gb = total_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+    Some(format!("{:.0} GB (VM — DIMM info unavailable)", gb))
+}
+
+/// Parses `Get-CimInstance Win32_PhysicalMemory | ConvertTo-Csv` output.
+///
+/// Expected CSV header: `"Capacity","SMBIOSMemoryType","Speed"`
+/// Speed is in MT/s (Win32 already uses the transfer-rate value, e.g. 3200 for DDR4-3200).
+#[cfg(target_os = "windows")]
+pub fn parse_win32_physical_memory(csv: &str) -> Option<String> {
+    let mut lines = csv.lines();
+    lines.next(); // skip header
+    let mut slots = Vec::new();
+    for line in lines {
+        let fields = unquoted_csv_fields(line);
+        if fields.len() < 3 {
+            continue;
+        }
+        let capacity_bytes: u64 = fields[0].trim().parse().unwrap_or(0);
+        if capacity_bytes == 0 {
+            continue;
+        }
+        let size_mb = capacity_bytes / (1024 * 1024);
+        let type_code: u16 = fields[1].trim().parse().unwrap_or(0);
+        let speed_mt: u64 = fields[2].trim().parse().unwrap_or(0);
+        slots.push(DimmSlot {
+            size_mb,
+            mem_type: smbios_memory_type(type_code),
+            speed_mt: if speed_mt > 0 { Some(speed_mt) } else { None },
+        });
+    }
+    format_dimm_slots(&slots)
+}
+
+/// Maps SMBIOS memory type codes (from `Win32_PhysicalMemory.SMBIOSMemoryType`) to strings.
+#[cfg(target_os = "windows")]
+fn smbios_memory_type(code: u16) -> String {
+    match code {
+        20 => "DDR".to_string(),
+        21 => "DDR2".to_string(),
+        24 => "DDR3".to_string(),
+        26 => "DDR4".to_string(),
+        27 => "LPDDR".to_string(),
+        28 => "LPDDR2".to_string(),
+        29 => "LPDDR3".to_string(),
+        30 => "LPDDR4".to_string(),
+        34 => "DDR5".to_string(),
+        35 => "LPDDR5".to_string(),
+        _ => String::new(),
+    }
+}
+
+/// Splits one PowerShell `ConvertTo-Csv` line into unquoted fields.
+///
+/// `ConvertTo-Csv` wraps every value in double quotes: `"val1","val2",...`
+#[cfg(target_os = "windows")]
+fn unquoted_csv_fields(line: &str) -> Vec<String> {
+    let line = line.trim().trim_matches('"');
+    line.split("\",\"").map(|s| s.to_string()).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -408,5 +505,52 @@ Memory:
 "#;
         let result = parse_system_profiler_memory(input);
         assert_eq!(result, Some("2× 16 GB DDR5 4800 MT/s".to_string()));
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_parse_win32_physical_memory_ddr4() {
+        let csv = r#""Capacity","SMBIOSMemoryType","Speed"
+"8589934592","26","3200"
+"8589934592","26","3200"
+"#;
+        let result = parse_win32_physical_memory(csv);
+        assert_eq!(result, Some("2× 8 GB DDR4 3200 MT/s".to_string()));
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_parse_win32_physical_memory_ddr5() {
+        let csv = r#""Capacity","SMBIOSMemoryType","Speed"
+"17179869184","34","4800"
+"17179869184","34","4800"
+"#;
+        let result = parse_win32_physical_memory(csv);
+        assert_eq!(result, Some("2× 16 GB DDR5 4800 MT/s".to_string()));
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_parse_win32_physical_memory_unknown_type() {
+        // SMBIOSMemoryType=0 → no type label emitted
+        let csv = r#""Capacity","SMBIOSMemoryType","Speed"
+"34359738368","0","0"
+"#;
+        let result = parse_win32_physical_memory(csv);
+        assert_eq!(result, Some("32 GB".to_string()));
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_parse_win32_physical_memory_mixed_slots() {
+        let csv = r#""Capacity","SMBIOSMemoryType","Speed"
+"8589934592","26","3200"
+"16777216","26","3200"
+"#;
+        // 8 GB + 16 MB (different sizes → two groups)
+        let result = parse_win32_physical_memory(csv);
+        let s = result.unwrap();
+        assert!(s.contains("8 GB DDR4 3200 MT/s"));
+        assert!(s.contains("16 MB DDR4 3200 MT/s"));
     }
 }

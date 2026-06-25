@@ -108,13 +108,13 @@ You can generate a starting configuration with:
   - `camera`: Connected camera/webcam names.
   - `gamepad`: Connected gamepad/controller names.
   - `memory`: System RAM usage and capacity.
-  - `phys-mem`: Physical RAM slot details — type (DDR5, LPDDR5, etc.), speed, and per-slot capacity. On Linux, requires root (`sudo`) to read DMI memory tables via `dmidecode`.
+  - `phys-mem`: Physical RAM slot details — type (DDR5, LPDDR5, etc.), speed, and per-slot capacity. On Linux, requires root (`sudo`) to read DMI memory tables via `dmidecode`. On Windows, uses `Win32_PhysicalMemory` via PowerShell.
   - `swap`: System SWAP usage and capacity.
   - `uptime`: System uptime.
   - `procs`: Active process count.
   - `load`: Average system load.
   - `disk`: Mounted disk capacity, usage, and mountpoint.
-  - `phys-disk`: Physical disk model, size, and type (NVMe SSD, SSD, HDD).
+  - `phys-disk`: Physical disk model, size, and type (NVMe SSD, SSD, HDD). On Windows, uses `Get-PhysicalDisk` via PowerShell.
   - `temp`: System temperature sensors.
   - `net`: Active network interfaces and local/public IP addresses.
   - `wifi`: Active Wi-Fi SSID, band frequency, channel, and link rates.
