@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782367459130,
+  "lastUpdate": 1782368029458,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -16675,50 +16675,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "248b7b5a9f9a1a3eb5b62512ffa362eac159b756",
-          "message": "Configure Windows PATH in benchmark jobs",
-          "timestamp": "2026-06-03T11:23:32-07:00",
-          "tree_id": "4428a646927f214627bae22beffb50b429e372fd",
-          "url": "https://github.com/l1a/retch/commit/248b7b5a9f9a1a3eb5b62512ffa362eac159b756"
-        },
-        "date": 1780513043559,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 275041018,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1491488068,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 310733477.5,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1322284215,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -19993,6 +19949,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1313774420,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "04d2442f2ab2a46ae627bbe76af2e08ecec87220",
+          "message": "Merge pull request #112 from l1a/feat/windows-phys-disk-mem\n\nfeat: implement Windows PhysDisk and PhysMem detection",
+          "timestamp": "2026-06-24T22:33:30-07:00",
+          "tree_id": "9c6c912cc8c4f04055290db2ab35fc64cc3e8675",
+          "url": "https://github.com/l1a/retch/commit/04d2442f2ab2a46ae627bbe76af2e08ecec87220"
+        },
+        "date": 1782368026509,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 102.85911794132122,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947106456513094,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 103.2143719697956,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 80.5942294451718,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46651.93813754675,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 490.80464165423274,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 749.1334256052403,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2358957570,
             "unit": "ns"
           }
         ]
