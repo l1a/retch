@@ -316,7 +316,7 @@ fn detect_windows() -> Option<String> {
         return None;
     }
     let gb = total_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
-    Some(format!("{:.0} GB", gb))
+    Some(format!("{:.0} GB (VM — DIMM info unavailable)", gb))
 }
 
 /// Parses `Get-CimInstance Win32_PhysicalMemory | ConvertTo-Csv` output.
