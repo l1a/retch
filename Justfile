@@ -137,6 +137,11 @@ publish:
 nix-update VERSION="":
     @python3 scripts/calculate_nix_hashes.py {{VERSION}}
 
+# Tag, wait for CI hashes, update nixpkgs fork, and open a PR — no Nix required.
+# Set NIXPKGS_DIR to override the default ~/git/nixpkgs fork location.
+nixpkgs-release VERSION="":
+    @python3 scripts/nixpkgs_release.py {{VERSION}}
+
 # Generate a flamegraph for execution profiling (requires perf on Linux or dtrace on macOS)
 flamegraph *ARGS="":
     @command -v cargo-flamegraph >/dev/null || (echo "Installing cargo-flamegraph..." && cargo install flamegraph)
