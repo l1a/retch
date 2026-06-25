@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782420279011,
+  "lastUpdate": 1782420367869,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13253,75 +13253,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "7b6a7b695d96cacf9bae9f744dd7e0f163af32ee",
-          "message": "Merge pull request #77 from l1a/test/coverage-and-benchmarks\n\ntest: expand unit test coverage and add network/audio/camera benchmarks (v0.3.10)",
-          "timestamp": "2026-06-09T22:46:29-07:00",
-          "tree_id": "a702e4595123a3fc74cefe901ec8127d4700e4d0",
-          "url": "https://github.com/l1a/retch/commit/7b6a7b695d96cacf9bae9f744dd7e0f163af32ee"
-        },
-        "date": 1781072560244,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 28749116.000000007,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 2075321255.9999995,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 120.98534950525698,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.681025981610494,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 126.20509548182284,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 291434465,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 639.535852623735,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 929.8301865097044,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1865557235,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -16741,6 +16672,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2206506405,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cc924b5dc321850fda70d1fd023e08d3849a39e4",
+          "message": "docs: update AGENTS.md last-updated footer to v0.3.25 (#113)\n\n* chore: add just nixpkgs-release automation script\n\nAutomates the full retch → nixpkgs release pipeline without requiring\na local Nix installation: tags the version, polls the GitHub release for\nCI-computed hashes, updates the nixpkgs fork branch, and opens a PR.\n\nUsage: just nixpkgs-release [VERSION]\nOverride fork path with NIXPKGS_DIR env var.\n\nAssisted-By: Claude Sonnet 4.6\n\n* docs: update AGENTS.md last-updated footer to v0.3.25\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-25T13:12:53-07:00",
+          "tree_id": "1aa03e00e034b8c11e50ecbc06a482e87c8275ef",
+          "url": "https://github.com/l1a/retch/commit/cc924b5dc321850fda70d1fd023e08d3849a39e4"
+        },
+        "date": 1782420364748,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 122.0921802497171,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.326021110777621,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 120.41166842056926,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 94.11519195577338,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41753.24152894572,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 564.2731723139825,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 829.0526823032384,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3257129430,
             "unit": "ns"
           }
         ]
