@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782420367869,
+  "lastUpdate": 1782420844647,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -16755,50 +16755,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "b13e968dc483454c9fbb632a9714d46474bdc678",
-          "message": "Merge pull request #66 from l1a/feature/multi-platform-benchmarks\n\nv0.3.2 - macOS Battery/Bluetooth Fixes & Multi-Platform Benchmarks",
-          "timestamp": "2026-06-03T12:36:18-07:00",
-          "tree_id": "150eb86f6551ec2ce10a0920f17d572403943ffe",
-          "url": "https://github.com/l1a/retch/commit/b13e968dc483454c9fbb632a9714d46474bdc678"
-        },
-        "date": 1780517511556,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 285315999.99999994,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1500357430.0000002,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 324795795,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1344703915,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "046c8e0b0137a548dcb51d46fef7703b46efe9cc",
           "message": "v0.3.3 - Native OS Queries & Performance Optimization (#68)\n\n* Implement native queries for route, displays, reg\n\n* Allow clippy upper_case_acronyms for win_reg\n\n* Bump version to 0.3.3 and rebuild man pages\n\n* Test route parsing and wire up helper\n\n* Restrict route parser to Linux or tests",
           "timestamp": "2026-06-04T08:16:04-07:00",
@@ -20088,6 +20044,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2358957570,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "616ce0be9684e55037a517f1c5b4e646f9d395c1",
+          "message": "chore: add just nixpkgs-release automation script (#114)\n\nAutomates the full retch → nixpkgs release pipeline without requiring\na local Nix installation: tags the version, polls the GitHub release for\nCI-computed hashes, updates the nixpkgs fork branch, and opens a PR.\n\nUsage: just nixpkgs-release [VERSION]\nOverride fork path with NIXPKGS_DIR env var.\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-25T13:14:18-07:00",
+          "tree_id": "1aa03e00e034b8c11e50ecbc06a482e87c8275ef",
+          "url": "https://github.com/l1a/retch/commit/616ce0be9684e55037a517f1c5b4e646f9d395c1"
+        },
+        "date": 1782420841708,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 106.47016058411467,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.949111142546921,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 105.84109201782367,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 80.58730668723385,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 44585.84406786831,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 485.2264589864957,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 735.772085171598,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2294251785,
             "unit": "ns"
           }
         ]
