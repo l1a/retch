@@ -514,4 +514,4 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - **Weather**: Weather information (requires network)
 
 ---
-*Last updated: June 24, 2026 (v0.3.24)*
+*Last updated: June 25, 2026 (v0.3.25)*
