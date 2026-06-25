@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782419661018,
+  "lastUpdate": 1782419673578,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -9441,70 +9441,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "7b6a7b695d96cacf9bae9f744dd7e0f163af32ee",
-          "message": "Merge pull request #77 from l1a/test/coverage-and-benchmarks\n\ntest: expand unit test coverage and add network/audio/camera benchmarks (v0.3.10)",
-          "timestamp": "2026-06-09T22:46:29-07:00",
-          "tree_id": "a702e4595123a3fc74cefe901ec8127d4700e4d0",
-          "url": "https://github.com/l1a/retch/commit/7b6a7b695d96cacf9bae9f744dd7e0f163af32ee"
-        },
-        "date": 1781071467254,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 43493185.94000001,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 798174198.04,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 661514270.8,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 72.92325928895741,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.145094258287248,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 70.4778839876614,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 206868356.95,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 382.4681486668193,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -13229,6 +13165,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 364.52268131227834,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cc924b5dc321850fda70d1fd023e08d3849a39e4",
+          "message": "docs: update AGENTS.md last-updated footer to v0.3.25 (#113)\n\n* chore: add just nixpkgs-release automation script\n\nAutomates the full retch → nixpkgs release pipeline without requiring\na local Nix installation: tags the version, polls the GitHub release for\nCI-computed hashes, updates the nixpkgs fork branch, and opens a PR.\n\nUsage: just nixpkgs-release [VERSION]\nOverride fork path with NIXPKGS_DIR env var.\n\nAssisted-By: Claude Sonnet 4.6\n\n* docs: update AGENTS.md last-updated footer to v0.3.25\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-25T13:12:53-07:00",
+          "tree_id": "1aa03e00e034b8c11e50ecbc06a482e87c8275ef",
+          "url": "https://github.com/l1a/retch/commit/cc924b5dc321850fda70d1fd023e08d3849a39e4"
+        },
+        "date": 1782419671400,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1194815227.1,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 479.9765139203424,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 105.59931810745051,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.8318913655317712,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 89.51128929327089,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5842.072230160813,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1521.5321576673314,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 429.31790582513247,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 115866.37805989853,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 458.48928323412775,
             "unit": "ns"
           }
         ]
