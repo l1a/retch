@@ -99,7 +99,7 @@ truncated or removed once the branch is merged. Only one "Current Session" block
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
 
-## Current State (v0.3.24)
+## Current State (v0.3.25)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -117,12 +117,18 @@ truncated or removed once the branch is merged. Only one "Current Session" block
 
 ## Future Work / Backlog
 
-- **Windows PhysDisk and PhysMem**: `detect_physical_disks()` and `detect_physical_memory()` both return empty on Windows (no implementation). PhysDisk should use `Get-PhysicalDisk` (WMI/PowerShell) or the `StoragePort` WMI class; PhysMem should use `Win32_PhysicalMemory` WMI. Both should follow the same no-wmic pattern as the rest of the Windows probes (prefer registry/native APIs or PowerShell, avoid `wmic`).
 - **Package repository submissions**: Submit retch to AUR (Arch User Repository) and nixpkgs so it appears in the [Repology](https://repology.org/project/retch/versions) packaging status widget. The Nix flake (contributed by @quixaq) is a useful starting point for the nixpkgs submission.
 - **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
 
 ## Major Achievements
+
+### v0.3.25 - Windows PhysDisk and PhysMem (June 24, 2026)
+- **PhysDisk (Windows)**: Implemented `detect_windows()` in `crates/sysinfo/src/disk.rs` using `Get-PhysicalDisk | ConvertTo-Csv` via PowerShell. Uses `BusType == "NVMe"` to classify NVMe SSDs, `MediaType` for SSD/HDD, and falls back to "SSD" for "Unspecified". New `pub fn parse_get_physical_disk()` is testable without spawning a process.
+- **PhysMem (Windows)**: Implemented `detect_windows()` in `crates/sysinfo/src/memory.rs` using `Get-CimInstance Win32_PhysicalMemory | ConvertTo-Csv` via PowerShell. Maps `SMBIOSMemoryType` codes to DDR4/DDR5/LPDDR5/etc. `Speed` is passed through directly as MT/s (Win32 already uses the transfer-rate value). New `pub fn parse_win32_physical_memory()` is testable.
+- Extended `DimmSlot`, `format_dimm_slots`, and `format_size` cfg gates from `linux | macos` to include `windows`.
+- Added 4 Windows unit tests for PhysDisk and 4 for PhysMem (gated `#[cfg(target_os = "windows")]`, run in Windows CI).
+- **Version**: Bumped to `0.3.25` / `retch-sysinfo 0.1.25`.
 
 ### v0.3.24 - Benchmark Mode Mappings and Metric Fetch Optimizations (June 24, 2026)
 - **Metric Collection Optimization**: Restricted metric gathering in `SystemInfo::collect` to only fetch fields specified in configuration or CLI flags. Prevents costly subprocess spawns, network lookups, and CPU refresh delays (200ms sleep) for fields not requested.

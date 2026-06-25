@@ -202,7 +202,8 @@ title_color = "bright_yellow"
 separator_color = "bright_black"
 
 # Ordered list of system information fields to display
-# Note: "phys-mem" requires root (sudo) on Linux to read DMI memory tables.
+# Note: "phys-mem" requires root (sudo) on Linux to read DMI memory tables. On Windows, uses Win32_PhysicalMemory via PowerShell.
+# Note: "phys-disk" on Windows uses Get-PhysicalDisk via PowerShell.
 fields = [
     "os", "kernel", "host", "arch", "cpu", "cpu-freq", "gpu",
     "motherboard", "bios", "display", "audio",
