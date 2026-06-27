@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782576405636,
+  "lastUpdate": 1782576805413,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5303,85 +5303,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "9a0094877053c3007b93f6cf2e9dd4b56f9e5ed3",
-          "message": "Merge pull request #78 from l1a/feat/local-bench-upload\n\nfeat: upload local benchmark results to gh-pages dashboard",
-          "timestamp": "2026-06-10T11:45:58-07:00",
-          "tree_id": "7494cb4cd48958c6d8510a10e2cd5d12fedc8879",
-          "url": "https://github.com/l1a/retch/commit/9a0094877053c3007b93f6cf2e9dd4b56f9e5ed3"
-        },
-        "date": 1781117883478,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 1481745.4000000001,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 80205325.50000001,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 76920498.31050932,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 982.9709570325022,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.10803207821696,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946830719851264,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 46.95719222898467,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7689.5923264919475,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1224500.2363520577,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 358.16615449911467,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 260.4828539960609,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -9506,6 +9427,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 286.45820788396213,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ee330bee589f3cc23883fa67e627ad06b31d2d2b",
+          "message": "fix: rebuild release binary if signal-killed on post-merge bench (#117)\n\nA Syncthing-synced binary compiled with target-cpu=native on a\ndifferent CPU microarchitecture crashes with SIGILL during sysinfo\ngathering. Cargo considers it up-to-date so `cargo build --release`\nis a no-op. Detect signal-killed exit (Python returncode < 0) and\nforce `cargo clean -p retch-cli && cargo build --release`.\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-27T08:59:12-07:00",
+          "tree_id": "13b71b071d9e5f31c3faa06d4aa51320377501b8",
+          "url": "https://github.com/l1a/retch/commit/ee330bee589f3cc23883fa67e627ad06b31d2d2b"
+        },
+        "date": 1782576804181,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 326054113,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 970.5917382234514,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 47.17529647676109,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948297310065504,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 47.64847698326973,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7788.407493234925,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70282.71177034345,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4717.304516581965,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4814.440300880521,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1202577.707939057,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 341.5976552505018,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 248.7179024953719,
             "unit": "ns"
           }
         ]
