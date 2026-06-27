@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782583853625,
+  "lastUpdate": 1782584109740,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17100,65 +17100,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "6365e661aa70ab10a23ae29fda01d1c7a2afb036",
-          "message": "chore: add Claude Code project settings\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-          "timestamp": "2026-06-08T19:50:21-07:00",
-          "tree_id": "c23a0e102dc774a5a06b0156115a4810d15e542e",
-          "url": "https://github.com/l1a/retch/commit/6365e661aa70ab10a23ae29fda01d1c7a2afb036"
-        },
-        "date": 1780975785053,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 280476387.99999994,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1497268288,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 103.45484612834711,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.948054178185732,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.66406202642497,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 320425115,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1325767895,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -20533,6 +20474,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2198151015,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d76a7d5246a051893671a84ed973b52bbe56e1b1",
+          "message": "fix: skip FUSE and pseudo mounts in disk detection (#120)\n\n* fix: skip FUSE and pseudo mounts in disk detection\n\nsysinfo::Disks::new_with_refreshed_list() calls statvfs on every entry\nin /proc/mounts, including FUSE mounts that can block for hundreds of\nmilliseconds (e.g. cryfs vault: 613ms).\n\nOn Linux, replace sysinfo disk enumeration with a direct /proc/mounts\nreader that filters pseudo/FUSE filesystem types before calling statvfs.\nmacOS and Windows continue to use sysinfo::Disks unchanged.\n\nReduces disk field timing from ~634ms to ~2ms on affected machines.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: restore cross-platform deps moved to linux-only target by mistake\n\ndirs, chrono, anyhow, owo-colors, and rusqlite are used unconditionally\nacross macOS/Windows; only libc should be linux-only.\n\nAssisted-By: claude-sonnet-4-6\n\n* fix: mark is_skip_fs as linux-only to silence dead_code on macOS/Windows\n\nThe function is only called from detect_logical_linux which is already\ncfg-gated; clippy -D warnings caught it on the macOS CI job.\n\nAssisted-By: claude-sonnet-4-6\n\n* fix: make libc an unconditional dep to avoid lock file mismatch on AUR CI\n\nSome cargo versions handle cfg-gated deps in the lock file differently.\nlibc compiles on all platforms; the Linux-specific code that uses it is\nalready cfg-gated, so making it unconditional is safe.\n\nAssisted-By: claude-sonnet-4-6",
+          "timestamp": "2026-06-27T10:34:03-07:00",
+          "tree_id": "1740235a0c0c2d66418ef5eac4e55c0e3132401a",
+          "url": "https://github.com/l1a/retch/commit/d76a7d5246a051893671a84ed973b52bbe56e1b1"
+        },
+        "date": 1782584106951,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 102.29993668881805,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9476519215072434,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 103.0592624855249,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 78.21644464161825,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46065.128333408815,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 481.6910227921103,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 729.7721886639962,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2360827270,
             "unit": "ns"
           }
         ]
