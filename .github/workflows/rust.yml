@@ -7,6 +7,12 @@ on:
       - 'v*'
   pull_request:
     branches: [ "main" ]
+    paths:
+      - '**/*.rs'
+      - '**/Cargo.toml'
+      - 'Cargo.lock'
+      - 'build.rs'
+      - '.github/workflows/rust.yml'
   workflow_dispatch:
     inputs:
       ref:
