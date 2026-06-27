@@ -80,6 +80,18 @@ def git_commit_info():
 def build_release():
     print("Building release binary...", flush=True)
     run(["cargo", "build", "--release"])
+    # Sanity-check the binary — a Syncthing-synced binary compiled with target-cpu=native
+    # on a different machine will crash with SIGILL (exit 132) during sysinfo gathering.
+    # --version doesn't exercise those paths, so run without flags (suppress output).
+    retch_cmd = r".\target\release\retch.exe" if platform.system() == "Windows" else "./target/release/retch"
+    result = subprocess.run([retch_cmd], capture_output=True)
+    if result.returncode < 0:  # killed by signal (Python subprocess uses -signal_num, e.g. -4 for SIGILL)
+        print(f"Binary sanity check failed (exit {result.returncode}) — forcing clean rebuild...", flush=True)
+        # Selective fingerprint deletion isn't sufficient — other cached deps compiled with a
+        # different target-cpu=native may also be stale. Full clean is the safe option.
+        print("Running cargo clean...", flush=True)
+        run(["cargo", "clean"])
+        run(["cargo", "build", "--release"])
 
 
 def run_hyperfine(warmup, runs):
