@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782575369197,
+  "lastUpdate": 1782575837429,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13298,75 +13298,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "distinct": true,
-          "id": "b7aad0ecc68d947a37cd0e781bc1689f3b53353c",
-          "message": "chore: gitignore .claude/settings.local.json\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-          "timestamp": "2026-06-09T23:11:11-07:00",
-          "tree_id": "6e3904c23e95d4f1d5ddd0dd2790840ece0051c6",
-          "url": "https://github.com/l1a/retch/commit/b7aad0ecc68d947a37cd0e781bc1689f3b53353c"
-        },
-        "date": 1781074153098,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 28545052.000000004,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1728468002,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 127.37662863507941,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.025818612588188,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 127.85342479769443,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 289586400,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 636.4326611056425,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 865.9698600848593,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1572627655,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
           "id": "7895eef6117882a2078c051541be19016a6f0061",
           "message": "fix: don't forward git hook args to upload script\n\nGit passes a single positional arg to post-merge hooks (0 = merge,\n1 = squash merge). Forwarding it via \"$@\" caused argparse to reject\nit as an unrecognized argument on the first real merge.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
           "timestamp": "2026-06-10T11:47:00-07:00",
@@ -16771,6 +16702,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2714069070,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2b42bfaa80b8a2f163ea057a8015bdd5dd601eb7",
+          "message": "docs/ci: branch cleanup policy and skip CI on docs-only PRs (#116)\n\n* docs: document branch-deletion policy in AGENTS.md\n\nAssisted-By: Claude Sonnet 4.6\n\n* ci: skip Rust/Security/Packaging workflows on docs-only PRs\n\nAdd paths filters to pull_request triggers so the full CI matrix\ndoes not run when only docs, scripts, or config files change.\nPush-to-main continues to run unconditionally.\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-27T08:29:33-07:00",
+          "tree_id": "81fad1b28f95d6c6e1f50b3e961f2a81c7ea145d",
+          "url": "https://github.com/l1a/retch/commit/2b42bfaa80b8a2f163ea057a8015bdd5dd601eb7"
+        },
+        "date": 1782575834939,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 72.98859996051064,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.1692117679980507,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 71.05158134458142,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 53.08049581102231,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 27618.26037187816,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 297.08951893927605,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 448.23345726322066,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1594350285,
             "unit": "ns"
           }
         ]
