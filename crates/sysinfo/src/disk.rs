@@ -1,7 +1,124 @@
 // SPDX-FileCopyrightText: 2026 Ken Tobias
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! Physical disk detection (model, size, type).
+//! Physical disk detection (model, size, type) and logical disk space reporting.
+
+/// Returns formatted disk space strings for real mounted filesystems, skipping
+/// pseudo-filesystems and FUSE mounts that may block indefinitely on statvfs.
+///
+/// On Linux, reads /proc/mounts and calls statvfs ourselves so we can filter
+/// before the blocking call. On other platforms, delegates to sysinfo::Disks.
+pub fn detect_logical_disks() -> Vec<(String, u64, u64, String)> {
+    #[cfg(target_os = "linux")]
+    return detect_logical_linux();
+
+    #[cfg(not(target_os = "linux"))]
+    return detect_logical_sysinfo();
+}
+
+/// Filesystem types that are virtual/pseudo and should never appear in disk output.
+#[cfg(target_os = "linux")]
+fn is_skip_fs(fs_type: &str) -> bool {
+    const SKIP: &[&str] = &[
+        "sysfs",
+        "proc",
+        "devtmpfs",
+        "tmpfs",
+        "devpts",
+        "cgroup",
+        "cgroup2",
+        "pstore",
+        "bpf",
+        "tracefs",
+        "debugfs",
+        "securityfs",
+        "hugetlbfs",
+        "mqueue",
+        "fusectl",
+        "rpc_pipefs",
+        "configfs",
+        "autofs",
+        "efivarfs",
+        "binfmt_misc",
+        "squashfs",
+        "overlay",
+        "ramfs",
+        "rootfs",
+        "nsfs",
+        "pipefs",
+        "sockfs",
+        "anon_inodefs",
+        "cpuset",
+    ];
+    // fuse.* covers gvfsd-fuse, cryfs, gocryptfs, encfs, etc.
+    SKIP.contains(&fs_type) || fs_type.starts_with("fuse.")
+}
+
+#[cfg(target_os = "linux")]
+fn detect_logical_linux() -> Vec<(String, u64, u64, String)> {
+    use std::collections::HashSet;
+    use std::ffi::CString;
+
+    let mounts = std::fs::read_to_string("/proc/mounts").unwrap_or_default();
+    let mut results = Vec::new();
+    let mut seen_devs: HashSet<String> = HashSet::new();
+
+    for line in mounts.lines() {
+        let parts: Vec<&str> = line.splitn(4, ' ').collect();
+        if parts.len() < 3 {
+            continue;
+        }
+        let device = parts[0];
+        let mount_point = parts[1];
+        let fs_type = parts[2];
+
+        if is_skip_fs(fs_type) {
+            continue;
+        }
+
+        // Deduplicate bind mounts / multiple mounts of the same device.
+        if device.starts_with('/') && !seen_devs.insert(device.to_string()) {
+            continue;
+        }
+
+        let Ok(mp_c) = CString::new(mount_point) else {
+            continue;
+        };
+
+        let mut stat: libc::statvfs = unsafe { std::mem::zeroed() };
+        if unsafe { libc::statvfs(mp_c.as_ptr(), &mut stat) } != 0 {
+            continue;
+        }
+
+        let total = (stat.f_blocks as u64).saturating_mul(stat.f_frsize as u64);
+        let avail = (stat.f_bavail as u64).saturating_mul(stat.f_frsize as u64);
+
+        if total == 0 {
+            continue;
+        }
+
+        results.push((mount_point.to_string(), total, avail, fs_type.to_string()));
+    }
+
+    results
+}
+
+#[cfg(not(target_os = "linux"))]
+fn detect_logical_sysinfo() -> Vec<(String, u64, u64, String)> {
+    use sysinfo::Disks;
+    Disks::new_with_refreshed_list()
+        .iter()
+        .filter(|d| d.total_space() > 0)
+        .map(|d| {
+            (
+                d.mount_point().to_string_lossy().to_string(),
+                d.total_space(),
+                d.available_space(),
+                d.file_system().to_string_lossy().to_string(),
+            )
+        })
+        .collect()
+}
 
 pub fn detect_physical_disks() -> Vec<String> {
     #[cfg(target_os = "linux")]

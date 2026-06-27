@@ -1576,6 +1576,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "dirs",
+ "libc",
  "owo-colors",
  "rusqlite",
  "sysinfo",

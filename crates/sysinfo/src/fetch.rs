@@ -8,7 +8,7 @@
 
 use crate::gpu;
 use chrono::TimeZone;
-use sysinfo::{Components, Disks, System, Users};
+use sysinfo::{Components, System, Users};
 
 /// Options for controlling what system information is gathered.
 ///
@@ -215,60 +215,29 @@ impl SystemInfo {
         let uptime = format!("{}s", System::uptime());
 
         let disks: Vec<String> = if should_collect("disk") {
-            let disks_list = Disks::new_with_refreshed_list();
+            let disks_list = crate::disk::detect_logical_disks();
+            let format_disk = |(mount, total, avail, fs): &(String, u64, u64, String)| {
+                let total_gb = *total as f64 / 1024.0 / 1024.0 / 1024.0;
+                let avail_gb = *avail as f64 / 1024.0 / 1024.0 / 1024.0;
+                format!(
+                    "{} ({}): {:.1} GB free / {:.1} GB",
+                    mount, fs, avail_gb, total_gb
+                )
+            };
             if !opts.long {
                 let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("/"));
-                let mut best_match: Option<&sysinfo::Disk> = None;
-                for disk in disks_list.iter() {
-                    if home.starts_with(disk.mount_point()) {
-                        if let Some(best) = best_match {
-                            if disk.mount_point().components().count()
-                                > best.mount_point().components().count()
-                            {
-                                best_match = Some(disk);
-                            }
-                        } else {
-                            best_match = Some(disk);
-                        }
-                    }
-                }
-                let selected_disks = if let Some(best) = best_match {
-                    vec![best]
+                let home_path = std::path::Path::new(&home);
+                let best = disks_list
+                    .iter()
+                    .filter(|(mp, ..)| home_path.starts_with(mp))
+                    .max_by_key(|(mp, ..)| std::path::Path::new(mp).components().count());
+                if let Some(disk) = best {
+                    vec![format_disk(disk)]
                 } else {
-                    disks_list.iter().collect::<Vec<_>>()
-                };
-
-                selected_disks
-                    .iter()
-                    .map(|d| {
-                        let total = d.total_space() as f64 / 1024.0 / 1024.0 / 1024.0;
-                        let avail = d.available_space() as f64 / 1024.0 / 1024.0 / 1024.0;
-                        let fs = d.file_system().to_string_lossy();
-                        format!(
-                            "{} ({}): {:.1} GB free / {:.1} GB",
-                            d.mount_point().display(),
-                            fs,
-                            avail,
-                            total
-                        )
-                    })
-                    .collect()
+                    disks_list.iter().map(format_disk).collect()
+                }
             } else {
-                disks_list
-                    .iter()
-                    .map(|d| {
-                        let total = d.total_space() as f64 / 1024.0 / 1024.0 / 1024.0;
-                        let avail = d.available_space() as f64 / 1024.0 / 1024.0 / 1024.0;
-                        let fs = d.file_system().to_string_lossy();
-                        format!(
-                            "{} ({}): {:.1} GB free / {:.1} GB",
-                            d.mount_point().display(),
-                            fs,
-                            avail,
-                            total
-                        )
-                    })
-                    .collect()
+                disks_list.iter().map(format_disk).collect()
             }
         } else {
             Vec::new()
