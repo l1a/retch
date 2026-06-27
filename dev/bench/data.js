@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782580517778,
+  "lastUpdate": 1782580666487,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -16982,65 +16982,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "906c5abfb8923400935698c0e78970d34b0db97c",
-          "message": "Update AGENTS.md progress and next steps (#72)",
-          "timestamp": "2026-06-08T12:33:05-07:00",
-          "tree_id": "1de64e381b62d4f79deb5adacbc4da43901fc6ff",
-          "url": "https://github.com/l1a/retch/commit/906c5abfb8923400935698c0e78970d34b0db97c"
-        },
-        "date": 1780949522453,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 252046116.00000003,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1317155306,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 103.58305933526219,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9474369390879307,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.74068672834639,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 280785197.5,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1168570930,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -20405,6 +20346,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2329276015,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f7a7fd8c88af96dbbc43c912115f9ee1ba8386f",
+          "message": "feat: add just install-completions recipe (#118)\n\nGenerates and installs shell completions for bash, zsh, fish, elvish,\nnushell, and powershell to their correct XDG user locations. Also adds\nXDG path variables at the top of the Justfile and updates `just install`\nto depend on both install-man and install-completions.\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-27T09:37:34-07:00",
+          "tree_id": "d9c8234aa1d97872442e3e68b1a968f215f50f90",
+          "url": "https://github.com/l1a/retch/commit/9f7a7fd8c88af96dbbc43c912115f9ee1ba8386f"
+        },
+        "date": 1782580663263,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 103.21259364835605,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.94807931183246,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 103.71064003933952,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 80.46843634407664,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47275.72755845812,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 488.3893526364207,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 750.7543918380404,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2431065180,
             "unit": "ns"
           }
         ]
