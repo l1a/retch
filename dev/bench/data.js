@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782583403287,
+  "lastUpdate": 1782583537202,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13628,75 +13628,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "fcdf4e8fd0bf57f7eb739d1691819ec1a28613a5",
-          "message": "refactor(windows): replace wmic with native registry/Win32 API calls (v0.3.12) (#80)\n\n* chore: document native probe replacement opportunities in Next Steps\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* refactor(windows): replace wmic with native registry/Win32 API calls (v0.3.12)\n\n- GPU: registry enum under display adapter class GUID {4d36e968-...}\n  reads DriverDesc and HardwareInformation.MemorySize natively\n- Audio: registry enum under media device class GUID {4d36e96c-...}\n  reads DriverDesc natively\n- Display: EnumDisplayDevicesW + EnumDisplaySettingsW via user32.dll FFI,\n  enumerating only active adapters with current resolution/refresh rate\n- Motherboard/BIOS: drop wmic last-resort fallback; registry is sole source\n- win_reg: add get_reg_binary and enum_reg_subkeys helpers\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix(display): add #[link(name = \"user32\")] for EnumDisplayDevicesW/SettingsW\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* ci: add workflow_dispatch trigger and guard release job to clean tags only\n\nworkflow_dispatch allows manually triggering build-release on any branch.\nRelease job now skips prerelease tags (anything with a hyphen, e.g. v0.3.12-rc.1).\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix(display): correct DEVMODEW struct layout to prevent stack corruption on Windows\n\nThe DevMode struct was 148 bytes but DEVMODEW is 220 bytes; EnumDisplaySettingsW\nwas writing 72 bytes past the end, corrupting the stack and causing silent crash\n(no output at all). Added all missing fields with correct offsets and initialize\nvia std::mem::zeroed() to match the Win32 ABI.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
-          "timestamp": "2026-06-11T15:20:27-07:00",
-          "tree_id": "59e77b67be39f19c8b6761061a51bdf06c8f6761",
-          "url": "https://github.com/l1a/retch/commit/fcdf4e8fd0bf57f7eb739d1691819ec1a28613a5"
-        },
-        "date": 1781218506863,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 31054388.000000007,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1740287607.9999998,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 129.61095912882223,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.41121214550419,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 121.94057135040107,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 42080.46009234347,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 579.6450231477647,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 822.0112598202265,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1380368295,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -17086,6 +17017,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2568930675,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d76a7d5246a051893671a84ed973b52bbe56e1b1",
+          "message": "fix: skip FUSE and pseudo mounts in disk detection (#120)\n\n* fix: skip FUSE and pseudo mounts in disk detection\n\nsysinfo::Disks::new_with_refreshed_list() calls statvfs on every entry\nin /proc/mounts, including FUSE mounts that can block for hundreds of\nmilliseconds (e.g. cryfs vault: 613ms).\n\nOn Linux, replace sysinfo disk enumeration with a direct /proc/mounts\nreader that filters pseudo/FUSE filesystem types before calling statvfs.\nmacOS and Windows continue to use sysinfo::Disks unchanged.\n\nReduces disk field timing from ~634ms to ~2ms on affected machines.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: restore cross-platform deps moved to linux-only target by mistake\n\ndirs, chrono, anyhow, owo-colors, and rusqlite are used unconditionally\nacross macOS/Windows; only libc should be linux-only.\n\nAssisted-By: claude-sonnet-4-6\n\n* fix: mark is_skip_fs as linux-only to silence dead_code on macOS/Windows\n\nThe function is only called from detect_logical_linux which is already\ncfg-gated; clippy -D warnings caught it on the macOS CI job.\n\nAssisted-By: claude-sonnet-4-6\n\n* fix: make libc an unconditional dep to avoid lock file mismatch on AUR CI\n\nSome cargo versions handle cfg-gated deps in the lock file differently.\nlibc compiles on all platforms; the Linux-specific code that uses it is\nalready cfg-gated, so making it unconditional is safe.\n\nAssisted-By: claude-sonnet-4-6",
+          "timestamp": "2026-06-27T10:34:03-07:00",
+          "tree_id": "1740235a0c0c2d66418ef5eac4e55c0e3132401a",
+          "url": "https://github.com/l1a/retch/commit/d76a7d5246a051893671a84ed973b52bbe56e1b1"
+        },
+        "date": 1782583534380,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 121.77728313032294,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.348927899817298,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 121.00732046015818,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 92.94804508548468,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41602.640304097615,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 601.4768910234645,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 980.7774794467568,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2704048820,
             "unit": "ns"
           }
         ]
