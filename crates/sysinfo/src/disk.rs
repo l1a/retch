@@ -17,6 +17,7 @@ pub fn detect_logical_disks() -> Vec<(String, u64, u64, String)> {
 }
 
 /// Filesystem types that are virtual/pseudo and should never appear in disk output.
+#[cfg(target_os = "linux")]
 fn is_skip_fs(fs_type: &str) -> bool {
     const SKIP: &[&str] = &[
         "sysfs",
