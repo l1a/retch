@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782584897437,
+  "lastUpdate": 1782585448369,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17100,65 +17100,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "0f896b26e8e028d7e3da3f7410b8aa71626ccd0a",
-          "message": "Merge pull request #76 from l1a/refactor/bluetooth-module-isolation\n\nrefactor: isolate bluetooth detection into bluetooth.rs (v0.3.8)",
-          "timestamp": "2026-06-09T21:49:44-07:00",
-          "tree_id": "647698914519fc33c11cc2b44a86c80c889bbb2e",
-          "url": "https://github.com/l1a/retch/commit/0f896b26e8e028d7e3da3f7410b8aa71626ccd0a"
-        },
-        "date": 1781069389782,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 255265094.00000003,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1362104654,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 101.95170082995357,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9474809294407147,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 101.18182787746932,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 292796217.5,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1216835760,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "7b6a7b695d96cacf9bae9f744dd7e0f163af32ee",
           "message": "Merge pull request #77 from l1a/test/coverage-and-benchmarks\n\ntest: expand unit test coverage and add network/audio/camera benchmarks (v0.3.10)",
           "timestamp": "2026-06-09T22:46:29-07:00",
@@ -20533,6 +20474,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2360827270,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7733084c8ee1c58721066fc0199ac3c4ec3b2f4d",
+          "message": "chore: bump version to v0.3.26 (#121)\n\n* chore: bump version to v0.3.26\n\nFollows fix for FUSE mount statvfs hang (PR #120).\n\nAssisted-By: claude-sonnet-4-6\n\n* docs: add mandatory pre-PR gate checklist to AGENTS.md\n\nForces explicit per-item verification output before gh pr create so\nno version bump or doc step can be silently skipped.\n\nAssisted-By: claude-sonnet-4-6",
+          "timestamp": "2026-06-27T10:56:14-07:00",
+          "tree_id": "68842ea99eb9a017711b6c72ef0f9687e864c5da",
+          "url": "https://github.com/l1a/retch/commit/7733084c8ee1c58721066fc0199ac3c4ec3b2f4d"
+        },
+        "date": 1782585445269,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 102.59448404900493,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948320266936335,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 103.74475802016984,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 79.04861738303707,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 44304.69488525647,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 488.01964339946073,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 726.4738328459704,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2283060055,
             "unit": "ns"
           }
         ]
