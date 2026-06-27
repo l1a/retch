@@ -101,7 +101,7 @@ truncated or removed once the branch is merged. Only one "Current Session" block
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
 
-## Current State (v0.3.25)
+## Current State (v0.3.26)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -124,6 +124,10 @@ truncated or removed once the branch is merged. Only one "Current Session" block
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
 
 ## Major Achievements
+
+### v0.3.26 - Skip FUSE mounts in disk detection (June 27, 2026)
+- **Disk detection (Linux)**: Replaced `sysinfo::Disks::new_with_refreshed_list()` with a custom `/proc/mounts` reader that filters pseudo-filesystems and `fuse.*` mounts before calling `statvfs`. Eliminates 600ms+ hangs caused by cryfs/EncFS vaults and other FUSE mounts.
+- **Version**: Bumped to `0.3.26` / `retch-sysinfo 0.1.26`.
 
 ### v0.3.25 - Windows PhysDisk and PhysMem (June 24, 2026)
 - **PhysDisk (Windows)**: Implemented `detect_windows()` in `crates/sysinfo/src/disk.rs` using `Get-PhysicalDisk | ConvertTo-Csv` via PowerShell. Uses `BusType == "NVMe"` to classify NVMe SSDs, `MediaType` for SSD/HDD, and falls back to "SSD" for "Unspecified". New `pub fn parse_get_physical_disk()` is testable without spawning a process.
@@ -516,4 +520,4 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - **Weather**: Weather information (requires network)
 
 ---
-*Last updated: June 25, 2026 (v0.3.25)*
+*Last updated: June 27, 2026 (v0.3.26)*

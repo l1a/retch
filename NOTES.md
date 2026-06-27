@@ -1,3 +1,39 @@
+# Session Notes — June 27, 2026 (v0.3.25)
+
+## Benchmark Anomaly: cryfs FUSE Mount
+
+Local benchmarks on this machine (Linux Fedora 44 x86_64) show ~900ms standard / ~618ms short
+vs ~333ms / ~10ms from the other machine. Root cause: `/home/ktobias/Vaults/FooCry` is a cryfs
+FUSE mount that takes **613ms** to `statvfs`. The sysinfo `Disks::new_with_refreshed_list()`
+calls `statvfs` on every mount entry in `/proc/mounts`, and this one blocks.
+
+This is an environment issue, not a code regression. Benchmarks run on this machine while the
+vault is mounted will be skewed. Potential fix: skip `fuse.*` filesystem types in disk detection.
+
+---
+
+# Session Notes — June 25, 2026 (v0.3.25)
+
+## Current Task
+
+Nixpkgs submission and release automation.
+
+## Status: Tagged & Published
+
+* Tag `v0.3.25` created and pushed; GitHub Release published with nix hashes.
+* Nixpkgs PR #535318 (`retch: init at 0.3.25`) open — resubmission of #534754 with correct
+  single-commit structure, filled PR template, `Assisted-by:` trailer, and AI disclosure.
+* Added `l1a` to `maintainers/maintainer-list.nix` in the nixpkgs fork.
+* `just nixpkgs-release` automation script added (`scripts/nixpkgs_release.py`) on branch
+  `chore/nixpkgs-release-script` — handles the full tag→CI→nixpkgs→PR pipeline with no Nix.
+
+## Notes & Future Decisions
+
+* `nixpkgs-review` not run (no local Nix install); ofborg CI will build on reviewer trigger.
+* For future version bumps: `just nixpkgs-release` does the entire pipeline automatically.
+
+---
+
 # Session Notes — June 24, 2026 (v0.3.24)
 
 ## Current Task
