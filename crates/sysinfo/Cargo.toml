@@ -9,6 +9,9 @@ repository = "https://github.com/l1a/retch"
 
 [dependencies]
 sysinfo = { version = "0.39", features = ["component"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
 dirs = "6.0"
 chrono = "0.4"
 anyhow = "1.0"
