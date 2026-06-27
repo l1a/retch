@@ -4,6 +4,13 @@
 # Justfile for retch
 # Run with: just <recipe>
 
+BASH_COMP  := `echo "${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions"`
+ZSH_COMP   := `echo "${XDG_DATA_HOME:-$HOME/.local/share}/zsh/site-functions"`
+FISH_COMP  := `echo "${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions"`
+ELVISH_COMP := `echo "${XDG_CONFIG_HOME:-$HOME/.config}/elvish/lib"`
+NU_COMP    := `echo "${XDG_CONFIG_HOME:-$HOME/.config}/nushell/autoload"`
+PS_COMP    := `echo "${XDG_CONFIG_HOME:-$HOME/.config}/powershell"`
+
 # Default recipe
 default:
     @just --list
@@ -42,8 +49,8 @@ audit:
     @command -v cargo-audit >/dev/null || cargo install cargo-audit
     cargo audit
 
-# Install the binary and man page
-install: install-man
+# Install the binary, man page, and shell completions
+install: install-man install-completions
     cargo install --path .
 
 # Generate man page from Markdown using mandown.
@@ -61,6 +68,28 @@ install-man: man
     @mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}/man/man1"
     install -m 644 docs/retch.1 "${XDG_DATA_HOME:-$HOME/.local/share}/man/man1/retch.1"
     @echo "Man page installed to ${XDG_DATA_HOME:-$HOME/.local/share}/man/man1/"
+
+# Install shell completions for all supported shells to XDG user locations
+install-completions: build
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p "{{BASH_COMP}}" "{{ZSH_COMP}}" "{{FISH_COMP}}" "{{ELVISH_COMP}}" "{{NU_COMP}}" "{{PS_COMP}}"
+    BIN="{{justfile_directory()}}/target/debug/retch"
+    "$BIN" --completions bash        > "{{BASH_COMP}}/retch"
+    "$BIN" --completions zsh         > "{{ZSH_COMP}}/_retch"
+    "$BIN" --completions fish        > "{{FISH_COMP}}/retch.fish"
+    "$BIN" --completions elvish      > "{{ELVISH_COMP}}/retch.elv"
+    "$BIN" --completions nushell     > "{{NU_COMP}}/50retch-completions.nu"
+    "$BIN" --completions power-shell > "{{PS_COMP}}/retch.ps1"
+    echo "Installed completions for retch"
+    echo ""
+    echo "Notes:"
+    echo "  bash       source {{BASH_COMP}}/retch  (or restart shell)"
+    echo "  zsh        auto-loaded from {{ZSH_COMP}}"
+    echo "  fish       auto-loaded from {{FISH_COMP}}"
+    echo "  elvish     add to rc.elv:  eval (slurp < {{ELVISH_COMP}}/retch.elv)"
+    echo "  nushell    auto-loaded from {{NU_COMP}}"
+    echo "  powershell add to \$PROFILE:  . {{PS_COMP}}/retch.ps1"
 
 # Convert all SVGs to PNGs (used for embedded logos)
 logos:
