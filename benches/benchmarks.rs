@@ -32,6 +32,7 @@ fn bench_system_info_collect(c: &mut Criterion) {
             let _ = SystemInfo::collect(CollectOptions {
                 long: cli.long,
                 fields: None,
+                weather_location: None,
             });
         });
     });
