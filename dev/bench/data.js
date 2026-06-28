@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782666884437,
+  "lastUpdate": 1782667060707,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17341,75 +17341,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "distinct": true,
-          "id": "b7aad0ecc68d947a37cd0e781bc1689f3b53353c",
-          "message": "chore: gitignore .claude/settings.local.json\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-          "timestamp": "2026-06-09T23:11:11-07:00",
-          "tree_id": "6e3904c23e95d4f1d5ddd0dd2790840ece0051c6",
-          "url": "https://github.com/l1a/retch/commit/b7aad0ecc68d947a37cd0e781bc1689f3b53353c"
-        },
-        "date": 1781074593805,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 266120961.9999999,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1395288312.0000002,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 102.42193721130816,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9519053001490843,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.24559232882554,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 297047295,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 485.1972894048532,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 739.3114254167,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1243435525,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
           "id": "7895eef6117882a2078c051541be19016a6f0061",
           "message": "fix: don't forward git hook args to upload script\n\nGit passes a single positional arg to post-merge hooks (0 = merge,\n1 = squash merge). Forwarding it via \"$@\" caused argparse to reject\nit as an unrecognized argument on the first real merge.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
           "timestamp": "2026-06-10T11:47:00-07:00",
@@ -20769,6 +20700,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2230130450,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b8d3f6ea87cf396f449249595ed4d787aa2bb2fe",
+          "message": "fix: ignore already deleted branch error in merge-pr recipe (#124)\n\nAssisted-By: Gemini 3.5 Flash",
+          "timestamp": "2026-06-28T09:34:40-07:00",
+          "tree_id": "c9c370af106069b537c4019e66afc44f31927e26",
+          "url": "https://github.com/l1a/retch/commit/b8d3f6ea87cf396f449249595ed4d787aa2bb2fe"
+        },
+        "date": 1782667057387,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 102.59588467507115,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948326162163317,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 102.14491798496907,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 77.87997704836376,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45064.670227163486,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 501.5847116994237,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 738.7368996819084,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2440200485,
             "unit": "ns"
           }
         ]
