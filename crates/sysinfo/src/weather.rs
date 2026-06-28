@@ -17,7 +17,7 @@ pub(crate) fn detect_weather(location: Option<&str>) -> Option<String> {
         .ok()?;
 
     if !output.status.success() {
-        return None;
+        return location.map(|loc| format!("Unknown location: \"{}\"", loc));
     }
     let text = String::from_utf8(output.stdout).ok()?;
     let trimmed = text.trim();
