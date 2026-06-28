@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782664593546,
+  "lastUpdate": 1782664933749,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1451,85 +1451,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Linux x64 Benchmarks": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "2b20e8fa8d79d8aad90c2fe8f2f4facc213b2a21",
-          "message": "refactor: code cleanup — logo files, module consolidation (v0.3.15) (#86)\n\n* refactor: use crate:: for internal paths\n\n* refactor(retch-cli): nest re-export modules in lib.rs\n\n* refactor(retch-cli): include_str! the logos instead of keeping them in code\n\n* fix: missing ../ in paths\n\n* refactor: code cleanup — logo files, module consolidation, version bump (v0.3.15)\n\n- Fix crate:: → retch_cli:: imports in main.rs (binary crates cannot use\n  crate:: to reference their own lib; was causing unresolved import errors)\n- Move distro ASCII logos to assets/logos/*.txt, loaded via include_str!\n- Inline fetch/gpu re-export shims into lib.rs; delete src/fetch.rs and src/gpu.rs\n- Bump to v0.3.15 / retch-sysinfo v0.1.15\n\nOriginally contributed by @quixaq in #83.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Quixaq <quixaq@tutamail.com>\nCo-authored-by: quixaq <152917245+quixaq@users.noreply.github.com>\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
-          "timestamp": "2026-06-11T20:00:39-07:00",
-          "tree_id": "e98beefb8ab4e909c5f6e61dc38869137a0584ab",
-          "url": "https://github.com/l1a/retch/commit/2b20e8fa8d79d8aad90c2fe8f2f4facc213b2a21"
-        },
-        "date": 1781233611648,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 2478015.7800000007,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 54324602.57999999,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 47138547.164547846,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2081.3506027240182,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 58.49955281650621,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.886626169915003,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 58.5267132623708,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 17889.78708623762,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1602005.4161071687,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 366.63817537390423,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 272.48581503520245,
-            "unit": "ns"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -5697,6 +5618,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 281.0747298864513,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b8d3f6ea87cf396f449249595ed4d787aa2bb2fe",
+          "message": "fix: ignore already deleted branch error in merge-pr recipe (#124)\n\nAssisted-By: Gemini 3.5 Flash",
+          "timestamp": "2026-06-28T09:34:40-07:00",
+          "tree_id": "c9c370af106069b537c4019e66afc44f31927e26",
+          "url": "https://github.com/l1a/retch/commit/b8d3f6ea87cf396f449249595ed4d787aa2bb2fe"
+        },
+        "date": 1782664932410,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 743550872.55,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2055.9288876710007,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 57.403343945600895,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.825492713170485,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 57.895818083251925,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 17948.886689076546,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 186459.39749903075,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12585.635577251975,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 12823.40318250464,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1607723.5114850726,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 394.0518384632427,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 291.64554726133986,
             "unit": "ns"
           }
         ]
