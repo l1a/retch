@@ -48,7 +48,10 @@ mod tests {
     #[test]
     fn test_url_encode_location() {
         assert_eq!(url_encode_location("London"), "London");
-        assert_eq!(url_encode_location("Thousand Oaks, CA"), "Thousand+Oaks%2C+CA");
+        assert_eq!(
+            url_encode_location("Thousand Oaks, CA"),
+            "Thousand+Oaks%2C+CA"
+        );
         assert_eq!(url_encode_location("New York"), "New+York");
         assert_eq!(url_encode_location("48.8566,2.3522"), "48.8566%2C2.3522");
         assert_eq!(url_encode_location("93426"), "93426");

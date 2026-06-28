@@ -1084,13 +1084,11 @@ fn detect_init_system() -> Option<String> {
         if let Some(name) = comm {
             return Some(name);
         }
-        std::fs::read_link("/proc/1/exe")
-            .ok()
-            .and_then(|p| {
-                p.file_name()
-                    .and_then(|n| n.to_str())
-                    .map(|s| s.to_string())
-            })
+        std::fs::read_link("/proc/1/exe").ok().and_then(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .map(|s| s.to_string())
+        })
     }
     #[cfg(target_os = "macos")]
     {
@@ -1109,8 +1107,7 @@ fn detect_init_system() -> Option<String> {
 fn detect_chassis() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
-        let raw = std::fs::read_to_string("/sys/class/dmi/id/chassis_type")
-            .ok()?;
+        let raw = std::fs::read_to_string("/sys/class/dmi/id/chassis_type").ok()?;
         let n: u32 = raw.trim().parse().ok()?;
         let label = match n {
             3 => "Desktop",
