@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782662711621,
+  "lastUpdate": 1782663307817,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17154,75 +17154,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "7b6a7b695d96cacf9bae9f744dd7e0f163af32ee",
-          "message": "Merge pull request #77 from l1a/test/coverage-and-benchmarks\n\ntest: expand unit test coverage and add network/audio/camera benchmarks (v0.3.10)",
-          "timestamp": "2026-06-09T22:46:29-07:00",
-          "tree_id": "a702e4595123a3fc74cefe901ec8127d4700e4d0",
-          "url": "https://github.com/l1a/retch/commit/7b6a7b695d96cacf9bae9f744dd7e0f163af32ee"
-        },
-        "date": 1781073019833,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 277891025.99999994,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1458970156,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 102.3897240024443,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.947875973150044,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.20239410188691,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 314993620,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 479.56682376085837,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 735.1570616358265,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1307141110,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -20597,6 +20528,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2283060055,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "79e4de519e6b7bc2f4ce2f6df351d62e41c05b26",
+          "message": "feat: add Chassis, Init, Locale, Bootmgr, Editor, Weather fields (#122)\n\n* feat: add Chassis, Init, Locale, Bootmgr, Editor, Weather fields\n\nCloses six items from the fastfetch feature gap list:\n\n- Chassis: DMI chassis_type → human label on Linux; hw.model inference on macOS\n- Init: /proc/1/comm on Linux; static \"launchd\"/\"SCM\" on macOS/Windows\n- Locale: $LC_ALL → $LC_MESSAGES → $LANG\n- Bootmgr: checks /boot/loader, /boot/grub2, /boot/grub, /sys/firmware/efi on Linux\n- Editor: $VISUAL → $EDITOR\n- Weather: curl wttr.in/?format=3 (long mode only, 3s timeout)\n\nChassis/Init/Locale/Bootmgr/Editor added to the default output set.\nWeather is long-only to avoid adding a network call to standard runs.\n\nAlso moves the feature gap tracking list from AGENTS.md to NOTES.md —\nit is project state, not a standing instruction.\n\nAssisted-By: Claude Sonnet 4.6\n\n* feat: add weather_location config key\n\nUsers can now set `weather_location` in config.toml to pin the weather\nfield to a specific city name, ZIP code, airport IATA code, or lat/lon\ncoordinates — all formats supported natively by wttr.in. Without the\nkey, location is auto-detected from the requester's IP as before.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: complete --generate-config output\n\nAdded missing logo key, weather_location key, and updated the fields\nexample to include all current fields (chassis, init, locale, bootmgr,\neditor, weather, phys-mem, phys-disk, cpu-cache, cpu-usage, etc.).\nAlso synced DEFAULT_FIELDS_BLOCK in config.rs to match.\n\nAssisted-By: Claude Sonnet 4.6\n\n* feat: add --weather-location CLI flag\n\nAllows specifying weather location on the command line, overriding the\nconfig file's weather_location setting.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: URL-encode weather location and handle unknown locations\n\nSpaces and commas in location strings (e.g. \"Thousand Oaks, CA\") were\nnot encoded, breaking the URL. Now encodes spaces as + and commas as\n%2C before inserting into the wttr.in URL path.\n\nAdded -f to curl so HTTP 4xx/5xx (unknown location) causes a non-zero\nexit and the Weather field is silently omitted rather than showing the\nwttr.in error text.\n\nAdded url_encode_location unit tests.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: show error when explicit weather location is not found\n\nInstead of silently omitting the Weather field, display\n'Unknown location: \"<name>\"' when the user set a location\nexplicitly but wttr.in can't resolve it. Auto-detect failures\n(no location set) remain silent.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: update tests and benchmark for weather_location field\n\nAdded weather_location to config test fixtures and CollectOptions\ninitializer in benchmarks.rs.\n\nAssisted-By: Claude Sonnet 4.6\n\n* style: cargo fmt\n\nAssisted-By: Claude Sonnet 4.6\n\n* chore: bump version to v0.3.27, update docs and README\n\n- Bump retch-cli to 0.3.27, retch-sysinfo to 0.1.27\n- Bump AGENTS.md Current State header to v0.3.27\n- README: add weather_location config key, update fields example with\n  all new fields (chassis, init, locale, bootmgr, editor, weather)\n- docs/retch.1: regenerated\n\nAssisted-By: Claude Sonnet 4.6\n\n* feat: add just pr pre-PR gate recipe\n\nAutomates the pre-PR checklist so it can't be skipped:\n- Checks feature branch (not main)\n- Checks version bumped past last tag\n- Checks AGENTS.md Current State header matches version\n- Regenerates man page and fails if result is uncommitted\n- Runs cargo check and fails if Cargo.lock is uncommitted\n- Runs just check (fmt + clippy)\n- Runs cargo test\n- Prints manual checklist (README, release log, wiki) and requires\n  explicit 'y' confirmation before exiting 0\n\nUpdates AGENTS.md pre-PR gate instruction to reference just pr.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: move Chassis, Init, Locale, Bootmgr, Editor to long-only output\n\nThese fields are too verbose for the default view. They now appear\nonly in --long mode, alongside Weather.\n\nAssisted-By: Claude Sonnet 4.6\n\n* ci: disable nixpkgs verification job\n\nnixpkgs PR was declined due to lack of popularity. No point running\nthe slow Nix build until we meet the popularity threshold. Re-enable\nby removing the `if: false` condition.\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-28T08:32:51-07:00",
+          "tree_id": "d40cb87dbb3673839a3b79e597cda6b56ae3e97f",
+          "url": "https://github.com/l1a/retch/commit/79e4de519e6b7bc2f4ce2f6df351d62e41c05b26"
+        },
+        "date": 1782663305007,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 102.93982795378409,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948285762598246,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 103.06831646076878,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 79.79754934389248,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45481.8975113202,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 510.4629122118922,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 749.8855939598989,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2491383145,
             "unit": "ns"
           }
         ]
