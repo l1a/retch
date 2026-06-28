@@ -171,6 +171,10 @@ nix-update VERSION="":
 nixpkgs-release VERSION="":
     @python3 scripts/nixpkgs_release.py {{VERSION}}
 
+# Submit the local tldr page upstream to tldr-pages/tldr (requires gh)
+tldr-release:
+    @python3 scripts/tldr_release.py
+
 # Pre-PR gate: run all automated checks and print manual checklist before opening a PR.
 # All items must pass before calling `gh pr create`.
 pr:

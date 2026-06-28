@@ -102,6 +102,10 @@ truncated or removed once the branch is merged. Only one "Current Session" block
     cargo publish -p retch-cli
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
+  - **Publish to tldr-pages upstream** (manual, when CLI flags change):
+    ```
+    just tldr-release
+    ```
 
 ## Current State (v0.3.28)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
