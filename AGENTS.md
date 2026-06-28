@@ -69,15 +69,7 @@ truncated or removed once the branch is merged. Only one "Current Session" block
   4. If the GitHub wiki exists, clone it (`https://github.com/l1a/retch.wiki.git`) and update any affected pages before submitting the PR.
   5. When adding distro logos, run `cargo run -- --print-logos --ascii-logo` and confirm every new distro appears in the output. The hardcoded list in `src/main.rs` must be updated alongside `src/logo.rs`.
   6. If package versions are bumped, run `just man` to regenerate the man pages (so `docs/retch.1` is kept in sync with the new `Cargo.toml` version) and commit the updated man page *as part of the Pull Request* before merging (never directly on `main`).
-- **Pre-PR Gate (MANDATORY — no exceptions, no silent skips)**: Before calling `gh pr create`, the agent MUST explicitly output a completed checklist in the conversation showing the verified status of every applicable step. Responding "yes" to the user's question "have we done all the pre-PR steps?" without producing this checklist is not allowed. The checklist:
-  - [ ] Version bumped in `Cargo.toml`, `crates/*/Cargo.toml`, and the workspace dep reference (`version = "=x.y.z"`)
-  - [ ] `Cargo.lock` updated via `cargo check`
-  - [ ] `docs/retch.1.md` updated (if CLI args/params/fields changed) and `just man` run to rebuild `docs/retch.1`
-  - [ ] `AGENTS.md` "Current State" header version bumped and release log entry added under "Major Achievements"
-  - [ ] `README.md` reviewed and updated if new features, flags, or config keys were added
-  - [ ] GitHub wiki cloned and updated (or explicitly confirmed: "no wiki pages affected")
-  - [ ] `just check` (fmt + clippy) passes locally
-  Each item must be explicitly marked `[x]` (done) or `[N/A — <reason>]` (skipped with justification). The agent must not proceed to `gh pr create` until this output is produced and all items are resolved.
+- **Pre-PR Gate (MANDATORY — no exceptions, no silent skips)**: Before calling `gh pr create`, the agent MUST run `just pr` and pass the interactive confirmation prompt. `just pr` automates the verifiable checks (branch, version bump, AGENTS.md header, man page, Cargo.lock, fmt+clippy, tests) and then prints the manual checklist (README, release log entry, wiki) and requires an explicit `y` confirmation. The agent must not call `gh pr create` without first running `just pr` to completion.
 - **PR Test Plans**: After opening a PR, immediately run each item in the test plan checklist and update the PR body via `gh pr edit` to check off passed items. Do not leave all boxes unchecked. Items requiring manual human verification (e.g. runtime output) should be left unchecked with a note.
 - **Branch Cleanup**: Delete feature branches from the remote after they are merged. The commit topology (branch/merge shape) is preserved in git history regardless; only the branch label is removed. Use `git push origin --delete <branch>` or pass `--delete-branch` to `gh pr merge`. Also periodically prune abandoned branches that were never PRed.
 - **Documentation & Versioning Updates**: When branching to make changes, ensure the following updates are performed:
