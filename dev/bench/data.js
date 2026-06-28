@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782661206724,
+  "lastUpdate": 1782661630453,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5603,85 +5603,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "bc2115522b629470d7f515b5636079a768c4a2ef",
-          "message": "docs: replace Copyright (C) with SPDX-FileCopyrightText in all source headers (v0.3.13) (#84)\n\nSwitches from the informal `// Copyright (C) 2026 l1a` form to the\nmachine-readable SPDX standard. FileCopyrightText now appears above\nSPDX-License-Identifier per the SPDX spec. Closes #81.\n\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
-          "timestamp": "2026-06-11T19:04:06-07:00",
-          "tree_id": "73a275088e6c82ea9d136b5bf10979ebb3970013",
-          "url": "https://github.com/l1a/retch/commit/bc2115522b629470d7f515b5636079a768c4a2ef"
-        },
-        "date": 1781230535426,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 1877292.8599999999,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 123480907.05999999,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 127816550.6375,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 975.8024555820291,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 53.31399893325083,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946711712147709,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 56.401838785461266,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7618.644377963869,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1205109.1619187011,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 354.70511750908753,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 255.0627642825205,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "524b97042b9e49ebfb7d983e5f358473f412439f",
           "message": "feat: add nix flake with devShell, package, and Home Manager module (v0.3.14) (#85)\n\n* feat: add nix flake\n\n* fix(flake): use stable rust toolchain; add pandoc, hyperfine, python3 to devShell\n\n- Switch from nightly to stable (project builds fine on stable; nightly\n  is unnecessarily fragile and sends the wrong signal to users)\n- Add pandoc (just man), hyperfine (just bench-cli), and python3\n  (just bench-upload) so all just recipes work out of the box in the\n  Nix dev shell\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* feat: add nix flake with devShell, package, and Home Manager module (v0.3.14)\n\n- flake.nix: crane-based package build with assets/ source filter; devShell\n  includes all tools needed by just recipes (pandoc, hyperfine, python3);\n  homeManagerModules.default provides programs.retch with settings wired to\n  xdg.configFile; pinned to stable Rust toolchain\n- README: added Nix installation section (nix run + Home Manager example)\n- Bumped to v0.3.14 / retch-sysinfo v0.1.14\n\nOriginally contributed by @quixaq in #82.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Quixaq <quixaq@tutamail.com>\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
           "timestamp": "2026-06-11T19:21:21-07:00",
@@ -9826,6 +9747,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 261.9969802167414,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "79e4de519e6b7bc2f4ce2f6df351d62e41c05b26",
+          "message": "feat: add Chassis, Init, Locale, Bootmgr, Editor, Weather fields (#122)\n\n* feat: add Chassis, Init, Locale, Bootmgr, Editor, Weather fields\n\nCloses six items from the fastfetch feature gap list:\n\n- Chassis: DMI chassis_type → human label on Linux; hw.model inference on macOS\n- Init: /proc/1/comm on Linux; static \"launchd\"/\"SCM\" on macOS/Windows\n- Locale: $LC_ALL → $LC_MESSAGES → $LANG\n- Bootmgr: checks /boot/loader, /boot/grub2, /boot/grub, /sys/firmware/efi on Linux\n- Editor: $VISUAL → $EDITOR\n- Weather: curl wttr.in/?format=3 (long mode only, 3s timeout)\n\nChassis/Init/Locale/Bootmgr/Editor added to the default output set.\nWeather is long-only to avoid adding a network call to standard runs.\n\nAlso moves the feature gap tracking list from AGENTS.md to NOTES.md —\nit is project state, not a standing instruction.\n\nAssisted-By: Claude Sonnet 4.6\n\n* feat: add weather_location config key\n\nUsers can now set `weather_location` in config.toml to pin the weather\nfield to a specific city name, ZIP code, airport IATA code, or lat/lon\ncoordinates — all formats supported natively by wttr.in. Without the\nkey, location is auto-detected from the requester's IP as before.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: complete --generate-config output\n\nAdded missing logo key, weather_location key, and updated the fields\nexample to include all current fields (chassis, init, locale, bootmgr,\neditor, weather, phys-mem, phys-disk, cpu-cache, cpu-usage, etc.).\nAlso synced DEFAULT_FIELDS_BLOCK in config.rs to match.\n\nAssisted-By: Claude Sonnet 4.6\n\n* feat: add --weather-location CLI flag\n\nAllows specifying weather location on the command line, overriding the\nconfig file's weather_location setting.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: URL-encode weather location and handle unknown locations\n\nSpaces and commas in location strings (e.g. \"Thousand Oaks, CA\") were\nnot encoded, breaking the URL. Now encodes spaces as + and commas as\n%2C before inserting into the wttr.in URL path.\n\nAdded -f to curl so HTTP 4xx/5xx (unknown location) causes a non-zero\nexit and the Weather field is silently omitted rather than showing the\nwttr.in error text.\n\nAdded url_encode_location unit tests.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: show error when explicit weather location is not found\n\nInstead of silently omitting the Weather field, display\n'Unknown location: \"<name>\"' when the user set a location\nexplicitly but wttr.in can't resolve it. Auto-detect failures\n(no location set) remain silent.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: update tests and benchmark for weather_location field\n\nAdded weather_location to config test fixtures and CollectOptions\ninitializer in benchmarks.rs.\n\nAssisted-By: Claude Sonnet 4.6\n\n* style: cargo fmt\n\nAssisted-By: Claude Sonnet 4.6\n\n* chore: bump version to v0.3.27, update docs and README\n\n- Bump retch-cli to 0.3.27, retch-sysinfo to 0.1.27\n- Bump AGENTS.md Current State header to v0.3.27\n- README: add weather_location config key, update fields example with\n  all new fields (chassis, init, locale, bootmgr, editor, weather)\n- docs/retch.1: regenerated\n\nAssisted-By: Claude Sonnet 4.6\n\n* feat: add just pr pre-PR gate recipe\n\nAutomates the pre-PR checklist so it can't be skipped:\n- Checks feature branch (not main)\n- Checks version bumped past last tag\n- Checks AGENTS.md Current State header matches version\n- Regenerates man page and fails if result is uncommitted\n- Runs cargo check and fails if Cargo.lock is uncommitted\n- Runs just check (fmt + clippy)\n- Runs cargo test\n- Prints manual checklist (README, release log, wiki) and requires\n  explicit 'y' confirmation before exiting 0\n\nUpdates AGENTS.md pre-PR gate instruction to reference just pr.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: move Chassis, Init, Locale, Bootmgr, Editor to long-only output\n\nThese fields are too verbose for the default view. They now appear\nonly in --long mode, alongside Weather.\n\nAssisted-By: Claude Sonnet 4.6\n\n* ci: disable nixpkgs verification job\n\nnixpkgs PR was declined due to lack of popularity. No point running\nthe slow Nix build until we meet the popularity threshold. Re-enable\nby removing the `if: false` condition.\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-28T08:32:51-07:00",
+          "tree_id": "d40cb87dbb3673839a3b79e597cda6b56ae3e97f",
+          "url": "https://github.com/l1a/retch/commit/79e4de519e6b7bc2f4ce2f6df351d62e41c05b26"
+        },
+        "date": 1782661629380,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 783832317.85,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 980.1240742379175,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 56.34265504613527,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9468795234462366,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 56.076484724560395,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7738.555213759753,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70592.78239709022,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4753.847028112189,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4837.650301099124,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1189700.4771029653,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 346.2403857169301,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 282.32393455322944,
             "unit": "ns"
           }
         ]
