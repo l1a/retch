@@ -205,11 +205,15 @@ fn main() -> anyhow::Result<()> {
             "os".to_string(),
             "kernel".to_string(),
             "host".to_string(),
+            "chassis".to_string(),
+            "init".to_string(),
+            "locale".to_string(),
             "cpu".to_string(),
             "cpu-cache".to_string(),
             "cpu-usage".to_string(),
             "motherboard".to_string(),
             "bios".to_string(),
+            "bootmgr".to_string(),
             "gpu".to_string(),
             "display".to_string(),
             "audio".to_string(),
@@ -223,6 +227,7 @@ fn main() -> anyhow::Result<()> {
             "phys-disk".to_string(),
             "net".to_string(),
             "uptime".to_string(),
+            "editor".to_string(),
         ])
     };
 

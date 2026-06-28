@@ -98,11 +98,15 @@ You can generate a starting configuration with:
   - `kernel`: Kernel version.
   - `host`: System host/product name.
   - `arch`: System architecture.
+  - `chassis`: Chassis type (Laptop, Desktop, Mini PC, etc.).
+  - `init`: PID 1 / init system (systemd, runit, launchd, etc.).
+  - `locale`: System locale from `$LC_ALL` / `$LANG`.
   - `cpu`: CPU model name.
   - `cpu-freq`: CPU current/max/min frequencies.
   - `gpu`: GPU model(s) and VRAM.
   - `motherboard`: Motherboard manufacturer and model.
   - `bios`: BIOS vendor and version.
+  - `bootmgr`: Second-stage bootloader (GRUB, systemd-boot, etc.).
   - `display`: Connected monitor displays with refresh rates and resolution.
   - `audio`: Audio card controller and active sound servers (PipeWire, PulseAudio, ALSA, CoreAudio, Windows Audio).
   - `camera`: Connected camera/webcam names.
@@ -121,6 +125,7 @@ You can generate a starting configuration with:
   - `bluetooth`: Bluetooth adapter details and connected device count/names.
   - `battery`: Battery capacity, vendor/model, time remaining, and health.
   - `shell`: Shell name and version (e.g. bash, zsh, fish, nu).
+  - `editor`: Default editor from `$VISUAL` / `$EDITOR`.
   - `terminal`: Terminal emulator name and version.
   - `terminal_font`: Terminal emulator active font.
   - `desktop`: Desktop environment or window manager.
@@ -130,6 +135,7 @@ You can generate a starting configuration with:
   - `font`: UI system font.
   - `users`: Current logged in users.
   - `packages`: Installed package counts (supporting dpkg, rpm, pacman, flatpak, snap, homebrew, scoop, chocolatey, etc.).
+  - `weather`: Current weather from wttr.in (city, condition, temperature). Requires network access. Long mode only by default.
 
 # THEMES
 

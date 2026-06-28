@@ -134,6 +134,17 @@ truncated or removed once the branch is merged. Only one "Current Session" block
 
 ## Major Achievements
 
+### v0.3.27 - System and Misc fields (June 28, 2026)
+- **InitSystem**: Detects PID 1 init system name from `/proc/1/comm` on Linux; always "launchd" on macOS, "SCM" on Windows.
+- **Chassis**: Maps `/sys/class/dmi/id/chassis_type` number to human label (Laptop, Desktop, Mini PC, etc.) on Linux; infers from `hw.model` sysctl on macOS.
+- **Locale**: Reads `$LC_ALL` → `$LC_MESSAGES` → `$LANG` env vars.
+- **Bootmgr**: Checks `/boot/loader/entries` (systemd-boot), `/boot/grub2` (GRUB 2), `/boot/grub` (GRUB), `/sys/firmware/efi` (UEFI fallback) on Linux; "Apple Boot ROM" on macOS.
+- **Editor**: Reads `$VISUAL` → `$EDITOR` env vars.
+- **Weather**: Long-mode only; calls `curl https://wttr.in/?format=3` (3-second timeout) for one-line city+condition+temperature.
+- All five fast fields are in the default output set; Weather is long-only due to network latency.
+- **Feature gap list** moved from `AGENTS.md` to `NOTES.md` (project state tracking, not standing instructions).
+- **Version**: Bumped to `0.3.27` / `retch-sysinfo 0.1.27`.
+
 ### v0.3.26 - Skip FUSE mounts in disk detection (June 27, 2026)
 - **Disk detection (Linux)**: Replaced `sysinfo::Disks::new_with_refreshed_list()` with a custom `/proc/mounts` reader that filters pseudo-filesystems and `fuse.*` mounts before calling `statvfs`. Eliminates 600ms+ hangs caused by cryfs/EncFS vaults and other FUSE mounts.
 - **Version**: Bumped to `0.3.26` / `retch-sysinfo 0.1.26`.
@@ -486,47 +497,7 @@ truncated or removed once the branch is merged. Only one "Current Session" block
 
 ## Feature Gap with Fastfetch
 
-Below is a comparison of information gathered by `fastfetch` that is currently missing in `retch`:
-
-### Hardware
-- **Brightness**: Monitor brightness level
-- **Keyboard**: Connected keyboards
-- **Mouse**: Connected mice
-- **PowerAdapter**: Charger name and wattage
-- **TPM**: Trusted Platform Module device info
-
-### GPU / Graphics
-- **OpenCL / OpenGL / Vulkan**: Highest supported API versions
-
-### Storage & Filesystems
-- **Btrfs**: Btrfs volume info
-- **Zpool**: ZFS storage pool info
-- **DiskIO**: Disk I/O throughput
-
-### Network
-- **DNS**: Configured DNS servers
-- **NetIO**: Network I/O throughput
-
-### Desktop Environment & UI
-- **WM**: Window manager name and version
-- **WMTheme**: Window manager theme
-- **LM**: Login manager (GDM, SDDM, etc.)
-- **Wallpaper**: Current wallpaper file path
-- **TerminalSize**: Terminal dimensions (columns × rows)
-- **TerminalTheme**: Terminal foreground/background colors
-
-### System
-- **InitSystem**: PID 1 / init system (systemd, runit, etc.)
-- **Chassis**: Chassis type (desktop, laptop, server, etc.)
-- **Locale**: System locale
-- **Bootmgr**: Second-stage bootloader (GRUB, systemd-boot, etc.)
-
-### Media
-- **Media / Player**: Currently playing song and active music player
-
-### Misc
-- **Editor**: Default editor (`$VISUAL` / `$EDITOR`)
-- **Weather**: Weather information (requires network)
+The feature gap tracking list has moved to `NOTES.md` (project state, not standing instructions).
 
 ---
-*Last updated: June 27, 2026 (v0.3.26)*
+*Last updated: June 28, 2026 (v0.3.27)*

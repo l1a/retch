@@ -164,6 +164,18 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
+`\f[CR]chassis\fP`: Chassis type (Laptop, Desktop, Mini PC, etc\.)\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]init\fP`: PID 1 / init system (systemd, runit, launchd, etc\.)\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]locale\fP`: System locale from `\f[CR]$LC_ALL\fP` / `\f[CR]$LANG\fP`\.
+.El
+.Bl
+.IP \(bu 4
 `\f[CR]cpu\fP`: CPU model name\.
 .El
 .Bl
@@ -181,6 +193,10 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .Bl
 .IP \(bu 4
 `\f[CR]bios\fP`: BIOS vendor and version\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]bootmgr\fP`: Second\-stage bootloader (GRUB, systemd\-boot, etc\.)\.
 .El
 .Bl
 .IP \(bu 4
@@ -256,6 +272,10 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
+`\f[CR]editor\fP`: Default editor from `\f[CR]$VISUAL\fP` / `\f[CR]$EDITOR\fP`\.
+.El
+.Bl
+.IP \(bu 4
 `\f[CR]terminal\fP`: Terminal emulator name and version\.
 .El
 .Bl
@@ -289,6 +309,10 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .Bl
 .IP \(bu 4
 `\f[CR]packages\fP`: Installed package counts (supporting dpkg, rpm, pacman, flatpak, snap, homebrew, scoop, chocolatey, etc\.)\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]weather\fP`: Current weather from wttr\.in (city, condition, temperature)\. Requires network access\. Long mode only by default\.
 .El
 .RE
 .El
