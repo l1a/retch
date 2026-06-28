@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782666124509,
+  "lastUpdate": 1782666467654,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13884,75 +13884,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "2b20e8fa8d79d8aad90c2fe8f2f4facc213b2a21",
-          "message": "refactor: code cleanup — logo files, module consolidation (v0.3.15) (#86)\n\n* refactor: use crate:: for internal paths\n\n* refactor(retch-cli): nest re-export modules in lib.rs\n\n* refactor(retch-cli): include_str! the logos instead of keeping them in code\n\n* fix: missing ../ in paths\n\n* refactor: code cleanup — logo files, module consolidation, version bump (v0.3.15)\n\n- Fix crate:: → retch_cli:: imports in main.rs (binary crates cannot use\n  crate:: to reference their own lib; was causing unresolved import errors)\n- Move distro ASCII logos to assets/logos/*.txt, loaded via include_str!\n- Inline fetch/gpu re-export shims into lib.rs; delete src/fetch.rs and src/gpu.rs\n- Bump to v0.3.15 / retch-sysinfo v0.1.15\n\nOriginally contributed by @quixaq in #83.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Quixaq <quixaq@tutamail.com>\nCo-authored-by: quixaq <152917245+quixaq@users.noreply.github.com>\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
-          "timestamp": "2026-06-11T20:00:39-07:00",
-          "tree_id": "e98beefb8ab4e909c5f6e61dc38869137a0584ab",
-          "url": "https://github.com/l1a/retch/commit/2b20e8fa8d79d8aad90c2fe8f2f4facc213b2a21"
-        },
-        "date": 1781235388425,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 22831360.000000004,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1129127219.9999998,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 92.90498834104761,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 3.974034730553485,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 90.1071171522426,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 34883.022739170156,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 427.2231708841708,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 600.5739416469881,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 989549820,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -17322,6 +17253,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2717572630,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b8d3f6ea87cf396f449249595ed4d787aa2bb2fe",
+          "message": "fix: ignore already deleted branch error in merge-pr recipe (#124)\n\nAssisted-By: Gemini 3.5 Flash",
+          "timestamp": "2026-06-28T09:34:40-07:00",
+          "tree_id": "c9c370af106069b537c4019e66afc44f31927e26",
+          "url": "https://github.com/l1a/retch/commit/b8d3f6ea87cf396f449249595ed4d787aa2bb2fe"
+        },
+        "date": 1782666464784,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 123.2172238668021,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.347765118100128,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 122.94381596317373,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 93.99974541534115,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 43082.33157373372,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 579.8246169705898,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 839.1051023658835,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3355993410,
             "unit": "ns"
           }
         ]
