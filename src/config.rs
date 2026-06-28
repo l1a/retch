@@ -189,13 +189,16 @@ const DEFAULT_WEATHER_LOCATION_BLOCK: &str = r##"# Location for weather lookup (
 # weather_location = """##;
 
 const DEFAULT_FIELDS_BLOCK: &str = r##"# List of fields to display (leave empty or omit to show all)
+# Note: "phys-mem" requires running as root (sudo) on Linux to read DMI memory tables.
+# Note: "weather" requires network access and is shown in long mode by default.
 # fields = [
-#     "os", "kernel", "host", "arch", "cpu", "cpu-freq", "gpu",
-#     "motherboard", "bios", "display", "audio", "camera", "gamepad",
-#     "memory", "swap", "uptime", "procs", "load",
-#     "disk", "temp", "net", "battery",
-#     "shell", "terminal", "desktop", "theme", "icons", "cursor", "font", "users", "packages",
-#     "wifi", "bluetooth"
+#     "os", "kernel", "host", "chassis", "init", "locale",
+#     "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage",
+#     "gpu", "motherboard", "bios", "bootmgr", "display", "audio",
+#     "camera", "gamepad", "memory", "phys-mem", "swap", "uptime", "procs", "load",
+#     "disk", "phys-disk", "temp", "net", "public-ip", "wifi", "bluetooth", "battery",
+#     "shell", "editor", "terminal", "terminal-font", "desktop",
+#     "theme", "icons", "cursor", "font", "users", "packages", "weather"
 # ]"##;
 
 fn contains_key_line(content: &str, key: &str) -> bool {
