@@ -190,7 +190,7 @@ merge-pr:
     git checkout main
     git pull
     echo "Deleting local branch $BRANCH..."
-    git branch -D "$BRANCH"
+    git branch -D "$BRANCH" 2>/dev/null || true
     python3 scripts/reset_wip.py
 
 # Pre-PR gate: run all automated checks and print manual checklist before opening a PR.
