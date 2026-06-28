@@ -88,7 +88,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## 4. Current State (v0.3.28)
+## Current State (v0.3.28)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
