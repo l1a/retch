@@ -229,6 +229,7 @@ pr:
     echo "  [ ] README.md reviewed and updated (new features, flags, config keys)"
     echo "  [ ] AGENTS.md release log entry added under Major Achievements"
     echo "  [ ] GitHub wiki cloned and updated (Configuration-and-Theming.md, Workspace-Architecture.md)"
+    echo "  [ ] Upstream tldr page updated / docs/retch.md synced (if CLI flags changed)"
     echo ""
     echo -n "All manual items confirmed? [y/N] "
     read -r CONFIRM
