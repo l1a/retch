@@ -1,3 +1,50 @@
+# Feature Gap with Fastfetch
+
+Below is a comparison of information gathered by `fastfetch` that is currently missing in `retch`.
+Strike through items that have been implemented.
+
+### Hardware
+- **Brightness**: Monitor brightness level
+- **Keyboard**: Connected keyboards
+- **Mouse**: Connected mice
+- **PowerAdapter**: Charger name and wattage
+- **TPM**: Trusted Platform Module device info
+
+### GPU / Graphics
+- **OpenCL / OpenGL / Vulkan**: Highest supported API versions
+
+### Storage & Filesystems
+- **Btrfs**: Btrfs volume info
+- **Zpool**: ZFS storage pool info
+- **DiskIO**: Disk I/O throughput
+
+### Network
+- **DNS**: Configured DNS servers
+- **NetIO**: Network I/O throughput
+
+### Desktop Environment & UI
+- **WM**: Window manager name and version
+- **WMTheme**: Window manager theme
+- **LM**: Login manager (GDM, SDDM, etc.)
+- **Wallpaper**: Current wallpaper file path
+- **TerminalSize**: Terminal dimensions (columns × rows)
+- **TerminalTheme**: Terminal foreground/background colors
+
+### System
+- ~~**InitSystem**: PID 1 / init system (systemd, runit, etc.)~~ ✅ v0.3.27
+- ~~**Chassis**: Chassis type (desktop, laptop, server, etc.)~~ ✅ v0.3.27
+- ~~**Locale**: System locale~~ ✅ v0.3.27
+- ~~**Bootmgr**: Second-stage bootloader (GRUB, systemd-boot, etc.)~~ ✅ v0.3.27
+
+### Media
+- **Media / Player**: Currently playing song and active music player
+
+### Misc
+- ~~**Editor**: Default editor (`$VISUAL` / `$EDITOR`)~~ ✅ v0.3.27
+- ~~**Weather**: Weather information (requires network)~~ ✅ v0.3.27
+
+---
+
 # Session Notes — June 27, 2026 (v0.3.25)
 
 ## Benchmark Anomaly: cryfs FUSE Mount

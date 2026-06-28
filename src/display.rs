@@ -118,6 +118,15 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if let Some(host) = &info.hostname {
         print_line("Host", host);
     }
+    if let Some(chassis) = &info.chassis {
+        print_line("Chassis", chassis);
+    }
+    if let Some(init) = &info.init_system {
+        print_line("Init", init);
+    }
+    if let Some(locale) = &info.locale {
+        print_line("Locale", locale);
+    }
     if let Some(user) = &info.current_user {
         print_line("User", user);
     }
@@ -137,6 +146,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     }
     if let Some(bios) = &info.bios {
         print_line("BIOS", bios);
+    }
+    if let Some(bootmgr) = &info.bootmgr {
+        print_line("Bootmgr", bootmgr);
     }
     if should_show("GPU") {
         for gpu in &info.gpu {
@@ -252,6 +264,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if let Some(shell) = &info.shell {
         print_line("Shell", shell);
     }
+    if let Some(editor) = &info.editor {
+        print_line("Editor", editor);
+    }
     if let Some(term) = &info.terminal {
         print_line("Terminal", term);
     }
@@ -278,6 +293,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         if pkgs > 0 {
             print_line("Packages", &pkgs.to_string());
         }
+    }
+    if let Some(weather) = &info.weather {
+        print_line("Weather", weather);
     }
 
     // Setup logo representation

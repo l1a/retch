@@ -201,15 +201,22 @@ accent_color = "bright_green"
 title_color = "bright_yellow"
 separator_color = "bright_black"
 
+# Location for weather lookup (city name, ZIP code, airport code, or lat/lon coordinates).
+# If unset, wttr.in auto-detects from your IP. Can also be set with --weather-location.
+# weather_location = "London"
+
 # Ordered list of system information fields to display
 # Note: "phys-mem" requires root (sudo) on Linux to read DMI memory tables. On Windows, uses Win32_PhysicalMemory via PowerShell.
 # Note: "phys-disk" on Windows uses Get-PhysicalDisk via PowerShell.
+# Note: "weather" requires network access; shown in long mode by default.
 fields = [
-    "os", "kernel", "host", "arch", "cpu", "cpu-freq", "gpu",
-    "motherboard", "bios", "display", "audio",
+    "os", "kernel", "host", "chassis", "init", "locale",
+    "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage", "gpu",
+    "motherboard", "bios", "bootmgr", "display", "audio",
     "memory", "phys-mem", "swap", "uptime", "procs", "load",
     "disk", "phys-disk", "temp", "net", "wifi", "bluetooth", "battery",
-    "shell", "terminal", "terminal_font", "desktop", "theme", "icons", "cursor", "font", "users", "packages"
+    "shell", "editor", "terminal", "terminal_font", "desktop",
+    "theme", "icons", "cursor", "font", "users", "packages", "weather"
 ]
 ```
 

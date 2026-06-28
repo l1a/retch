@@ -29,6 +29,8 @@ pub struct Config {
     pub fields: Option<Vec<String>>,
     /// Custom theme color overrides.
     pub custom_theme: Option<CustomTheme>,
+    /// Location for weather lookup (city name, ZIP code, airport code, or coordinates).
+    pub weather_location: Option<String>,
 }
 
 /// Custom color overrides for themes.
@@ -108,6 +110,9 @@ impl Config {
                 .collect::<Vec<String>>();
             merged.fields = Some(fields);
         }
+        if let Some(loc) = &cli.weather_location {
+            merged.weather_location = Some(loc.clone());
+        }
 
         merged
     }
@@ -126,6 +131,7 @@ impl Config {
             ("chafa", DEFAULT_CHAFA_BLOCK),
             ("logo", DEFAULT_LOGO_BLOCK),
             ("fields", DEFAULT_FIELDS_BLOCK),
+            ("weather_location", DEFAULT_WEATHER_LOCATION_BLOCK),
         ];
 
         for &(key, block) in &checks {
@@ -180,14 +186,22 @@ const DEFAULT_CHAFA_BLOCK: &str = r##"# Force Chafa symbols output (even if grap
 const DEFAULT_LOGO_BLOCK: &str = r##"# Force a specific distribution logo by name/ID
 # logo = "arch""##;
 
+const DEFAULT_WEATHER_LOCATION_BLOCK: &str = r##"# Location for weather lookup (city name, ZIP code, airport code, or lat/lon coordinates).
+# If unset, wttr.in auto-detects your location from your IP address.
+# Examples: "London", "10001", "SFO", "48.8566,2.3522"
+# weather_location = """##;
+
 const DEFAULT_FIELDS_BLOCK: &str = r##"# List of fields to display (leave empty or omit to show all)
+# Note: "phys-mem" requires running as root (sudo) on Linux to read DMI memory tables.
+# Note: "weather" requires network access and is shown in long mode by default.
 # fields = [
-#     "os", "kernel", "host", "arch", "cpu", "cpu-freq", "gpu",
-#     "motherboard", "bios", "display", "audio", "camera", "gamepad",
-#     "memory", "swap", "uptime", "procs", "load",
-#     "disk", "temp", "net", "battery",
-#     "shell", "terminal", "desktop", "theme", "icons", "cursor", "font", "users", "packages",
-#     "wifi", "bluetooth"
+#     "os", "kernel", "host", "chassis", "init", "locale",
+#     "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage",
+#     "gpu", "motherboard", "bios", "bootmgr", "display", "audio",
+#     "camera", "gamepad", "memory", "phys-mem", "swap", "uptime", "procs", "load",
+#     "disk", "phys-disk", "temp", "net", "public-ip", "wifi", "bluetooth", "battery",
+#     "shell", "editor", "terminal", "terminal-font", "desktop",
+#     "theme", "icons", "cursor", "font", "users", "packages", "weather"
 # ]"##;
 
 fn contains_key_line(content: &str, key: &str) -> bool {
@@ -314,7 +328,7 @@ mod tests {
 
     #[test]
     fn test_merge_defaults_all_present() {
-        let existing = "theme = \"dark\"\nshow_logo = true\nascii_only = false\nchafa = false\nlogo = \"fedora\"\nfields = [\"os\"]\n[custom_theme]\nlabel_color = \"red\"\n";
+        let existing = "theme = \"dark\"\nshow_logo = true\nascii_only = false\nchafa = false\nlogo = \"fedora\"\nfields = [\"os\"]\nweather_location = \"London\"\n[custom_theme]\nlabel_color = \"red\"\n";
         let (merged, additions) = Config::merge_defaults(existing);
         assert!(additions.is_empty());
         assert_eq!(merged.trim(), existing.trim());
@@ -322,7 +336,7 @@ mod tests {
 
     #[test]
     fn test_merge_defaults_commented_ignored() {
-        let existing = "# theme = \"auto\"\n# show_logo = true\n# ascii_only = false\n# chafa = false\n# logo = \"arch\"\n# fields = []\n# [custom_theme]\n";
+        let existing = "# theme = \"auto\"\n# show_logo = true\n# ascii_only = false\n# chafa = false\n# logo = \"arch\"\n# fields = []\n# weather_location = \"\"\n# [custom_theme]\n";
         let (merged, additions) = Config::merge_defaults(existing);
         assert!(additions.is_empty());
         assert_eq!(merged.trim(), existing.trim());
@@ -340,6 +354,7 @@ mod tests {
                 "chafa",
                 "logo",
                 "fields",
+                "weather_location",
                 "custom_theme"
             ]
         );

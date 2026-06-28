@@ -69,15 +69,7 @@ truncated or removed once the branch is merged. Only one "Current Session" block
   4. If the GitHub wiki exists, clone it (`https://github.com/l1a/retch.wiki.git`) and update any affected pages before submitting the PR.
   5. When adding distro logos, run `cargo run -- --print-logos --ascii-logo` and confirm every new distro appears in the output. The hardcoded list in `src/main.rs` must be updated alongside `src/logo.rs`.
   6. If package versions are bumped, run `just man` to regenerate the man pages (so `docs/retch.1` is kept in sync with the new `Cargo.toml` version) and commit the updated man page *as part of the Pull Request* before merging (never directly on `main`).
-- **Pre-PR Gate (MANDATORY — no exceptions, no silent skips)**: Before calling `gh pr create`, the agent MUST explicitly output a completed checklist in the conversation showing the verified status of every applicable step. Responding "yes" to the user's question "have we done all the pre-PR steps?" without producing this checklist is not allowed. The checklist:
-  - [ ] Version bumped in `Cargo.toml`, `crates/*/Cargo.toml`, and the workspace dep reference (`version = "=x.y.z"`)
-  - [ ] `Cargo.lock` updated via `cargo check`
-  - [ ] `docs/retch.1.md` updated (if CLI args/params/fields changed) and `just man` run to rebuild `docs/retch.1`
-  - [ ] `AGENTS.md` "Current State" header version bumped and release log entry added under "Major Achievements"
-  - [ ] `README.md` reviewed and updated if new features, flags, or config keys were added
-  - [ ] GitHub wiki cloned and updated (or explicitly confirmed: "no wiki pages affected")
-  - [ ] `just check` (fmt + clippy) passes locally
-  Each item must be explicitly marked `[x]` (done) or `[N/A — <reason>]` (skipped with justification). The agent must not proceed to `gh pr create` until this output is produced and all items are resolved.
+- **Pre-PR Gate (MANDATORY — no exceptions, no silent skips)**: Before calling `gh pr create`, the agent MUST run `just pr` and pass the interactive confirmation prompt. `just pr` automates the verifiable checks (branch, version bump, AGENTS.md header, man page, Cargo.lock, fmt+clippy, tests) and then prints the manual checklist (README, release log entry, wiki) and requires an explicit `y` confirmation. The agent must not call `gh pr create` without first running `just pr` to completion.
 - **PR Test Plans**: After opening a PR, immediately run each item in the test plan checklist and update the PR body via `gh pr edit` to check off passed items. Do not leave all boxes unchecked. Items requiring manual human verification (e.g. runtime output) should be left unchecked with a note.
 - **Branch Cleanup**: Delete feature branches from the remote after they are merged. The commit topology (branch/merge shape) is preserved in git history regardless; only the branch label is removed. Use `git push origin --delete <branch>` or pass `--delete-branch` to `gh pr merge`. Also periodically prune abandoned branches that were never PRed.
 - **Documentation & Versioning Updates**: When branching to make changes, ensure the following updates are performed:
@@ -110,7 +102,7 @@ truncated or removed once the branch is merged. Only one "Current Session" block
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
 
-## Current State (v0.3.26)
+## Current State (v0.3.27)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -133,6 +125,17 @@ truncated or removed once the branch is merged. Only one "Current Session" block
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
 
 ## Major Achievements
+
+### v0.3.27 - System and Misc fields (June 28, 2026)
+- **InitSystem**: Detects PID 1 init system name from `/proc/1/comm` on Linux; always "launchd" on macOS, "SCM" on Windows.
+- **Chassis**: Maps `/sys/class/dmi/id/chassis_type` number to human label (Laptop, Desktop, Mini PC, etc.) on Linux; infers from `hw.model` sysctl on macOS.
+- **Locale**: Reads `$LC_ALL` → `$LC_MESSAGES` → `$LANG` env vars.
+- **Bootmgr**: Checks `/boot/loader/entries` (systemd-boot), `/boot/grub2` (GRUB 2), `/boot/grub` (GRUB), `/sys/firmware/efi` (UEFI fallback) on Linux; "Apple Boot ROM" on macOS.
+- **Editor**: Reads `$VISUAL` → `$EDITOR` env vars.
+- **Weather**: Long-mode only; calls `curl https://wttr.in/?format=3` (3-second timeout) for one-line city+condition+temperature.
+- All five fast fields are in the default output set; Weather is long-only due to network latency.
+- **Feature gap list** moved from `AGENTS.md` to `NOTES.md` (project state tracking, not standing instructions).
+- **Version**: Bumped to `0.3.27` / `retch-sysinfo 0.1.27`.
 
 ### v0.3.26 - Skip FUSE mounts in disk detection (June 27, 2026)
 - **Disk detection (Linux)**: Replaced `sysinfo::Disks::new_with_refreshed_list()` with a custom `/proc/mounts` reader that filters pseudo-filesystems and `fuse.*` mounts before calling `statvfs`. Eliminates 600ms+ hangs caused by cryfs/EncFS vaults and other FUSE mounts.
@@ -486,47 +489,7 @@ truncated or removed once the branch is merged. Only one "Current Session" block
 
 ## Feature Gap with Fastfetch
 
-Below is a comparison of information gathered by `fastfetch` that is currently missing in `retch`:
-
-### Hardware
-- **Brightness**: Monitor brightness level
-- **Keyboard**: Connected keyboards
-- **Mouse**: Connected mice
-- **PowerAdapter**: Charger name and wattage
-- **TPM**: Trusted Platform Module device info
-
-### GPU / Graphics
-- **OpenCL / OpenGL / Vulkan**: Highest supported API versions
-
-### Storage & Filesystems
-- **Btrfs**: Btrfs volume info
-- **Zpool**: ZFS storage pool info
-- **DiskIO**: Disk I/O throughput
-
-### Network
-- **DNS**: Configured DNS servers
-- **NetIO**: Network I/O throughput
-
-### Desktop Environment & UI
-- **WM**: Window manager name and version
-- **WMTheme**: Window manager theme
-- **LM**: Login manager (GDM, SDDM, etc.)
-- **Wallpaper**: Current wallpaper file path
-- **TerminalSize**: Terminal dimensions (columns × rows)
-- **TerminalTheme**: Terminal foreground/background colors
-
-### System
-- **InitSystem**: PID 1 / init system (systemd, runit, etc.)
-- **Chassis**: Chassis type (desktop, laptop, server, etc.)
-- **Locale**: System locale
-- **Bootmgr**: Second-stage bootloader (GRUB, systemd-boot, etc.)
-
-### Media
-- **Media / Player**: Currently playing song and active music player
-
-### Misc
-- **Editor**: Default editor (`$VISUAL` / `$EDITOR`)
-- **Weather**: Weather information (requires network)
+The feature gap tracking list has moved to `NOTES.md` (project state, not standing instructions).
 
 ---
-*Last updated: June 27, 2026 (v0.3.26)*
+*Last updated: June 28, 2026 (v0.3.27)*

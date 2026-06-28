@@ -20,6 +20,8 @@ pub struct CollectOptions {
     pub long: bool,
     /// List of fields that are requested to be displayed. If None, all fields are collected.
     pub fields: Option<Vec<String>>,
+    /// Optional location override for weather lookup (city, ZIP, airport code, coordinates).
+    pub weather_location: Option<String>,
 }
 
 /// Comprehensive system information data structure.
@@ -118,6 +120,18 @@ pub struct SystemInfo {
     pub physical_disks: Vec<String>,
     /// Physical memory (RAM) slot summary — type, speed, capacity.
     pub physical_memory: Option<String>,
+    /// PID 1 / init system (systemd, runit, OpenRC, launchd, etc.).
+    pub init_system: Option<String>,
+    /// Chassis type (Desktop, Laptop, Server, etc.).
+    pub chassis: Option<String>,
+    /// System locale (from $LANG / $LC_ALL).
+    pub locale: Option<String>,
+    /// Second-stage bootloader (GRUB, systemd-boot, etc.).
+    pub bootmgr: Option<String>,
+    /// Default editor ($VISUAL / $EDITOR).
+    pub editor: Option<String>,
+    /// Current weather from wttr.in.
+    pub weather: Option<String>,
 }
 
 impl SystemInfo {
@@ -347,6 +361,7 @@ impl SystemInfo {
             gamepad,
             physical_disks,
             physical_memory,
+            weather,
         ) = std::thread::scope(|s| {
             let gpu_handle = if should_collect("gpu") {
                 Some(s.spawn(|| {
@@ -432,6 +447,12 @@ impl SystemInfo {
             } else {
                 None
             };
+            let weather_location = opts.weather_location.clone();
+            let weather_handle = if should_collect("weather") {
+                Some(s.spawn(move || crate::weather::detect_weather(weather_location.as_deref())))
+            } else {
+                None
+            };
 
             (
                 gpu_handle
@@ -463,6 +484,7 @@ impl SystemInfo {
                     .map(|h| h.join().unwrap_or_default())
                     .unwrap_or_default(),
                 physical_memory_handle.and_then(|h| h.join().ok().flatten()),
+                weather_handle.and_then(|h| h.join().ok().flatten()),
             )
         });
 
@@ -593,6 +615,43 @@ impl SystemInfo {
             None
         };
 
+        let init_system = if should_collect("init") || should_collect("init system") {
+            detect_init_system()
+        } else {
+            None
+        };
+
+        let chassis = if should_collect("chassis") {
+            detect_chassis()
+        } else {
+            None
+        };
+
+        let locale = if should_collect("locale") {
+            std::env::var("LC_ALL")
+                .ok()
+                .filter(|s| !s.is_empty())
+                .or_else(|| std::env::var("LC_MESSAGES").ok().filter(|s| !s.is_empty()))
+                .or_else(|| std::env::var("LANG").ok().filter(|s| !s.is_empty()))
+        } else {
+            None
+        };
+
+        let bootmgr = if should_collect("bootmgr") || should_collect("boot") {
+            detect_bootmgr()
+        } else {
+            None
+        };
+
+        let editor = if should_collect("editor") {
+            std::env::var("VISUAL")
+                .ok()
+                .filter(|s| !s.is_empty())
+                .or_else(|| std::env::var("EDITOR").ok().filter(|s| !s.is_empty()))
+        } else {
+            None
+        };
+
         // Current logged in user
         let current_user = std::env::var("USER").ok();
 
@@ -660,6 +719,12 @@ impl SystemInfo {
             cpu_usage,
             physical_disks,
             physical_memory,
+            init_system,
+            chassis,
+            locale,
+            bootmgr,
+            editor,
+            weather,
         })
     }
 }
@@ -1004,6 +1069,118 @@ pub fn detect_cpu_freq_range() -> Option<(u64, u64)> {
         }
     }
     #[cfg(not(target_os = "linux"))]
+    {
+        None
+    }
+}
+
+fn detect_init_system() -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        let comm = std::fs::read_to_string("/proc/1/comm")
+            .map(|s| s.trim().to_string())
+            .ok()
+            .filter(|s| !s.is_empty());
+        if let Some(name) = comm {
+            return Some(name);
+        }
+        std::fs::read_link("/proc/1/exe").ok().and_then(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .map(|s| s.to_string())
+        })
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Some("launchd".to_string())
+    }
+    #[cfg(target_os = "windows")]
+    {
+        Some("SCM".to_string())
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    {
+        None
+    }
+}
+
+fn detect_chassis() -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        let raw = std::fs::read_to_string("/sys/class/dmi/id/chassis_type").ok()?;
+        let n: u32 = raw.trim().parse().ok()?;
+        let label = match n {
+            3 => "Desktop",
+            4 => "Low-Profile Desktop",
+            6 => "Mini Tower",
+            7 => "Tower",
+            8 | 9 | 10 | 14 | 31 | 32 => "Laptop",
+            11 => "Handheld",
+            13 => "All-in-One",
+            17 => "Main Server",
+            23 => "Rack Server",
+            28 => "Blade",
+            30 => "Tablet",
+            35 => "Mini PC",
+            36 => "Stick PC",
+            _ => return None,
+        };
+        Some(label.to_string())
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let output = std::process::Command::new("sysctl")
+            .args(["-n", "hw.model"])
+            .output()
+            .ok()?;
+        let model = String::from_utf8(output.stdout).ok()?;
+        let model = model.trim();
+        if model.contains("MacBook") {
+            Some("Laptop".to_string())
+        } else if model.contains("MacPro") {
+            Some("Desktop".to_string())
+        } else if model.contains("Macmini") || model.contains("Mac mini") {
+            Some("Mini PC".to_string())
+        } else if model.contains("iMac") {
+            Some("All-in-One".to_string())
+        } else {
+            Some(model.to_string())
+        }
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    {
+        None
+    }
+}
+
+fn detect_bootmgr() -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        use std::path::Path;
+        let is_uefi = Path::new("/sys/firmware/efi").exists();
+        if Path::new("/boot/loader/entries").exists()
+            || Path::new("/boot/loader/loader.conf").exists()
+            || Path::new("/efi/loader/loader.conf").exists()
+        {
+            return Some("systemd-boot".to_string());
+        }
+        if Path::new("/boot/grub2/grub.cfg").exists() || Path::new("/boot/grub2").exists() {
+            return Some("GRUB 2".to_string());
+        }
+        if Path::new("/boot/grub/grub.cfg").exists() || Path::new("/boot/grub").exists() {
+            return Some("GRUB".to_string());
+        }
+        if is_uefi {
+            Some("UEFI".to_string())
+        } else {
+            Some("BIOS".to_string())
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Some("Apple Boot ROM".to_string())
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
         None
     }
