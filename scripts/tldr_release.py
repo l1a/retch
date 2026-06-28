@@ -54,10 +54,11 @@ def main():
     try:
         url_check = subprocess.run(["git", "remote", "get-url", "origin"], capture_output=True, text=True, cwd=str(root_dir))
         url = url_check.stdout.strip()
-        if "github.com:" in url:
-            owner = url.split("github.com:")[1].split("/")[0]
-        elif "github.com/" in url:
-            owner = url.split("github.com/")[1].split("/")[0]
+        parts = url.replace(":", "/").split("/")
+        for i, part in enumerate(parts):
+            if part in ("github.com", "git@github.com") and i + 1 < len(parts):
+                owner = parts[i + 1]
+                break
     except Exception:
         pass
 
