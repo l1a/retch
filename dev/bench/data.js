@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782666565510,
+  "lastUpdate": 1782666884437,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10042,80 +10042,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "distinct": true,
-          "id": "37b53d4101d641b5411b9c5a485fbc0bac2c22bd",
-          "message": "docs: document full release, pre-release, and crates.io publish process in AGENTS.md\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-          "timestamp": "2026-06-11T20:04:45-07:00",
-          "tree_id": "7d57d78ea5d92f96e8a6838ccd3e2dbeffd11bc7",
-          "url": "https://github.com/l1a/retch/commit/37b53d4101d641b5411b9c5a485fbc0bac2c22bd"
-        },
-        "date": 1781234600494,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 42428528.43999999,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 907784478.34,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 793251731.35,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 476.13219514146505,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 84.76855551999509,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.503364536980409,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 84.70187204373926,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 528.1541342984601,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 239317486.8166667,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 446.81299272709373,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
           "id": "0fa34c02ae6023fc7850129a4f7276016a617ff1",
           "message": "docs: add just man step to release checklist in AGENTS.md",
           "timestamp": "2026-06-11T21:28:57-07:00",
@@ -13875,6 +13801,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 334.21525505164874,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d13f2fe0da7a898a1ebbd9c412284e5d02a0651e",
+          "message": "chore/refactor docs (#125)\n\n* docs: refactor documentation structure\n\nAssisted-By: Gemini 3.5 Flash\n\n* docs: fix Current State header formatting\n\nAssisted-By: Gemini 3.5 Flash",
+          "timestamp": "2026-06-28T09:54:34-07:00",
+          "tree_id": "aaa002e02169e3c871a1373946d09700c6002e90",
+          "url": "https://github.com/l1a/retch/commit/d13f2fe0da7a898a1ebbd9c412284e5d02a0651e"
+        },
+        "date": 1782666882199,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 678072974.85,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 372.09590713388354,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 63.82086532767862,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.853339449339596,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 68.94479899044862,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5212.856648247857,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1319.5658937302173,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 423.5168729028504,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 78901.97904427935,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 357.62233147934427,
             "unit": "ns"
           }
         ]
