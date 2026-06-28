@@ -216,10 +216,10 @@ pr:
     [ "$LAST_TAG" = "v$CARGO_VER" ] && fail "Version not bumped — Cargo.toml is still $CARGO_VER (matches last tag)"
     pass "Version bumped: $CARGO_VER (last tag: $LAST_TAG)"
 
-    # 3. AGENTS.md Current State header must match
-    grep -q "## Current State (v$CARGO_VER)" AGENTS.md \
-        || fail "AGENTS.md Current State header not updated to v$CARGO_VER"
-    pass "AGENTS.md Current State header: v$CARGO_VER"
+    # 3. NOTES.md Current State header must match
+    grep -q "## Current State (v$CARGO_VER)" NOTES.md \
+        || fail "NOTES.md Current State header not updated to v$CARGO_VER"
+    pass "NOTES.md Current State header: v$CARGO_VER"
 
     # 4. Regenerate man page and verify it was committed
     info "Regenerating man page..."
@@ -249,7 +249,7 @@ pr:
     echo -e "\n${BOLD}Automated checks passed.${NC}\n"
     echo -e "${BOLD}Manual checklist — confirm each before proceeding:${NC}"
     echo "  [ ] README.md reviewed and updated (new features, flags, config keys)"
-    echo "  [ ] AGENTS.md release log entry added under Major Achievements"
+    echo "  [ ] NOTES.md release log entry added under Major Achievements"
     echo "  [ ] GitHub wiki cloned and updated (Configuration-and-Theming.md, Workspace-Architecture.md)"
     echo "  [ ] Upstream tldr page updated / docs/retch.md synced (if CLI flags changed)"
     echo ""
