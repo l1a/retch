@@ -78,6 +78,7 @@ truncated or removed once the branch is merged. Only one "Current Session" block
   - **README**: Add new features, command examples, or configuration keys to `README.md`.
   - **Roadmap & History**: Update `AGENTS.md` by bumping the version in the "Current State" header and adding a new release log entry under "Major Achievements".
   - **GitHub Wiki**: Clone (`https://github.com/l1a/retch.wiki.git`) and update the corresponding wiki pages (`Configuration-and-Theming.md`, `Workspace-Architecture.md`, `Home.md`) for any changes to configuration parameters, workspace structure, or major features. Push the wiki update before or alongside the PR.
+  - **tldr Page**: Update the local `docs/retch.md` and submit/update the page upstream in the [tldr-pages/tldr](https://github.com/tldr-pages/tldr) repository for any changes to CLI flags or behavior.
   - **Bumping Strategy**: If the changes are significant (e.g. new subcrates, breaking CLI changes, major architectural redesigns), ALWAYS ask the user whether to perform a major, minor, or patch version bump.
 - **Command Redundancy**: Avoid running `just check && cargo test` sequentially since both build and check the project profiles, causing redundant background compilation cycles. Prefer `cargo test` during iteration and a final check before staging.
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages. Use `just bench-upload` to manually push local benchmark results to the dashboard; a `post-merge` hook installed via `just install-hooks` does this automatically after every merge to main. Local results appear as a "Local - &lt;platform&gt; (real hardware)" suite alongside the CI suites. The CI suites run in Docker containers with no physical hardware and are primarily useful for retch's own regression tracking, not for comparing against fastfetch.
@@ -101,8 +102,12 @@ truncated or removed once the branch is merged. Only one "Current Session" block
     cargo publish -p retch-cli
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
+  - **Publish to tldr-pages upstream** (manual, when CLI flags change):
+    ```
+    just tldr-release
+    ```
 
-## Current State (v0.3.27)
+## Current State (v0.3.28)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -125,6 +130,11 @@ truncated or removed once the branch is merged. Only one "Current Session" block
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
 
 ## Major Achievements
+
+### v0.3.28 - TL;DR page (June 28, 2026)
+- **TL;DR Page**: Added `tldr` command page entry (`docs/retch.md`) detailing the most common CLI parameters, themes, and configuration flags.
+- **Documentation**: Updated manual pages (`just man`) and README to integrate references to the new `tldr` utility documentation.
+- **Version**: Bumped to `0.3.28` / `retch-sysinfo 0.1.28`.
 
 ### v0.3.27 - System and Misc fields (June 28, 2026)
 - **InitSystem**: Detects PID 1 init system name from `/proc/1/comm` on Linux; always "launchd" on macOS, "SCM" on Windows.

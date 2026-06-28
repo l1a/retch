@@ -171,6 +171,28 @@ nix-update VERSION="":
 nixpkgs-release VERSION="":
     @python3 scripts/nixpkgs_release.py {{VERSION}}
 
+# Submit the local tldr page upstream to tldr-pages/tldr (requires gh)
+tldr-release:
+    @python3 scripts/tldr_release.py
+
+# Merge the active PR, switch to main, pull, delete the branch, and reset WIP.md (requires gh)
+merge-pr:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$BRANCH" = "main" ]; then
+        echo "Error: You are already on main."
+        exit 1
+    fi
+    echo "Merging PR for branch $BRANCH..."
+    gh pr merge --squash --delete-branch
+    echo "Switching to main and pulling..."
+    git checkout main
+    git pull
+    echo "Deleting local branch $BRANCH..."
+    git branch -D "$BRANCH"
+    python3 scripts/reset_wip.py
+
 # Pre-PR gate: run all automated checks and print manual checklist before opening a PR.
 # All items must pass before calling `gh pr create`.
 pr:
@@ -229,6 +251,7 @@ pr:
     echo "  [ ] README.md reviewed and updated (new features, flags, config keys)"
     echo "  [ ] AGENTS.md release log entry added under Major Achievements"
     echo "  [ ] GitHub wiki cloned and updated (Configuration-and-Theming.md, Workspace-Architecture.md)"
+    echo "  [ ] Upstream tldr page updated / docs/retch.md synced (if CLI flags changed)"
     echo ""
     echo -n "All manual items confirmed? [y/N] "
     read -r CONFIRM

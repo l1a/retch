@@ -153,6 +153,18 @@ retch --completions fish > ~/.config/fish/completions/retch.fish
 
 Supported shells: `bash`, `elvish`, `fish`, `power-shell`, `zsh`, `nushell`.
 
+## Documentation
+
+Retch provides standard documentation and quick-reference guides:
+- **Man Page**: Display the full user manual:
+  ```sh
+  man retch
+  ```
+- **TL;DR Page**: Display common command usage examples (using a `tldr` client like `tealdeer` or `tldr`):
+  ```sh
+  tldr retch
+  ```
+
 ## Configuration
 
 retch looks for a configuration file at `~/.config/retch/config.toml` (or `$XDG_CONFIG_HOME/retch/config.toml`).
