@@ -83,6 +83,10 @@ pub struct Cli {
     #[arg(long)]
     pub fields: Option<String>,
 
+    /// Location for weather lookup (city name, ZIP code, airport code, or coordinates). Overrides config
+    #[arg(long)]
+    pub weather_location: Option<String>,
+
     /// Generate shell completions
     #[arg(long, value_enum)]
     pub completions: Option<CompletionShell>,

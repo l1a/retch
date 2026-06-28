@@ -110,6 +110,9 @@ impl Config {
                 .collect::<Vec<String>>();
             merged.fields = Some(fields);
         }
+        if let Some(loc) = &cli.weather_location {
+            merged.weather_location = Some(loc.clone());
+        }
 
         merged
     }
