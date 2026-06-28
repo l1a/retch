@@ -144,6 +144,10 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
+\fBweather_location\fP: Location for weather lookup\. Accepts a city name (`\f[CR]"London"\fP`), US ZIP code (`\f[CR]"10001"\fP`), airport IATA code (`\f[CR]"SFO"\fP`), or lat/lon coordinates (`\f[CR]"48\.8566,2\.3522"\fP`)\. If unset, wttr\.in auto\-detects your location from your IP address\.
+.El
+.Bl
+.IP \(bu 4
 \fBfields\fP: Array of strings representing active fields and their display order\. Available fields are:
 .RS
 .Bl

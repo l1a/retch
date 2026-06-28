@@ -93,6 +93,7 @@ You can generate a starting configuration with:
 - **ascii_only**: Boolean indicating whether to restrict logo to ASCII representation.
 - **chafa**: Boolean indicating whether to force Chafa symbols output.
 - **logo**: Distro name/ID to force override logo detection.
+- **weather_location**: Location for weather lookup. Accepts a city name (`"London"`), US ZIP code (`"10001"`), airport IATA code (`"SFO"`), or lat/lon coordinates (`"48.8566,2.3522"`). If unset, wttr.in auto-detects your location from your IP address.
 - **fields**: Array of strings representing active fields and their display order. Available fields are:
   - `os`: Operating system name.
   - `kernel`: Kernel version.

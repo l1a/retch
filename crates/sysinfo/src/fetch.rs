@@ -20,6 +20,8 @@ pub struct CollectOptions {
     pub long: bool,
     /// List of fields that are requested to be displayed. If None, all fields are collected.
     pub fields: Option<Vec<String>>,
+    /// Optional location override for weather lookup (city, ZIP, airport code, coordinates).
+    pub weather_location: Option<String>,
 }
 
 /// Comprehensive system information data structure.
@@ -445,8 +447,9 @@ impl SystemInfo {
             } else {
                 None
             };
+            let weather_location = opts.weather_location.clone();
             let weather_handle = if should_collect("weather") {
-                Some(s.spawn(crate::weather::detect_weather))
+                Some(s.spawn(move || crate::weather::detect_weather(weather_location.as_deref())))
             } else {
                 None
             };

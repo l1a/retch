@@ -235,6 +235,7 @@ fn main() -> anyhow::Result<()> {
     let info = SystemInfo::collect(CollectOptions {
         long: cli.long,
         fields: allowed_fields,
+        weather_location: config.weather_location.clone(),
     })?;
 
     // Display output

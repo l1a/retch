@@ -29,6 +29,8 @@ pub struct Config {
     pub fields: Option<Vec<String>>,
     /// Custom theme color overrides.
     pub custom_theme: Option<CustomTheme>,
+    /// Location for weather lookup (city name, ZIP code, airport code, or coordinates).
+    pub weather_location: Option<String>,
 }
 
 /// Custom color overrides for themes.
@@ -126,6 +128,7 @@ impl Config {
             ("chafa", DEFAULT_CHAFA_BLOCK),
             ("logo", DEFAULT_LOGO_BLOCK),
             ("fields", DEFAULT_FIELDS_BLOCK),
+            ("weather_location", DEFAULT_WEATHER_LOCATION_BLOCK),
         ];
 
         for &(key, block) in &checks {
@@ -179,6 +182,11 @@ const DEFAULT_CHAFA_BLOCK: &str = r##"# Force Chafa symbols output (even if grap
 
 const DEFAULT_LOGO_BLOCK: &str = r##"# Force a specific distribution logo by name/ID
 # logo = "arch""##;
+
+const DEFAULT_WEATHER_LOCATION_BLOCK: &str = r##"# Location for weather lookup (city name, ZIP code, airport code, or lat/lon coordinates).
+# If unset, wttr.in auto-detects your location from your IP address.
+# Examples: "London", "10001", "SFO", "48.8566,2.3522"
+# weather_location = """##;
 
 const DEFAULT_FIELDS_BLOCK: &str = r##"# List of fields to display (leave empty or omit to show all)
 # fields = [

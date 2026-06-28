@@ -3,9 +3,14 @@
 
 //! Weather information via wttr.in.
 
-pub(crate) fn detect_weather() -> Option<String> {
+pub(crate) fn detect_weather(location: Option<&str>) -> Option<String> {
+    let url = match location {
+        Some(loc) if !loc.is_empty() => format!("https://wttr.in/{}?format=3", loc),
+        _ => "https://wttr.in/?format=3".to_string(),
+    };
+
     let output = std::process::Command::new("curl")
-        .args(["-s", "--max-time", "3", "https://wttr.in/?format=3"])
+        .args(["-s", "--max-time", "3", &url])
         .output()
         .ok()?;
 
