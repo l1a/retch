@@ -102,7 +102,7 @@ truncated or removed once the branch is merged. Only one "Current Session" block
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
 
-## Current State (v0.3.27)
+## Current State (v0.3.28)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -125,6 +125,11 @@ truncated or removed once the branch is merged. Only one "Current Session" block
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
 
 ## Major Achievements
+
+### v0.3.28 - TL;DR page (June 28, 2026)
+- **TL;DR Page**: Added `tldr` command page entry (`docs/retch.md`) detailing the most common CLI parameters, themes, and configuration flags.
+- **Documentation**: Updated manual pages (`just man`) and README to integrate references to the new `tldr` utility documentation.
+- **Version**: Bumped to `0.3.28` / `retch-sysinfo 0.1.28`.
 
 ### v0.3.27 - System and Misc fields (June 28, 2026)
 - **InitSystem**: Detects PID 1 init system name from `/proc/1/comm` on Linux; always "launchd" on macOS, "SCM" on Windows.
