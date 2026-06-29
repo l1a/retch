@@ -87,6 +87,10 @@ pub struct Cli {
     #[arg(long)]
     pub weather_location: Option<String>,
 
+    /// Temperature unit for weather: "fahrenheit" or "celsius". Overrides config
+    #[arg(long)]
+    pub weather_unit: Option<String>,
+
     /// Generate shell completions
     #[arg(long, value_enum)]
     pub completions: Option<CompletionShell>,

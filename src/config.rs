@@ -115,6 +115,9 @@ impl Config {
         if let Some(loc) = &cli.weather_location {
             merged.weather_location = Some(loc.clone());
         }
+        if let Some(unit) = &cli.weather_unit {
+            merged.weather_unit = Some(unit.clone());
+        }
 
         merged
     }
