@@ -88,7 +88,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.29)
+## Current State (v0.3.30)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -148,6 +148,12 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.30 - Switch weather backend to Open-Meteo (June 29, 2026)
+- **Weather accuracy**: Replaced wttr.in (World Weather Online backend) with Open-Meteo for forecast data and Open-Meteo geocoding API for location resolution. Auto-location now uses ipinfo.io instead of wttr.in IP detection. Results match NWS/ECMWF model data.
+- **weather_unit config**: New `weather_unit` config key and `--weather-unit` flag accepting `"fahrenheit"` (default) or `"celsius"`.
+- **WMO emoji map**: Weather conditions expressed as emojis via WMO weather interpretation codes (clear, cloudy, fog, drizzle, rain, snow, thunderstorm).
+- **Version**: Bumped to `0.3.30` / `retch-sysinfo 0.1.30`.
 
 ### v0.3.29 - Terminal size, DNS, WM, shell/desktop fixes, logo improvements (June 29, 2026)
 - **TerminalSize**: Detects terminal dimensions (columns × rows) via `ioctl(TIOCGWINSZ)` on Linux/macOS; falls back to `$COLUMNS`/`$LINES`.

@@ -216,9 +216,12 @@ accent_color = "bright_green"
 title_color = "bright_yellow"
 separator_color = "bright_black"
 
-# Location for weather lookup (city name, ZIP code, airport code, or lat/lon coordinates).
-# If unset, wttr.in auto-detects from your IP. Can also be set with --weather-location.
+# Location for weather lookup (city name, ZIP code, or lat/lon coordinates).
+# If unset, your location is auto-detected from your IP address.
 # weather_location = "London"
+
+# Temperature unit for weather: "fahrenheit" (default) or "celsius"
+# weather_unit = "fahrenheit"
 
 # Ordered list of system information fields to display
 # Note: "phys-mem" requires root (sudo) on Linux to read DMI memory tables. On Windows, uses Win32_PhysicalMemory via PowerShell.
