@@ -559,16 +559,7 @@ impl SystemInfo {
                 .ok()
                 .map(|s| normalize_desktop_name(&s))
                 .filter(|s| !s.is_empty())
-                .or_else(|| {
-                    #[cfg(target_os = "linux")]
-                    {
-                        detect_desktop_from_proc()
-                    }
-                    #[cfg(not(target_os = "linux"))]
-                    {
-                        None
-                    }
-                })
+                .or_else(detect_desktop_from_proc)
         } else {
             None
         };
@@ -1116,6 +1107,11 @@ pub fn detect_cpu_freq_range() -> Option<(u64, u64)> {
     {
         None
     }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn detect_desktop_from_proc() -> Option<String> {
+    None
 }
 
 #[cfg(target_os = "linux")]
