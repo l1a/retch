@@ -20,6 +20,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from urllib.parse import urlparse
 
 TLDR_REPO = "tldr-pages/tldr"
 AI_TRAILER = "Assisted-by: Gemini 3.5 Flash"
@@ -54,11 +55,16 @@ def main():
     try:
         url_check = subprocess.run(["git", "remote", "get-url", "origin"], capture_output=True, text=True, cwd=str(root_dir))
         url = url_check.stdout.strip()
-        parts = url.replace(":", "/").split("/")
-        for i, part in enumerate(parts):
-            if part in ("github.com", "git@github.com") and i + 1 < len(parts):
-                owner = parts[i + 1]
-                break
+        parsed = urlparse(url)
+        if parsed.scheme in ("https", "http") and parsed.netloc in ("github.com", "www.github.com"):
+            path_parts = parsed.path.strip("/").split("/")
+            if path_parts and path_parts[0]:
+                owner = path_parts[0]
+        elif url.startswith("git@github.com:"):
+            remainder = url[len("git@github.com:"):]
+            path_parts = remainder.split("/")
+            if path_parts and path_parts[0]:
+                owner = path_parts[0]
     except Exception:
         pass
 
