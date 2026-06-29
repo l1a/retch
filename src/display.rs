@@ -30,14 +30,18 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         theme = Theme::with_custom_overrides(theme, custom);
     }
 
-    // Determine terminal width
-    let term_width = if let Some((terminal_size::Width(w), _)) = terminal_size::terminal_size() {
+    // Determine terminal width.
+    let term_size = terminal_size::terminal_size();
+    let term_width = if let Some((terminal_size::Width(w), _)) = term_size {
         w as usize
     } else {
         80
     };
+    // Use isatty() directly — terminal_size() can return Some() when a pager
+    // (e.g. bat) allocates a PTY, giving a false positive.
+    let stdout_is_tty = std::io::IsTerminal::is_terminal(&std::io::stdout());
 
-    let show_logo = _config.show_logo.unwrap_or(true) && !cli.no_logo;
+    let show_logo = _config.show_logo.unwrap_or(true) && !cli.no_logo && stdout_is_tty;
 
     // Determine which fields to show
     let allowed_fields: Option<Vec<String>> = if cli.long {
