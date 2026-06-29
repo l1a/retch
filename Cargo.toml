@@ -36,6 +36,9 @@ base64 = { version = "0.22", optional = true }
 icy_sixel = { version = "0.5", optional = true }
 terminal_size = "0.4"
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [features]
 default = ["graphics"]
 graphics = ["image", "base64", "icy_sixel"]
