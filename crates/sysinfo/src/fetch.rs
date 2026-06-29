@@ -22,6 +22,8 @@ pub struct CollectOptions {
     pub fields: Option<Vec<String>>,
     /// Optional location override for weather lookup (city, ZIP, airport code, coordinates).
     pub weather_location: Option<String>,
+    /// Temperature unit for weather display.
+    pub weather_unit: crate::weather::WeatherUnit,
 }
 
 /// Comprehensive system information data structure.
@@ -130,7 +132,7 @@ pub struct SystemInfo {
     pub bootmgr: Option<String>,
     /// Default editor ($VISUAL / $EDITOR).
     pub editor: Option<String>,
-    /// Current weather from wttr.in.
+    /// Current weather from Open-Meteo.
     pub weather: Option<String>,
     /// Active window manager name.
     pub wm: Option<String>,
@@ -454,8 +456,11 @@ impl SystemInfo {
                 None
             };
             let weather_location = opts.weather_location.clone();
+            let weather_unit = opts.weather_unit;
             let weather_handle = if should_collect("weather") {
-                Some(s.spawn(move || crate::weather::detect_weather(weather_location.as_deref())))
+                Some(s.spawn(move || {
+                    crate::weather::detect_weather(weather_location.as_deref(), weather_unit)
+                }))
             } else {
                 None
             };

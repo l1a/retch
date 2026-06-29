@@ -231,6 +231,12 @@ fn main() -> anyhow::Result<()> {
         long: cli.long,
         fields: allowed_fields,
         weather_location: config.weather_location.clone(),
+        weather_unit: config
+            .weather_unit
+            .as_deref()
+            .unwrap_or("fahrenheit")
+            .parse()
+            .unwrap_or_default(),
     })?;
 
     // Display output
@@ -276,10 +282,13 @@ fn default_config_content() -> String {
 # short = true     # OS, Kernel, Host, CPU, GPU, Memory, Disk
 # long = true      # Show all fields
 
-# Location for weather lookup (city name, ZIP code, airport code, or lat/lon coordinates).
-# If unset, wttr.in auto-detects your location from your IP address.
-# Examples: "London", "10001", "SFO", "48.8566,2.3522"
+# Location for weather lookup (city name, ZIP code, or lat/lon coordinates).
+# If unset, your location is auto-detected from your IP address.
+# Examples: "London", "10001", "48.8566,2.3522"
 # weather_location = ""
+
+# Temperature unit for weather: "fahrenheit" or "celsius"
+# weather_unit = "fahrenheit"
 
 # List of fields to display (leave empty or omit to show all)
 # Note: "phys-mem" requires running as root (sudo) on Linux to read DMI memory tables.

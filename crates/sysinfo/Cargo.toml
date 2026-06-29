@@ -1,6 +1,6 @@
 [package]
 name = "retch-sysinfo"
-version = "0.1.29"
+version = "0.1.30"
 edition = "2021"
 authors = ["Ken Tobias"]
 description = "System information gathering library for retch"
@@ -15,3 +15,4 @@ anyhow = "1.0"
 owo-colors = "4.0"
 rusqlite = { version = "0.40", features = ["bundled"] }
 libc = "0.2"
+serde_json = "1.0"
