@@ -13,12 +13,14 @@
 /// before the blocking call. On other platforms, delegates to sysinfo::Disks.
 pub fn detect_logical_disks(include_fuse: bool) -> Vec<(String, u64, u64, String)> {
     #[cfg(target_os = "linux")]
-    return detect_logical_linux(include_fuse);
+    {
+        detect_logical_linux(include_fuse)
+    }
 
     #[cfg(not(target_os = "linux"))]
     {
         let _ = include_fuse;
-        return detect_logical_sysinfo();
+        detect_logical_sysinfo()
     }
 }
 
