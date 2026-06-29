@@ -194,7 +194,10 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                 let norm_label_no_spaces = norm_label.replace(' ', "");
                 fields.iter().any(|f| {
                     let norm_f = f.to_lowercase().replace(['-', '_'], " ");
-                    norm_f == norm_label || norm_f.replace(' ', "") == norm_label_no_spaces
+                    norm_f == norm_label
+                        || norm_f.replace(' ', "") == norm_label_no_spaces
+                        // "dns" field key matches "DNS Server" display label
+                        || (norm_label == "dns server" && norm_f == "dns")
                 })
             }
             None => true,
@@ -216,12 +219,21 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         }
     };
 
+    // OS / system identity
     print_line("OS", &info.os);
     if let Some(kernel) = &info.kernel {
         print_line("Kernel", kernel);
     }
     if let Some(host) = &info.hostname {
         print_line("Host", host);
+    }
+    if let Some(domain) = &info.domain {
+        print_line("Domain", domain);
+    }
+    if should_show("domain-search") {
+        for entry in &info.domain_search {
+            print_line("Domain Search", entry);
+        }
     }
     if let Some(chassis) = &info.chassis {
         print_line("Chassis", chassis);
@@ -232,10 +244,22 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if let Some(locale) = &info.locale {
         print_line("Locale", locale);
     }
+    print_line("Arch", &info.arch);
+    print_line("Users", &info.users.to_string());
+    if let Some(pkgs) = info.packages {
+        if pkgs > 0 {
+            print_line("Packages", &pkgs.to_string());
+        }
+    }
     if let Some(user) = &info.current_user {
         print_line("User", user);
     }
-    print_line("Arch", &info.arch);
+    // Uptime belongs with system identity, not hardware
+    let uptime_str = format_uptime(&info.uptime);
+    let boot_display = format!("{} since {}", uptime_str, info.boot_time);
+    print_line("Uptime", &boot_display);
+
+    // Hardware
     print_line("CPU", &format!("{} ({})", info.cpu, info.cpu_core_info));
     if let Some(freq) = &info.cpu_freq {
         print_line("CPU Freq", freq);
@@ -278,6 +302,15 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             print_line("Gamepad", gp);
         }
     }
+    if let Some(wifi) = &info.wifi {
+        print_line("Wi-Fi", wifi);
+    }
+    if let Some(bt) = &info.bluetooth {
+        print_line("Bluetooth", bt);
+    }
+    if let Some(bat) = &info.battery {
+        print_line("Battery", bat);
+    }
     print_line("Memory", &info.memory);
     if let Some(phys_mem) = &info.physical_memory {
         print_line("Phys Mem", phys_mem);
@@ -287,19 +320,16 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if let Some(load) = &info.load_avg {
         print_line("Load", load);
     }
-
     if should_show("Disk") {
         for disk in &info.disks {
             print_line("Disk", disk);
         }
     }
-
     if should_show("Phys Disk") {
         for disk in &info.physical_disks {
             print_line("Phys Disk", disk);
         }
     }
-
     if should_show("Temp") {
         if cli.full {
             for temp in &info.temps {
@@ -312,6 +342,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         }
     }
 
+    // Network
     if should_show("Net") {
         if cli.long || cli.full {
             for net in &info.networks {
@@ -350,39 +381,14 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             }
         }
     }
-
     if let Some(ip) = &info.public_ip {
         print_line("Public IP", ip);
     }
-
-    if let Some(wifi) = &info.wifi {
-        print_line("Wi-Fi", wifi);
-    }
     if !info.dns.is_empty() {
-        print_line("DNS", &info.dns.join(", "));
-    }
-    if let Some(domain) = &info.domain {
-        print_line("Domain", domain);
-    }
-    if should_show("domain-search") {
-        for entry in &info.domain_search {
-            print_line("Domain Search", entry);
-        }
+        print_line("DNS Server", &info.dns.join(", "));
     }
 
-    if let Some(bt) = &info.bluetooth {
-        print_line("Bluetooth", bt);
-    }
-
-    // Uptime: human duration first, then ISO boot time with timezone
-    let uptime_str = format_uptime(&info.uptime);
-    let boot_display = format!("{} since {}", uptime_str, info.boot_time);
-    print_line("Uptime", &boot_display);
-
-    if let Some(bat) = &info.battery {
-        print_line("Battery", bat);
-    }
-
+    // Environment
     if let Some(shell) = &info.shell {
         print_line("Shell", shell);
     }
@@ -422,12 +428,6 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     }
     if let Some(term_font) = &info.terminal_font {
         print_line("Terminal Font", term_font);
-    }
-    print_line("Users", &info.users.to_string());
-    if let Some(pkgs) = info.packages {
-        if pkgs > 0 {
-            print_line("Packages", &pkgs.to_string());
-        }
     }
     if let Some(weather) = &info.weather {
         print_line("Weather", weather);
