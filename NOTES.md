@@ -49,7 +49,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
   4. If the GitHub wiki exists, clone it (`https://github.com/l1a/retch.wiki.git`) and update any affected pages before submitting the PR.
   5. When adding distro logos, run `cargo run -- --print-logos --ascii-logo` and confirm every new distro appears in the output. The hardcoded list in `src/main.rs` must be updated alongside `src/logo.rs`.
   6. If package versions are bumped, run `just man` to regenerate the man pages (so `docs/retch.1` is kept in sync with the new `Cargo.toml` version) and commit the updated man page *as part of the Pull Request* before merging (never directly on `main`).
-- **Pre-PR Gate**: Before calling `gh pr create`, the developer or agent MUST run `just pr` and pass the interactive confirmation prompt. `just pr` automates the checks (branch, version bump, AGENTS.md/NOTES.md header, man page, Cargo.lock, fmt+clippy, tests) and prints the manual checklist (README, release log entry, wiki, tldr) requiring an explicit `y` confirmation.
+- **Pre-PR Gate**: Before calling `gh pr create`, the developer or agent MUST run `just pr` and pass the interactive confirmation prompt. `just pr` automates the checks (branch, version bump, AGENTS.md/NOTES.md header, man page, Cargo.lock, fmt+clippy, tests) and prints the manual checklist (README, release log entry, wiki, tldr doc update) requiring an explicit `y` confirmation. Note: the tldr checklist item means updating `docs/retch.md` only — do **not** run `just tldr-release` (upstream submission on hold).
 - **PR Test Plans**: After opening a PR, immediately run each item in the test plan checklist and update the PR body via `gh pr edit` to check off passed items. Do not leave all boxes unchecked. Items requiring manual human verification (e.g. runtime output) should be left unchecked with a note.
 - **Documentation & Versioning Updates**: When branching to make changes, ensure the following updates are performed:
   - **Version Bump**: Increment the version in `Cargo.toml`, verify compilation, and run `cargo check` to update `Cargo.lock`.
@@ -57,7 +57,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
   - **README**: Add new features, command examples, or configuration keys to `README.md`.
   - **Roadmap & History**: Update `NOTES.md` by bumping the version in the "Current State" header and adding a new release log entry under "Major Achievements".
   - **GitHub Wiki**: Clone (`https://github.com/l1a/retch.wiki.git`) and update the corresponding wiki pages (`Configuration-and-Theming.md`, `Workspace-Architecture.md`, `Home.md`).
-  - **tldr Page**: Update the local `docs/retch.md` and submit/update the page upstream in the [tldr-pages/tldr](https://github.com/tldr-pages/tldr) repository using `just tldr-release` if new options are introduced.
+  - **tldr Page**: Update the local `docs/retch.md` if new options are introduced. **Do NOT run `just tldr-release`** — the upstream submission to [tldr-pages/tldr](https://github.com/tldr-pages/tldr) was denied pending more community traction. Keep `docs/retch.md` and the `just tldr-release` workflow maintained, but hold all upstream submissions until further notice.
   - **Bumping Strategy**: If the changes are significant, ALWAYS ask the user whether to perform a major, minor, or patch version bump.
 - **Command Redundancy**: Avoid running `just check && cargo test` sequentially since both build and check the project profiles, causing redundant background compilation cycles. Prefer `cargo test` during iteration and a final check before staging.
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages. Use `just bench-upload` to manually push local benchmark results to the dashboard; a `post-merge` hook installed via `just install-hooks` does this automatically after every merge to main.
@@ -81,7 +81,9 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
     cargo publish -p retch-cli
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
-  - **Publish to tldr-pages upstream** (manual, when CLI flags change):
+  - **Publish to tldr-pages upstream** (on hold — do not run):
+    The upstream tldr-pages submission was denied pending more community traction.
+    Keep `docs/retch.md` current but do not run `just tldr-release` until further notice.
     ```
     just tldr-release
     ```
