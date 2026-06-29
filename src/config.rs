@@ -31,6 +31,8 @@ pub struct Config {
     pub custom_theme: Option<CustomTheme>,
     /// Location for weather lookup (city name, ZIP code, airport code, or coordinates).
     pub weather_location: Option<String>,
+    /// Temperature unit for weather: "fahrenheit" or "celsius". Defaults to "fahrenheit".
+    pub weather_unit: Option<String>,
 }
 
 /// Custom color overrides for themes.
@@ -132,6 +134,7 @@ impl Config {
             ("logo", DEFAULT_LOGO_BLOCK),
             ("fields", DEFAULT_FIELDS_BLOCK),
             ("weather_location", DEFAULT_WEATHER_LOCATION_BLOCK),
+            ("weather_unit", DEFAULT_WEATHER_UNIT_BLOCK),
         ];
 
         for &(key, block) in &checks {
@@ -186,10 +189,13 @@ const DEFAULT_CHAFA_BLOCK: &str = r##"# Force Chafa symbols output (even if grap
 const DEFAULT_LOGO_BLOCK: &str = r##"# Force a specific distribution logo by name/ID
 # logo = "arch""##;
 
-const DEFAULT_WEATHER_LOCATION_BLOCK: &str = r##"# Location for weather lookup (city name, ZIP code, airport code, or lat/lon coordinates).
-# If unset, wttr.in auto-detects your location from your IP address.
-# Examples: "London", "10001", "SFO", "48.8566,2.3522"
+const DEFAULT_WEATHER_LOCATION_BLOCK: &str = r##"# Location for weather lookup (city name, ZIP code, or lat/lon coordinates).
+# If unset, your location is auto-detected from your IP address.
+# Examples: "London", "10001", "48.8566,2.3522"
 # weather_location = """##;
+
+const DEFAULT_WEATHER_UNIT_BLOCK: &str = r##"# Temperature unit for weather: "fahrenheit" or "celsius"
+# weather_unit = "fahrenheit""##;
 
 const DEFAULT_FIELDS_BLOCK: &str = r##"# List of fields to display (leave empty or omit to show all)
 # Note: "phys-mem" requires running as root (sudo) on Linux to read DMI memory tables.
@@ -328,7 +334,7 @@ mod tests {
 
     #[test]
     fn test_merge_defaults_all_present() {
-        let existing = "theme = \"dark\"\nshow_logo = true\nascii_only = false\nchafa = false\nlogo = \"fedora\"\nfields = [\"os\"]\nweather_location = \"London\"\n[custom_theme]\nlabel_color = \"red\"\n";
+        let existing = "theme = \"dark\"\nshow_logo = true\nascii_only = false\nchafa = false\nlogo = \"fedora\"\nfields = [\"os\"]\nweather_location = \"London\"\nweather_unit = \"fahrenheit\"\n[custom_theme]\nlabel_color = \"red\"\n";
         let (merged, additions) = Config::merge_defaults(existing);
         assert!(additions.is_empty());
         assert_eq!(merged.trim(), existing.trim());
@@ -336,7 +342,7 @@ mod tests {
 
     #[test]
     fn test_merge_defaults_commented_ignored() {
-        let existing = "# theme = \"auto\"\n# show_logo = true\n# ascii_only = false\n# chafa = false\n# logo = \"arch\"\n# fields = []\n# weather_location = \"\"\n# [custom_theme]\n";
+        let existing = "# theme = \"auto\"\n# show_logo = true\n# ascii_only = false\n# chafa = false\n# logo = \"arch\"\n# fields = []\n# weather_location = \"\"\n# weather_unit = \"fahrenheit\"\n# [custom_theme]\n";
         let (merged, additions) = Config::merge_defaults(existing);
         assert!(additions.is_empty());
         assert_eq!(merged.trim(), existing.trim());
@@ -355,6 +361,7 @@ mod tests {
                 "logo",
                 "fields",
                 "weather_location",
+                "weather_unit",
                 "custom_theme"
             ]
         );

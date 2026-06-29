@@ -33,6 +33,7 @@ fn bench_system_info_collect(c: &mut Criterion) {
                 long: cli.long,
                 fields: None,
                 weather_location: None,
+                weather_unit: Default::default(),
             });
         });
     });

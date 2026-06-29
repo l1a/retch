@@ -26,6 +26,10 @@ pub mod gpu {
     pub use retch_sysinfo::gpu::*;
 }
 
+pub mod weather {
+    pub use retch_sysinfo::weather::WeatherUnit;
+}
+
 pub mod cli;
 pub mod config;
 pub mod display;

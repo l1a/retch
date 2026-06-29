@@ -1580,6 +1580,7 @@ dependencies = [
  "libc",
  "owo-colors",
  "rusqlite",
+ "serde_json",
  "sysinfo",
 ]
 
