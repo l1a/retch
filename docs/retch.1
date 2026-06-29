@@ -385,9 +385,13 @@ ASCII logos are adapted from Fastfetch\.
 .IP \(bu 4
 Graphical logos are rendered using Chafa when available, or via the Kitty, iTerm2, or Sixel inline image protocols\.
 .El
+.Bl
+.IP \(bu 4
+Logos are automatically suppressed when stdout is not a terminal (e\.g\. when piped to a pager or redirected to a file)\.
+.El
 .RE
 .PP
-Use `\f[CR]\-\-ascii\-only\fP` to force text\-only output\.
+Use `\f[CR]\-\-ascii\-only\fP` to force text\-only output\. Use `\f[CR]\-\-no\-logo\fP` to suppress the logo unconditionally\.
 
 .SH "EXIT STATUS"
 .PP

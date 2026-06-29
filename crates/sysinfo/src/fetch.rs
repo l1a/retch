@@ -1343,6 +1343,49 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_normalize_desktop_name_known() {
+        assert_eq!(normalize_desktop_name("gnome"), "GNOME");
+        assert_eq!(normalize_desktop_name("GNOME"), "GNOME");
+        assert_eq!(normalize_desktop_name("kde"), "KDE Plasma");
+        assert_eq!(normalize_desktop_name("plasma"), "KDE Plasma");
+        assert_eq!(normalize_desktop_name("KDE Plasma"), "KDE Plasma");
+        assert_eq!(normalize_desktop_name("xfce"), "XFCE");
+        assert_eq!(normalize_desktop_name("lxqt"), "LXQt");
+        assert_eq!(normalize_desktop_name("mate"), "MATE");
+        assert_eq!(normalize_desktop_name("cinnamon"), "Cinnamon");
+        assert_eq!(normalize_desktop_name("e"), "Enlightenment");
+    }
+
+    #[test]
+    fn test_normalize_desktop_name_unknown_lowercase() {
+        // Unknown all-lowercase names get title-cased.
+        assert_eq!(normalize_desktop_name("budgie"), "Budgie");
+        assert_eq!(normalize_desktop_name("niri"), "Niri");
+    }
+
+    #[test]
+    fn test_normalize_desktop_name_unknown_mixed() {
+        // Unknown mixed-case names are preserved as-is.
+        assert_eq!(normalize_desktop_name("MyDE"), "MyDE");
+    }
+
+    #[test]
+    fn test_normalize_desktop_name_trims_whitespace() {
+        assert_eq!(normalize_desktop_name("  gnome  "), "GNOME");
+        assert_eq!(normalize_desktop_name(" niri "), "Niri");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_detect_desktop_from_proc_returns_option() {
+        // Just verify it runs without panicking and returns a sane value.
+        let result = detect_desktop_from_proc();
+        if let Some(ref de) = result {
+            assert!(!de.is_empty(), "desktop name should not be empty");
+        }
+    }
+
     #[cfg(target_os = "linux")]
     #[test]
     fn test_detect_cpu_freq_range_returns_ordered_pair() {

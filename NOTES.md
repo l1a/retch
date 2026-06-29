@@ -88,7 +88,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.28)
+## Current State (v0.3.29)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -134,15 +134,12 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - **DiskIO**: Disk I/O throughput
 
 ### Network
-- **DNS**: Configured DNS servers
 - **NetIO**: Network I/O throughput
 
 ### Desktop Environment & UI
-- **WM**: Window manager name and version
 - **WMTheme**: Window manager theme
 - **LM**: Login manager (GDM, SDDM, etc.)
 - **Wallpaper**: Current wallpaper file path
-- **TerminalSize**: Terminal dimensions (columns × rows)
 - **TerminalTheme**: Terminal foreground/background colors
 
 ### Media
@@ -152,11 +149,14 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 ## 7. Major Achievements
 
-### v0.3.29 - Terminal size, DNS, WM, shell fix (June 29, 2026)
+### v0.3.29 - Terminal size, DNS, WM, shell/desktop fixes, logo improvements (June 29, 2026)
 - **TerminalSize**: Detects terminal dimensions (columns × rows) via `ioctl(TIOCGWINSZ)` on Linux/macOS; falls back to `$COLUMNS`/`$LINES`.
 - **DNS**: Parses configured nameservers from `/etc/resolv.conf` (Linux/macOS); PowerShell `Get-DnsClientServerAddress` on Windows.
 - **WM**: Detects the active window manager by scanning `/proc` for known compositor/WM process names. Suppressed in output when identical to the Desktop field (case-insensitive).
 - **Shell fix**: Shell detection now walks the process tree first to find the *running* shell, falling back to `$SHELL` (login shell) only when the scan yields nothing.
+- **Desktop fix**: Added `XDG_SESSION_DESKTOP` and `GDMSESSION` as env-var fallbacks for Desktop detection; added `normalize_desktop_name()` for canonical casing (e.g. `gnome` → `GNOME`); added `detect_desktop_from_proc()` last-resort scan of `/proc` for known DE processes.
+- **Logo tty suppression**: Logo is now automatically suppressed when stdout is not a terminal (uses `isatty()` — not fooled by pagers like `bat` that allocate a PTY).
+- **Logo cursor placement**: Graphical logos (Kitty/iTerm2/Sixel) now correctly advance the terminal cursor past the logo's bottom edge when the info field list is shorter than the logo height. Cell height is computed via `TIOCGWINSZ` with a 20px fallback.
 - **Version**: Bumped to `0.3.29` / `retch-sysinfo 0.1.29`.
 
 ### v0.3.28 - TL;DR page (June 28, 2026)

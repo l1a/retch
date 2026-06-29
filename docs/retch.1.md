@@ -169,8 +169,9 @@ retch supports both ASCII and graphical logos.
 
 - ASCII logos are adapted from Fastfetch.
 - Graphical logos are rendered using Chafa when available, or via the Kitty, iTerm2, or Sixel inline image protocols.
+- Logos are automatically suppressed when stdout is not a terminal (e.g. when piped to a pager or redirected to a file).
 
-Use `--ascii-only` to force text-only output.
+Use `--ascii-only` to force text-only output. Use `--no-logo` to suppress the logo unconditionally.
 
 # EXIT STATUS
 

@@ -40,6 +40,7 @@ retch is under active development with a working core, rich system information o
   - **ASCII art**: High-quality color ASCII art matching your distro (adapted from Fastfetch).
   - **Graphical images**: Inline image rendering support via Kitty protocol, iTerm2, and Sixel.
   - **Unicode symbols fallback**: Graphical rendering using Chafa when full image protocols are unavailable.
+  - **Auto-suppressed when piped**: Logo is never printed when stdout is not a terminal (e.g. `retch | bat` or `retch > file`).
   - **Interactive CLI tools**: Command flags like `--ascii-only`, `--logo <NAME>` to force overrides, `--print-logos`, and `--list-distros`.
 - **Flexible Theming**:
   - Built-in community color schemes (Catppuccin Latte/Frappé/Macchiato/Mocha, Solarized Light/Dark) or automatic dark/light preference detection.

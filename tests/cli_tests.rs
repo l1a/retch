@@ -110,6 +110,60 @@ fn test_cli_write_config_temp() {
 }
 
 #[test]
+fn test_cli_fields_terminal_size() {
+    let (stdout, stderr, success) = run_retch(&["--fields", "terminal-size"]);
+    assert!(success, "stderr: {}", stderr);
+    assert!(stderr.is_empty());
+    // Terminal size is empty when there is no TTY (e.g. in CI/test runner).
+    assert!(
+        stdout.contains("Terminal Size") || stdout.trim().is_empty(),
+        "unexpected output: {}",
+        stdout
+    );
+}
+
+#[test]
+fn test_cli_fields_dns() {
+    let (stdout, stderr, success) = run_retch(&["--fields", "dns"]);
+    assert!(success, "stderr: {}", stderr);
+    assert!(stderr.is_empty());
+    assert!(
+        stdout.contains("DNS"),
+        "expected 'DNS' in output: {}",
+        stdout
+    );
+}
+
+#[test]
+fn test_cli_fields_wm() {
+    let (stdout, stderr, success) = run_retch(&["--fields", "wm"]);
+    assert!(success, "stderr: {}", stderr);
+    assert!(stderr.is_empty());
+    // WM may be empty on headless CI; just verify the binary ran cleanly.
+    assert!(
+        stdout.contains("WM") || stdout.trim().is_empty(),
+        "unexpected output: {}",
+        stdout
+    );
+}
+
+#[test]
+fn test_cli_piped_output_no_graphical_logo() {
+    // run_retch uses Command::output() which pipes stdout, so is_terminal() == false.
+    // No Kitty/iTerm2/Sixel escape sequences should appear.
+    let (stdout, stderr, success) = run_retch(&[]);
+    assert!(success, "stderr: {}", stderr);
+    assert!(
+        !stdout.contains("\x1b_G"),
+        "Kitty escape sequence found in piped output"
+    );
+    assert!(
+        !stdout.contains("\x1b]1337"),
+        "iTerm2 escape sequence found in piped output"
+    );
+}
+
+#[test]
 fn test_bench_compiles() {
     let output = Command::new("cargo")
         .args(["bench", "--no-run"])
