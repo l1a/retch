@@ -236,14 +236,15 @@ separator_color = "bright_black"
 # Note: "phys-mem" requires root (sudo) on Linux to read DMI memory tables. On Windows, uses Win32_PhysicalMemory via PowerShell.
 # Note: "phys-disk" on Windows uses Get-PhysicalDisk via PowerShell.
 # Note: "weather" requires network access; shown in full mode only by default.
+# Note: "domain-search" queries resolvectl; shown in full mode only by default.
 fields = [
-    "os", "kernel", "host", "chassis", "init", "locale",
+    "os", "kernel", "host", "domain", "chassis", "init", "locale",
     "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage", "gpu",
-    "motherboard", "bios", "bootmgr", "display", "audio",
+    "motherboard", "bios", "bootmgr", "display", "audio", "camera",
     "memory", "phys-mem", "swap", "uptime", "procs", "load",
     "disk", "phys-disk", "temp", "net", "wifi", "dns", "bluetooth", "battery",
-    "shell", "editor", "terminal", "terminal_font", "terminal-size", "desktop", "wm",
-    "theme", "icons", "cursor", "font", "users", "packages", "weather"
+    "shell", "editor", "terminal", "terminal-font", "terminal-size", "desktop", "wm",
+    "theme", "icons", "cursor", "font", "users", "packages", "weather", "domain-search"
 ]
 ```
 

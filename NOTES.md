@@ -203,9 +203,13 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ### v0.3.31 - Output mode strata refactor (June 29, 2026)
 - **`--full` flag**: New output mode that is a strict superset of `--long`. Adds slow and cosmetic fields: `theme`, `icons`, `cursor`, `gamepad`, `weather`, and FUSE mounts in disk detection.
 - **Standard mode cleanup**: Removed `bios` and `gamepad` from the default field set. `bios` moves to `--long`; `gamepad` moves to `--full`.
-- **`--long` is now explicit**: Long mode uses an explicit field list instead of "collect everything". Fields include all standard fields plus `bios`, `font`, `shell`, `editor`, `terminal`, `terminal-font`, `terminal-size`, `desktop`, `wm`, `dns`, `wifi`, `bluetooth`, `battery`, `public-ip`, `locale`, `init`, `chassis`, `bootmgr`, `temp`, `cpu-freq`, `procs`, `arch`, `users`, `packages`.
+- **`--long` is now explicit**: Long mode uses an explicit field list instead of "collect everything". Fields include all standard fields plus `bios`, `font`, `shell`, `editor`, `terminal`, `terminal-font`, `terminal-size`, `desktop`, `wm`, `dns`, `domain`, `wifi`, `bluetooth`, `battery`, `public-ip`, `locale`, `init`, `chassis`, `bootmgr`, `temp`, `cpu-freq`, `procs`, `arch`, `users`, `packages`.
 - **Consolidated temps in `--long`**: Temperature output in `--long` mode shows one reading per physical unit (CPU, GPU, NVMe, WiFi, System — highest sensor in each category). All raw sensor readings appear in `--full`.
 - **FUSE mounts in `--full`**: `detect_logical_disks` now accepts an `include_fuse` flag; `--full` re-enables `statvfs` for `fuse.*` entries (all other modes skip them to avoid 600ms+ hangs).
+- **`domain` field**: Current DNS domain name from `/etc/resolv.conf` `domain` directive (falls back to first `search` entry). Shown in `--long` and above.
+- **`domain-search` field**: Per-interface DNS search domain lists from `resolvectl status`, formatted as `"wlan0: home.local"`. Full mode only.
+- **Display reorder**: Logical grouping of fields — domain/domain-search under Host, uptime near OS identity, users/packages near OS section, Wi-Fi/Bluetooth/Battery in hardware block (after Camera).
+- **DNS label renamed**: "DNS" display label changed to "DNS Server". Config key `dns` is unchanged.
 - **Version**: Bumped to `0.3.31` / `retch-sysinfo 0.1.31`.
 
 ### v0.3.30 - Switch weather backend to Open-Meteo (June 29, 2026)
