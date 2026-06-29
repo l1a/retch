@@ -108,11 +108,57 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
+## 4. Output Mode Strata
+
+retch has four output modes with increasing verbosity and acceptable runtime. Each mode is a strict superset of the one above it.
+
+| Mode | Flag | Typical runtime | Purpose |
+|---|---|---|---|
+| Short | `--short` | <100ms | Hardware snapshot — fastest, scriptable |
+| Standard | *(none)* | ~200ms | Daily-use system overview |
+| Long | `--long` | ~500ms | Diagnostics — consolidated thermals, network detail, firmware |
+| Full | `--full` | ~5s+ | Everything, including slow and cosmetic fields |
+
+### `--short`
+Fast hardware-only snapshot. No network calls, no sensors, no cosmetic fields.
+Fields: `os`, `kernel`, `host`, `cpu`, `gpu`, `memory`, `disk`, `net`
+
+### Standard (no flag)
+Full system overview suitable for daily use. No slow fields, no sensors, no cosmetic fields.
+Fields: `os`, `kernel`, `host`, `cpu`, `cpu-cache`, `cpu-usage`, `motherboard`, `gpu`, `display`, `audio`, `camera`, `gamepad`, `memory`, `phys-mem`, `swap`, `load`, `disk`, `phys-disk`, `net`, `uptime`
+- BIOS moves to `--long` (firmware detail, not needed at a glance)
+
+### `--long`
+Standard plus diagnostics. Aimed at understanding system health and network configuration.
+Adds over standard:
+- `bios` — firmware vendor, version, date
+- `temp` (consolidated) — **one representative reading per physical unit**: CPU, GPU, SSD/NVMe, WiFi adapter, System/Motherboard. Rule: highest sensor within each category (worst-case thermal indicator). All other sensor readings are deferred to `--full`.
+- `domain` — current DNS domain name (from `/etc/resolv.conf` `domain` directive or `hostname -d`)
+- `public-ip`, `wifi`, `bluetooth`, `battery`, `shell`, `editor`, `terminal`, `terminal-size`, `desktop`, `wm`, `dns`, `users`, `packages`, `locale`, `init`, `chassis`, `bootmgr`
+
+### `--full`
+Long plus everything slow, verbose, or cosmetic. Suitable for reporting, screenshots, or deep diagnostics. Users should expect multi-second runtimes.
+Adds over long:
+- `temp` (all sensors) — replaces the consolidated view with every sensor reading
+- `domain-search` — per-interface DNS search domain lists (from `resolvectl status` or equivalent)
+- Cosmetic fields: `theme`, `icons`, `cursor`, `font`, `terminal-font`
+- `weather` — current conditions via Open-Meteo (~4s network timeout)
+- FUSE mounts — disk detection re-enables `statvfs` for `fuse.*` entries (skipped in all other modes to avoid 600ms+ hangs from cryfs/EncFS vaults)
+- `phys-disk`, `phys-mem` — may be promoted here if runtime warrants it
+
+### Design notes
+- **Temperature consolidation logic** for `--long`: classify sensors by name patterns (e.g. `k10temp`/`coretemp` → CPU, `amdgpu`/`nvidia` → GPU, `nvme` → SSD, `ath`/`iwl` → WiFi, `acpitz`/`thinkpad` → System). Within each category, report the highest reading.
+- **`--full` as a superset**: every field visible in `--long` also appears in `--full`; nothing is hidden or replaced except the temp view (consolidated → all sensors).
+- **Breaking change note**: cosmetic fields (`theme`, `icons`, `cursor`, `font`, `terminal-font`) currently appear in `--long` (via `None` / collect-all). Under this design they move to `--full` only. This is intentional — cosmetic fields are slow (theme detection involves sqlite/gsettings queries) and irrelevant for diagnostic use.
+- **Alternative considered**: `--verbose` instead of `--full`. Rejected — `--full` is more intuitive as the natural escalation from `--long`, and `--verbose` implies logging noise rather than field breadth.
+
+---
+
 ## 5. Future Work / Backlog
 - **Package repository submissions**: Submit retch to AUR (Arch User Repository) and nixpkgs so it appears in the [Repology](https://repology.org/project/retch/versions) packaging status widget. The Nix flake (contributed by @quixaq) is a useful starting point for the nixpkgs submission.
 - **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
-- **FUSE mount opt-in**: v0.3.26 skips all `fuse.*` mounts in disk detection to avoid 600ms+ hangs from cryfs/EncFS vaults. Users who still want to see FUSE-backed mounts (e.g. sshfs, rclone) should have an opt-in path — likely a config key (`show_fuse_mounts = true`) or a CLI flag (`--include-fuse`) that re-enables `statvfs` calls on those entries.
+- **FUSE mounts in `--full`**: v0.3.26 skips all `fuse.*` mounts to avoid 600ms+ hangs from cryfs/EncFS vaults. The `--full` mode redesign (§4) resolves this by re-enabling `statvfs` for fuse.* entries in `--full` only — no separate config key or flag needed.
 
 ---
 
