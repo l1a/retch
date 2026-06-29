@@ -16,8 +16,10 @@ use sysinfo::{Components, System, Users};
 /// allowing `retch-sysinfo` to be used as a standalone library.
 #[derive(Debug, Default, Clone)]
 pub struct CollectOptions {
-    /// Whether to collect all fields (long mode) or only the primary/default ones.
+    /// Show all disk mounts (long/full mode); when false, shows only the home-directory mount.
     pub long: bool,
+    /// Include FUSE mounts (full mode only).
+    pub full: bool,
     /// List of fields that are requested to be displayed. If None, all fields are collected.
     pub fields: Option<Vec<String>>,
     /// Optional location override for weather lookup (city, ZIP, airport code, coordinates).
@@ -149,9 +151,6 @@ impl SystemInfo {
     /// and current user environment into a `SystemInfo` struct.
     pub fn collect(opts: CollectOptions) -> anyhow::Result<Self> {
         let should_collect = |field_name: &str| -> bool {
-            if opts.long {
-                return true;
-            }
             match &opts.fields {
                 Some(fields) => {
                     let norm_field = field_name.to_lowercase().replace(['-', '_'], " ");
@@ -237,7 +236,7 @@ impl SystemInfo {
         let uptime = format!("{}s", System::uptime());
 
         let disks: Vec<String> = if should_collect("disk") {
-            let disks_list = crate::disk::detect_logical_disks();
+            let disks_list = crate::disk::detect_logical_disks(opts.full);
             let format_disk = |(mount, total, avail, fs): &(String, u64, u64, String)| {
                 let total_gb = *total as f64 / 1024.0 / 1024.0 / 1024.0;
                 let avail_gb = *avail as f64 / 1024.0 / 1024.0 / 1024.0;

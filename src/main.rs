@@ -184,8 +184,108 @@ fn main() -> anyhow::Result<()> {
     let config = config.merge_with_cli(&cli);
 
     // Determine which fields are active to collect only necessary data
-    let allowed_fields = if cli.long {
-        None
+    let allowed_fields = if cli.full {
+        Some(vec![
+            // Standard fields
+            "os".to_string(),
+            "kernel".to_string(),
+            "host".to_string(),
+            "cpu".to_string(),
+            "cpu-cache".to_string(),
+            "cpu-usage".to_string(),
+            "motherboard".to_string(),
+            "gpu".to_string(),
+            "display".to_string(),
+            "audio".to_string(),
+            "camera".to_string(),
+            "memory".to_string(),
+            "phys-mem".to_string(),
+            "swap".to_string(),
+            "load".to_string(),
+            "disk".to_string(),
+            "phys-disk".to_string(),
+            "net".to_string(),
+            "uptime".to_string(),
+            // Long fields
+            "bios".to_string(),
+            "font".to_string(),
+            "shell".to_string(),
+            "editor".to_string(),
+            "terminal".to_string(),
+            "terminal-font".to_string(),
+            "terminal-size".to_string(),
+            "desktop".to_string(),
+            "wm".to_string(),
+            "dns".to_string(),
+            "wifi".to_string(),
+            "bluetooth".to_string(),
+            "battery".to_string(),
+            "public-ip".to_string(),
+            "locale".to_string(),
+            "init".to_string(),
+            "chassis".to_string(),
+            "bootmgr".to_string(),
+            "temp".to_string(),
+            "cpu-freq".to_string(),
+            "procs".to_string(),
+            "arch".to_string(),
+            "users".to_string(),
+            "packages".to_string(),
+            // Full-only fields
+            "theme".to_string(),
+            "icons".to_string(),
+            "cursor".to_string(),
+            "gamepad".to_string(),
+            "weather".to_string(),
+        ])
+    } else if cli.long {
+        Some(vec![
+            // Standard fields
+            "os".to_string(),
+            "kernel".to_string(),
+            "host".to_string(),
+            "cpu".to_string(),
+            "cpu-cache".to_string(),
+            "cpu-usage".to_string(),
+            "motherboard".to_string(),
+            "gpu".to_string(),
+            "display".to_string(),
+            "audio".to_string(),
+            "camera".to_string(),
+            "memory".to_string(),
+            "phys-mem".to_string(),
+            "swap".to_string(),
+            "load".to_string(),
+            "disk".to_string(),
+            "phys-disk".to_string(),
+            "net".to_string(),
+            "uptime".to_string(),
+            // Long-only fields
+            "bios".to_string(),
+            "font".to_string(),
+            "shell".to_string(),
+            "editor".to_string(),
+            "terminal".to_string(),
+            "terminal-font".to_string(),
+            "terminal-size".to_string(),
+            "desktop".to_string(),
+            "wm".to_string(),
+            "dns".to_string(),
+            "wifi".to_string(),
+            "bluetooth".to_string(),
+            "battery".to_string(),
+            "public-ip".to_string(),
+            "locale".to_string(),
+            "init".to_string(),
+            "chassis".to_string(),
+            "bootmgr".to_string(),
+            "temp".to_string(),
+            "cpu-freq".to_string(),
+            "procs".to_string(),
+            "arch".to_string(),
+            "users".to_string(),
+            "packages".to_string(),
+        ])
     } else if cli.short {
         Some(vec![
             "os".to_string(),
@@ -200,7 +300,7 @@ fn main() -> anyhow::Result<()> {
     } else if let Some(fields) = &config.fields {
         Some(fields.iter().map(|s| s.to_lowercase()).collect())
     } else {
-        // Default set
+        // Default (standard) set
         Some(vec![
             "os".to_string(),
             "kernel".to_string(),
@@ -209,12 +309,10 @@ fn main() -> anyhow::Result<()> {
             "cpu-cache".to_string(),
             "cpu-usage".to_string(),
             "motherboard".to_string(),
-            "bios".to_string(),
             "gpu".to_string(),
             "display".to_string(),
             "audio".to_string(),
             "camera".to_string(),
-            "gamepad".to_string(),
             "memory".to_string(),
             "phys-mem".to_string(),
             "swap".to_string(),
@@ -228,7 +326,8 @@ fn main() -> anyhow::Result<()> {
 
     // Collect system information
     let info = SystemInfo::collect(CollectOptions {
-        long: cli.long,
+        long: cli.long || cli.full,
+        full: cli.full,
         fields: allowed_fields,
         weather_location: config.weather_location.clone(),
         weather_unit: config

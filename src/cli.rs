@@ -47,6 +47,10 @@ pub struct Cli {
     #[arg(short, long)]
     pub long: bool,
 
+    /// Full output mode (all fields including cosmetic and slow queries)
+    #[arg(short, long)]
+    pub full: bool,
+
     /// List available themes
     #[arg(long)]
     pub list_themes: bool,

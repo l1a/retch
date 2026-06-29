@@ -28,6 +28,7 @@ fn test_cli_help() {
     assert!(stdout.contains("--logo"));
     assert!(stdout.contains("-s, --short"));
     assert!(stdout.contains("-l, --long"));
+    assert!(stdout.contains("-f, --full"));
 }
 
 #[test]
@@ -143,6 +144,19 @@ fn test_cli_fields_wm() {
     assert!(
         stdout.contains("WM") || stdout.trim().is_empty(),
         "unexpected output: {}",
+        stdout
+    );
+}
+
+#[test]
+fn test_cli_full_mode() {
+    let (stdout, stderr, success) = run_retch(&["--full", "--no-logo"]);
+    assert!(success, "stderr: {}", stderr);
+    assert!(stderr.is_empty());
+    // --full should always contain at minimum the OS line
+    assert!(
+        stdout.contains("OS"),
+        "expected 'OS' in --full output: {}",
         stdout
     );
 }

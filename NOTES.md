@@ -50,6 +50,8 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
   5. When adding distro logos, run `cargo run -- --print-logos --ascii-logo` and confirm every new distro appears in the output. The hardcoded list in `src/main.rs` must be updated alongside `src/logo.rs`.
   6. If package versions are bumped, run `just man` to regenerate the man pages (so `docs/retch.1` is kept in sync with the new `Cargo.toml` version) and commit the updated man page *as part of the Pull Request* before merging (never directly on `main`).
 - **Pre-PR Gate**: Before calling `gh pr create`, the developer or agent MUST run `just pr` and pass the interactive confirmation prompt. `just pr` automates the checks (branch, version bump, AGENTS.md/NOTES.md header, man page, Cargo.lock, fmt+clippy, tests) and prints the manual checklist (README, release log entry, wiki, tldr doc update) requiring an explicit `y` confirmation. Note: the tldr checklist item means updating `docs/retch.md` only — do **not** run `just tldr-release` (upstream submission on hold).
+  - **Code Documentation**: Review all changed public items (`pub fn`, `pub struct`, `pub enum`, fields) for accurate doc comments. Update any doc comments that describe old behavior. New functions with non-obvious logic must have a doc comment explaining the WHY, not just the what.
+  - **Test Coverage**: Every new pure function must have unit tests. Every new CLI flag must appear in the `--help` integration test and have a smoke-test verifying it exits 0 and produces expected output. Every changed invariant (e.g. a filter condition gaining a new parameter) must have a test that exercises the new branch.
 - **PR Test Plans**: After opening a PR, immediately run each item in the test plan checklist and update the PR body via `gh pr edit` to check off passed items. Do not leave all boxes unchecked. Items requiring manual human verification (e.g. runtime output) should be left unchecked with a note.
 - **Documentation & Versioning Updates**: When branching to make changes, ensure the following updates are performed:
   - **Version Bump**: Increment the version in `Cargo.toml`, verify compilation, and run `cargo check` to update `Cargo.lock`.
@@ -90,7 +92,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.30)
+## Current State (v0.3.31)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -125,8 +127,9 @@ Fields: `os`, `kernel`, `host`, `cpu`, `gpu`, `memory`, `disk`, `net`
 
 ### Standard (no flag)
 Full system overview suitable for daily use. No slow fields, no sensors, no cosmetic fields.
-Fields: `os`, `kernel`, `host`, `cpu`, `cpu-cache`, `cpu-usage`, `motherboard`, `gpu`, `display`, `audio`, `camera`, `gamepad`, `memory`, `phys-mem`, `swap`, `load`, `disk`, `phys-disk`, `net`, `uptime`
+Fields: `os`, `kernel`, `host`, `cpu`, `cpu-cache`, `cpu-usage`, `motherboard`, `gpu`, `display`, `audio`, `camera`, `memory`, `phys-mem`, `swap`, `load`, `disk`, `phys-disk`, `net`, `uptime`
 - BIOS moves to `--long` (firmware detail, not needed at a glance)
+- Gamepad moves to `--full` (cosmetic/slow)
 
 ### `--long`
 Standard plus diagnostics. Aimed at understanding system health and network configuration.
@@ -141,7 +144,7 @@ Long plus everything slow, verbose, or cosmetic. Suitable for reporting, screens
 Adds over long:
 - `temp` (all sensors) — replaces the consolidated view with every sensor reading
 - `domain-search` — per-interface DNS search domain lists (from `resolvectl status` or equivalent)
-- Cosmetic fields: `theme`, `icons`, `cursor`, `font`, `terminal-font`
+- Cosmetic fields: `theme`, `icons`, `cursor` (font and terminal-font remain in `--long`)
 - `weather` — current conditions via Open-Meteo (~4s network timeout)
 - FUSE mounts — disk detection re-enables `statvfs` for `fuse.*` entries (skipped in all other modes to avoid 600ms+ hangs from cryfs/EncFS vaults)
 - `phys-disk`, `phys-mem` — may be promoted here if runtime warrants it
@@ -149,7 +152,7 @@ Adds over long:
 ### Design notes
 - **Temperature consolidation logic** for `--long`: classify sensors by name patterns (e.g. `k10temp`/`coretemp` → CPU, `amdgpu`/`nvidia` → GPU, `nvme` → SSD, `ath`/`iwl` → WiFi, `acpitz`/`thinkpad` → System). Within each category, report the highest reading.
 - **`--full` as a superset**: every field visible in `--long` also appears in `--full`; nothing is hidden or replaced except the temp view (consolidated → all sensors).
-- **Breaking change note**: cosmetic fields (`theme`, `icons`, `cursor`, `font`, `terminal-font`) currently appear in `--long` (via `None` / collect-all). Under this design they move to `--full` only. This is intentional — cosmetic fields are slow (theme detection involves sqlite/gsettings queries) and irrelevant for diagnostic use.
+- **Breaking change note**: cosmetic fields (`theme`, `icons`, `cursor`) and `gamepad` have moved from `--long` to `--full`. `font` and `terminal-font` remain in `--long`. This is intentional — theme/icon/cursor detection involves sqlite/gsettings queries and is cosmetic, not diagnostic.
 - **Alternative considered**: `--verbose` instead of `--full`. Rejected — `--full` is more intuitive as the natural escalation from `--long`, and `--verbose` implies logging noise rather than field breadth.
 
 ---
@@ -196,6 +199,14 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.31 - Output mode strata refactor (June 29, 2026)
+- **`--full` flag**: New output mode that is a strict superset of `--long`. Adds slow and cosmetic fields: `theme`, `icons`, `cursor`, `gamepad`, `weather`, and FUSE mounts in disk detection.
+- **Standard mode cleanup**: Removed `bios` and `gamepad` from the default field set. `bios` moves to `--long`; `gamepad` moves to `--full`.
+- **`--long` is now explicit**: Long mode uses an explicit field list instead of "collect everything". Fields include all standard fields plus `bios`, `font`, `shell`, `editor`, `terminal`, `terminal-font`, `terminal-size`, `desktop`, `wm`, `dns`, `wifi`, `bluetooth`, `battery`, `public-ip`, `locale`, `init`, `chassis`, `bootmgr`, `temp`, `cpu-freq`, `procs`, `arch`, `users`, `packages`.
+- **Consolidated temps in `--long`**: Temperature output in `--long` mode shows one reading per physical unit (CPU, GPU, NVMe, WiFi, System — highest sensor in each category). All raw sensor readings appear in `--full`.
+- **FUSE mounts in `--full`**: `detect_logical_disks` now accepts an `include_fuse` flag; `--full` re-enables `statvfs` for `fuse.*` entries (all other modes skip them to avoid 600ms+ hangs).
+- **Version**: Bumped to `0.3.31` / `retch-sysinfo 0.1.31`.
 
 ### v0.3.30 - Switch weather backend to Open-Meteo (June 29, 2026)
 - **Weather accuracy**: Replaced wttr.in (World Weather Online backend) with Open-Meteo for forecast data and Open-Meteo geocoding API for location resolution. Auto-location now uses ipinfo.io instead of wttr.in IP detection. Results match NWS/ECMWF model data.

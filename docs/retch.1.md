@@ -70,7 +70,10 @@ retch - a fast, feature-rich system information fetcher
 :   Short output mode. Equivalent to `--mode short`. Shows: OS, Kernel, Host, CPU, GPU, Memory, Disk.
 
 **-l, --long**
-:   Long output mode. Equivalent to `--mode long`. Shows all available fields.
+:   Long output mode. Shows diagnostics fields — firmware, thermals (consolidated: one reading per physical unit), shell, desktop, network, Bluetooth, battery, packages, and more. Does not include cosmetic or slow-running fields (use `--full` for those).
+
+**-f, --full**
+:   Full output mode. Shows everything in `--long` plus slow and cosmetic fields: UI theme, icons, cursor, weather (requires network), and FUSE mounts. Expect multi-second runtimes.
 
 # CONFIGURATION
 
@@ -93,7 +96,8 @@ You can generate a starting configuration with:
 - **ascii_only**: Boolean indicating whether to restrict logo to ASCII representation.
 - **chafa**: Boolean indicating whether to force Chafa symbols output.
 - **logo**: Distro name/ID to force override logo detection.
-- **weather_location**: Location for weather lookup. Accepts a city name (`"London"`), US ZIP code (`"10001"`), airport IATA code (`"SFO"`), or lat/lon coordinates (`"48.8566,2.3522"`). If unset, wttr.in auto-detects your location from your IP address.
+- **weather_location**: Location for weather lookup. Accepts a city name (`"London"`), US ZIP code (`"10001"`), or lat/lon coordinates (`"48.8566,2.3522"`). If unset, your location is auto-detected from your outbound IP via ipinfo.io.
+- **weather_unit**: Temperature unit for the `weather` field. Accepts `"fahrenheit"` (default) or `"celsius"`. Can also be set via `--weather-unit` on the CLI.
 - **fields**: Array of strings representing active fields and their display order. Available fields are:
   - `os`: Operating system name.
   - `kernel`: Kernel version.
@@ -139,7 +143,7 @@ You can generate a starting configuration with:
   - `font`: UI system font.
   - `users`: Current logged in users.
   - `packages`: Installed package counts (supporting dpkg, rpm, pacman, flatpak, snap, homebrew, scoop, chocolatey, etc.).
-  - `weather`: Current weather from wttr.in (city, condition, temperature). Requires network access. Long mode only by default.
+  - `weather`: Current weather via Open-Meteo (city, condition, temperature). Requires network access. Full mode only by default (~4s network timeout).
 
 # THEMES
 
