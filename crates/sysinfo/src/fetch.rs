@@ -554,7 +554,21 @@ impl SystemInfo {
         let desktop = if should_collect("desktop") {
             std::env::var("XDG_CURRENT_DESKTOP")
                 .or_else(|_| std::env::var("DESKTOP_SESSION"))
+                .or_else(|_| std::env::var("XDG_SESSION_DESKTOP"))
+                .or_else(|_| std::env::var("GDMSESSION"))
                 .ok()
+                .map(|s| normalize_desktop_name(&s))
+                .filter(|s| !s.is_empty())
+                .or_else(|| {
+                    #[cfg(target_os = "linux")]
+                    {
+                        detect_desktop_from_proc()
+                    }
+                    #[cfg(not(target_os = "linux"))]
+                    {
+                        None
+                    }
+                })
         } else {
             None
         };
@@ -1101,6 +1115,75 @@ pub fn detect_cpu_freq_range() -> Option<(u64, u64)> {
     #[cfg(not(target_os = "linux"))]
     {
         None
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn detect_desktop_from_proc() -> Option<String> {
+    const DE_PROCS: &[(&str, &str)] = &[
+        ("gnome-shell", "GNOME"),
+        ("plasmashell", "KDE Plasma"),
+        ("xfce4-session", "XFCE"),
+        ("mate-session", "MATE"),
+        ("cinnamon", "Cinnamon"),
+        ("budgie-daemon", "Budgie"),
+        ("budgie-panel", "Budgie"),
+        ("lxsession", "LXDE"),
+        ("lxqt-session", "LXQt"),
+        ("deepin-session", "Deepin"),
+        ("dde-session-daemon", "Deepin"),
+        ("gala", "Pantheon"),
+        ("enlightenment", "Enlightenment"),
+    ];
+    let Ok(entries) = std::fs::read_dir("/proc") else {
+        return None;
+    };
+    for entry in entries.filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let Ok(comm) = std::fs::read_to_string(path.join("comm")) else {
+            continue;
+        };
+        let comm = comm.trim().to_lowercase();
+        for (proc_name, de_name) in DE_PROCS {
+            if comm == *proc_name || comm.starts_with(proc_name) {
+                return Some(de_name.to_string());
+            }
+        }
+    }
+    None
+}
+
+fn normalize_desktop_name(raw: &str) -> String {
+    let s = raw.trim();
+    // Canonical casing for well-known desktop environments
+    match s.to_lowercase().as_str() {
+        "gnome" => "GNOME".to_string(),
+        "kde" | "kde plasma" | "plasma" => "KDE Plasma".to_string(),
+        "xfce" => "XFCE".to_string(),
+        "lxde" => "LXDE".to_string(),
+        "lxqt" => "LXQt".to_string(),
+        "mate" => "MATE".to_string(),
+        "cinnamon" => "Cinnamon".to_string(),
+        "budgie" => "Budgie".to_string(),
+        "deepin" => "Deepin".to_string(),
+        "pantheon" => "Pantheon".to_string(),
+        "unity" => "Unity".to_string(),
+        "enlightenment" | "e" => "Enlightenment".to_string(),
+        _ => {
+            // Title-case if it's all lowercase; otherwise preserve as-is
+            if s.chars().all(|c| c.is_lowercase() || !c.is_alphabetic()) {
+                let mut chars = s.chars();
+                match chars.next() {
+                    None => String::new(),
+                    Some(c) => c.to_uppercase().collect::<String>() + chars.as_str(),
+                }
+            } else {
+                s.to_string()
+            }
+        }
     }
 }
 
