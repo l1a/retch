@@ -77,6 +77,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             "desktop".to_string(),
             "wm".to_string(),
             "dns".to_string(),
+            "domain".to_string(),
             "wifi".to_string(),
             "bluetooth".to_string(),
             "battery".to_string(),
@@ -97,6 +98,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             "cursor".to_string(),
             "gamepad".to_string(),
             "weather".to_string(),
+            "domain-search".to_string(),
         ])
     } else if cli.long {
         Some(vec![
@@ -131,6 +133,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             "desktop".to_string(),
             "wm".to_string(),
             "dns".to_string(),
+            "domain".to_string(),
             "wifi".to_string(),
             "bluetooth".to_string(),
             "battery".to_string(),
@@ -357,6 +360,14 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     }
     if !info.dns.is_empty() {
         print_line("DNS", &info.dns.join(", "));
+    }
+    if let Some(domain) = &info.domain {
+        print_line("Domain", domain);
+    }
+    if should_show("domain-search") {
+        for entry in &info.domain_search {
+            print_line("Domain Search", entry);
+        }
     }
 
     if let Some(bt) = &info.bluetooth {

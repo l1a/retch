@@ -217,6 +217,7 @@ fn main() -> anyhow::Result<()> {
             "desktop".to_string(),
             "wm".to_string(),
             "dns".to_string(),
+            "domain".to_string(),
             "wifi".to_string(),
             "bluetooth".to_string(),
             "battery".to_string(),
@@ -237,6 +238,7 @@ fn main() -> anyhow::Result<()> {
             "cursor".to_string(),
             "gamepad".to_string(),
             "weather".to_string(),
+            "domain-search".to_string(),
         ])
     } else if cli.long {
         Some(vec![
@@ -271,6 +273,7 @@ fn main() -> anyhow::Result<()> {
             "desktop".to_string(),
             "wm".to_string(),
             "dns".to_string(),
+            "domain".to_string(),
             "wifi".to_string(),
             "bluetooth".to_string(),
             "battery".to_string(),
@@ -391,15 +394,16 @@ fn default_config_content() -> String {
 
 # List of fields to display (leave empty or omit to show all)
 # Note: "phys-mem" requires running as root (sudo) on Linux to read DMI memory tables.
-# Note: "weather" requires network access and is shown in long mode by default.
+# Note: "weather" requires network access and is shown in full mode only by default.
+# Note: "domain-search" queries resolvectl and is shown in full mode only by default.
 # fields = [
 #     "os", "kernel", "host", "chassis", "init", "locale",
 #     "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage",
 #     "gpu", "motherboard", "bios", "bootmgr", "display", "audio",
 #     "camera", "gamepad", "memory", "phys-mem", "swap", "uptime", "procs", "load",
 #     "disk", "phys-disk", "temp", "net", "public-ip", "wifi", "bluetooth", "battery",
-#     "shell", "editor", "terminal", "terminal-font", "desktop",
-#     "theme", "icons", "cursor", "font", "users", "packages", "weather"
+#     "shell", "editor", "terminal", "terminal-font", "desktop", "dns", "domain",
+#     "theme", "icons", "cursor", "font", "users", "packages", "weather", "domain-search"
 # ]
 "##
     .to_string()

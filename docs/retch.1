@@ -276,6 +276,14 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
+`\f[CR]domain\fP`: Configured DNS domain name (from `\f[CR]domain\fP` or first `\f[CR]search\fP` entry in `\f[CR]/etc/resolv\.conf\fP`)\. Long mode and above\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]domain\-search\fP`: Per\-interface DNS search domain lists (from `\f[CR]resolvectl status\fP` or `\f[CR]/etc/resolv\.conf\fP` `\f[CR]search\fP`)\. Full mode only\.
+.El
+.Bl
+.IP \(bu 4
 `\f[CR]bluetooth\fP`: Bluetooth adapter details and connected device count/names\.
 .El
 .Bl

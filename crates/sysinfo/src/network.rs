@@ -625,6 +625,137 @@ pub fn parse_resolv_conf(content: &str) -> Vec<String> {
         .collect()
 }
 
+/// Returns the configured DNS search domain name.
+///
+/// Reads the `domain` directive from `/etc/resolv.conf` (takes precedence),
+/// falling back to the first entry of the `search` directive. Returns `None`
+/// when neither is present or the file is unreadable.
+pub fn detect_domain() -> Option<String> {
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
+        if let Ok(content) = std::fs::read_to_string("/etc/resolv.conf") {
+            return parse_domain_from_resolv_conf(&content);
+        }
+    }
+    None
+}
+
+/// Returns per-interface DNS search domain lists.
+///
+/// On Linux, tries `resolvectl status --no-pager` first and parses per-link
+/// DNS Domain / DNS Search Domains entries. Falls back to the global `search`
+/// list from `/etc/resolv.conf` when resolvectl is unavailable.
+/// On macOS, reads the global `search` list from `/etc/resolv.conf`.
+pub fn detect_domain_search() -> Vec<String> {
+    #[cfg(target_os = "linux")]
+    {
+        if let Ok(output) = std::process::Command::new("resolvectl")
+            .args(["status", "--no-pager"])
+            .output()
+        {
+            if output.status.success() {
+                let text = String::from_utf8_lossy(&output.stdout);
+                let result = parse_resolvectl_search(&text);
+                if !result.is_empty() {
+                    return result;
+                }
+            }
+        }
+        if let Ok(content) = std::fs::read_to_string("/etc/resolv.conf") {
+            return parse_search_from_resolv_conf(&content);
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(content) = std::fs::read_to_string("/etc/resolv.conf") {
+            return parse_search_from_resolv_conf(&content);
+        }
+    }
+    Vec::new()
+}
+
+/// Parses the `domain` directive (or first `search` entry as fallback) from
+/// `/etc/resolv.conf` content.
+#[cfg(any(target_os = "linux", target_os = "macos", test))]
+pub fn parse_domain_from_resolv_conf(content: &str) -> Option<String> {
+    let mut first_search: Option<String> = None;
+    for line in content.lines() {
+        let line = line.trim();
+        if line.starts_with('#') || line.starts_with(';') {
+            continue;
+        }
+        let mut parts = line.split_whitespace();
+        match parts.next() {
+            Some("domain") => {
+                if let Some(d) = parts.next() {
+                    return Some(d.to_string());
+                }
+            }
+            Some("search") if first_search.is_none() => {
+                if let Some(d) = parts.next() {
+                    first_search = Some(d.to_string());
+                }
+            }
+            _ => {}
+        }
+    }
+    first_search
+}
+
+/// Parses all entries from the `search` directive in `/etc/resolv.conf` content.
+#[cfg(any(target_os = "linux", target_os = "macos", test))]
+pub fn parse_search_from_resolv_conf(content: &str) -> Vec<String> {
+    for line in content.lines() {
+        let line = line.trim();
+        if line.starts_with('#') || line.starts_with(';') {
+            continue;
+        }
+        let mut parts = line.split_whitespace();
+        if parts.next() == Some("search") {
+            let domains: Vec<String> = parts.map(|s| s.to_string()).collect();
+            if !domains.is_empty() {
+                return domains;
+            }
+        }
+    }
+    Vec::new()
+}
+
+/// Parses `resolvectl status --no-pager` output into per-interface search domain strings.
+///
+/// Skips routing-only domains (`~.`). Returns entries like `"wlan0: home.local"`.
+#[cfg(any(target_os = "linux", test))]
+pub fn parse_resolvectl_search(content: &str) -> Vec<String> {
+    let mut results = Vec::new();
+    let mut current_iface: Option<String> = None;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        // "Link N (ifname)" starts a new interface section
+        if trimmed.starts_with("Link ") {
+            if let (Some(start), Some(end)) = (trimmed.find('('), trimmed.find(')')) {
+                current_iface = Some(trimmed[start + 1..end].to_string());
+            }
+            continue;
+        }
+        if let Some(ref iface) = current_iface {
+            let domains_str = trimmed
+                .strip_prefix("DNS Domain:")
+                .or_else(|| trimmed.strip_prefix("DNS Search Domains:"))
+                .map(|v| v.trim());
+            if let Some(domains) = domains_str {
+                // Skip routing-only catch-all domain
+                let filtered: Vec<&str> =
+                    domains.split_whitespace().filter(|d| *d != "~.").collect();
+                if !filtered.is_empty() {
+                    results.push(format!("{}: {}", iface, filtered.join(", ")));
+                }
+            }
+        }
+    }
+    results
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -690,5 +821,69 @@ mod tests {
 
         let empty = "# no nameservers\nsearch local\n";
         assert_eq!(parse_resolv_conf(empty), Vec::<String>::new());
+    }
+
+    #[test]
+    fn test_parse_domain_from_resolv_conf_domain_directive() {
+        let s = "# test\ndomain example.com\nsearch fallback.com\nnameserver 1.1.1.1\n";
+        assert_eq!(
+            parse_domain_from_resolv_conf(s),
+            Some("example.com".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_domain_from_resolv_conf_search_fallback() {
+        let s = "# no domain directive\nsearch local.lan other.lan\nnameserver 1.1.1.1\n";
+        assert_eq!(
+            parse_domain_from_resolv_conf(s),
+            Some("local.lan".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_domain_from_resolv_conf_none() {
+        let s = "# no domain or search\nnameserver 1.1.1.1\n";
+        assert_eq!(parse_domain_from_resolv_conf(s), None);
+    }
+
+    #[test]
+    fn test_parse_search_from_resolv_conf() {
+        let s = "search home.local corp.example.com\nnameserver 1.1.1.1\n";
+        assert_eq!(
+            parse_search_from_resolv_conf(s),
+            vec!["home.local", "corp.example.com"]
+        );
+    }
+
+    #[test]
+    fn test_parse_resolvectl_search_basic() {
+        let sample = "Global\n\
+            Link 2 (lo)\n\
+              Current Scopes: none\n\
+            Link 3 (wlan0)\n\
+              Current Scopes: DNS\n\
+              DNS Domain: home.local\n\
+            Link 4 (eth0)\n\
+              Current Scopes: DNS\n\
+              DNS Search Domains: corp.example.com internal.net\n";
+        let result = parse_resolvectl_search(sample);
+        assert_eq!(
+            result,
+            vec!["wlan0: home.local", "eth0: corp.example.com, internal.net"]
+        );
+    }
+
+    #[test]
+    fn test_parse_resolvectl_search_skips_routing_domain() {
+        let sample = "Link 2 (wlan0)\n  DNS Domain: ~.\nLink 3 (eth0)\n  DNS Domain: corp.net\n";
+        let result = parse_resolvectl_search(sample);
+        assert_eq!(result, vec!["eth0: corp.net"]);
+    }
+
+    #[test]
+    fn test_parse_resolvectl_search_empty() {
+        let sample = "Global\n  DNS Servers: 1.1.1.1\n";
+        assert!(parse_resolvectl_search(sample).is_empty());
     }
 }

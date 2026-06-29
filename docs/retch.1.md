@@ -128,6 +128,8 @@ You can generate a starting configuration with:
   - `net`: Active network interfaces and local/public IP addresses.
   - `wifi`: Active Wi-Fi SSID, band frequency, channel, and link rates.
   - `dns`: Configured DNS nameservers (from `/etc/resolv.conf` on Linux/macOS).
+  - `domain`: Configured DNS domain name (from `domain` or first `search` entry in `/etc/resolv.conf`). Long mode and above.
+  - `domain-search`: Per-interface DNS search domain lists (from `resolvectl status` or `/etc/resolv.conf` `search`). Full mode only.
   - `bluetooth`: Bluetooth adapter details and connected device count/names.
   - `battery`: Battery capacity, vendor/model, time remaining, and health.
   - `shell`: Currently running shell name and version (e.g. bash, zsh, fish, nu). Detected from the process tree; falls back to `$SHELL` (login shell).

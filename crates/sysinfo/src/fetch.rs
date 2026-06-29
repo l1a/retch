@@ -140,6 +140,10 @@ pub struct SystemInfo {
     pub wm: Option<String>,
     /// Configured DNS nameservers.
     pub dns: Vec<String>,
+    /// Configured DNS domain name (from `domain` or first `search` entry in resolv.conf).
+    pub domain: Option<String>,
+    /// Per-interface DNS search domain lists (from resolvectl or resolv.conf `search`).
+    pub domain_search: Vec<String>,
     /// Terminal dimensions as "COLSxROWS".
     pub terminal_size: Option<String>,
 }
@@ -679,6 +683,18 @@ impl SystemInfo {
             Vec::new()
         };
 
+        let domain = if should_collect("domain") {
+            crate::network::detect_domain()
+        } else {
+            None
+        };
+
+        let domain_search = if should_collect("domain-search") || should_collect("domain search") {
+            crate::network::detect_domain_search()
+        } else {
+            Vec::new()
+        };
+
         let terminal_size = if should_collect("terminal size")
             || should_collect("terminal-size")
             || should_collect("terminal_size")
@@ -763,6 +779,8 @@ impl SystemInfo {
             weather,
             wm,
             dns,
+            domain,
+            domain_search,
             terminal_size,
         })
     }
