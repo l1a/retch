@@ -321,9 +321,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     // Setup logo representation
     enum ActiveLogo {
         Lines(Vec<String>),
-        Kitty(Vec<u8>),
-        Iterm2(Vec<u8>),
-        Sixel(Vec<u8>),
+        Kitty(Vec<u8>, usize), // bytes, height_lines
+        Iterm2(Vec<u8>, usize),
+        Sixel(Vec<u8>, usize),
         None,
     }
 
@@ -378,12 +378,14 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             if !resolved && logo::supports_kitty() {
                 if let Some(path) = &user_logo {
                     if let Ok(bytes) = std::fs::read(path) {
-                        active_logo = ActiveLogo::Kitty(bytes);
+                        let h = graphical_logo_height_lines(&bytes);
+                        active_logo = ActiveLogo::Kitty(bytes, h);
                         resolved = true;
                     }
                 } else if let Some(distro) = &distro_hint {
                     if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
-                        active_logo = ActiveLogo::Kitty(bytes.to_vec());
+                        let h = graphical_logo_height_lines(bytes);
+                        active_logo = ActiveLogo::Kitty(bytes.to_vec(), h);
                         resolved = true;
                     }
                 }
@@ -394,12 +396,14 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             if !resolved && logo::supports_iterm2() {
                 if let Some(path) = &user_logo {
                     if let Ok(bytes) = std::fs::read(path) {
-                        active_logo = ActiveLogo::Iterm2(bytes);
+                        let h = graphical_logo_height_lines(&bytes);
+                        active_logo = ActiveLogo::Iterm2(bytes, h);
                         resolved = true;
                     }
                 } else if let Some(distro) = &distro_hint {
                     if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
-                        active_logo = ActiveLogo::Iterm2(bytes.to_vec());
+                        let h = graphical_logo_height_lines(bytes);
+                        active_logo = ActiveLogo::Iterm2(bytes.to_vec(), h);
                         resolved = true;
                     }
                 }
@@ -410,12 +414,14 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             if !resolved && logo::supports_sixel() {
                 if let Some(path) = &user_logo {
                     if let Ok(bytes) = std::fs::read(path) {
-                        active_logo = ActiveLogo::Sixel(bytes);
+                        let h = graphical_logo_height_lines(&bytes);
+                        active_logo = ActiveLogo::Sixel(bytes, h);
                         resolved = true;
                     }
                 } else if let Some(distro) = &distro_hint {
                     if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
-                        active_logo = ActiveLogo::Sixel(bytes.to_vec());
+                        let h = graphical_logo_height_lines(bytes);
+                        active_logo = ActiveLogo::Sixel(bytes.to_vec(), h);
                         resolved = true;
                     }
                 }
@@ -483,7 +489,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             .map(|line| visible_len(line))
             .max()
             .unwrap_or(0),
-        ActiveLogo::Kitty(_) | ActiveLogo::Iterm2(_) | ActiveLogo::Sixel(_) => 40,
+        ActiveLogo::Kitty(_, _) | ActiveLogo::Iterm2(_, _) | ActiveLogo::Sixel(_, _) => 40,
         ActiveLogo::None => 0,
     };
 
@@ -508,12 +514,10 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                     println!("{}{}{}", info_line, padding, logo_line);
                 }
             }
-            ActiveLogo::Kitty(bytes) => {
-                // Print text lines
+            ActiveLogo::Kitty(bytes, height_lines) => {
                 for line in &info_lines {
                     println!("{}", line);
                 }
-                // Position and render
                 let num_lines = info_lines.len();
                 print!("\x1b7"); // DEC save cursor
                 if num_lines > 0 {
@@ -522,13 +526,16 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                 print!("\x1b[{}C", text_column_width); // Move right
                 logo::print_graphical_logo(&bytes);
                 print!("\x1b8"); // DEC restore cursor
+                                 // Advance past the logo's bottom edge if it extends below the text.
+                let overflow = height_lines.saturating_sub(num_lines);
+                if overflow > 0 {
+                    print!("\x1b[{}B", overflow);
+                }
             }
-            ActiveLogo::Iterm2(bytes) => {
-                // Print text lines
+            ActiveLogo::Iterm2(bytes, height_lines) => {
                 for line in &info_lines {
                     println!("{}", line);
                 }
-                // Position and render
                 let num_lines = info_lines.len();
                 print!("\x1b7"); // DEC save cursor
                 if num_lines > 0 {
@@ -537,13 +544,15 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                 print!("\x1b[{}C", text_column_width); // Move right
                 logo::print_iterm2_logo(&bytes);
                 print!("\x1b8"); // DEC restore cursor
+                let overflow = height_lines.saturating_sub(num_lines);
+                if overflow > 0 {
+                    print!("\x1b[{}B", overflow);
+                }
             }
-            ActiveLogo::Sixel(bytes) => {
-                // Print text lines
+            ActiveLogo::Sixel(bytes, height_lines) => {
                 for line in &info_lines {
                     println!("{}", line);
                 }
-                // Position and render
                 let num_lines = info_lines.len();
                 print!("\x1b7"); // DEC save cursor
                 if num_lines > 0 {
@@ -552,6 +561,10 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                 print!("\x1b[{}C", text_column_width); // Move right
                 logo::print_sixel_logo(&bytes);
                 print!("\x1b8"); // DEC restore cursor
+                let overflow = height_lines.saturating_sub(num_lines);
+                if overflow > 0 {
+                    print!("\x1b[{}B", overflow);
+                }
             }
             ActiveLogo::None => {
                 for line in &info_lines {
@@ -568,15 +581,15 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                 }
                 println!();
             }
-            ActiveLogo::Kitty(bytes) => {
+            ActiveLogo::Kitty(bytes, _) => {
                 logo::print_graphical_logo(&bytes);
                 println!();
             }
-            ActiveLogo::Iterm2(bytes) => {
+            ActiveLogo::Iterm2(bytes, _) => {
                 logo::print_iterm2_logo(&bytes);
                 println!();
             }
-            ActiveLogo::Sixel(bytes) => {
+            ActiveLogo::Sixel(bytes, _) => {
                 logo::print_sixel_logo(&bytes);
                 println!();
             }
@@ -621,6 +634,33 @@ fn format_uptime(uptime: &str) -> String {
     }
 
     parts.join(" ")
+}
+
+/// Returns the height in terminal rows a graphical logo image will occupy.
+///
+/// Uses TIOCGWINSZ pixel dimensions on Unix to get the real cell height.
+/// Falls back to 20px per cell when the terminal doesn't report pixel dims.
+#[cfg(feature = "graphics")]
+fn graphical_logo_height_lines(bytes: &[u8]) -> usize {
+    let img_h = image::load_from_memory(bytes)
+        .map(|img| img.height() as usize)
+        .unwrap_or(384);
+    let cell_h = terminal_cell_height_px();
+    img_h.div_ceil(cell_h)
+}
+
+/// Returns the terminal cell height in pixels via TIOCGWINSZ, or 20 as fallback.
+fn terminal_cell_height_px() -> usize {
+    #[cfg(unix)]
+    {
+        use std::mem::MaybeUninit;
+        let mut ws: libc::winsize = unsafe { MaybeUninit::zeroed().assume_init() };
+        let ret = unsafe { libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ, &mut ws) };
+        if ret == 0 && ws.ws_row > 0 && ws.ws_ypixel > 0 {
+            return ws.ws_ypixel as usize / ws.ws_row as usize;
+        }
+    }
+    20
 }
 
 #[cfg(test)]

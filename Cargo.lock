@@ -1562,6 +1562,7 @@ dependencies = [
  "dirs",
  "icy_sixel",
  "image",
+ "libc",
  "owo-colors",
  "retch-sysinfo",
  "serde",
