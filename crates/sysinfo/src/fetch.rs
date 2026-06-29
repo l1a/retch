@@ -16,8 +16,10 @@ use sysinfo::{Components, System, Users};
 /// allowing `retch-sysinfo` to be used as a standalone library.
 #[derive(Debug, Default, Clone)]
 pub struct CollectOptions {
-    /// Whether to collect all fields (long mode) or only the primary/default ones.
+    /// Show all disk mounts (long/full mode); when false, shows only the home-directory mount.
     pub long: bool,
+    /// Include FUSE mounts (full mode only).
+    pub full: bool,
     /// List of fields that are requested to be displayed. If None, all fields are collected.
     pub fields: Option<Vec<String>>,
     /// Optional location override for weather lookup (city, ZIP, airport code, coordinates).
@@ -138,6 +140,10 @@ pub struct SystemInfo {
     pub wm: Option<String>,
     /// Configured DNS nameservers.
     pub dns: Vec<String>,
+    /// Configured DNS domain name (from `domain` or first `search` entry in resolv.conf).
+    pub domain: Option<String>,
+    /// Per-interface DNS search domain lists (from resolvectl or resolv.conf `search`).
+    pub domain_search: Vec<String>,
     /// Terminal dimensions as "COLSxROWS".
     pub terminal_size: Option<String>,
 }
@@ -149,9 +155,6 @@ impl SystemInfo {
     /// and current user environment into a `SystemInfo` struct.
     pub fn collect(opts: CollectOptions) -> anyhow::Result<Self> {
         let should_collect = |field_name: &str| -> bool {
-            if opts.long {
-                return true;
-            }
             match &opts.fields {
                 Some(fields) => {
                     let norm_field = field_name.to_lowercase().replace(['-', '_'], " ");
@@ -237,7 +240,7 @@ impl SystemInfo {
         let uptime = format!("{}s", System::uptime());
 
         let disks: Vec<String> = if should_collect("disk") {
-            let disks_list = crate::disk::detect_logical_disks();
+            let disks_list = crate::disk::detect_logical_disks(opts.full);
             let format_disk = |(mount, total, avail, fs): &(String, u64, u64, String)| {
                 let total_gb = *total as f64 / 1024.0 / 1024.0 / 1024.0;
                 let avail_gb = *avail as f64 / 1024.0 / 1024.0 / 1024.0;
@@ -680,6 +683,18 @@ impl SystemInfo {
             Vec::new()
         };
 
+        let domain = if should_collect("domain") {
+            crate::network::detect_domain()
+        } else {
+            None
+        };
+
+        let domain_search = if should_collect("domain-search") || should_collect("domain search") {
+            crate::network::detect_domain_search()
+        } else {
+            Vec::new()
+        };
+
         let terminal_size = if should_collect("terminal size")
             || should_collect("terminal-size")
             || should_collect("terminal_size")
@@ -764,6 +779,8 @@ impl SystemInfo {
             weather,
             wm,
             dns,
+            domain,
+            domain_search,
             terminal_size,
         })
     }

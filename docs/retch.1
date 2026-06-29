@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "June 2026" "retch 0.3.30" "System Information Fetcher"
+.TH "RETCH" "1" "June 2026" "retch 0.3.31" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -91,7 +91,11 @@ Short output mode\. Equivalent to `\f[CR]\-\-mode short\fP`\. Shows: OS, Kernel,
 .RE
 \fB\-l, \-\-long\fP
 .RS
-Long output mode\. Equivalent to `\f[CR]\-\-mode long\fP`\. Shows all available fields\.
+Long output mode\. Shows diagnostics fields \-\- firmware, thermals (consolidated: one reading per physical unit), shell, desktop, network, Bluetooth, battery, packages, and more\. Does not include cosmetic or slow\-running fields (use `\f[CR]\-\-full\fP` for those)\.
+.RE
+\fB\-f, \-\-full\fP
+.RS
+Full output mode\. Shows everything in `\f[CR]\-\-long\fP` plus slow and cosmetic fields: UI theme, icons, cursor, weather (requires network), and FUSE mounts\. Expect multi\-second runtimes\.
 .RE
 
 .SH "CONFIGURATION"
@@ -144,7 +148,11 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
-\fBweather_location\fP: Location for weather lookup\. Accepts a city name (`\f[CR]"London"\fP`), US ZIP code (`\f[CR]"10001"\fP`), airport IATA code (`\f[CR]"SFO"\fP`), or lat/lon coordinates (`\f[CR]"48\.8566,2\.3522"\fP`)\. If unset, wttr\.in auto\-detects your location from your IP address\.
+\fBweather_location\fP: Location for weather lookup\. Accepts a city name (`\f[CR]"London"\fP`), US ZIP code (`\f[CR]"10001"\fP`), or lat/lon coordinates (`\f[CR]"48\.8566,2\.3522"\fP`)\. If unset, your location is auto\-detected from your outbound IP via ipinfo\.io\.
+.El
+.Bl
+.IP \(bu 4
+\fBweather_unit\fP: Temperature unit for the `\f[CR]weather\fP` field\. Accepts `\f[CR]"fahrenheit"\fP` (default) or `\f[CR]"celsius"\fP`\. Can also be set via `\f[CR]\-\-weather\-unit\fP` on the CLI\.
 .El
 .Bl
 .IP \(bu 4
@@ -268,6 +276,14 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
+`\f[CR]domain\fP`: Configured DNS domain name (from `\f[CR]domain\fP` or first `\f[CR]search\fP` entry in `\f[CR]/etc/resolv\.conf\fP`)\. Long mode and above\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]domain\-search\fP`: Per\-interface DNS search domain lists (from `\f[CR]resolvectl status\fP` or `\f[CR]/etc/resolv\.conf\fP` `\f[CR]search\fP`)\. Full mode only\.
+.El
+.Bl
+.IP \(bu 4
 `\f[CR]bluetooth\fP`: Bluetooth adapter details and connected device count/names\.
 .El
 .Bl
@@ -328,7 +344,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
-`\f[CR]weather\fP`: Current weather from wttr\.in (city, condition, temperature)\. Requires network access\. Long mode only by default\.
+`\f[CR]weather\fP`: Current weather via Open\-Meteo (city, condition, temperature)\. Requires network access\. Full mode only by default (~4s network timeout)\.
 .El
 .RE
 .El

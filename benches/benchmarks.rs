@@ -31,6 +31,7 @@ fn bench_system_info_collect(c: &mut Criterion) {
         b.iter(|| {
             let _ = SystemInfo::collect(CollectOptions {
                 long: cli.long,
+                full: cli.full,
                 fields: None,
                 weather_location: None,
                 weather_unit: Default::default(),

@@ -11,9 +11,13 @@
 
 `retch --short`
 
-- Display system information in long format:
+- Display system information in long format (diagnostics, thermals, network detail):
 
 `retch --long`
+
+- Display all fields including theme, weather, and slow queries:
+
+`retch --full`
 
 - Display system information with a specific distribution logo:
 
@@ -25,7 +29,7 @@
 
 - Display weather for a specific location (use `--weather-unit celsius` for Celsius):
 
-`retch --long --weather-location {{city_name|zip_code|lat,lon}}`
+`retch --full --weather-location {{city_name|zip_code|lat,lon}}`
 
 - Print the default configuration to `stdout`:
 

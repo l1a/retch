@@ -3,22 +3,30 @@
 
 //! Physical disk detection (model, size, type) and logical disk space reporting.
 
-/// Returns formatted disk space strings for real mounted filesystems, skipping
-/// pseudo-filesystems and FUSE mounts that may block indefinitely on statvfs.
+/// Returns formatted disk space strings for real mounted filesystems.
+///
+/// Skips pseudo-filesystems unconditionally. Skips `fuse.*` mounts unless
+/// `include_fuse` is true — FUSE mounts can block indefinitely on `statvfs`
+/// (e.g. cryfs/EncFS vaults), so they are only enabled in `--full` mode.
 ///
 /// On Linux, reads /proc/mounts and calls statvfs ourselves so we can filter
 /// before the blocking call. On other platforms, delegates to sysinfo::Disks.
-pub fn detect_logical_disks() -> Vec<(String, u64, u64, String)> {
+pub fn detect_logical_disks(include_fuse: bool) -> Vec<(String, u64, u64, String)> {
     #[cfg(target_os = "linux")]
-    return detect_logical_linux();
+    {
+        detect_logical_linux(include_fuse)
+    }
 
     #[cfg(not(target_os = "linux"))]
-    return detect_logical_sysinfo();
+    {
+        let _ = include_fuse;
+        detect_logical_sysinfo()
+    }
 }
 
 /// Filesystem types that are virtual/pseudo and should never appear in disk output.
 #[cfg(target_os = "linux")]
-fn is_skip_fs(fs_type: &str) -> bool {
+fn is_skip_fs(fs_type: &str, include_fuse: bool) -> bool {
     const SKIP: &[&str] = &[
         "sysfs",
         "proc",
@@ -51,11 +59,11 @@ fn is_skip_fs(fs_type: &str) -> bool {
         "cpuset",
     ];
     // fuse.* covers gvfsd-fuse, cryfs, gocryptfs, encfs, etc.
-    SKIP.contains(&fs_type) || fs_type.starts_with("fuse.")
+    SKIP.contains(&fs_type) || (fs_type.starts_with("fuse.") && !include_fuse)
 }
 
 #[cfg(target_os = "linux")]
-fn detect_logical_linux() -> Vec<(String, u64, u64, String)> {
+fn detect_logical_linux(include_fuse: bool) -> Vec<(String, u64, u64, String)> {
     use std::collections::HashSet;
     use std::ffi::CString;
 
@@ -72,7 +80,7 @@ fn detect_logical_linux() -> Vec<(String, u64, u64, String)> {
         let mount_point = parts[1];
         let fs_type = parts[2];
 
-        if is_skip_fs(fs_type) {
+        if is_skip_fs(fs_type, include_fuse) {
             continue;
         }
 
@@ -473,7 +481,41 @@ mod tests {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     use super::format_size;
     #[cfg(target_os = "linux")]
-    use super::strip_embedded_size;
+    use super::{is_skip_fs, strip_embedded_size};
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_is_skip_fs_pseudo() {
+        assert!(is_skip_fs("sysfs", false));
+        assert!(is_skip_fs("proc", false));
+        assert!(is_skip_fs("tmpfs", false));
+        assert!(is_skip_fs("fusectl", false)); // fusectl is always skipped
+        assert!(is_skip_fs("fusectl", true)); // even with include_fuse
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_is_skip_fs_fuse_excluded_by_default() {
+        assert!(is_skip_fs("fuse.gvfsd-fuse", false));
+        assert!(is_skip_fs("fuse.sshfs", false));
+        assert!(is_skip_fs("fuse.cryfs", false));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_is_skip_fs_fuse_included_in_full() {
+        assert!(!is_skip_fs("fuse.gvfsd-fuse", true));
+        assert!(!is_skip_fs("fuse.sshfs", true));
+        assert!(!is_skip_fs("fuse.cryfs", true));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_is_skip_fs_real_fs() {
+        assert!(!is_skip_fs("ext4", false));
+        assert!(!is_skip_fs("btrfs", false));
+        assert!(!is_skip_fs("vfat", false));
+    }
 
     #[cfg(target_os = "linux")]
     #[test]

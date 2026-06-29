@@ -109,6 +109,15 @@ Basic usage:
 retch
 ```
 
+Output modes:
+
+```sh
+retch --short   # hardware snapshot: OS, CPU, GPU, Memory, Disk
+retch           # standard: daily-use system overview
+retch --long    # diagnostics: firmware, thermals, shell, network, battery, …
+retch --full    # everything: theme, gamepad, weather, FUSE mounts, all sensors
+```
+
 Force ASCII-only output:
 
 ```sh
@@ -226,15 +235,16 @@ separator_color = "bright_black"
 # Ordered list of system information fields to display
 # Note: "phys-mem" requires root (sudo) on Linux to read DMI memory tables. On Windows, uses Win32_PhysicalMemory via PowerShell.
 # Note: "phys-disk" on Windows uses Get-PhysicalDisk via PowerShell.
-# Note: "weather" requires network access; shown in long mode by default.
+# Note: "weather" requires network access; shown in full mode only by default.
+# Note: "domain-search" queries resolvectl; shown in full mode only by default.
 fields = [
-    "os", "kernel", "host", "chassis", "init", "locale",
+    "os", "kernel", "host", "domain", "chassis", "init", "locale",
     "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage", "gpu",
-    "motherboard", "bios", "bootmgr", "display", "audio",
+    "motherboard", "bios", "bootmgr", "display", "audio", "camera",
     "memory", "phys-mem", "swap", "uptime", "procs", "load",
     "disk", "phys-disk", "temp", "net", "wifi", "dns", "bluetooth", "battery",
-    "shell", "editor", "terminal", "terminal_font", "terminal-size", "desktop", "wm",
-    "theme", "icons", "cursor", "font", "users", "packages", "weather"
+    "shell", "editor", "terminal", "terminal-font", "terminal-size", "desktop", "wm",
+    "theme", "icons", "cursor", "font", "users", "packages", "weather", "domain-search"
 ]
 ```
 

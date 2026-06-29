@@ -44,8 +44,111 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     let show_logo = _config.show_logo.unwrap_or(true) && !cli.no_logo && stdout_is_tty;
 
     // Determine which fields to show
-    let allowed_fields: Option<Vec<String>> = if cli.long {
-        None // show everything
+    let allowed_fields: Option<Vec<String>> = if cli.full {
+        Some(vec![
+            // Standard fields
+            "os".to_string(),
+            "kernel".to_string(),
+            "host".to_string(),
+            "cpu".to_string(),
+            "cpu-cache".to_string(),
+            "cpu-usage".to_string(),
+            "motherboard".to_string(),
+            "gpu".to_string(),
+            "display".to_string(),
+            "audio".to_string(),
+            "camera".to_string(),
+            "memory".to_string(),
+            "phys-mem".to_string(),
+            "swap".to_string(),
+            "load".to_string(),
+            "disk".to_string(),
+            "phys-disk".to_string(),
+            "net".to_string(),
+            "uptime".to_string(),
+            // Long fields
+            "bios".to_string(),
+            "font".to_string(),
+            "shell".to_string(),
+            "editor".to_string(),
+            "terminal".to_string(),
+            "terminal-font".to_string(),
+            "terminal-size".to_string(),
+            "desktop".to_string(),
+            "wm".to_string(),
+            "dns".to_string(),
+            "domain".to_string(),
+            "wifi".to_string(),
+            "bluetooth".to_string(),
+            "battery".to_string(),
+            "public-ip".to_string(),
+            "locale".to_string(),
+            "init".to_string(),
+            "chassis".to_string(),
+            "bootmgr".to_string(),
+            "temp".to_string(),
+            "cpu-freq".to_string(),
+            "procs".to_string(),
+            "arch".to_string(),
+            "users".to_string(),
+            "packages".to_string(),
+            // Full-only fields
+            "theme".to_string(),
+            "icons".to_string(),
+            "cursor".to_string(),
+            "gamepad".to_string(),
+            "weather".to_string(),
+            "domain-search".to_string(),
+        ])
+    } else if cli.long {
+        Some(vec![
+            // Standard fields
+            "os".to_string(),
+            "kernel".to_string(),
+            "host".to_string(),
+            "cpu".to_string(),
+            "cpu-cache".to_string(),
+            "cpu-usage".to_string(),
+            "motherboard".to_string(),
+            "gpu".to_string(),
+            "display".to_string(),
+            "audio".to_string(),
+            "camera".to_string(),
+            "memory".to_string(),
+            "phys-mem".to_string(),
+            "swap".to_string(),
+            "load".to_string(),
+            "disk".to_string(),
+            "phys-disk".to_string(),
+            "net".to_string(),
+            "uptime".to_string(),
+            // Long-only fields
+            "bios".to_string(),
+            "font".to_string(),
+            "shell".to_string(),
+            "editor".to_string(),
+            "terminal".to_string(),
+            "terminal-font".to_string(),
+            "terminal-size".to_string(),
+            "desktop".to_string(),
+            "wm".to_string(),
+            "dns".to_string(),
+            "domain".to_string(),
+            "wifi".to_string(),
+            "bluetooth".to_string(),
+            "battery".to_string(),
+            "public-ip".to_string(),
+            "locale".to_string(),
+            "init".to_string(),
+            "chassis".to_string(),
+            "bootmgr".to_string(),
+            "temp".to_string(),
+            "cpu-freq".to_string(),
+            "procs".to_string(),
+            "arch".to_string(),
+            "users".to_string(),
+            "packages".to_string(),
+        ])
     } else if cli.short {
         Some(vec![
             "os".to_string(),
@@ -60,7 +163,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     } else if let Some(fields) = &_config.fields {
         Some(fields.iter().map(|s| s.to_lowercase()).collect())
     } else {
-        // Default set
+        // Default (standard) set
         Some(vec![
             "os".to_string(),
             "kernel".to_string(),
@@ -69,12 +172,10 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             "cpu-cache".to_string(),
             "cpu-usage".to_string(),
             "motherboard".to_string(),
-            "bios".to_string(),
             "gpu".to_string(),
             "display".to_string(),
             "audio".to_string(),
             "camera".to_string(),
-            "gamepad".to_string(),
             "memory".to_string(),
             "phys-mem".to_string(),
             "swap".to_string(),
@@ -93,7 +194,10 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                 let norm_label_no_spaces = norm_label.replace(' ', "");
                 fields.iter().any(|f| {
                     let norm_f = f.to_lowercase().replace(['-', '_'], " ");
-                    norm_f == norm_label || norm_f.replace(' ', "") == norm_label_no_spaces
+                    norm_f == norm_label
+                        || norm_f.replace(' ', "") == norm_label_no_spaces
+                        // "dns" field key matches "DNS Server" display label
+                        || (norm_label == "dns server" && norm_f == "dns")
                 })
             }
             None => true,
@@ -115,12 +219,21 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         }
     };
 
+    // OS / system identity
     print_line("OS", &info.os);
     if let Some(kernel) = &info.kernel {
         print_line("Kernel", kernel);
     }
     if let Some(host) = &info.hostname {
         print_line("Host", host);
+    }
+    if let Some(domain) = &info.domain {
+        print_line("Domain", domain);
+    }
+    if should_show("domain-search") {
+        for entry in &info.domain_search {
+            print_line("Domain Search", entry);
+        }
     }
     if let Some(chassis) = &info.chassis {
         print_line("Chassis", chassis);
@@ -131,10 +244,22 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if let Some(locale) = &info.locale {
         print_line("Locale", locale);
     }
+    print_line("Arch", &info.arch);
+    print_line("Users", &info.users.to_string());
+    if let Some(pkgs) = info.packages {
+        if pkgs > 0 {
+            print_line("Packages", &pkgs.to_string());
+        }
+    }
     if let Some(user) = &info.current_user {
         print_line("User", user);
     }
-    print_line("Arch", &info.arch);
+    // Uptime belongs with system identity, not hardware
+    let uptime_str = format_uptime(&info.uptime);
+    let boot_display = format!("{} since {}", uptime_str, info.boot_time);
+    print_line("Uptime", &boot_display);
+
+    // Hardware
     print_line("CPU", &format!("{} ({})", info.cpu, info.cpu_core_info));
     if let Some(freq) = &info.cpu_freq {
         print_line("CPU Freq", freq);
@@ -177,6 +302,15 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             print_line("Gamepad", gp);
         }
     }
+    if let Some(wifi) = &info.wifi {
+        print_line("Wi-Fi", wifi);
+    }
+    if let Some(bt) = &info.bluetooth {
+        print_line("Bluetooth", bt);
+    }
+    if let Some(bat) = &info.battery {
+        print_line("Battery", bat);
+    }
     print_line("Memory", &info.memory);
     if let Some(phys_mem) = &info.physical_memory {
         print_line("Phys Mem", phys_mem);
@@ -186,27 +320,31 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if let Some(load) = &info.load_avg {
         print_line("Load", load);
     }
-
     if should_show("Disk") {
         for disk in &info.disks {
             print_line("Disk", disk);
         }
     }
-
     if should_show("Phys Disk") {
         for disk in &info.physical_disks {
             print_line("Phys Disk", disk);
         }
     }
-
     if should_show("Temp") {
-        for temp in &info.temps {
-            print_line("Temp", temp);
+        if cli.full {
+            for temp in &info.temps {
+                print_line("Temp", temp);
+            }
+        } else {
+            for temp in consolidate_temps(&info.temps) {
+                print_line("Temp", &temp);
+            }
         }
     }
 
+    // Network
     if should_show("Net") {
-        if cli.long {
+        if cli.long || cli.full {
             for net in &info.networks {
                 if let Some(ref active) = info.active_interface {
                     if net.contains(active) {
@@ -243,31 +381,14 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             }
         }
     }
-
     if let Some(ip) = &info.public_ip {
         print_line("Public IP", ip);
     }
-
-    if let Some(wifi) = &info.wifi {
-        print_line("Wi-Fi", wifi);
-    }
     if !info.dns.is_empty() {
-        print_line("DNS", &info.dns.join(", "));
+        print_line("DNS Server", &info.dns.join(", "));
     }
 
-    if let Some(bt) = &info.bluetooth {
-        print_line("Bluetooth", bt);
-    }
-
-    // Uptime: human duration first, then ISO boot time with timezone
-    let uptime_str = format_uptime(&info.uptime);
-    let boot_display = format!("{} since {}", uptime_str, info.boot_time);
-    print_line("Uptime", &boot_display);
-
-    if let Some(bat) = &info.battery {
-        print_line("Battery", bat);
-    }
-
+    // Environment
     if let Some(shell) = &info.shell {
         print_line("Shell", shell);
     }
@@ -307,12 +428,6 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     }
     if let Some(term_font) = &info.terminal_font {
         print_line("Terminal Font", term_font);
-    }
-    print_line("Users", &info.users.to_string());
-    if let Some(pkgs) = info.packages {
-        if pkgs > 0 {
-            print_line("Packages", &pkgs.to_string());
-        }
     }
     if let Some(weather) = &info.weather {
         print_line("Weather", weather);
@@ -603,6 +718,69 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     Ok(())
 }
 
+/// Returns the highest temperature per physical category from a raw sensor list.
+///
+/// Input strings are formatted as `"label: 83°C"`. Output is one entry per
+/// detected category (CPU / GPU / NVMe / WiFi / Battery / System), ordered
+/// from most to least specific. Used by `--long` mode; `--full` shows the raw list.
+fn consolidate_temps(temps: &[String]) -> Vec<String> {
+    fn categorize(label: &str) -> &'static str {
+        let l = label.to_lowercase();
+        if l.contains("cpu")
+            || l.contains("core")
+            || l.contains("k10temp")
+            || l.contains("k8temp")
+            || l.contains("coretemp")
+            || l.contains("tctl")
+            || l.contains("tdie")
+            || l.contains("tccd")
+            || l.contains("package")
+        {
+            "CPU"
+        } else if l.contains("gpu")
+            || l.contains("nouveau")
+            || l.contains("radeon")
+            || l.contains("amdgpu")
+        {
+            "GPU"
+        } else if l.contains("nvme") || l.contains("nand") {
+            "NVMe"
+        } else if l.contains("ath")
+            || l.contains("wifi")
+            || l.contains("wireless")
+            || l.contains("wlan")
+            || l.contains("iwl")
+        {
+            "WiFi"
+        } else if l.contains("bat") {
+            "Battery"
+        } else {
+            "System"
+        }
+    }
+
+    let mut max: std::collections::HashMap<&str, f32> = std::collections::HashMap::new();
+    for s in temps {
+        // Parse "some label: 83°C"
+        if let Some((label_part, val_part)) = s.rsplit_once(':') {
+            let val_str = val_part.trim().trim_end_matches("°C");
+            if let Ok(val) = val_str.parse::<f32>() {
+                let cat = categorize(label_part.trim());
+                let entry = max.entry(cat).or_insert(f32::NEG_INFINITY);
+                if val > *entry {
+                    *entry = val;
+                }
+            }
+        }
+    }
+
+    const ORDER: &[&str] = &["CPU", "GPU", "NVMe", "WiFi", "Battery", "System"];
+    ORDER
+        .iter()
+        .filter_map(|cat| max.get(cat).map(|v| format!("{}: {:.0}°C", cat, v)))
+        .collect()
+}
+
 /// Formats a raw uptime string (in seconds) into a human-readable duration.
 ///
 /// Example: "45224s" -> "12h 33m 44s"
@@ -666,6 +844,68 @@ fn terminal_cell_height_px() -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_consolidate_temps_basic() {
+        let raw = vec![
+            "k10temp Tctl: 83°C".to_string(),
+            "amdgpu edge: 65°C".to_string(),
+            "nvme Composite: 62°C".to_string(),
+            "ath11k_hwmon temp1: 58°C".to_string(),
+            "acpitz temp1: 77°C".to_string(),
+        ];
+        let result = consolidate_temps(&raw);
+        assert_eq!(
+            result,
+            vec![
+                "CPU: 83°C",
+                "GPU: 65°C",
+                "NVMe: 62°C",
+                "WiFi: 58°C",
+                "System: 77°C"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_consolidate_temps_highest_wins() {
+        let raw = vec![
+            "thinkpad CPU: 83°C".to_string(),
+            "k10temp Tctl: 79°C".to_string(),
+            "nvme Composite: 62°C".to_string(),
+            "nvme Sensor 1: 59°C".to_string(),
+            "nvme Sensor 2: 56°C".to_string(),
+        ];
+        let result = consolidate_temps(&raw);
+        assert!(result.contains(&"CPU: 83°C".to_string()));
+        assert!(result.contains(&"NVMe: 62°C".to_string()));
+        assert!(!result
+            .iter()
+            .any(|s| s.contains("79") || s.contains("59") || s.contains("56")));
+    }
+
+    #[test]
+    fn test_consolidate_temps_order() {
+        let raw = vec![
+            "acpitz: 60°C".to_string(),
+            "nvme: 55°C".to_string(),
+            "amdgpu edge: 65°C".to_string(),
+            "k10temp Tctl: 80°C".to_string(),
+        ];
+        let result = consolidate_temps(&raw);
+        let cpu_pos = result.iter().position(|s| s.starts_with("CPU"));
+        let gpu_pos = result.iter().position(|s| s.starts_with("GPU"));
+        let nvme_pos = result.iter().position(|s| s.starts_with("NVMe"));
+        let sys_pos = result.iter().position(|s| s.starts_with("System"));
+        assert!(cpu_pos < gpu_pos);
+        assert!(gpu_pos < nvme_pos);
+        assert!(nvme_pos < sys_pos);
+    }
+
+    #[test]
+    fn test_consolidate_temps_empty() {
+        assert!(consolidate_temps(&[]).is_empty());
+    }
 
     #[test]
     fn test_format_uptime() {
