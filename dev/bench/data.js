@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782701423018,
+  "lastUpdate": 1782701786451,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17459,75 +17459,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "9a0094877053c3007b93f6cf2e9dd4b56f9e5ed3",
-          "message": "Merge pull request #78 from l1a/feat/local-bench-upload\n\nfeat: upload local benchmark results to gh-pages dashboard",
-          "timestamp": "2026-06-10T11:45:58-07:00",
-          "tree_id": "7494cb4cd48958c6d8510a10e2cd5d12fedc8879",
-          "url": "https://github.com/l1a/retch/commit/9a0094877053c3007b93f6cf2e9dd4b56f9e5ed3"
-        },
-        "date": 1781119860839,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 274798031.99999994,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1464293992.0000002,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 102.6363694779332,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9484065407105833,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.39039896099641,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 317717555,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 488.0829702515054,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 738.2573838371807,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1302731115,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "a9fd67a7413c6895871674c4a722439caa865a2b",
           "message": "refactor(sysinfo): isolate remaining detect_* functions into dedicated modules (v0.3.11) (#79)\n\n* refactor(sysinfo): isolate remaining detect_* functions into dedicated modules\n\nExtracts all remaining detection logic from fetch.rs into single-purpose\nmodules: bios, camera, gamepad, motherboard, packages, shell, terminal,\nand theme. Adds win_reg as a shared Windows registry helper. fetch.rs\nshrinks from 2275 lines to 443 lines. Bumps retch-sysinfo to v0.1.11 and\nretch-cli to v0.3.11.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix(bench): gate camera and gamepad imports with cfg(target_os = \"macos\")\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* style: rustfmt theme.rs test assert_eq line wrap\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* chore: add pre-push hook to catch fmt/clippy failures before push\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* chore: pre-push hook delegates to just check instead of duplicating logic\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* chore: document PR test plan verification in AGENTS.md\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix(theme): gate parse_ini_key and its tests to linux only\n\nparse_ini_key is only called from linux cfg blocks; clippy correctly\nflags it as dead code on macOS and Windows.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix(win_reg): allow upper_case_acronyms for HKEY Windows API type name\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix: gate parse_macos_camera and parse_macos_gamepad to macos only\n\nBoth functions are only called from macos cfg blocks and macos benchmarks;\nungated pub triggers dead_code warnings on Linux and Windows.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
           "timestamp": "2026-06-10T13:06:20-07:00",
@@ -20877,6 +20808,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2270097465,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0bc5e587df1dee945e8b33182694531b28affdb9",
+          "message": "Merge pull request #126 from l1a/fix/tldr-auth-bypass\n\nfix: resolve gh auth and fork directory issues in tldr release script",
+          "timestamp": "2026-06-28T19:15:24-07:00",
+          "tree_id": "41349673c84e317f53711dc893f4ebf44ab425c3",
+          "url": "https://github.com/l1a/retch/commit/0bc5e587df1dee945e8b33182694531b28affdb9"
+        },
+        "date": 1782701783444,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 102.75998154203228,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947629827943371,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 102.23153018104645,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 77.6690975595371,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45641.23308584693,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 501.3525288736396,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 735.1792611503723,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2291337020,
             "unit": "ns"
           }
         ]
