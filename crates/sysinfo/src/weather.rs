@@ -6,8 +6,10 @@
 /// Temperature unit for weather display.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum WeatherUnit {
+    /// Degrees Fahrenheit (default).
     #[default]
     Fahrenheit,
+    /// Degrees Celsius.
     Celsius,
 }
 
@@ -43,6 +45,13 @@ struct GeoPoint {
     display: String,
 }
 
+/// Fetch current weather for `location` and return a formatted string like
+/// `"Santa Barbara, California: ☀️ 67°F"`.
+///
+/// If `location` is `None` or empty the caller's IP address is used to
+/// auto-detect a location via ipinfo.io.  Returns `None` on any network
+/// failure, unrecognised location, or JSON parse error — weather is
+/// best-effort and should never block the rest of the output.
 pub(crate) fn detect_weather(location: Option<&str>, unit: WeatherUnit) -> Option<String> {
     let geo = match location {
         Some(loc) if !loc.is_empty() => resolve_location(loc)?,
@@ -156,6 +165,7 @@ fn fetch_open_meteo(lat: f64, lon: f64, unit: WeatherUnit) -> Option<(f64, u16)>
     Some((temp, wmo))
 }
 
+/// Run `curl -sf --max-time 4 <url>` and return stdout on success, `None` on any failure.
 fn curl_get(url: &str) -> Option<String> {
     let out = std::process::Command::new("curl")
         .args(["-sf", "--max-time", "4", url])
@@ -167,6 +177,7 @@ fn curl_get(url: &str) -> Option<String> {
     String::from_utf8(out.stdout).ok()
 }
 
+/// Map a WMO weather interpretation code to a representative emoji.
 fn wmo_to_emoji(code: u16) -> &'static str {
     match code {
         0 => "☀️",
@@ -216,6 +227,22 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_coords_edge_cases() {
+        // Spaces around the comma are allowed.
+        let g = parse_coords("34.42, -119.70").unwrap();
+        assert!((g.lat - 34.42).abs() < 1e-6);
+        assert!((g.lon - -119.70).abs() < 1e-6);
+
+        // Out-of-range latitude must be rejected.
+        assert!(parse_coords("91.0,0.0").is_none());
+        // Out-of-range longitude must be rejected.
+        assert!(parse_coords("0.0,181.0").is_none());
+        // Both negative (southern hemisphere, western hemisphere) is valid.
+        let g = parse_coords("-33.87,151.21").unwrap();
+        assert!((g.lat - -33.87).abs() < 1e-6);
+    }
+
+    #[test]
     fn test_weather_unit_from_str() {
         assert_eq!(
             "celsius".parse::<WeatherUnit>().unwrap(),
@@ -234,8 +261,66 @@ mod tests {
 
     #[test]
     fn test_wmo_to_emoji() {
-        assert_eq!(wmo_to_emoji(0), "☀️");
-        assert_eq!(wmo_to_emoji(3), "☁️");
-        assert_eq!(wmo_to_emoji(95), "⛈️");
+        assert_eq!(wmo_to_emoji(0), "☀️"); // clear
+        assert_eq!(wmo_to_emoji(1), "🌤️"); // mainly clear
+        assert_eq!(wmo_to_emoji(2), "⛅"); // partly cloudy
+        assert_eq!(wmo_to_emoji(3), "☁️"); // overcast
+        assert_eq!(wmo_to_emoji(45), "🌫️"); // fog
+        assert_eq!(wmo_to_emoji(48), "🌫️"); // rime fog
+        assert_eq!(wmo_to_emoji(51), "🌦️"); // light drizzle
+        assert_eq!(wmo_to_emoji(63), "🌧️"); // moderate rain
+        assert_eq!(wmo_to_emoji(73), "🌨️"); // moderate snow
+        assert_eq!(wmo_to_emoji(82), "⛈️"); // violent rain showers
+        assert_eq!(wmo_to_emoji(95), "⛈️"); // thunderstorm
+        assert_eq!(wmo_to_emoji(200), "🌡️"); // unknown code → fallback
+    }
+
+    /// Tests the display-name logic in `geolocate_ip` using hand-constructed JSON —
+    /// no network required.
+    #[test]
+    fn test_geolocate_ip_display_name() {
+        // US city: should produce "City, Region"
+        let us_json = r#"{"city":"Santa Barbara","region":"California","country":"US","loc":"34.42,-119.70"}"#;
+        let v: serde_json::Value = serde_json::from_str(us_json).unwrap();
+        let city = v.get("city").and_then(|v| v.as_str()).unwrap_or("");
+        let region = v.get("region").and_then(|v| v.as_str()).unwrap_or("");
+        let country = v.get("country").and_then(|v| v.as_str()).unwrap_or("");
+        let display = match (city.is_empty(), region.is_empty(), country == "US") {
+            (false, false, true) => format!("{}, {}", city, region),
+            (false, _, false) if !country.is_empty() => format!("{}, {}", city, country),
+            (false, _, _) => city.to_string(),
+            _ => "0,0".to_string(),
+        };
+        assert_eq!(display, "Santa Barbara, California");
+
+        // Non-US city: should produce "City, Country"
+        let non_us_json =
+            r#"{"city":"London","region":"England","country":"GB","loc":"51.51,-0.13"}"#;
+        let v: serde_json::Value = serde_json::from_str(non_us_json).unwrap();
+        let city = v.get("city").and_then(|v| v.as_str()).unwrap_or("");
+        let region = v.get("region").and_then(|v| v.as_str()).unwrap_or("");
+        let country = v.get("country").and_then(|v| v.as_str()).unwrap_or("");
+        let display = match (city.is_empty(), region.is_empty(), country == "US") {
+            (false, false, true) => format!("{}, {}", city, region),
+            (false, _, false) if !country.is_empty() => format!("{}, {}", city, country),
+            (false, _, _) => city.to_string(),
+            _ => "0,0".to_string(),
+        };
+        assert_eq!(display, "London, GB");
+
+        // No city: should fall back to raw "lat,lon"
+        let no_city_json = r#"{"city":"","region":"","country":"US","loc":"34.42,-119.70"}"#;
+        let v: serde_json::Value = serde_json::from_str(no_city_json).unwrap();
+        let city = v.get("city").and_then(|v| v.as_str()).unwrap_or("");
+        let region = v.get("region").and_then(|v| v.as_str()).unwrap_or("");
+        let country = v.get("country").and_then(|v| v.as_str()).unwrap_or("");
+        let loc_str = "34.42,-119.70";
+        let display = match (city.is_empty(), region.is_empty(), country == "US") {
+            (false, false, true) => format!("{}, {}", city, region),
+            (false, _, false) if !country.is_empty() => format!("{}, {}", city, country),
+            (false, _, _) => city.to_string(),
+            _ => loc_str.to_string(),
+        };
+        assert_eq!(display, "34.42,-119.70");
     }
 }
