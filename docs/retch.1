@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "June 2026" "retch 0.3.28" "System Information Fetcher"
+.TH "RETCH" "1" "June 2026" "retch 0.3.29" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -264,6 +264,10 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
+`\f[CR]dns\fP`: Configured DNS nameservers (from `\f[CR]/etc/resolv\.conf\fP` on Linux/macOS)\.
+.El
+.Bl
+.IP \(bu 4
 `\f[CR]bluetooth\fP`: Bluetooth adapter details and connected device count/names\.
 .El
 .Bl
@@ -272,7 +276,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
-`\f[CR]shell\fP`: Shell name and version (e\.g\. bash, zsh, fish, nu)\.
+`\f[CR]shell\fP`: Currently running shell name and version (e\.g\. bash, zsh, fish, nu)\. Detected from the process tree; falls back to `\f[CR]$SHELL\fP` (login shell)\.
 .El
 .Bl
 .IP \(bu 4
@@ -288,7 +292,15 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
-`\f[CR]desktop\fP`: Desktop environment or window manager\.
+`\f[CR]terminal\-size\fP`: Terminal dimensions (columns x rows)\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]desktop\fP`: Desktop environment name (e\.g\. GNOME, KDE Plasma, XFCE)\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]wm\fP`: Window manager name (e\.g\. Mutter, KWin, Sway)\. Hidden when identical to Desktop\.
 .El
 .Bl
 .IP \(bu 4

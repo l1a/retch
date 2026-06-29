@@ -123,13 +123,16 @@ You can generate a starting configuration with:
   - `temp`: System temperature sensors.
   - `net`: Active network interfaces and local/public IP addresses.
   - `wifi`: Active Wi-Fi SSID, band frequency, channel, and link rates.
+  - `dns`: Configured DNS nameservers (from `/etc/resolv.conf` on Linux/macOS).
   - `bluetooth`: Bluetooth adapter details and connected device count/names.
   - `battery`: Battery capacity, vendor/model, time remaining, and health.
-  - `shell`: Shell name and version (e.g. bash, zsh, fish, nu).
+  - `shell`: Currently running shell name and version (e.g. bash, zsh, fish, nu). Detected from the process tree; falls back to `$SHELL` (login shell).
   - `editor`: Default editor from `$VISUAL` / `$EDITOR`.
   - `terminal`: Terminal emulator name and version.
   - `terminal_font`: Terminal emulator active font.
-  - `desktop`: Desktop environment or window manager.
+  - `terminal-size`: Terminal dimensions (columns × rows).
+  - `desktop`: Desktop environment name (e.g. GNOME, KDE Plasma, XFCE).
+  - `wm`: Window manager name (e.g. Mutter, KWin, Sway). Hidden when identical to Desktop.
   - `theme`: UI Theme settings.
   - `icons`: UI icon pack.
   - `cursor`: UI mouse cursor settings.

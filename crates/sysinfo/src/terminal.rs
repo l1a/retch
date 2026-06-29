@@ -5,6 +5,36 @@
 
 use sysinfo::System;
 
+/// Returns the current terminal dimensions as `"COLSxROWS"`, or `None` if unavailable.
+///
+/// Uses `TIOCGWINSZ` ioctl on Linux/macOS. Falls back to `$COLUMNS`/`$LINES` env vars.
+/// Returns `None` when stdout is not a TTY (e.g. piped output) or on Windows.
+pub(crate) fn detect_terminal_size() -> Option<String> {
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
+        use libc::{ioctl, winsize, STDOUT_FILENO, TIOCGWINSZ};
+        let mut ws = winsize {
+            ws_row: 0,
+            ws_col: 0,
+            ws_xpixel: 0,
+            ws_ypixel: 0,
+        };
+        let ret = unsafe { ioctl(STDOUT_FILENO, TIOCGWINSZ, &mut ws) };
+        if ret == 0 && ws.ws_col > 0 && ws.ws_row > 0 {
+            return Some(format!("{}x{}", ws.ws_col, ws.ws_row));
+        }
+    }
+    // Fallback: env vars set by some shells
+    if let (Ok(cols), Ok(rows)) = (std::env::var("COLUMNS"), std::env::var("LINES")) {
+        if let (Ok(c), Ok(r)) = (cols.trim().parse::<u16>(), rows.trim().parse::<u16>()) {
+            if c > 0 && r > 0 {
+                return Some(format!("{}x{}", c, r));
+            }
+        }
+    }
+    None
+}
+
 pub(crate) fn detect_terminal(sys: &System) -> Option<String> {
     if let Ok(prog) = std::env::var("TERM_PROGRAM") {
         if !prog.is_empty() {

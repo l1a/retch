@@ -6,68 +6,66 @@
 use sysinfo::System;
 
 pub(crate) fn detect_shell(sys: &System) -> Option<String> {
-    let shell_env = std::env::var("SHELL").ok();
+    let known_shells = [
+        "bash",
+        "zsh",
+        "fish",
+        "sh",
+        "dash",
+        "nu",
+        "elvish",
+        "tcsh",
+        "csh",
+        "ksh",
+        "powershell",
+        "pwsh",
+        "cmd",
+    ];
 
-    let (shell_path, shell_name) = if let Some(ref path_str) = shell_env {
-        let path = std::path::Path::new(path_str);
+    // Walk the process tree to find the actual running shell.
+    let mut current_pid = sysinfo::get_current_pid().ok();
+    let mut detected: Option<(String, String)> = None;
+    while let Some(pid) = current_pid {
+        if let Some(process) = sys.process(pid) {
+            let proc_name = process.name().to_string_lossy().to_string();
+            let proc_name_lower = proc_name.to_lowercase();
+            let clean_name = proc_name_lower
+                .strip_suffix(".exe")
+                .unwrap_or(&proc_name_lower)
+                .to_string();
+            if known_shells.contains(&clean_name.as_str()) {
+                detected = Some((proc_name.clone(), clean_name));
+                break;
+            }
+            current_pid = process.parent();
+        } else {
+            break;
+        }
+    }
+
+    let (shell_path, shell_name) = if let Some((orig_name, clean_name)) = detected {
+        (orig_name, clean_name)
+    } else if let Ok(path_str) = std::env::var("SHELL") {
+        // Fall back to $SHELL (login shell) when process tree yields nothing.
+        let path = std::path::Path::new(&path_str);
         let name = path
             .file_name()
             .and_then(|n| n.to_str())
-            .unwrap_or(path_str)
+            .unwrap_or(&path_str)
             .to_string();
-        (path_str.clone(), name)
+        (path_str, name)
     } else {
-        let mut current_pid = sysinfo::get_current_pid().ok();
-        let mut detected: Option<(String, String)> = None;
-        let known_shells = [
-            "bash",
-            "zsh",
-            "fish",
-            "sh",
-            "dash",
-            "nu",
-            "elvish",
-            "tcsh",
-            "csh",
-            "ksh",
-            "powershell",
-            "pwsh",
-            "cmd",
-        ];
-
-        while let Some(pid) = current_pid {
-            if let Some(process) = sys.process(pid) {
-                let proc_name = process.name().to_string_lossy().to_string();
-                let proc_name_lower = proc_name.to_lowercase();
-                let clean_name = proc_name_lower
-                    .strip_suffix(".exe")
-                    .unwrap_or(&proc_name_lower)
-                    .to_string();
-                if known_shells.contains(&clean_name.as_str()) {
-                    detected = Some((proc_name.clone(), clean_name));
-                    break;
-                }
-                current_pid = process.parent();
+        #[cfg(target_os = "windows")]
+        {
+            if std::env::var("PSModulePath").is_ok() {
+                ("powershell.exe".to_string(), "powershell".to_string())
             } else {
-                break;
+                ("cmd.exe".to_string(), "cmd".to_string())
             }
         }
-
-        if let Some((orig_name, clean_name)) = detected {
-            (orig_name, clean_name)
-        } else {
-            #[cfg(target_os = "windows")]
-            {
-                if std::env::var("PSModulePath").is_ok() {
-                    ("powershell.exe".to_string(), "powershell".to_string())
-                } else {
-                    ("cmd.exe".to_string(), "cmd".to_string())
-                }
-            }
-            #[cfg(not(target_os = "windows"))]
-            {
-                ("sh".to_string(), "sh".to_string())
-            }
+        #[cfg(not(target_os = "windows"))]
+        {
+            ("sh".to_string(), "sh".to_string())
         }
     };
 

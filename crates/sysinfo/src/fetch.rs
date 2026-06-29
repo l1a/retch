@@ -132,6 +132,12 @@ pub struct SystemInfo {
     pub editor: Option<String>,
     /// Current weather from wttr.in.
     pub weather: Option<String>,
+    /// Active window manager name.
+    pub wm: Option<String>,
+    /// Configured DNS nameservers.
+    pub dns: Vec<String>,
+    /// Terminal dimensions as "COLSxROWS".
+    pub terminal_size: Option<String>,
 }
 
 impl SystemInfo {
@@ -652,6 +658,27 @@ impl SystemInfo {
             None
         };
 
+        let wm = if should_collect("wm") || should_collect("window manager") {
+            crate::wm::detect_wm()
+        } else {
+            None
+        };
+
+        let dns = if should_collect("dns") {
+            crate::network::detect_dns()
+        } else {
+            Vec::new()
+        };
+
+        let terminal_size = if should_collect("terminal size")
+            || should_collect("terminal-size")
+            || should_collect("terminal_size")
+        {
+            crate::terminal::detect_terminal_size()
+        } else {
+            None
+        };
+
         // Current logged in user
         let current_user = std::env::var("USER").ok();
 
@@ -725,6 +752,9 @@ impl SystemInfo {
             bootmgr,
             editor,
             weather,
+            wm,
+            dns,
+            terminal_size,
         })
     }
 }

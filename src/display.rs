@@ -247,6 +247,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if let Some(wifi) = &info.wifi {
         print_line("Wi-Fi", wifi);
     }
+    if !info.dns.is_empty() {
+        print_line("DNS", &info.dns.join(", "));
+    }
 
     if let Some(bt) = &info.bluetooth {
         print_line("Bluetooth", bt);
@@ -270,8 +273,21 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if let Some(term) = &info.terminal {
         print_line("Terminal", term);
     }
+    if let Some(ts) = &info.terminal_size {
+        print_line("Terminal Size", ts);
+    }
     if let Some(de) = &info.desktop {
         print_line("Desktop", de);
+    }
+    if let Some(wm) = &info.wm {
+        let duplicate = info
+            .desktop
+            .as_deref()
+            .map(|de| de.to_lowercase() == wm.to_lowercase())
+            .unwrap_or(false);
+        if !duplicate {
+            print_line("WM", wm);
+        }
     }
     if let Some(ui_theme) = &info.ui_theme {
         print_line("Theme", ui_theme);

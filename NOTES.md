@@ -110,6 +110,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 - **Package repository submissions**: Submit retch to AUR (Arch User Repository) and nixpkgs so it appears in the [Repology](https://repology.org/project/retch/versions) packaging status widget. The Nix flake (contributed by @quixaq) is a useful starting point for the nixpkgs submission.
 - **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
+- **FUSE mount opt-in**: v0.3.26 skips all `fuse.*` mounts in disk detection to avoid 600ms+ hangs from cryfs/EncFS vaults. Users who still want to see FUSE-backed mounts (e.g. sshfs, rclone) should have an opt-in path — likely a config key (`show_fuse_mounts = true`) or a CLI flag (`--include-fuse`) that re-enables `statvfs` calls on those entries.
 
 ---
 
@@ -150,6 +151,13 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.29 - Terminal size, DNS, WM, shell fix (June 29, 2026)
+- **TerminalSize**: Detects terminal dimensions (columns × rows) via `ioctl(TIOCGWINSZ)` on Linux/macOS; falls back to `$COLUMNS`/`$LINES`.
+- **DNS**: Parses configured nameservers from `/etc/resolv.conf` (Linux/macOS); PowerShell `Get-DnsClientServerAddress` on Windows.
+- **WM**: Detects the active window manager by scanning `/proc` for known compositor/WM process names. Suppressed in output when identical to the Desktop field (case-insensitive).
+- **Shell fix**: Shell detection now walks the process tree first to find the *running* shell, falling back to `$SHELL` (login shell) only when the scan yields nothing.
+- **Version**: Bumped to `0.3.29` / `retch-sysinfo 0.1.29`.
 
 ### v0.3.28 - TL;DR page (June 28, 2026)
 - **TL;DR Page**: Added `tldr` command page entry (`docs/retch.md`) detailing the most common CLI parameters, themes, and configuration flags.
