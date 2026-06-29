@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782763962834,
+  "lastUpdate": 1782764107192,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6011,85 +6011,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "b3c4904083ae5520e4347c02b09b5ef1e7486157",
-          "message": "docs: regenerate man page for v0.3.16\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-12T13:51:18-07:00",
-          "tree_id": "dbf9c7b000ddfa32bbc9dc0c226043ee79b72b50",
-          "url": "https://github.com/l1a/retch/commit/b3c4904083ae5520e4347c02b09b5ef1e7486157"
-        },
-        "date": 1781298156142,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 1530491.2200000007,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 90921270.62,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 79756240.02834079,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 991.8739805569228,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 55.80003430634895,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9467408488781652,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 49.073904658289784,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7704.135652003587,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1188367.3839574254,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 354.0605695566861,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 255.09772098470003,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -10274,6 +10195,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 274.6855691323639,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1b9007d1bcbf3a54c8f1878c3836ba63ca92df8a",
+          "message": "fix: advance cursor past graphical logo bottom edge (#129)\n\nWhen the info field list is shorter than the logo height, the shell\nprompt was drawn on top of the logo. Fix by computing the logo's\nheight in terminal rows (image px height / cell px height via\nTIOCGWINSZ, with 20px fallback) and emitting CSI B after restoring\nthe cursor to push past the logo's bottom edge.\n\nAdds libc as a unix-only direct dep for TIOCGWINSZ.\n\nAssisted-By: Claude Sonnet 4.6",
+          "timestamp": "2026-06-29T13:00:36-07:00",
+          "tree_id": "f9622416d510a495b2af1a31b6b9c7e6b12f477e",
+          "url": "https://github.com/l1a/retch/commit/1b9007d1bcbf3a54c8f1878c3836ba63ca92df8a"
+        },
+        "date": 1782764105976,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 850786680.7,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 992.3848901962435,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 47.05982395269111,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9464254238003336,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 47.07082435915229,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7741.301942248096,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70680.27657372502,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4727.524989585114,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4834.60457501664,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1277305.302259552,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 358.763250897084,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 255.13662215372375,
             "unit": "ns"
           }
         ]
