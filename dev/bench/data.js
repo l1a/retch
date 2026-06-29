@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782775276113,
+  "lastUpdate": 1782775773050,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14288,75 +14288,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "distinct": true,
-          "id": "70165e2478e9da227bdaf759836f8a8a3a63f014",
-          "message": "fix(hooks): skip pre-push check for gh-pages branch\n\ngh-pages carries no Rust source, so running just check from a worktree\nfails with \"Justfile not found\". Read the remote ref from stdin (standard\npre-push protocol) and exit 0 immediately for gh-pages pushes.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-14T07:53:44-07:00",
-          "tree_id": "eb56eb4960dae3e3ea6b92d0671bc250ba9efd96",
-          "url": "https://github.com/l1a/retch/commit/70165e2478e9da227bdaf759836f8a8a3a63f014"
-        },
-        "date": 1781450380131,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 34240446,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1695706075.9999998,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 118.61920541165034,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.380210044259704,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 116.21620465442513,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 43391.638769618556,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 584.2063793700045,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 823.705698506999,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1459038000,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
           "id": "28dafa442e4064a005d0514f37eeb23e613b0c85",
           "message": "docs: clarify Wi-Fi link rate availability by platform\n\nmacOS exposes only TX rate (CWInterface.transmitRate); no RX rate exists\nin any public CoreWLAN or IOKit API. Linux has both via iw.\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-14T14:15:08-07:00",
@@ -17681,6 +17612,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3321458905,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "9f54423ddcf00725127f8a6939746d86d36aa426",
+          "message": "chore: ignore memory/ directory\n\nAssisted-By: claude-sonnet-4-6",
+          "timestamp": "2026-06-29T15:56:30-07:00",
+          "tree_id": "77f45ad8edfdbec0879df29d0d4e640cbfc2c21c",
+          "url": "https://github.com/l1a/retch/commit/9f54423ddcf00725127f8a6939746d86d36aa426"
+        },
+        "date": 1782775766927,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 124.47795548224656,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.31996830140735,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 123.81405080133717,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 95.89234846899635,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41880.493411980715,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 625.6682875274502,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 839.6538086844819,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3706800220,
             "unit": "ns"
           }
         ]
