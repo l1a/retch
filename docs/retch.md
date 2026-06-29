@@ -19,13 +19,13 @@
 
 `retch --logo {{distribution_name}}`
 
-- Force the use of an ASCII representation for the logo:
-
-`retch --ascii-logo`
-
 - Display system information using a specific theme:
 
 `retch --theme {{theme_name}}`
+
+- Display weather for a specific location (use `--weather-unit celsius` for Celsius):
+
+`retch --long --weather-location {{city_name|zip_code|lat,lon}}`
 
 - Print the default configuration to `stdout`:
 
