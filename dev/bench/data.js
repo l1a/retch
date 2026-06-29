@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782775773050,
+  "lastUpdate": 1782775879220,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17695,75 +17695,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "bc2115522b629470d7f515b5636079a768c4a2ef",
-          "message": "docs: replace Copyright (C) with SPDX-FileCopyrightText in all source headers (v0.3.13) (#84)\n\nSwitches from the informal `// Copyright (C) 2026 l1a` form to the\nmachine-readable SPDX standard. FileCopyrightText now appears above\nSPDX-License-Identifier per the SPDX spec. Closes #81.\n\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
-          "timestamp": "2026-06-11T19:04:06-07:00",
-          "tree_id": "73a275088e6c82ea9d136b5bf10979ebb3970013",
-          "url": "https://github.com/l1a/retch/commit/bc2115522b629470d7f515b5636079a768c4a2ef"
-        },
-        "date": 1781232599738,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 254909950.00000006,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1280986029.9999998,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 96.01519024406994,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9518164042209207,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 96.06345151824372,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 44690.89588750161,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 494.76378330992566,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 750.7731142591985,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1119412535,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "2b20e8fa8d79d8aad90c2fe8f2f4facc213b2a21",
           "message": "refactor: code cleanup — logo files, module consolidation (v0.3.15) (#86)\n\n* refactor: use crate:: for internal paths\n\n* refactor(retch-cli): nest re-export modules in lib.rs\n\n* refactor(retch-cli): include_str! the logos instead of keeping them in code\n\n* fix: missing ../ in paths\n\n* refactor: code cleanup — logo files, module consolidation, version bump (v0.3.15)\n\n- Fix crate:: → retch_cli:: imports in main.rs (binary crates cannot use\n  crate:: to reference their own lib; was causing unresolved import errors)\n- Move distro ASCII logos to assets/logos/*.txt, loaded via include_str!\n- Inline fetch/gpu re-export shims into lib.rs; delete src/fetch.rs and src/gpu.rs\n- Bump to v0.3.15 / retch-sysinfo v0.1.15\n\nOriginally contributed by @quixaq in #83.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Quixaq <quixaq@tutamail.com>\nCo-authored-by: quixaq <152917245+quixaq@users.noreply.github.com>\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
           "timestamp": "2026-06-11T20:00:39-07:00",
@@ -21093,6 +21024,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3632799070,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dbfa98155bcaa5b4a0415343af370f5580c7bc69",
+          "message": "Merge pull request #131 from l1a/feat/output-mode-strata\n\nfeat: add --full mode, restructure output strata (v0.3.31)",
+          "timestamp": "2026-06-29T15:47:51-07:00",
+          "tree_id": "387cdab8aa181c79bc2a9d112600cd183d385188",
+          "url": "https://github.com/l1a/retch/commit/dbfa98155bcaa5b4a0415343af370f5580c7bc69"
+        },
+        "date": 1782775876132,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 104.05530458347098,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.949401053770102,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 107.45878516096509,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 79.78052631044623,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45489.3204962786,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 501.23639264451214,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 760.9675131876479,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3338642215,
             "unit": "ns"
           }
         ]
