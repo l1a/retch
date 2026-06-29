@@ -30,14 +30,17 @@ retch is under active development with a working core, rich system information o
   - **Bluetooth**: Reports adapter controller state, manufacturer/model, and connected device names/counts.
 - **Battery Info**: Uses a custom, native implementation (no heavy dependencies) to extract capacity, vendor/model, time remaining, and battery health.
 - **Software & Desktop Environment**:
-  - **Shell Version**: Identifies the running shell and parses versions (`bash`, `zsh`, `fish`, `nu`, `pwsh`, `elvish`, `tcsh`).
-  - **Desktop Environment & WM**: Detects GNOME, KDE, macOS Aqua, Windows, etc.
+  - **Shell Version**: Identifies the *running* shell (process tree, not `$SHELL`) and parses versions (`bash`, `zsh`, `fish`, `nu`, `pwsh`, `elvish`, `tcsh`).
+  - **Desktop Environment & WM**: Detects GNOME, KDE, macOS Aqua, Windows, etc. WM is shown separately (e.g. Mutter under GNOME) and suppressed when identical to the DE.
+  - **DNS**: Reports configured nameservers from `/etc/resolv.conf` (Linux/macOS) or system DNS settings (Windows).
+  - **Terminal Size**: Reports terminal dimensions (columns × rows).
   - **UI Themes & Styling**: Concurrently resolves GTK2/3/4 or Qt global settings, icon packs, cursors, and system fonts (macOS/Windows/Linux-compatible).
   - **Package Counts**: Counts packages across many managers (`dpkg`, `rpm`, `pacman`, `flatpak`, `snap`, `homebrew`, `scoop`, `chocolatey`, `macports`).
 - **Logo Rendering Modes**:
   - **ASCII art**: High-quality color ASCII art matching your distro (adapted from Fastfetch).
   - **Graphical images**: Inline image rendering support via Kitty protocol, iTerm2, and Sixel.
   - **Unicode symbols fallback**: Graphical rendering using Chafa when full image protocols are unavailable.
+  - **Auto-suppressed when piped**: Logo is never printed when stdout is not a terminal (e.g. `retch | bat` or `retch > file`).
   - **Interactive CLI tools**: Command flags like `--ascii-only`, `--logo <NAME>` to force overrides, `--print-logos`, and `--list-distros`.
 - **Flexible Theming**:
   - Built-in community color schemes (Catppuccin Latte/Frappé/Macchiato/Mocha, Solarized Light/Dark) or automatic dark/light preference detection.
@@ -226,8 +229,8 @@ fields = [
     "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage", "gpu",
     "motherboard", "bios", "bootmgr", "display", "audio",
     "memory", "phys-mem", "swap", "uptime", "procs", "load",
-    "disk", "phys-disk", "temp", "net", "wifi", "bluetooth", "battery",
-    "shell", "editor", "terminal", "terminal_font", "desktop",
+    "disk", "phys-disk", "temp", "net", "wifi", "dns", "bluetooth", "battery",
+    "shell", "editor", "terminal", "terminal_font", "terminal-size", "desktop", "wm",
     "theme", "icons", "cursor", "font", "users", "packages", "weather"
 ]
 ```

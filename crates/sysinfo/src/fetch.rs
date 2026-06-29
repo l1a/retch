@@ -132,6 +132,12 @@ pub struct SystemInfo {
     pub editor: Option<String>,
     /// Current weather from wttr.in.
     pub weather: Option<String>,
+    /// Active window manager name.
+    pub wm: Option<String>,
+    /// Configured DNS nameservers.
+    pub dns: Vec<String>,
+    /// Terminal dimensions as "COLSxROWS".
+    pub terminal_size: Option<String>,
 }
 
 impl SystemInfo {
@@ -548,7 +554,12 @@ impl SystemInfo {
         let desktop = if should_collect("desktop") {
             std::env::var("XDG_CURRENT_DESKTOP")
                 .or_else(|_| std::env::var("DESKTOP_SESSION"))
+                .or_else(|_| std::env::var("XDG_SESSION_DESKTOP"))
+                .or_else(|_| std::env::var("GDMSESSION"))
                 .ok()
+                .map(|s| normalize_desktop_name(&s))
+                .filter(|s| !s.is_empty())
+                .or_else(detect_desktop_from_proc)
         } else {
             None
         };
@@ -652,6 +663,27 @@ impl SystemInfo {
             None
         };
 
+        let wm = if should_collect("wm") || should_collect("window manager") {
+            crate::wm::detect_wm()
+        } else {
+            None
+        };
+
+        let dns = if should_collect("dns") {
+            crate::network::detect_dns()
+        } else {
+            Vec::new()
+        };
+
+        let terminal_size = if should_collect("terminal size")
+            || should_collect("terminal-size")
+            || should_collect("terminal_size")
+        {
+            crate::terminal::detect_terminal_size()
+        } else {
+            None
+        };
+
         // Current logged in user
         let current_user = std::env::var("USER").ok();
 
@@ -725,6 +757,9 @@ impl SystemInfo {
             bootmgr,
             editor,
             weather,
+            wm,
+            dns,
+            terminal_size,
         })
     }
 }
@@ -1074,6 +1109,80 @@ pub fn detect_cpu_freq_range() -> Option<(u64, u64)> {
     }
 }
 
+#[cfg(not(target_os = "linux"))]
+fn detect_desktop_from_proc() -> Option<String> {
+    None
+}
+
+#[cfg(target_os = "linux")]
+fn detect_desktop_from_proc() -> Option<String> {
+    const DE_PROCS: &[(&str, &str)] = &[
+        ("gnome-shell", "GNOME"),
+        ("plasmashell", "KDE Plasma"),
+        ("xfce4-session", "XFCE"),
+        ("mate-session", "MATE"),
+        ("cinnamon", "Cinnamon"),
+        ("budgie-daemon", "Budgie"),
+        ("budgie-panel", "Budgie"),
+        ("lxsession", "LXDE"),
+        ("lxqt-session", "LXQt"),
+        ("deepin-session", "Deepin"),
+        ("dde-session-daemon", "Deepin"),
+        ("gala", "Pantheon"),
+        ("enlightenment", "Enlightenment"),
+    ];
+    let Ok(entries) = std::fs::read_dir("/proc") else {
+        return None;
+    };
+    for entry in entries.filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let Ok(comm) = std::fs::read_to_string(path.join("comm")) else {
+            continue;
+        };
+        let comm = comm.trim().to_lowercase();
+        for (proc_name, de_name) in DE_PROCS {
+            if comm == *proc_name || comm.starts_with(proc_name) {
+                return Some(de_name.to_string());
+            }
+        }
+    }
+    None
+}
+
+fn normalize_desktop_name(raw: &str) -> String {
+    let s = raw.trim();
+    // Canonical casing for well-known desktop environments
+    match s.to_lowercase().as_str() {
+        "gnome" => "GNOME".to_string(),
+        "kde" | "kde plasma" | "plasma" => "KDE Plasma".to_string(),
+        "xfce" => "XFCE".to_string(),
+        "lxde" => "LXDE".to_string(),
+        "lxqt" => "LXQt".to_string(),
+        "mate" => "MATE".to_string(),
+        "cinnamon" => "Cinnamon".to_string(),
+        "budgie" => "Budgie".to_string(),
+        "deepin" => "Deepin".to_string(),
+        "pantheon" => "Pantheon".to_string(),
+        "unity" => "Unity".to_string(),
+        "enlightenment" | "e" => "Enlightenment".to_string(),
+        _ => {
+            // Title-case if it's all lowercase; otherwise preserve as-is
+            if s.chars().all(|c| c.is_lowercase() || !c.is_alphabetic()) {
+                let mut chars = s.chars();
+                match chars.next() {
+                    None => String::new(),
+                    Some(c) => c.to_uppercase().collect::<String>() + chars.as_str(),
+                }
+            } else {
+                s.to_string()
+            }
+        }
+    }
+}
+
 fn detect_init_system() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
@@ -1231,6 +1340,49 @@ mod tests {
                 "expected cache level labels, got: {}",
                 s
             );
+        }
+    }
+
+    #[test]
+    fn test_normalize_desktop_name_known() {
+        assert_eq!(normalize_desktop_name("gnome"), "GNOME");
+        assert_eq!(normalize_desktop_name("GNOME"), "GNOME");
+        assert_eq!(normalize_desktop_name("kde"), "KDE Plasma");
+        assert_eq!(normalize_desktop_name("plasma"), "KDE Plasma");
+        assert_eq!(normalize_desktop_name("KDE Plasma"), "KDE Plasma");
+        assert_eq!(normalize_desktop_name("xfce"), "XFCE");
+        assert_eq!(normalize_desktop_name("lxqt"), "LXQt");
+        assert_eq!(normalize_desktop_name("mate"), "MATE");
+        assert_eq!(normalize_desktop_name("cinnamon"), "Cinnamon");
+        assert_eq!(normalize_desktop_name("e"), "Enlightenment");
+    }
+
+    #[test]
+    fn test_normalize_desktop_name_unknown_lowercase() {
+        // Unknown all-lowercase names get title-cased.
+        assert_eq!(normalize_desktop_name("budgie"), "Budgie");
+        assert_eq!(normalize_desktop_name("niri"), "Niri");
+    }
+
+    #[test]
+    fn test_normalize_desktop_name_unknown_mixed() {
+        // Unknown mixed-case names are preserved as-is.
+        assert_eq!(normalize_desktop_name("MyDE"), "MyDE");
+    }
+
+    #[test]
+    fn test_normalize_desktop_name_trims_whitespace() {
+        assert_eq!(normalize_desktop_name("  gnome  "), "GNOME");
+        assert_eq!(normalize_desktop_name(" niri "), "Niri");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_detect_desktop_from_proc_returns_option() {
+        // Just verify it runs without panicking and returns a sane value.
+        let result = detect_desktop_from_proc();
+        if let Some(ref de) = result {
+            assert!(!de.is_empty(), "desktop name should not be empty");
         }
     }
 

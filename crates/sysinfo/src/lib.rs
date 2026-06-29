@@ -28,6 +28,7 @@
 //! - [`terminal`] — Terminal emulator detection and font configuration reading.
 //! - [`theme`] — UI theme, icon, cursor, and font detection.
 //! - [`weather`] — Weather information via wttr.in.
+//! - [`wm`] — Window manager detection.
 //! - [`fetch`] — Full system information gathering (`SystemInfo`, `CollectOptions`).
 
 pub mod audio;
@@ -48,6 +49,7 @@ pub mod shell;
 pub mod terminal;
 pub mod theme;
 pub mod weather;
+pub mod wm;
 
 #[cfg(target_os = "windows")]
 pub(crate) mod win_reg;

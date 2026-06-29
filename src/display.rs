@@ -30,14 +30,18 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         theme = Theme::with_custom_overrides(theme, custom);
     }
 
-    // Determine terminal width
-    let term_width = if let Some((terminal_size::Width(w), _)) = terminal_size::terminal_size() {
+    // Determine terminal width.
+    let term_size = terminal_size::terminal_size();
+    let term_width = if let Some((terminal_size::Width(w), _)) = term_size {
         w as usize
     } else {
         80
     };
+    // Use isatty() directly — terminal_size() can return Some() when a pager
+    // (e.g. bat) allocates a PTY, giving a false positive.
+    let stdout_is_tty = std::io::IsTerminal::is_terminal(&std::io::stdout());
 
-    let show_logo = _config.show_logo.unwrap_or(true) && !cli.no_logo;
+    let show_logo = _config.show_logo.unwrap_or(true) && !cli.no_logo && stdout_is_tty;
 
     // Determine which fields to show
     let allowed_fields: Option<Vec<String>> = if cli.long {
@@ -247,6 +251,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if let Some(wifi) = &info.wifi {
         print_line("Wi-Fi", wifi);
     }
+    if !info.dns.is_empty() {
+        print_line("DNS", &info.dns.join(", "));
+    }
 
     if let Some(bt) = &info.bluetooth {
         print_line("Bluetooth", bt);
@@ -270,8 +277,21 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if let Some(term) = &info.terminal {
         print_line("Terminal", term);
     }
+    if let Some(ts) = &info.terminal_size {
+        print_line("Terminal Size", ts);
+    }
     if let Some(de) = &info.desktop {
         print_line("Desktop", de);
+    }
+    if let Some(wm) = &info.wm {
+        let duplicate = info
+            .desktop
+            .as_deref()
+            .map(|de| de.to_lowercase() == wm.to_lowercase())
+            .unwrap_or(false);
+        if !duplicate {
+            print_line("WM", wm);
+        }
     }
     if let Some(ui_theme) = &info.ui_theme {
         print_line("Theme", ui_theme);
