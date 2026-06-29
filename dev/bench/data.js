@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782774647292,
+  "lastUpdate": 1782775068572,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10436,80 +10436,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "distinct": true,
-          "id": "70165e2478e9da227bdaf759836f8a8a3a63f014",
-          "message": "fix(hooks): skip pre-push check for gh-pages branch\n\ngh-pages carries no Rust source, so running just check from a worktree\nfails with \"Justfile not found\". Read the remote ref from stdin (standard\npre-push protocol) and exit 0 immediately for gh-pages pushes.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-14T07:53:44-07:00",
-          "tree_id": "eb56eb4960dae3e3ea6b92d0671bc250ba9efd96",
-          "url": "https://github.com/l1a/retch/commit/70165e2478e9da227bdaf759836f8a8a3a63f014"
-        },
-        "date": 1781449825884,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 34737078.36000001,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 185785749.06000003,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 128433363.5375,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 384.12844089924056,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 65.76841693605294,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.9178600361946443,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 65.05094956089968,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 433.3950795440461,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 104388.89820072809,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 367.8103693453769,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
           "id": "28dafa442e4064a005d0514f37eeb23e613b0c85",
           "message": "docs: clarify Wi-Fi link rate availability by platform\n\nmacOS exposes only TX rate (CWInterface.transmitRate); no RX rate exists\nin any public CoreWLAN or IOKit API. Linux has both via iw.\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-14T14:15:08-07:00",
@@ -14269,6 +14195,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 464.5907869081486,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "9f54423ddcf00725127f8a6939746d86d36aa426",
+          "message": "chore: ignore memory/ directory\n\nAssisted-By: claude-sonnet-4-6",
+          "timestamp": "2026-06-29T15:56:30-07:00",
+          "tree_id": "77f45ad8edfdbec0879df29d0d4e640cbfc2c21c",
+          "url": "https://github.com/l1a/retch/commit/9f54423ddcf00725127f8a6939746d86d36aa426"
+        },
+        "date": 1782775066862,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1093782756.35,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 399.2918006295466,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 81.98973729027097,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.2740294398230705,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 72.39530657847385,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6804.479617372177,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1683.0061456790577,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 482.4987296927835,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 113525.55297938905,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 396.26778377907925,
             "unit": "ns"
           }
         ]
