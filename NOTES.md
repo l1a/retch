@@ -92,7 +92,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.33)
+## Current State (v0.3.34)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -199,6 +199,14 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.34 - Fix claude-code-review failing on Dependabot PRs (July 1, 2026)
+- **Bug**: `.github/workflows/claude-code-review.yml` hard-failed in ~10s on any
+  Dependabot PR (e.g. #132) because `claude-code-action@v1` refuses to run for
+  non-human actors by default.
+- **Fix**: Added `allowed_bots: 'dependabot[bot]'` to the action's `with:` block,
+  scoped narrowly to Dependabot rather than allowing all bots.
+- **Version**: Bumped to `0.3.34`.
 
 ### v0.3.33 - Add CLAUDE.md, require reading ~/AGENTS.md (July 1, 2026)
 - **CLAUDE.md added**: New file pointing agents at `AGENTS.md` via a relative link
