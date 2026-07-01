@@ -92,7 +92,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.32)
+## Current State (v0.3.33)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -199,6 +199,15 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.33 - Add CLAUDE.md, require reading ~/AGENTS.md (July 1, 2026)
+- **CLAUDE.md added**: New file pointing agents at `AGENTS.md` via a relative link
+  (retch previously had no `CLAUDE.md` at all; etr's had a broken absolute path,
+  fixed alongside this).
+- **Global Mandates item**: `AGENTS.md` Portable Core gained a `0. Global Mandates`
+  item requiring agents to read `~/AGENTS.md` (cross-repo mandates) before starting
+  work.
+- **Version**: Bumped to `0.3.33`.
 
 ### v0.3.32 - Merge AGENTS.md with etr (July 1, 2026)
 - **AGENTS.md restructured**: Split into a Portable Core (shared, kept in sync with
