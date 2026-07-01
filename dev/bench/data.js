@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782947005694,
+  "lastUpdate": 1782947607178,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18049,75 +18049,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "distinct": true,
-          "id": "70165e2478e9da227bdaf759836f8a8a3a63f014",
-          "message": "fix(hooks): skip pre-push check for gh-pages branch\n\ngh-pages carries no Rust source, so running just check from a worktree\nfails with \"Justfile not found\". Read the remote ref from stdin (standard\npre-push protocol) and exit 0 immediately for gh-pages pushes.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-14T07:53:44-07:00",
-          "tree_id": "eb56eb4960dae3e3ea6b92d0671bc250ba9efd96",
-          "url": "https://github.com/l1a/retch/commit/70165e2478e9da227bdaf759836f8a8a3a63f014"
-        },
-        "date": 1781450831430,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 263060098.00000003,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1318588097.9999998,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 98.35421307407088,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9477701872717095,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 99.53207751969315,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46102.51588579618,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 504.0446255784115,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 772.8430112473882,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1188926040,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
           "id": "28dafa442e4064a005d0514f37eeb23e613b0c85",
           "message": "docs: clarify Wi-Fi link rate availability by platform\n\nmacOS exposes only TX rate (CWInterface.transmitRate); no RX rate exists\nin any public CoreWLAN or IOKit API. Linux has both via iw.\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-14T14:15:08-07:00",
@@ -21412,6 +21343,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3086068595,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "15176a3f82579e79a3b29d95a33a28f18bfc2bf9",
+          "message": "feat: add btrfs and zpool storage fields (#137)\n\nAdds `btrfs` (label, subvolume, and used/allocated space per mount point,\nwith best-effort snapshot count) and `zpool` (ZFS pool allocation and\nhealth) fields, both gated behind --long and above. Closes the two\nStorage & Filesystems items in NOTES.md's fastfetch feature-gap list.\n\nAssisted-By: Claude Sonnet 5",
+          "timestamp": "2026-07-01T15:30:08-07:00",
+          "tree_id": "87ab581eee79770fe40b13279622d3b13a20f53c",
+          "url": "https://github.com/l1a/retch/commit/15176a3f82579e79a3b29d95a33a28f18bfc2bf9"
+        },
+        "date": 1782947603989,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 102.26999963276197,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9469994475424786,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 103.46016909708283,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 79.27899346173247,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47831.87374177415,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 491.241864160373,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 740.3014079530058,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3772077835,
             "unit": "ns"
           }
         ]
