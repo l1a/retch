@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782945448807,
+  "lastUpdate": 1782945908287,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6493,85 +6493,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "a68bf2355d3df73a1a4d3667d7017782f3a25dd8",
-          "message": "docs: clean up AGENTS.md — remove stale Next Steps and completed backlog items (#95)\n\n- Removed stale Next Steps section (crates.io publishing done as of\n  v0.3.18; platform native probe work completed in v0.3.12–v0.3.17)\n- Removed completed crates.io publish item from Future Work backlog\n- Updated Last updated date\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-14T21:11:54-07:00",
-          "tree_id": "b0f7b06a29635af747a00e106e37dabac13f6e16",
-          "url": "https://github.com/l1a/retch/commit/a68bf2355d3df73a1a4d3667d7017782f3a25dd8"
-        },
-        "date": 1781497404921,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 1522000.2600000002,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 82927533.36,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 75802806.52005881,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 985.3021749630913,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 56.658310525293906,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946782274498078,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 48.92207142061165,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7734.658783376815,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1187329.7658026037,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 353.6497759649568,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 254.10283769306534,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "3dd0a1d0ac85449cfffe313ca180098107b28bd2",
           "message": "feat: add MX Linux, Mint, Kali, Zorin, Garuda logos (#96)\n\n* feat: add MX Linux, Mint, Kali, Zorin, Garuda logos\n\nASCII logos sourced from fastfetch-cli/fastfetch. PNG logos converted\nfrom Wikimedia SVGs via ImageMagick. Adds get_embedded_logo,\nget_ascii_logo, get_distro_colors entries and tests for all five distros.\n\nAssisted-By: Claude Sonnet 4.6\n\n* chore: bump to v0.3.19, regenerate man page, update AGENTS.md\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: add new distros to --print-logos; sort alphabetically, OS last\n\nThe hardcoded logo list in main.rs was not updated when new distros were\nadded to logo.rs. Also sorts Linux distros alphabetically with macOS,\nWindows, and Tux at the end.\n\nAssisted-By: Claude Sonnet 4.6\n\n* docs: add --print-logos verification step to AGENTS.md checklist\n\nCaught by missing main.rs update when adding new distro logos in #96.\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-14T21:46:31-07:00",
@@ -10796,6 +10717,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 267.0777943550966,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "15176a3f82579e79a3b29d95a33a28f18bfc2bf9",
+          "message": "feat: add btrfs and zpool storage fields (#137)\n\nAdds `btrfs` (label, subvolume, and used/allocated space per mount point,\nwith best-effort snapshot count) and `zpool` (ZFS pool allocation and\nhealth) fields, both gated behind --long and above. Closes the two\nStorage & Filesystems items in NOTES.md's fastfetch feature-gap list.\n\nAssisted-By: Claude Sonnet 5",
+          "timestamp": "2026-07-01T15:30:08-07:00",
+          "tree_id": "87ab581eee79770fe40b13279622d3b13a20f53c",
+          "url": "https://github.com/l1a/retch/commit/15176a3f82579e79a3b29d95a33a28f18bfc2bf9"
+        },
+        "date": 1782945907148,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 4326764802.7,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 959.0460615293053,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 45.62708599937059,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946751606956222,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 45.55984876415228,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7676.1625593118415,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 69568.24114943732,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4746.585048058293,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4817.968579869709,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1193665.0037720879,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 334.6252360377722,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 261.9398957122602,
             "unit": "ns"
           }
         ]
