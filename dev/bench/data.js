@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782934041041,
+  "lastUpdate": 1782934326820,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14406,75 +14406,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "28dafa442e4064a005d0514f37eeb23e613b0c85",
-          "message": "docs: clarify Wi-Fi link rate availability by platform\n\nmacOS exposes only TX rate (CWInterface.transmitRate); no RX rate exists\nin any public CoreWLAN or IOKit API. Linux has both via iw.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-14T14:15:08-07:00",
-          "tree_id": "39c8b6d1fea217d7989fb5dffdae13cdbe80b49b",
-          "url": "https://github.com/l1a/retch/commit/28dafa442e4064a005d0514f37eeb23e613b0c85"
-        },
-        "date": 1781473324939,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 33812224,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 2149788684,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 117.42847632068666,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.363754589554483,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 126.47228553585846,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45792.17316779665,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 587.8768341636592,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 911.1062814175006,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1650149355,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -17799,6 +17730,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3706800220,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4bb9a9902ef41bd93902dc96ef9f1cc5468f1f9c",
+          "message": "chore: merge AGENTS.md with etr, document just pr gate (#133)\n\n* chore: merge AGENTS.md with etr, document just pr gate\n\nRestructure AGENTS.md into a Portable Core (kept in sync with etr's\nAGENTS.md) plus project-specific rules. Add NOTES.md read/update\ndiscipline and Core Developer Guidelines adopted from etr, and\ndocument exactly what the existing just pr gate automates.\n\nAssisted-By: Claude Sonnet 5\n\n* feat: add CLAUDE.md, require reading ~/AGENTS.md\n\nretch had no CLAUDE.md pointing agents at AGENTS.md; add one\n(relative link), matching the fixed version now in etr. Also add a\nGlobal Mandates item to the Portable Core requiring agents to read\n~/AGENTS.md before starting work, so cross-repo mandates aren't\nsilently skipped when only the repo AGENTS.md is consulted.\n\nAssisted-By: Claude Sonnet 5",
+          "timestamp": "2026-07-01T11:59:32-07:00",
+          "tree_id": "1a29b12394fae5b30b5d0d83a768c294938169ae",
+          "url": "https://github.com/l1a/retch/commit/4bb9a9902ef41bd93902dc96ef9f1cc5468f1f9c"
+        },
+        "date": 1782934323754,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 125.19082035718682,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.351418855526951,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 123.87490181290619,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 94.20448642886805,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41717.41284923746,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 559.5439700610762,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 796.4832466985977,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3657632505,
             "unit": "ns"
           }
         ]
