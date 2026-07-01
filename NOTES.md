@@ -58,7 +58,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
   - **Man Pages**: Update `docs/retch.1.md` with new parameters/fields and run `just man` to rebuild `docs/retch.1`.
   - **README**: Add new features, command examples, or configuration keys to `README.md`.
   - **Roadmap & History**: Update `NOTES.md` by bumping the version in the "Current State" header and adding a new release log entry under "Major Achievements".
-  - **GitHub Wiki**: Clone (`https://github.com/l1a/retch.wiki.git`) and update the corresponding wiki pages (`Configuration-and-Theming.md`, `Workspace-Architecture.md`, `Home.md`).
+  - **GitHub Wiki**: Clone (`https://github.com/l1a/retch.wiki.git`) and update the corresponding wiki pages (`Configuration-and-Theming.md`, `Workspace-Architecture.md`, `Home.md`, `Development-Setup.md`).
   - **tldr Page**: Update the local `docs/retch.md` if new options are introduced. **Do NOT run `just tldr-release`** — the upstream submission to [tldr-pages/tldr](https://github.com/tldr-pages/tldr) was denied pending more community traction. Keep `docs/retch.md` and the `just tldr-release` workflow maintained, but hold all upstream submissions until further notice.
   - **Bumping Strategy**: If the changes are significant, ALWAYS ask the user whether to perform a major, minor, or patch version bump.
 - **Command Redundancy**: Avoid running `just check && cargo test` sequentially since both build and check the project profiles, causing redundant background compilation cycles. Prefer `cargo test` during iteration and a final check before staging.
@@ -92,7 +92,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.34)
+## Current State (v0.3.35)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -199,6 +199,15 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.35 - Add Development-Setup.md to wiki checklist, catch up wiki (July 1, 2026)
+- **AGENTS.md §4.8**: Added `Development-Setup.md` to the wiki checklist — it was
+  omitted when the checklist was first written, even though the page documents
+  `just` recipes and was directly affected by the `just pr`/`just merge-pr` additions.
+- **Wiki catch-up**: Documented `just pr`/`just merge-pr` in `Development-Setup.md`
+  and fixed a stale `pandoc` reference (the Justfile/flake use `mandown`) — done
+  directly on the wiki since wiki edits aren't gated by PR review.
+- **Version**: Bumped to `0.3.35`.
 
 ### v0.3.34 - Fix claude-code-review failing on Dependabot PRs (July 1, 2026)
 - **Bug**: `.github/workflows/claude-code-review.yml` hard-failed in ~10s on any
