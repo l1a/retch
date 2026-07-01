@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782935550809,
+  "lastUpdate": 1782935566233,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14475,75 +14475,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "66c5e95b9dcd54e66f5cf5b135b3ac38e294a6ba",
-          "message": "fix(bench): gate audio import for non-Linux/non-macOS targets (#91)\n\n`retch_sysinfo::audio` is only used by the `bench_parse_asound_cards`\nbenchmark, which was already cfg-gated. The bare import caused an\nunused-import warning on Windows benchmark runs.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-14T15:51:27-07:00",
-          "tree_id": "c60d5cb556af666b413c832506d9caa5ba9614d7",
-          "url": "https://github.com/l1a/retch/commit/66c5e95b9dcd54e66f5cf5b135b3ac38e294a6ba"
-        },
-        "date": 1781479013077,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 28917950.000000004,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1469778520,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 119.35395816787846,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 4.924233294945616,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 120.89891679980818,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 42479.66426334397,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 578.6633034595689,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 801.0534599851396,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1290884430,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "a1ab21b8ea5fffe896154a3b8bdde17873a39699",
           "message": "ci: prune rc tags and old releases on stable release (#92)\n\n* fix(bench): gate audio import for non-Linux/non-macOS targets\n\n`retch_sysinfo::audio` is only used by the `bench_parse_asound_cards`\nbenchmark, which was already cfg-gated. The bare import caused an\nunused-import warning on Windows benchmark runs.\n\nAssisted-By: Claude Sonnet 4.6\n\n* ci: prune rc tags and old releases on stable release\n\nAfter a stable tag is published, delete all rc pre-releases for that\nversion and keep only the 10 most recent stable releases (including\ntheir git tags).\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-14T18:10:12-07:00",
@@ -17858,6 +17789,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3657632505,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e6605afd7d4f8dbce3f984541177ffaffb57901b",
+          "message": "fix: allow dependabot PRs to trigger claude-code-review (#134)\n\nclaude-code-action@v1 refuses to run for non-human actors by default,\nso every Dependabot PR (e.g. #132) hard-failed the claude-review\ncheck in ~10s before doing any actual review. Add\nallowed_bots: 'dependabot[bot]' scoped narrowly to Dependabot.\n\nAssisted-By: Claude Sonnet 5",
+          "timestamp": "2026-07-01T12:19:47-07:00",
+          "tree_id": "a345de40f93e702accd3928257b0d831789bd7c1",
+          "url": "https://github.com/l1a/retch/commit/e6605afd7d4f8dbce3f984541177ffaffb57901b"
+        },
+        "date": 1782935563819,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 131.7928004584463,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 4.900695655780282,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 129.59634900667737,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 94.52558152219481,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42778.803215521526,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 544.7266280963421,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 862.2780326496843,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 4333469375,
             "unit": "ns"
           }
         ]
