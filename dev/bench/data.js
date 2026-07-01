@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782942969443,
+  "lastUpdate": 1782943727439,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14608,75 +14608,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "9579fdcccbf2a4736c850349812353866edf554d",
-          "message": "fix(ci): use shell interpolation in jq for rc tag cleanup (#94)\n\n`gh release list --jq` does not support passing jq's `--arg` flag —\nit treats `--arg` as the jq expression, causing 'unknown command \"v\"'.\nUse shell variable interpolation directly in the jq string instead.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-14T20:54:52-07:00",
-          "tree_id": "d0c90c88d30c1050a0210829448529484307069e",
-          "url": "https://github.com/l1a/retch/commit/9579fdcccbf2a4736c850349812353866edf554d"
-        },
-        "date": 1781497312999,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 30603804,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1465625284.0000002,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 119.54987960666556,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.033101776822712,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 118.73437723058721,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 42490.12595126503,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 564.725983811054,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 811.4202442261699,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1255973925,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "a68bf2355d3df73a1a4d3667d7017782f3a25dd8",
           "message": "docs: clean up AGENTS.md — remove stale Next Steps and completed backlog items (#95)\n\n- Removed stale Next Steps section (crates.io publishing done as of\n  v0.3.18; platform native probe work completed in v0.3.12–v0.3.17)\n- Removed completed crates.io publish item from Future Work backlog\n- Updated Last updated date\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-14T21:11:54-07:00",
@@ -17976,6 +17907,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3921233540,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "efde1f0505b401f804ea9e26c4968d6f1499ca8d",
+          "message": "chore: untap aws/tap in macOS benchmark CI (cosmetic) (#136)\n\nThe macOS benchmark job surfaces \"aws/tap is not trusted\" Homebrew\nwarnings as Actions annotations on every run, caused by a\npre-installed tap on the GitHub-hosted macos-latest runner image\nthat's unrelated to installing fastfetch/hyperfine. Nothing was\nfailing — this just declutters the Actions summary.\n\nAssisted-By: Claude Sonnet 5",
+          "timestamp": "2026-07-01T14:36:18-07:00",
+          "tree_id": "e1067f42e582559f8bd96b6325d3d25a663aece1",
+          "url": "https://github.com/l1a/retch/commit/efde1f0505b401f804ea9e26c4968d6f1499ca8d"
+        },
+        "date": 1782943724906,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 124.83062428288488,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.322429494947529,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 125.57740751156064,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 93.61325480400576,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41732.64584594787,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 561.9334278209037,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 827.4482972424878,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3754716285,
             "unit": "ns"
           }
         ]
