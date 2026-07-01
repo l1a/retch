@@ -146,6 +146,10 @@ pub struct SystemInfo {
     pub domain_search: Vec<String>,
     /// Terminal dimensions as "COLSxROWS".
     pub terminal_size: Option<String>,
+    /// Mounted btrfs filesystems with label and space allocation.
+    pub btrfs: Vec<String>,
+    /// Imported ZFS pools with allocation and health status.
+    pub zpool: Vec<String>,
 }
 
 impl SystemInfo {
@@ -373,6 +377,8 @@ impl SystemInfo {
             physical_disks,
             physical_memory,
             weather,
+            btrfs,
+            zpool,
         ) = std::thread::scope(|s| {
             let gpu_handle = if should_collect("gpu") {
                 Some(s.spawn(|| {
@@ -467,6 +473,16 @@ impl SystemInfo {
             } else {
                 None
             };
+            let btrfs_handle = if should_collect("btrfs") {
+                Some(s.spawn(crate::btrfs::detect_btrfs))
+            } else {
+                None
+            };
+            let zpool_handle = if should_collect("zpool") {
+                Some(s.spawn(crate::zfs::detect_zpool))
+            } else {
+                None
+            };
 
             (
                 gpu_handle
@@ -499,6 +515,12 @@ impl SystemInfo {
                     .unwrap_or_default(),
                 physical_memory_handle.and_then(|h| h.join().ok().flatten()),
                 weather_handle.and_then(|h| h.join().ok().flatten()),
+                btrfs_handle
+                    .map(|h| h.join().unwrap_or_default())
+                    .unwrap_or_default(),
+                zpool_handle
+                    .map(|h| h.join().unwrap_or_default())
+                    .unwrap_or_default(),
             )
         });
 
@@ -782,6 +804,8 @@ impl SystemInfo {
             domain,
             domain_search,
             terminal_size,
+            btrfs,
+            zpool,
         })
     }
 }

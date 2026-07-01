@@ -242,7 +242,7 @@ fields = [
     "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage", "gpu",
     "motherboard", "bios", "bootmgr", "display", "audio", "camera",
     "memory", "phys-mem", "swap", "uptime", "procs", "load",
-    "disk", "phys-disk", "temp", "net", "wifi", "dns", "bluetooth", "battery",
+    "disk", "phys-disk", "btrfs", "zpool", "temp", "net", "wifi", "dns", "bluetooth", "battery",
     "shell", "editor", "terminal", "terminal-font", "terminal-size", "desktop", "wm",
     "theme", "icons", "cursor", "font", "users", "packages", "weather", "domain-search"
 ]

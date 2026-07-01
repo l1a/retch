@@ -124,6 +124,8 @@ You can generate a starting configuration with:
   - `load`: Average system load.
   - `disk`: Mounted disk capacity, usage, and mountpoint.
   - `phys-disk`: Physical disk model, size, and type (NVMe SSD, SSD, HDD). On Windows, uses `Get-PhysicalDisk` via PowerShell.
+  - `btrfs`: Mounted btrfs filesystem label, subvolume, and space allocation (`btrfs filesystem show`/`usage`); one entry per mount point, so a filesystem mounted at both `/` and `/home` via separate subvolumes shows two entries. Snapshot count is shown when it can be read (`btrfs subvolume list -s`, requires root) and omitted otherwise. Linux only. Long mode and above.
+  - `zpool`: Imported ZFS pool name, allocation, and health (`zpool list`). Linux and macOS with ZFS installed; empty if `zpool` is not present. Long mode and above.
   - `temp`: System temperature sensors.
   - `net`: Active network interfaces and local/public IP addresses.
   - `wifi`: Active Wi-Fi SSID, band frequency, channel, and link rates.

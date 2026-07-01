@@ -208,6 +208,8 @@ fn main() -> anyhow::Result<()> {
             "uptime".to_string(),
             // Long fields
             "bios".to_string(),
+            "btrfs".to_string(),
+            "zpool".to_string(),
             "font".to_string(),
             "shell".to_string(),
             "editor".to_string(),
@@ -264,6 +266,8 @@ fn main() -> anyhow::Result<()> {
             "uptime".to_string(),
             // Long-only fields
             "bios".to_string(),
+            "btrfs".to_string(),
+            "zpool".to_string(),
             "font".to_string(),
             "shell".to_string(),
             "editor".to_string(),
@@ -401,7 +405,7 @@ fn default_config_content() -> String {
 #     "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage",
 #     "gpu", "motherboard", "bios", "bootmgr", "display", "audio",
 #     "camera", "gamepad", "memory", "phys-mem", "swap", "uptime", "procs", "load",
-#     "disk", "phys-disk", "temp", "net", "public-ip", "wifi", "bluetooth", "battery",
+#     "disk", "phys-disk", "btrfs", "zpool", "temp", "net", "public-ip", "wifi", "bluetooth", "battery",
 #     "shell", "editor", "terminal", "terminal-font", "desktop", "dns", "domain",
 #     "theme", "icons", "cursor", "font", "users", "packages", "weather", "domain-search"
 # ]

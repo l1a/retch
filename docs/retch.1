@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "July 2026" "retch 0.3.36" "System Information Fetcher"
+.TH "RETCH" "1" "July 2026" "retch 0.3.37" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -257,6 +257,14 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .Bl
 .IP \(bu 4
 `\f[CR]phys\-disk\fP`: Physical disk model, size, and type (NVMe SSD, SSD, HDD)\. On Windows, uses `\f[CR]Get\-PhysicalDisk\fP` via PowerShell\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]btrfs\fP`: Mounted btrfs filesystem label, subvolume, and space allocation (`\f[CR]btrfs filesystem show\fP`/`\f[CR]usage\fP`); one entry per mount point, so a filesystem mounted at both `\f[CR]/\fP` and `\f[CR]/home\fP` via separate subvolumes shows two entries\. Snapshot count is shown when it can be read (`\f[CR]btrfs subvolume list \-s\fP`, requires root) and omitted otherwise\. Linux only\. Long mode and above\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]zpool\fP`: Imported ZFS pool name, allocation, and health (`\f[CR]zpool list\fP`)\. Linux and macOS with ZFS installed; empty if `\f[CR]zpool\fP` is not present\. Long mode and above\.
 .El
 .Bl
 .IP \(bu 4

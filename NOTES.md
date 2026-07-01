@@ -92,7 +92,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.36)
+## Current State (v0.3.37)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -107,6 +107,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 - **Network**: Added local IPv4 and larger-scoped IPv6 address display for all "Up" interfaces with loopback and link-local filtering.
 - **WiFi & Bluetooth**: Integrated detailed connection parameters, link rates (macOS: TX only via CoreWLAN), MLO bands, adapter hardware names, power states, and connected Bluetooth device profiles.
 - **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
+- **Storage**: Added `btrfs` (label + space allocation via `btrfs filesystem show`/`usage`, Linux) and `zpool` (ZFS pool allocation + health via `zpool list`, Linux/macOS) fields, both in `--long` and above.
 
 ---
 
@@ -162,6 +163,7 @@ Adds over long:
 - **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
 - **FUSE mounts in `--full`**: v0.3.26 skips all `fuse.*` mounts to avoid 600ms+ hangs from cryfs/EncFS vaults. The `--full` mode redesign (§4) resolves this by re-enabling `statvfs` for fuse.* entries in `--full` only — no separate config key or flag needed.
+- **Field wiring de-duplication (tech debt)**: there is no single source of truth for the field list. Every field name is hand-duplicated across `src/main.rs` (collection allow-lists per strata, *plus* a second copy embedded in the generated `config.toml` template string near the bottom of the file), `src/display.rs` (an independently re-derived display allow-list per strata), `src/config.rs`'s `DEFAULT_FIELDS_BLOCK`, `docs/retch.1.md`, and `README.md` — 6 places total, all fuzzy-matched on raw `&str`/`String` literals with no shared enum or registry. Adding or renaming a field risks silent drift (e.g. collected but not displayed, or vice versa) if any one of the 6 is missed — confirmed firsthand when adding `btrfs`/`zpool` (v0.3.37): the `main.rs` config-template duplicate wasn't caught until a second manual grep pass. Worth consolidating into a single field registry (e.g. a static table of `{name, strata, collector}`) that both `main.rs` and `display.rs` derive their allow-lists from, and that generates the config default-block comment.
 
 ---
 
@@ -180,8 +182,8 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - **OpenCL / OpenGL / Vulkan**: Highest supported API versions
 
 ### Storage & Filesystems
-- **Btrfs**: Btrfs volume info
-- **Zpool**: ZFS storage pool info
+- ~~**Btrfs**: Btrfs volume info~~ — added in v0.3.37 (`btrfs` field)
+- ~~**Zpool**: ZFS storage pool info~~ — added in v0.3.37 (`zpool` field)
 - **DiskIO**: Disk I/O throughput
 
 ### Network
@@ -199,6 +201,22 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.37 - Btrfs and Zpool storage fields (July 1, 2026)
+- **`btrfs` field**: reports label + subvolume + used/allocated space per mount point
+  (not deduplicated by device — an earlier draft did that and silently dropped `/home`
+  when `/` and `/home` are separate subvolumes of the same underlying filesystem;
+  fixed after review caught it, see subvol parsing in `parse_mount_line`). Snapshot
+  count is included via `btrfs subvolume list -s` when readable (requires root) and
+  omitted — not shown as zero — otherwise. Shells out to `btrfs filesystem show`/`usage
+  --raw`. Linux only. New module `crates/sysinfo/src/btrfs.rs`.
+- **`zpool` field**: reports name, allocation, and health for each imported ZFS pool
+  via `zpool list -H -p`. Linux and macOS (OpenZFS); returns empty if the `zpool`
+  binary isn't installed rather than erroring. New module `crates/sysinfo/src/zfs.rs`.
+- Both fields are subprocess-based and gated behind `--long` and above, following the
+  same fast-inline-vs-thread-scope split as other subprocess fields (bios, wifi, ...).
+- Closes both Storage & Filesystems feature-gap items from §6.
+- **Version**: Bumped to `0.3.37` / `retch-sysinfo 0.1.32`.
 
 ### v0.3.36 - Untap aws/tap in macOS benchmark CI (cosmetic) (July 1, 2026)
 - **CI annotation cleanup**: The macOS benchmark job (`benchmark.yml`) was surfacing
