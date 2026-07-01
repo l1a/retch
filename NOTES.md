@@ -92,7 +92,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.34)
+## Current State (v0.3.35)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -199,6 +199,15 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.35 - Add Development-Setup.md to wiki checklist, catch up wiki (July 1, 2026)
+- **AGENTS.md §4.8**: Added `Development-Setup.md` to the wiki checklist — it was
+  omitted when the checklist was first written, even though the page documents
+  `just` recipes and was directly affected by the `just pr`/`just merge-pr` additions.
+- **Wiki catch-up**: Documented `just pr`/`just merge-pr` in `Development-Setup.md`
+  and fixed a stale `pandoc` reference (the Justfile/flake use `mandown`) — done
+  directly on the wiki since wiki edits aren't gated by PR review.
+- **Version**: Bumped to `0.3.35`.
 
 ### v0.3.34 - Fix claude-code-review failing on Dependabot PRs (July 1, 2026)
 - **Bug**: `.github/workflows/claude-code-review.yml` hard-failed in ~10s on any

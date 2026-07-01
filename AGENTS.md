@@ -187,6 +187,8 @@ Clone `https://github.com/l1a/retch.wiki.git`, edit the relevant pages, and push
 - [ ] **Configuration-and-Theming.md** — if config keys, theming, or CLI display flags changed.
 - [ ] **Workspace-Architecture.md** — if module layout, concurrency model, or crate
       boundaries (`crates/sysinfo`) changed.
+- [ ] **Development-Setup.md** — if `just` recipes, build prerequisites, or the
+      Pre-PR/merge workflow (`just pr`, `just merge-pr`) changed.
 
 ### 4.9 Packaging
 - [ ] If this is a release PR, check whether `packaging/nixpkgs/package.nix` needs
