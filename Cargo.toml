@@ -6,7 +6,7 @@ members = [
 
 [package]
 name = "retch-cli"
-version = "0.3.31"
+version = "0.3.32"
 edition = "2021"
 authors = ["Ken Tobias"]
 description = "A fast, feature-rich system information fetcher written in Rust (similar to fastfetch or neofetch)"

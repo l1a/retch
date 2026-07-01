@@ -92,7 +92,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.31)
+## Current State (v0.3.32)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -199,6 +199,20 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.32 - Merge AGENTS.md with etr (July 1, 2026)
+- **AGENTS.md restructured**: Split into a Portable Core (shared, kept in sync with
+  `etr`'s AGENTS.md) plus a Part 2 project-specific section.
+- **NOTES.md discipline documented**: AGENTS.md now requires reading NOTES.md at
+  session start and updating it before every commit/push, matching what `just pr`
+  already enforced silently.
+- **Core Developer Guidelines added**: unsafe-Rust, idiomatic-Rust, and testing/doc
+  mandates adopted from `etr`, adapted for retch (no client-server architecture note).
+- **Pre-PR Checklist documented**: AGENTS.md now describes exactly what `just pr`
+  automates (branch check, version-bump check, NOTES.md header check, man page
+  build+diff check, Cargo.lock check, fmt/clippy, tests) plus the remaining manual
+  checklist, with man-page-regen and version-bump called out as unconditional.
+- **Version**: Bumped to `0.3.32`.
 
 ### v0.3.31 - Output mode strata refactor (June 29, 2026)
 - **`--full` flag**: New output mode that is a strict superset of `--long`. Adds slow and cosmetic fields: `theme`, `icons`, `cursor`, `gamepad`, `weather`, and FUSE mounts in disk detection.
