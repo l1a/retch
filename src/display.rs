@@ -68,6 +68,8 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             "uptime".to_string(),
             // Long fields
             "bios".to_string(),
+            "btrfs".to_string(),
+            "zpool".to_string(),
             "font".to_string(),
             "shell".to_string(),
             "editor".to_string(),
@@ -124,6 +126,8 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             "uptime".to_string(),
             // Long-only fields
             "bios".to_string(),
+            "btrfs".to_string(),
+            "zpool".to_string(),
             "font".to_string(),
             "shell".to_string(),
             "editor".to_string(),
@@ -328,6 +332,16 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if should_show("Phys Disk") {
         for disk in &info.physical_disks {
             print_line("Phys Disk", disk);
+        }
+    }
+    if should_show("Btrfs") {
+        for vol in &info.btrfs {
+            print_line("Btrfs", vol);
+        }
+    }
+    if should_show("Zpool") {
+        for pool in &info.zpool {
+            print_line("Zpool", pool);
         }
     }
     if should_show("Temp") {

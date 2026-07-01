@@ -35,6 +35,7 @@ pub mod audio;
 pub mod battery;
 pub mod bios;
 pub mod bluetooth;
+pub mod btrfs;
 pub mod camera;
 pub mod disk;
 pub mod display;
@@ -50,6 +51,7 @@ pub mod terminal;
 pub mod theme;
 pub mod weather;
 pub mod wm;
+pub mod zfs;
 
 #[cfg(target_os = "windows")]
 pub(crate) mod win_reg;
