@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782939948651,
+  "lastUpdate": 1782940358109,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10692,80 +10692,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "d21a97a20b1c1f7556ff181c3f5d00450d349058",
-          "message": "chore: v0.3.18 release cleanup — version bump, man page, AGENTS.md (#93)\n\nItems overlooked by not following AGENTS.md release checklist and\nsaved memories:\n\n- Bump retch-cli 0.3.17 → 0.3.18 and retch-sysinfo 0.1.17 → 0.1.18\n  (should have been on PR #90 branch before merging)\n- Run `just man` to regenerate docs/retch.1 with updated version\n  (required by the man-page-timing memory and AGENTS.md §Man Pages)\n- Update AGENTS.md \"Last updated\" footer from v0.3.15 to v0.3.18\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-14T19:47:54-07:00",
-          "tree_id": "375a36de8d75b5634fc7c6de9cdd52b5b8dba77c",
-          "url": "https://github.com/l1a/retch/commit/d21a97a20b1c1f7556ff181c3f5d00450d349058"
-        },
-        "date": 1781492639364,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 21542301.740000002,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 169303976.84,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 124216091.15,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 365.01245499059985,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 63.70466018120986,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.7163653375600962,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 64.40140414758018,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 413.85780422977916,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 75278.57164242674,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 343.11196124491244,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "9579fdcccbf2a4736c850349812353866edf554d",
           "message": "fix(ci): use shell interpolation in jq for rc tag cleanup (#94)\n\n`gh release list --jq` does not support passing jq's `--arg` flag —\nit treats `--arg` as the jq expression, causing 'unknown command \"v\"'.\nUse shell variable interpolation directly in the jq string instead.\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-14T20:54:52-07:00",
@@ -14525,6 +14451,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 467.5196535500721,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0157907ad80e3ce0a3b2a1d30b8bd93aa1d92aee",
+          "message": "docs: add Development-Setup.md to wiki checklist (#135)\n\n* docs: add Development-Setup.md to wiki checklist\n\nIt was omitted from AGENTS.md §4.8 when the checklist was first\nwritten, even though it documents just recipes and was directly\naffected by the just pr/just merge-pr additions. Also caught up the\nwiki itself (done directly, outside this PR, since wiki edits aren't\ngated by review): documented just pr/merge-pr and fixed a stale\npandoc reference (Justfile/flake use mandown).\n\nAssisted-By: Claude Sonnet 5\n\n* docs: add Development-Setup.md to NOTES.md wiki list too\n\nSame gap as AGENTS.md \\u00a74.8, duplicated in NOTES.md \\u00a73's own\nwiki checklist.\n\nAssisted-By: Claude Sonnet 5",
+          "timestamp": "2026-07-01T13:51:17-07:00",
+          "tree_id": "48e3a31d893308fa4ca9065b2e39f8936f7d87f6",
+          "url": "https://github.com/l1a/retch/commit/0157907ad80e3ce0a3b2a1d30b8bd93aa1d92aee"
+        },
+        "date": 1782940356159,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1070283672.8,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 380.23617131530347,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 69.0201042820643,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.0507607084810546,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 74.39485293121209,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5212.850512206359,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1345.006576718794,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 447.88371518786926,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 74755.43491974237,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 377.24628674335196,
             "unit": "ns"
           }
         ]
