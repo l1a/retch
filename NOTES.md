@@ -92,7 +92,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.35)
+## Current State (v0.3.36)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -199,6 +199,15 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.36 - Untap aws/tap in macOS benchmark CI (cosmetic) (July 1, 2026)
+- **CI annotation cleanup**: The macOS benchmark job (`benchmark.yml`) was surfacing
+  "aws/tap is not trusted" Homebrew warnings as GitHub Actions annotations on every
+  run — caused by an `aws/tap` Homebrew tap pre-installed on the GitHub-hosted
+  `macos-latest` runner image, unrelated to `fastfetch`/`hyperfine` installation.
+  Added a `brew untap aws/tap || true` step before the install step to silence it.
+  Purely cosmetic — nothing was failing.
+- **Version**: Bumped to `0.3.36`.
 
 ### v0.3.35 - Add Development-Setup.md to wiki checklist, catch up wiki (July 1, 2026)
 - **AGENTS.md §4.8**: Added `Development-Setup.md` to the wiki checklist — it was

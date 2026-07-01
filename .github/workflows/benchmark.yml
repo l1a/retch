@@ -115,6 +115,9 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Untap aws/tap (cosmetic — pre-tapped on the runner image, unrelated to this job, and untrusted-tap warnings clutter the Actions summary)
+        run: brew untap aws/tap || true
+
       - name: Install fastfetch and hyperfine
         run: |
           python3 scripts/install_fastfetch.py
