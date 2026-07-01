@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782932793745,
+  "lastUpdate": 1782933203829,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6193,85 +6193,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "28dafa442e4064a005d0514f37eeb23e613b0c85",
-          "message": "docs: clarify Wi-Fi link rate availability by platform\n\nmacOS exposes only TX rate (CWInterface.transmitRate); no RX rate exists\nin any public CoreWLAN or IOKit API. Linux has both via iw.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-14T14:15:08-07:00",
-          "tree_id": "39c8b6d1fea217d7989fb5dffdae13cdbe80b49b",
-          "url": "https://github.com/l1a/retch/commit/28dafa442e4064a005d0514f37eeb23e613b0c85"
-        },
-        "date": 1781472395496,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 1567577.82,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 75302251.92,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 74226942.92485192,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 986.5995003336254,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 55.84419430890242,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946743635942787,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 49.36116987451765,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7748.774345210285,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1201098.656271951,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 357.11425484348376,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 259.5931146830717,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -10476,6 +10397,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 264.338597377798,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4bb9a9902ef41bd93902dc96ef9f1cc5468f1f9c",
+          "message": "chore: merge AGENTS.md with etr, document just pr gate (#133)\n\n* chore: merge AGENTS.md with etr, document just pr gate\n\nRestructure AGENTS.md into a Portable Core (kept in sync with etr's\nAGENTS.md) plus project-specific rules. Add NOTES.md read/update\ndiscipline and Core Developer Guidelines adopted from etr, and\ndocument exactly what the existing just pr gate automates.\n\nAssisted-By: Claude Sonnet 5\n\n* feat: add CLAUDE.md, require reading ~/AGENTS.md\n\nretch had no CLAUDE.md pointing agents at AGENTS.md; add one\n(relative link), matching the fixed version now in etr. Also add a\nGlobal Mandates item to the Portable Core requiring agents to read\n~/AGENTS.md before starting work, so cross-repo mandates aren't\nsilently skipped when only the repo AGENTS.md is consulted.\n\nAssisted-By: Claude Sonnet 5",
+          "timestamp": "2026-07-01T11:59:32-07:00",
+          "tree_id": "1a29b12394fae5b30b5d0d83a768c294938169ae",
+          "url": "https://github.com/l1a/retch/commit/4bb9a9902ef41bd93902dc96ef9f1cc5468f1f9c"
+        },
+        "date": 1782933202907,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 967129579.3,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 961.4795885301152,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 46.87208008495971,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946880230375858,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 46.69739664936378,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7720.599279349311,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70133.39730407568,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4767.475456315029,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4851.266481077301,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1198059.8106074226,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 342.6713498244847,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 260.6850846673201,
             "unit": "ns"
           }
         ]
