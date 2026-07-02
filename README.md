@@ -24,6 +24,7 @@ retch is under active development with a working core, rich system information o
   - **Gamepad/Controller**: Enumerates wired and wireless game controllers (Xbox, PlayStation, DualShock, DualSense, Nintendo Joy-Con, etc.).
   - **Audio Devices**: Detects active audio servers (PipeWire, PulseAudio, ALSA on Linux; CoreAudio on macOS; Windows Audio on Windows).
   - **Disks & Temp**: Measures active disk mounts (hiding loopback/temporary volumes) and temperature sensors.
+  - **Physical Memory (`phys-mem`)**: Per-DIMM type, capacity, and speed via `dmidecode` (Linux, requires root), `system_profiler` (macOS), or `Win32_PhysicalMemory` (Windows). On Linux, shows the module's actual running speed alongside its rated speed when they differ (e.g. `4800 MT/s (rated 6000 MT/s)`, as when XMP/EXPO isn't enabled).
 - **Advanced Networking & Wireless**:
   - **Network Interfaces**: Outputs IPv4 & IPv6 addresses for active interfaces.
   - **Wi-Fi**: Details SSID, band frequency, channel, link rates (RX/TX on Linux, TX-only on macOS), adapter hardware, and Wi-Fi 7 Multi-Link Operation (MLO) bands.

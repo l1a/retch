@@ -4,6 +4,10 @@
 # Justfile for retch
 # Run with: just <recipe>
 
+# Required for shebang recipes to receive *ARGS as real argv ($@) instead of
+# losing quoting via textual {{ARGS}} interpolation (see open-pr).
+set positional-arguments := true
+
 BASH_COMP  := `echo "${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions"`
 ZSH_COMP   := `echo "${XDG_DATA_HOME:-$HOME/.local/share}/zsh/site-functions"`
 FISH_COMP  := `echo "${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions"`
@@ -259,6 +263,14 @@ pr:
         || { echo -e "${RED}Aborted.${NC} Complete the checklist first."; exit 1; }
 
     echo -e "\n${GREEN}Gate passed. You may now run: gh pr create${NC}\n"
+
+# Run the full pre-PR checklist (`just pr`), then `gh pr create`. Always use this instead
+# of calling `gh pr create` directly — `gh` has no hook of its own to gate it otherwise.
+open-pr *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just pr
+    gh pr create "$@"
 
 # Generate a flamegraph for execution profiling (requires perf on Linux or dtrace on macOS)
 flamegraph *ARGS="":
