@@ -23,7 +23,12 @@ pub fn detect_physical_memory() -> Option<String> {
 pub struct DimmSlot {
     pub size_mb: u64,
     pub mem_type: String,
+    /// Rated/maximum speed the module supports.
     pub speed_mt: Option<u64>,
+    /// Speed the module is actually clocked at, when the source distinguishes
+    /// it from the rated speed (currently: Linux dmidecode's "Configured
+    /// Memory Speed"). `None` if unknown or not reported separately.
+    pub configured_speed_mt: Option<u64>,
 }
 
 /// Parses `dmidecode --type 17` text output into a list of populated DIMM slots.
@@ -33,6 +38,7 @@ pub fn parse_dmidecode_type17(output: &str) -> Vec<DimmSlot> {
     let mut size_mb: Option<u64> = None;
     let mut mem_type = String::new();
     let mut speed_mt: Option<u64> = None;
+    let mut configured_speed_mt: Option<u64> = None;
 
     for line in output.lines() {
         let trimmed = line.trim();
@@ -45,11 +51,13 @@ pub fn parse_dmidecode_type17(output: &str) -> Vec<DimmSlot> {
                         size_mb: mb,
                         mem_type: mem_type.clone(),
                         speed_mt,
+                        configured_speed_mt,
                     });
                 }
             }
             mem_type.clear();
             speed_mt = None;
+            configured_speed_mt = None;
         } else if let Some(rest) = trimmed.strip_prefix("Size:") {
             let rest = rest.trim();
             if rest.contains("No Module") || rest == "Unknown" {
@@ -70,6 +78,13 @@ pub fn parse_dmidecode_type17(output: &str) -> Vec<DimmSlot> {
             if t != "Unknown" && !t.is_empty() {
                 mem_type = t.to_string();
             }
+        } else if let Some(rest) = trimmed.strip_prefix("Configured Memory Speed:") {
+            // e.g. "4000 MT/s" or "Unknown" — the speed the module is actually
+            // running at, which can be lower than "Speed:" (its rated max).
+            let rest = rest.trim();
+            if let Some(mt_str) = rest.strip_suffix(" MT/s") {
+                configured_speed_mt = mt_str.trim().parse::<u64>().ok();
+            }
         } else if let Some(rest) = trimmed.strip_prefix("Speed:") {
             // e.g. "4800 MT/s" or "Unknown"
             let rest = rest.trim();
@@ -86,6 +101,7 @@ pub fn parse_dmidecode_type17(output: &str) -> Vec<DimmSlot> {
                 size_mb: mb,
                 mem_type,
                 speed_mt,
+                configured_speed_mt,
             });
         }
     }
@@ -106,6 +122,7 @@ pub fn format_dimm_slots(slots: &[DimmSlot]) -> Option<String> {
         size_mb: u64,
         mem_type: String,
         speed_mt: Option<u64>,
+        configured_speed_mt: Option<u64>,
     }
 
     let mut groups: Vec<(Key, usize)> = Vec::new();
@@ -114,6 +131,7 @@ pub fn format_dimm_slots(slots: &[DimmSlot]) -> Option<String> {
             size_mb: slot.size_mb,
             mem_type: slot.mem_type.clone(),
             speed_mt: slot.speed_mt,
+            configured_speed_mt: slot.configured_speed_mt,
         };
         if let Some(entry) = groups.iter_mut().find(|(k, _)| k == &key) {
             entry.1 += 1;
@@ -142,8 +160,17 @@ pub fn format_dimm_slots(slots: &[DimmSlot]) -> Option<String> {
                 s.push_str(&key.mem_type);
             }
 
-            if let Some(mt) = key.speed_mt {
-                s.push_str(&format!(" {} MT/s", mt));
+            match (key.speed_mt, key.configured_speed_mt) {
+                (Some(rated), Some(running)) if running != rated => {
+                    s.push_str(&format!(" {} MT/s (rated {} MT/s)", running, rated));
+                }
+                (Some(mt), _) => {
+                    s.push_str(&format!(" {} MT/s", mt));
+                }
+                (None, Some(running)) => {
+                    s.push_str(&format!(" {} MT/s", running));
+                }
+                (None, None) => {}
             }
 
             s
@@ -224,6 +251,7 @@ pub fn parse_system_profiler_memory(text: &str) -> Option<String> {
                             size_mb: mb,
                             mem_type: current_type.clone(),
                             speed_mt: current_speed,
+                            configured_speed_mt: None,
                         });
                     }
                 }
@@ -272,6 +300,7 @@ pub fn parse_system_profiler_memory(text: &str) -> Option<String> {
                 size_mb: mb,
                 mem_type: current_type,
                 speed_mt: current_speed,
+                configured_speed_mt: None,
             });
         }
     }
@@ -344,6 +373,7 @@ pub fn parse_win32_physical_memory(csv: &str) -> Option<String> {
             size_mb,
             mem_type: smbios_memory_type(type_code),
             speed_mt: if speed_mt > 0 { Some(speed_mt) } else { None },
+            configured_speed_mt: None,
         });
     }
     format_dimm_slots(&slots)
@@ -402,6 +432,47 @@ Memory Device
 
         let summary = format_dimm_slots(&slots).unwrap();
         assert_eq!(summary, "2× 8 GB DDR5 4800 MT/s");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_parse_dmidecode_configured_speed_below_rated() {
+        // XMP/EXPO not enabled — modules run below their rated speed.
+        let input = r#"
+Memory Device
+        Size: 16 GB
+        Type: DDR5
+        Speed: 6000 MT/s
+        Configured Memory Speed: 4800 MT/s
+
+Memory Device
+        Size: 16 GB
+        Type: DDR5
+        Speed: 6000 MT/s
+        Configured Memory Speed: 4800 MT/s
+"#;
+        let slots = parse_dmidecode_type17(input);
+        assert_eq!(slots[0].speed_mt, Some(6000));
+        assert_eq!(slots[0].configured_speed_mt, Some(4800));
+
+        let summary = format_dimm_slots(&slots).unwrap();
+        assert_eq!(summary, "2× 16 GB DDR5 4800 MT/s (rated 6000 MT/s)");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_parse_dmidecode_configured_speed_matches_rated() {
+        // Configured speed equal to rated — no redundant "(rated ...)" suffix.
+        let input = r#"
+Memory Device
+        Size: 8 GB
+        Type: DDR5
+        Speed: 4800 MT/s
+        Configured Memory Speed: 4800 MT/s
+"#;
+        let slots = parse_dmidecode_type17(input);
+        let summary = format_dimm_slots(&slots).unwrap();
+        assert_eq!(summary, "8 GB DDR5 4800 MT/s");
     }
 
     #[cfg(target_os = "linux")]
