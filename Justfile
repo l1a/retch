@@ -4,6 +4,10 @@
 # Justfile for retch
 # Run with: just <recipe>
 
+# Required for shebang recipes to receive *ARGS as real argv ($@) instead of
+# losing quoting via textual {{ARGS}} interpolation (see open-pr).
+set positional-arguments := true
+
 BASH_COMP  := `echo "${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions"`
 ZSH_COMP   := `echo "${XDG_DATA_HOME:-$HOME/.local/share}/zsh/site-functions"`
 FISH_COMP  := `echo "${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions"`
