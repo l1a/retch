@@ -263,8 +263,10 @@ pr:
 # Run the full pre-PR checklist (`just pr`), then `gh pr create`. Always use this instead
 # of calling `gh pr create` directly — `gh` has no hook of its own to gate it otherwise.
 open-pr *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
     just pr
-    gh pr create {{ARGS}}
+    gh pr create "$@"
 
 # Generate a flamegraph for execution profiling (requires perf on Linux or dtrace on macOS)
 flamegraph *ARGS="":
