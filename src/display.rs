@@ -202,6 +202,8 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                         || norm_f.replace(' ', "") == norm_label_no_spaces
                         // "dns" field key matches "DNS Server" display label
                         || (norm_label == "dns server" && norm_f == "dns")
+                        // "memory" field key matches "Memory Usage" display label
+                        || (norm_label == "memory usage" && norm_f == "memory")
                 })
             }
             None => true,
@@ -315,7 +317,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if let Some(bat) = &info.battery {
         print_line("Battery", bat);
     }
-    print_line("Memory", &info.memory);
+    print_line("Memory Usage", &info.memory);
     if let Some(phys_mem) = &info.physical_memory {
         print_line("Phys Mem", phys_mem);
     }
