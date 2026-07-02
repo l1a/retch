@@ -260,6 +260,12 @@ pr:
 
     echo -e "\n${GREEN}Gate passed. You may now run: gh pr create${NC}\n"
 
+# Run the full pre-PR checklist (`just pr`), then `gh pr create`. Always use this instead
+# of calling `gh pr create` directly — `gh` has no hook of its own to gate it otherwise.
+open-pr *ARGS:
+    just pr
+    gh pr create {{ARGS}}
+
 # Generate a flamegraph for execution profiling (requires perf on Linux or dtrace on macOS)
 flamegraph *ARGS="":
     @command -v cargo-flamegraph >/dev/null || (echo "Installing cargo-flamegraph..." && cargo install flamegraph)
