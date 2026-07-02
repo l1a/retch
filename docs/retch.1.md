@@ -117,7 +117,7 @@ You can generate a starting configuration with:
   - `camera`: Connected camera/webcam names.
   - `gamepad`: Connected gamepad/controller names.
   - `memory`: System RAM usage and capacity.
-  - `phys-mem`: Physical RAM slot details — type (DDR5, LPDDR5, etc.), speed, and per-slot capacity. On Linux, requires root (`sudo`) to read DMI memory tables via `dmidecode`. On Windows, uses `Win32_PhysicalMemory` via PowerShell.
+  - `phys-mem`: Physical RAM slot details — type (DDR5, LPDDR5, etc.), speed, and per-slot capacity. On Linux, shows the module's actual running speed alongside its rated speed when they differ (e.g. `4800 MT/s (rated 6000 MT/s)`, as when XMP/EXPO isn't enabled), parsed from dmidecode's "Configured Memory Speed". Requires root (`sudo`) to read DMI memory tables via `dmidecode`. On Windows, uses `Win32_PhysicalMemory` via PowerShell.
   - `swap`: System SWAP usage and capacity.
   - `uptime`: System uptime.
   - `procs`: Active process count.

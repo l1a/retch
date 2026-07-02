@@ -49,7 +49,8 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
   4. If the GitHub wiki exists, clone it (`https://github.com/l1a/retch.wiki.git`) and update any affected pages before submitting the PR.
   5. When adding distro logos, run `cargo run -- --print-logos --ascii-logo` and confirm every new distro appears in the output. The hardcoded list in `src/main.rs` must be updated alongside `src/logo.rs`.
   6. If package versions are bumped, run `just man` to regenerate the man pages (so `docs/retch.1` is kept in sync with the new `Cargo.toml` version) and commit the updated man page *as part of the Pull Request* before merging (never directly on `main`).
-- **Pre-PR Gate**: Before calling `gh pr create`, the developer or agent MUST run `just pr` and pass the interactive confirmation prompt. `just pr` automates the checks (branch, version bump, AGENTS.md/NOTES.md header, man page, Cargo.lock, fmt+clippy, tests) and prints the manual checklist (README, release log entry, wiki, tldr doc update) requiring an explicit `y` confirmation. Note: the tldr checklist item means updating `docs/retch.md` only — do **not** run `just tldr-release` (upstream submission on hold).
+- **Pre-PR Gate**: Never call `gh pr create` directly — always run `just open-pr` instead (any args are forwarded to `gh pr create`). `open-pr` runs `just pr` first (the full checklist: branch, version bump, AGENTS.md/NOTES.md header, man page, Cargo.lock, fmt+clippy, tests, plus the manual checklist requiring an explicit `y` confirmation for README/release-log/wiki/tldr updates) and only calls `gh pr create` if that passes. This is enforced by the Justfile, not by any editor/agent-specific config, so it applies the same way whether a human, Claude, or any other coding agent is driving — `gh`/`git` have no hook of their own for "PR about to open," so `just open-pr` is the one call site that actually gates it. Note: the tldr checklist item means updating `docs/retch.md` only — do **not** run `just tldr-release` (upstream submission on hold).
+- **Git hooks are the actual enforcement layer, not agent config**: `scripts/hooks/pre-push` (installed via `just install-hooks` into `.git/hooks/pre-push`) runs `just check` (fmt+clippy) before every `git push`, regardless of what invoked it — a human, Claude Code, or any other agent, since it's real git plumbing, not a Claude-specific hook. Prefer this pattern (a real git hook, or a Justfile recipe like `open-pr`) over anything under `.claude/` when the goal is "block an action no matter what tool is driving." `.claude/settings.json` hooks only fire inside Claude Code's own harness and are invisible to every other agent and to humans typing commands directly — do not rely on them as the sole enforcement for repo-wide rules.
   - **Code Documentation**: Review all changed public items (`pub fn`, `pub struct`, `pub enum`, fields) for accurate doc comments. Update any doc comments that describe old behavior. New functions with non-obvious logic must have a doc comment explaining the WHY, not just the what.
   - **Test Coverage**: Every new pure function must have unit tests. Every new CLI flag must appear in the `--help` integration test and have a smoke-test verifying it exits 0 and produces expected output. Every changed invariant (e.g. a filter condition gaining a new parameter) must have a test that exercises the new branch.
 - **PR Test Plans**: After opening a PR, immediately run each item in the test plan checklist and update the PR body via `gh pr edit` to check off passed items. Do not leave all boxes unchecked. Items requiring manual human verification (e.g. runtime output) should be left unchecked with a note.
@@ -62,6 +63,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
   - **tldr Page**: Update the local `docs/retch.md` if new options are introduced. **Do NOT run `just tldr-release`** — the upstream submission to [tldr-pages/tldr](https://github.com/tldr-pages/tldr) was denied pending more community traction. Keep `docs/retch.md` and the `just tldr-release` workflow maintained, but hold all upstream submissions until further notice.
   - **Bumping Strategy**: If the changes are significant, ALWAYS ask the user whether to perform a major, minor, or patch version bump.
 - **Command Redundancy**: Avoid running `just check && cargo test` sequentially since both build and check the project profiles, causing redundant background compilation cycles. Prefer `cargo test` during iteration and a final check before staging.
+- **Cross-Machine `target/` via Syncthing**: This working directory (`~/Sync/git/retch`) is synced across multiple machines by Syncthing, including `target/`. `.cargo/config.toml` sets `rustflags = ["-C", "target-cpu=native"]`, so build artifacts compiled on one machine's CPU can be illegal-instruction (`SIGILL`) on another. If a build/test fails with a `SIGILL` in a build script or binary (not a compile error), the fix is `cargo clean` (or at minimum removing the offending crate's `target/debug/build/<crate>-*` dir) to purge the stale cross-CPU artifacts — **not** overriding/unsetting `RUSTFLAGS`, which would silently build without the native-CPU optimizations the config intends.
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages. Use `just bench-upload` to manually push local benchmark results to the dashboard; a `post-merge` hook installed via `just install-hooks` does this automatically after every merge to main.
 - **Performance Regression Vigilance**: After every merge, check the post-merge benchmark output. A primary goal of retch is to be faster than fastfetch — benchmarks exist to catch regressions early. If retch is slower than fastfetch in any mode, treat it as a blocking issue. Note that local benchmarks can be skewed by slow FUSE mounts (e.g. cryfs vaults) causing `statvfs` delays in disk detection — unmount them before benchmarking or discount those runs.
 - **Releases & Tagging**: Releases are triggered by pushing a `v*` tag to main. The CI pipeline runs `full-test` → `build-release` → `release` automatically.
@@ -92,7 +94,7 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.37)
+## Current State (v0.3.38)
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -108,6 +110,15 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 - **WiFi & Bluetooth**: Integrated detailed connection parameters, link rates (macOS: TX only via CoreWLAN), MLO bands, adapter hardware names, power states, and connected Bluetooth device profiles.
 - **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
 - **Storage**: Added `btrfs` (label + space allocation via `btrfs filesystem show`/`usage`, Linux) and `zpool` (ZFS pool allocation + health via `zpool list`, Linux/macOS) fields, both in `--long` and above.
+- **Physical Memory**: `phys-mem` now reports the module's actual running speed alongside
+  its rated speed on Linux when they differ (dmidecode's "Configured Memory Speed" vs.
+  "Speed"), e.g. `4800 MT/s (rated 6000 MT/s)`. The `Memory` display label was renamed to
+  `Memory Usage` for clarity (config/`--fields` key `memory` unaffected via an alias).
+- **Tooling**: `just open-pr` is now the only sanctioned way to open a PR — it runs
+  `just pr`'s full checklist and only calls `gh pr create` if it passes, since `gh` has
+  no hook of its own to gate it otherwise. `scripts/hooks/pre-push` remains the
+  agent-agnostic enforcement layer for `git push` (real git hook, fires for any tool or
+  human, not just one AI agent's config).
 
 ---
 
@@ -201,6 +212,28 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.38 - Configured vs. rated memory speed, PR-gate tooling (July 2, 2026)
+- **`phys-mem` configured speed**: on Linux, `DimmSlot` now carries a `configured_speed_mt`
+  parsed from `dmidecode --type 17`'s "Configured Memory Speed" field, separate from the
+  existing "Speed" (rated/max). `format_dimm_slots` shows both when they differ, e.g.
+  `2× 16 GB DDR5 4800 MT/s (rated 6000 MT/s)` — surfaces cases like XMP/EXPO not being
+  enabled, where the module runs below spec. macOS/Windows sources don't distinguish the
+  two, so `configured_speed_mt` is always `None` there; behavior unchanged.
+  `retch-sysinfo` bumped to `0.1.33` for the public `DimmSlot` field addition.
+- **`Memory` → `Memory Usage` display label**: renamed for clarity against `phys-mem`
+  ("Phys Mem"). The `--fields`/config key `memory` still matches via an alias in
+  `should_show()` (same pattern as the existing `dns`/"DNS Server" alias) — config files
+  written against the old docs keep working.
+- **`just open-pr` recipe**: the only sanctioned way to open a PR now — runs `just pr`'s
+  full checklist first, then `gh pr create`, since `gh` has no hook mechanism of its own
+  to gate PR creation. Direct `gh pr create` calls are no longer documented as valid.
+- **Agent-agnostic tooling principle documented**: NOTES.md and AGENTS.md now explicitly
+  call out that `.claude/`-scoped hooks only bind Claude Code and are invisible to any
+  other agent or a human typing commands directly — prefer real git hooks
+  (`scripts/hooks/pre-push`) and Justfile recipes (`just open-pr`) for anything that
+  needs to hold regardless of which tool is driving.
+- **Version**: Bumped to `0.3.38` / `retch-sysinfo 0.1.33`.
 
 ### v0.3.37 - Btrfs and Zpool storage fields (July 1, 2026)
 - **`btrfs` field**: reports label + subvolume + used/allocated space per mount point

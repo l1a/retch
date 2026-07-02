@@ -14,6 +14,43 @@ This file has two parts:
 
 # Part 1 — Portable Core
 
+## STEP ONE — READ EVERY INSTRUCTION FILE IN FULL BEFORE ANYTHING ELSE (NO EXCEPTIONS)
+
+This section is not optional, is not subject to the agent's judgment, and comes before
+every other instruction in this file, in every other instruction/memory-class file, and
+before any code is read for review, reviewed, generated, or edited, and before any shell
+command is run other than one needed to locate or read the files this section describes.
+
+**This applies to every "instructions/rules/memory" class file that exists for this
+repository or session**, regardless of its name or format — including but not limited
+to: `~/AGENTS.md`, this file (`AGENTS.md`), `CLAUDE.md`, `NOTES.md`, `WIP.md`, any file a
+skill points to, and any other file whose purpose is to carry standing instructions,
+context, or state rather than being source/product code.
+
+1. **Read the ENTIRE file, every time, before doing anything else.** Not the first N
+   lines, not a `head`, `grep`, or table-of-contents skim, not "the parts that look
+   relevant to this specific request." Read the whole file, start to finish, at the
+   start of the session. A partial read produces the same downstream mistakes as no
+   read and is not an acceptable substitute for a full read.
+2. **Follow what you read without first deciding whether it's "worth it," "necessary,"
+   or "applicable" to the task in front of you.** "This looks like a small change" or
+   "this rule probably doesn't apply here" are not valid reasons to skip or defer a
+   documented instruction. If a documented rule genuinely conflicts with the current
+   request, surface the conflict to the user explicitly — do not silently decide it
+   doesn't apply and proceed.
+3. **This step must complete, in full, before any other work.** Do not begin reviewing
+   code, generating code, editing files, or running exploratory/state-changing commands
+   until every applicable instruction file for this session has been read in full —
+   this includes reading `NOTES.md` per Part 2 §0 below.
+4. **This mandate is agent-agnostic.** It applies identically regardless of which coding
+   agent or tool is operating (Claude Code, Gemini CLI, or any other). Enforcement
+   mechanisms for any *specific* rule in these files should likewise be built to work the
+   same way no matter which agent is driving — prefer real git hooks and Justfile
+   recipes (e.g. `scripts/hooks/pre-push`, `just open-pr`) over anything under `.claude/`
+   when the goal is "block an action no matter what tool is driving." See NOTES.md §3 for
+   why: `.claude/` config only binds Claude Code and is invisible to every other agent
+   and to a human typing commands directly.
+
 ## 0. Global Mandates
 Before doing anything else in a session, read `~/AGENTS.md` (and any skill files it
 references) if it exists on the current machine. It carries standing mandates that
@@ -34,6 +71,26 @@ that detail; `~/AGENTS.md`'s cross-cutting mandates still apply.
 
 ## 2. Engineering Philosophy & Safety
 * **Cognitive Circuit Breaker:** Before modifying files or running commands, identify if target files are managed by `chezmoi` (except if located in `~/git` or `~/Sync/git`). If managed, prioritize chezmoi native commands.
+* **Chezmoi — do not improvise, ever:** Read `~/.gemini/skills/chezmoi-manager/SKILL.md`
+  in full before running any `chezmoi` command or touching any chezmoi-managed file
+  (`chezmoi managed <path>` to check), if it hasn't been read yet this session — this
+  applies even when the target path is under `~/git`/`~/Sync/git` and the circuit-breaker
+  preamble above is exempted; the skill itself is not optional once a file is confirmed
+  chezmoi-managed. This is not hypothetical caution: it has already gone wrong twice —
+  once badly enough that the chezmoi source git repo desynced and required multiple
+  reverts and cherry-picks to recover, and again when `chezmoi add` was run without
+  `CHEZMOI_COMMIT_MSG` and hung on an interactive prompt with no TTY to answer it. Both
+  mistakes, and their fixes, are already documented in the skill and don't need
+  rediscovering by trial and error:
+  - Modify at the destination path, then `CHEZMOI_COMMIT_MSG="message" chezmoi add
+    <destination-path>` — never bare `chezmoi add`.
+  - Never `chezmoi git -- add/commit/push`; prefer native `chezmoi status`/`chezmoi diff`
+    over raw `git -C <chezmoi-source-path> ...` even for read-only checks. The
+    `ALLOW_CHEZMOI_GIT=1` git-hook bypass is "human only" — never set it yourself.
+  - For `.tmpl` files, use `chezmoi edit <destination>` with `VISUAL`/`EDITOR` set to a
+    non-interactive command (e.g. `cp`), never an interactive editor.
+  - One improvised command succeeding is not evidence improvisation is safe — the base
+    rate includes the desync incident above.
 * **Absolute Accuracy:** Absolute accuracy is the primary metric. Speed is irrelevant.
 * **The Reasoning Trace:** Before implementing any multi-file change, you MUST output a `[REASONING TRACE]` covering Invariants, Subsystem Impact, and Edge-Cases.
 * **Empirical Validation:** Test changes locally (compilation, lints, formatting, and unit tests) before proposing a push. See Part 2 §4 for this project's full Pre-PR Checklist and automated gate.
@@ -64,6 +121,16 @@ At the conclusion of any task involving a specific skill:
 1. Did you encounter a failure, edge case, or nuance not currently documented in the skill?
 2. Did the user have to correct your workflow?
 3. If YES to either, you MUST automatically update the corresponding `SKILL.md` file with the new learning and synchronize the change before declaring the task complete.
+
+**Learnings belong in `AGENTS.md` (this file, `~/AGENTS.md`, or the relevant
+`SKILL.md`), never in an agent-specific memory/preference store.** Tools like Claude
+Code's auto-memory or Gemini's session memory are invisible to every other agent, and to
+a fresh session of the *same* agent elsewhere. Saving a correction only there means the
+next agent — or the same agent next time — re-learns it the expensive way. If an
+agent-specific memory feature also gets used as a convenience cache, the durable copy of
+the learning MUST still land in `AGENTS.md`/`SKILL.md` in the same turn, not deferred.
+This file exists specifically so Claude, Gemini, and any other agent working here read
+the same standing knowledge — an agent-specific memory entry does not satisfy that.
 
 ---
 
@@ -100,9 +167,13 @@ accurate picture.
 ## 4. Pre-PR Checklist
 
 Before opening a pull request — and before each subsequent push to an open PR — you
-MUST run `just pr`. It automates most of this checklist and hard-fails on the
-unconditional items; the rest is a manual checklist it prints for you to confirm. Do not
-run `gh pr create` until `just pr` reports the gate passed.
+MUST run `just pr` (or, to open the PR itself, `just open-pr`, which runs `just pr` first
+and only calls `gh pr create` if it passes). It automates most of this checklist and
+hard-fails on the unconditional items; the rest is a manual checklist it prints for you
+to confirm. **Never call `gh pr create` directly** — `gh` has no hook mechanism of its
+own, so `just open-pr` is the one enforcement point that works regardless of which agent
+or human is driving. See NOTES.md's "Pre-PR Gate" and "Git hooks are the actual
+enforcement layer" entries for the full rationale.
 
 ### STOP — read this before treating anything as optional
 
