@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783036674187,
+  "lastUpdate": 1783037102227,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6552,85 +6552,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "3dd0a1d0ac85449cfffe313ca180098107b28bd2",
-          "message": "feat: add MX Linux, Mint, Kali, Zorin, Garuda logos (#96)\n\n* feat: add MX Linux, Mint, Kali, Zorin, Garuda logos\n\nASCII logos sourced from fastfetch-cli/fastfetch. PNG logos converted\nfrom Wikimedia SVGs via ImageMagick. Adds get_embedded_logo,\nget_ascii_logo, get_distro_colors entries and tests for all five distros.\n\nAssisted-By: Claude Sonnet 4.6\n\n* chore: bump to v0.3.19, regenerate man page, update AGENTS.md\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: add new distros to --print-logos; sort alphabetically, OS last\n\nThe hardcoded logo list in main.rs was not updated when new distros were\nadded to logo.rs. Also sorts Linux distros alphabetically with macOS,\nWindows, and Tux at the end.\n\nAssisted-By: Claude Sonnet 4.6\n\n* docs: add --print-logos verification step to AGENTS.md checklist\n\nCaught by missing main.rs update when adding new distro logos in #96.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-14T21:46:31-07:00",
-          "tree_id": "05b5c418513d8c480fd45321bc4c2389a503b58e",
-          "url": "https://github.com/l1a/retch/commit/3dd0a1d0ac85449cfffe313ca180098107b28bd2"
-        },
-        "date": 1781499664758,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 1846356.2000000002,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 136904326.4,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 138768495.1,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 984.809833298601,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 52.1766736684045,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946413004069299,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 55.94706861873495,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7662.527123793325,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1188958.3891778882,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 360.53091089856224,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 262.71559837203523,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "370912eb198bcb6c18277c0ed8b8269c910d338f",
           "message": "Add Claude Code GitHub Workflow (#98)\n\n* \"Claude PR Assistant workflow\"\n\n* \"Claude Code Review workflow\"",
           "timestamp": "2026-06-14T23:25:19-07:00",
@@ -10860,6 +10781,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 261.9398957122602,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "67c88b1988e92087607f45e6cd164467a3fd2db1",
+          "message": "Show configured vs. rated memory speed on phys-mem (#138)\n\n* feat(sysinfo): show configured vs rated memory speed on Linux\n\ndmidecode's \"Configured Memory Speed\" is the module's actual running\nspeed, separate from \"Speed\" (rated max) — surfaces cases like\nXMP/EXPO not being enabled where RAM runs below spec.\n\nAssisted-By: Claude Sonnet 5\n\n* feat: rename Memory display label to Memory Usage\n\nClarifies against the adjacent \"Phys Mem:\" line. The --fields/config\nkey \"memory\" is unchanged via an alias in should_show(), matching the\nexisting dns/\"DNS Server\" pattern.\n\nAssisted-By: Claude Sonnet 5\n\n* chore: add just open-pr as the sanctioned PR-opening entry point\n\ngh has no hook of its own to gate PR creation, so this recipe (just\npr's checklist, then gh pr create) is the one enforcement point that\nworks regardless of which tool is driving.\n\nAssisted-By: Claude Sonnet 5\n\n* docs: v0.3.38, agent-agnostic tooling mandate, memory speed docs\n\n- Bump retch-cli 0.3.38 / retch-sysinfo 0.1.33 (public DimmSlot field\n  addition), regenerate man page.\n- README/man page: document configured-vs-rated memory speed display.\n- NOTES.md: Current State header, v0.3.38 release log entry.\n- AGENTS.md: mandate reading chezmoi-manager skill in full before any\n  chezmoi command (prior incident caused git desync requiring\n  reverts); mandate recording learnings in AGENTS.md/SKILL.md rather\n  than agent-specific memory, so any agent benefits, not just one.\n\nAssisted-By: Claude Sonnet 5\n\n* fix: open-pr recipe loses arg quoting without a shebang\n\njust's plain (non-shebang) recipe substitution joins *ARGS with bare\nspaces, so multi-word --title/--body values lost their quoting and\nbroke gh's flag parsing. A shebang recipe passes ARGS as real argv via\n\"$@\", preserving quoting correctly.\n\nAssisted-By: Claude Sonnet 5\n\n* fix: set positional-arguments so open-pr's shebang script gets \\$@\n\nThe prior shebang fix alone wasn't enough -- without positional-arguments,\njust's shebang recipes don't receive *ARGS as real argv, so \"\\$@\" was\nempty. With it set, ARGS forward correctly through gh pr create.\n\nAssisted-By: Claude Sonnet 5",
+          "timestamp": "2026-07-02T16:50:33-07:00",
+          "tree_id": "e2969e45b48ba97220eb96078e8a686bd30d1fcc",
+          "url": "https://github.com/l1a/retch/commit/67c88b1988e92087607f45e6cd164467a3fd2db1"
+        },
+        "date": 1783037100014,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1138293531.55,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 964.9048868484157,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 57.18562557845829,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9467803121778355,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 54.35447530943892,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7798.593824063847,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71018.55473465992,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4782.684673311319,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4838.71043458228,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1183688.4475075311,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 337.4431127236739,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 255.54243803549406,
             "unit": "ns"
           }
         ]
