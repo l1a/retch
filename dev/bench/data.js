@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783038231779,
+  "lastUpdate": 1783038848310,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18103,75 +18103,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "28dafa442e4064a005d0514f37eeb23e613b0c85",
-          "message": "docs: clarify Wi-Fi link rate availability by platform\n\nmacOS exposes only TX rate (CWInterface.transmitRate); no RX rate exists\nin any public CoreWLAN or IOKit API. Linux has both via iw.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-14T14:15:08-07:00",
-          "tree_id": "39c8b6d1fea217d7989fb5dffdae13cdbe80b49b",
-          "url": "https://github.com/l1a/retch/commit/28dafa442e4064a005d0514f37eeb23e613b0c85"
-        },
-        "date": 1781473922359,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 277419750,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1363169870,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 98.53586391013185,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9485543235924876,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 99.59736706250901,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45577.66851099006,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 504.45163734226605,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 752.6827222592527,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1210664200,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -21466,6 +21397,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3772077835,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "67c88b1988e92087607f45e6cd164467a3fd2db1",
+          "message": "Show configured vs. rated memory speed on phys-mem (#138)\n\n* feat(sysinfo): show configured vs rated memory speed on Linux\n\ndmidecode's \"Configured Memory Speed\" is the module's actual running\nspeed, separate from \"Speed\" (rated max) — surfaces cases like\nXMP/EXPO not being enabled where RAM runs below spec.\n\nAssisted-By: Claude Sonnet 5\n\n* feat: rename Memory display label to Memory Usage\n\nClarifies against the adjacent \"Phys Mem:\" line. The --fields/config\nkey \"memory\" is unchanged via an alias in should_show(), matching the\nexisting dns/\"DNS Server\" pattern.\n\nAssisted-By: Claude Sonnet 5\n\n* chore: add just open-pr as the sanctioned PR-opening entry point\n\ngh has no hook of its own to gate PR creation, so this recipe (just\npr's checklist, then gh pr create) is the one enforcement point that\nworks regardless of which tool is driving.\n\nAssisted-By: Claude Sonnet 5\n\n* docs: v0.3.38, agent-agnostic tooling mandate, memory speed docs\n\n- Bump retch-cli 0.3.38 / retch-sysinfo 0.1.33 (public DimmSlot field\n  addition), regenerate man page.\n- README/man page: document configured-vs-rated memory speed display.\n- NOTES.md: Current State header, v0.3.38 release log entry.\n- AGENTS.md: mandate reading chezmoi-manager skill in full before any\n  chezmoi command (prior incident caused git desync requiring\n  reverts); mandate recording learnings in AGENTS.md/SKILL.md rather\n  than agent-specific memory, so any agent benefits, not just one.\n\nAssisted-By: Claude Sonnet 5\n\n* fix: open-pr recipe loses arg quoting without a shebang\n\njust's plain (non-shebang) recipe substitution joins *ARGS with bare\nspaces, so multi-word --title/--body values lost their quoting and\nbroke gh's flag parsing. A shebang recipe passes ARGS as real argv via\n\"$@\", preserving quoting correctly.\n\nAssisted-By: Claude Sonnet 5\n\n* fix: set positional-arguments so open-pr's shebang script gets \\$@\n\nThe prior shebang fix alone wasn't enough -- without positional-arguments,\njust's shebang recipes don't receive *ARGS as real argv, so \"\\$@\" was\nempty. With it set, ARGS forward correctly through gh pr create.\n\nAssisted-By: Claude Sonnet 5",
+          "timestamp": "2026-07-02T16:50:33-07:00",
+          "tree_id": "e2969e45b48ba97220eb96078e8a686bd30d1fcc",
+          "url": "https://github.com/l1a/retch/commit/67c88b1988e92087607f45e6cd164467a3fd2db1"
+        },
+        "date": 1783038845598,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 103.26071481121855,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9466379966273095,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.08760330419712,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 80.32380428981696,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 44933.71702159026,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 491.9657431831136,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 756.7404800165167,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3647154900,
             "unit": "ns"
           }
         ]
