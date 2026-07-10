@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783703207191,
+  "lastUpdate": 1783703843776,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14756,75 +14756,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "89a895803a7b3b271e4570afe6d7d8e054e9630c",
-          "message": "Modify Claude workflow with new permissions and tools\n\nUpdated permissions for actions and pull requests. Added installation of build dependencies and configured allowed tools for Claude.",
-          "timestamp": "2026-06-15T10:36:13-07:00",
-          "tree_id": "5869205f964101cfb3c5c4b764f0324c023c403c",
-          "url": "https://github.com/l1a/retch/commit/89a895803a7b3b271e4570afe6d7d8e054e9630c"
-        },
-        "date": 1781546342483,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 19232947.999999996,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 901306518.0000001,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 68.15876608054351,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 3.0949631480314252,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 70.65062917324343,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 27395.479635286007,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 290.7167749556399,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 447.2452696335896,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 795968640,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "a7b091ac39d5dedd909ae375d90f9bc423621663",
           "message": "fix(theme): use neutral as auto fallback when headless or GTK unset (#99)\n\n* fix(theme): use neutral as auto fallback when headless or GTK unset\n\nWhen retch runs over SSH or mosh with no display server, `$DISPLAY` and\n`$WAYLAND_DISPLAY` are unset. Previously, `auto` would read GTK settings\nand return `light` if `prefer-dark-theme=false` was set on the remote,\nor fall back to `dark` otherwise — both wrong for an unknown background.\n\nNow: skip GTK detection entirely when headless, and fall back to\n`neutral` (safe for any terminal background) when GTK yields nothing.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix(theme): use neutral fallback when display present but no GTK preference\n\nThe correct split for auto theme detection:\n- Headless (no $DISPLAY / $WAYLAND_DISPLAY): neutral (unknown background)\n- GTK explicit dark/light: respected as before\n- Has display but no GTK preference (KDE, no config, etc.): neutral (safe)\n\nneutral uses pure ANSI primaries that work on any terminal background,\nso it is the right choice whenever the background is unknown.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix(theme): also detect SSH via env vars, not just $DISPLAY\n\nShell profiles on many systems set $DISPLAY=:0 even in SSH sessions so\nGUI apps can connect to the running compositor. This caused the headless\nguard to be skipped, GTK detection to find prefer-dark-theme=false, and\nauto theme to resolve to light over SSH.\n\nAlso check $SSH_CLIENT / $SSH_TTY / $SSH_CONNECTION, which SSH always\nsets, so we return neutral regardless of what $DISPLAY says.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix(theme): detect KDE dark/light via kdeglobals BackgroundNormal luminance\n\nRead [Colors:Window] BackgroundNormal=R,G,B from kdeglobals and compute\nluminance (0.299R + 0.587G + 0.114B). Values below 128 indicate a dark\ncolor scheme; 128 and above indicate light. This works for any KDE color\nscheme without relying on scheme name conventions.\n\nChecked after GTK settings so GNOME takes precedence on dual-toolkit\nsystems.\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-15T12:31:58-07:00",
@@ -18104,6 +18035,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3107516835,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0687d49ba4020e78a8b09d6320347f2757c5ffd",
+          "message": "Consolidate field list into single registry (#139)\n\nReplace four hand-duplicated field-list copies (main.rs collection\nallow-lists + config template, display.rs display allow-lists,\nconfig.rs DEFAULT_FIELDS_BLOCK) with one FIELDS table in src/fields.rs.\nmain.rs and display.rs derive per-strata allow-lists from\nfields_for(mode); both config-generation paths emit the fields block\nfrom config_fields_block().\n\nFixes pre-existing doc drift the consolidation exposed (man page was\nmissing cpu-cache/cpu-usage/public-ip and spelled terminal_font;\nREADME missing gamepad/public-ip) and adds guardrail tests that fail\nCI if any registry key is undocumented or missing from generated\nconfig. Strata sets are byte-for-byte unchanged; pure internal refactor.\n\nResolves the field-wiring de-duplication tech debt (NOTES.md §5).\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-10T09:45:06-07:00",
+          "tree_id": "74f40f025e3cda412809c914329171c301a7e106",
+          "url": "https://github.com/l1a/retch/commit/e0687d49ba4020e78a8b09d6320347f2757c5ffd"
+        },
+        "date": 1783703840152,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 108.89466789144322,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 4.038673579413115,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 95.06557249967544,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 71.02808162128844,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 36880.824300356006,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 472.57676014488425,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 669.9638775305245,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3549876555,
             "unit": "ns"
           }
         ]
