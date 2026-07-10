@@ -94,7 +94,17 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.38)
+## Current State (v0.3.39)
+- **Security**: `cargo audit` clean — `crossbeam-epoch` bumped `0.9.18 → 0.9.20`
+  (Cargo.lock only) to clear RUSTSEC-2026-0204 (invalid pointer dereference in the
+  `fmt::Pointer` impl for `Atomic`/`Shared`). Transitive dependency via `rayon`
+  (`image`/graphics feature and dev-only `criterion`); no manifest change.
+- **Pre-PR gate now runs `cargo audit`**: `just pr` step 8 installs `cargo-audit`
+  if missing, then runs it and prints any advisories. It is **advisory only** (never
+  blocks the gate) so newly-published advisories against unchanged transitive deps
+  don't hard-fail otherwise-ready work — it surfaces them locally before the separate
+  (also non-required) CI `audit` job does. The RUSTSEC-2026-0204 miss motivated this:
+  the gate never ran audit, so nothing caught it before CI.
 - **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
 - **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
 - **Visuals**: Added leading newline to output for better separation.
@@ -212,6 +222,19 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.39 - Security: bump crossbeam-epoch (RUSTSEC-2026-0204) (July 10, 2026)
+- **cargo audit fix**: `crossbeam-epoch` `0.9.18 → 0.9.20` (Cargo.lock only) clears
+  RUSTSEC-2026-0204 — an invalid pointer dereference in the `fmt::Pointer` impl for
+  `Atomic`/`Shared` when the underlying pointer is invalid. Pulled in transitively
+  through `rayon` (`image`/graphics feature and dev-only `criterion`); no direct
+  dependency or manifest change. The `paste` unmaintained warning (RUSTSEC-2024-0436)
+  remains an allowed, non-blocking warning.
+- **`just pr` gains an audit step**: step 8 now runs `cargo audit` (auto-installing
+  `cargo-audit` if absent), advisory-only so it never blocks the gate. Documented in
+  AGENTS.md §4.0. This closes the gap that let RUSTSEC-2026-0204 reach CI unnoticed —
+  the local gate previously never invoked audit at all.
+- **Version**: Bumped to `0.3.39` (`retch-sysinfo` unchanged at `0.1.33`).
 
 ### v0.3.38 - Configured vs. rated memory speed, PR-gate tooling (July 2, 2026)
 - **`phys-mem` configured speed**: on Linux, `DimmSlot` now carries a `configured_speed_mt`

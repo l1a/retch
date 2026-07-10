@@ -196,7 +196,8 @@ same PR as any change to the checklist — never pushed to `main` as a standalon
 
 ### 4.0 Automated gate — `just pr`
 Run `just pr` before opening a PR and before each subsequent push. It runs, in order,
-and hard-fails on the first problem:
+and hard-fails on the first problem (except the advisory-only audit step, which never
+blocks):
 1. Confirms you are on a feature branch, not `main`.
 2. Confirms `Cargo.toml`'s version has been bumped past the last git tag.
 3. Confirms `NOTES.md` has a `## Current State (v<version>)` header matching the bumped version.
@@ -204,7 +205,12 @@ and hard-fails on the first problem:
 5. Runs `cargo check` and fails if `Cargo.lock` changed but wasn't committed.
 6. Runs `just check` (`cargo fmt --check` + `cargo clippy -- -D warnings`).
 7. Runs `cargo test`.
-8. Prints the manual checklist below and requires an explicit `y` confirmation before printing "Gate passed."
+8. Runs `cargo audit` (installing `cargo-audit` first if it is not already present)
+   and prints any RustSec advisories. **Advisory only — it does not fail the gate**,
+   because advisories can be newly published against unchanged transitive deps and
+   should not hard-block otherwise-ready work. It mirrors the separate (also
+   non-required) CI `audit` job so you see advisories locally before pushing.
+9. Prints the manual checklist below and requires an explicit `y` confirmation before printing "Gate passed."
 
 ### 4.1 Code quality gate
 - [ ] `just check` passes — `cargo fmt --check` + `cargo clippy -- -D warnings`
