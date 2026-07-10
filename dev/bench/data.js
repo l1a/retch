@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783703843776,
+  "lastUpdate": 1783704456182,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18118,75 +18118,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "a1ab21b8ea5fffe896154a3b8bdde17873a39699",
-          "message": "ci: prune rc tags and old releases on stable release (#92)\n\n* fix(bench): gate audio import for non-Linux/non-macOS targets\n\n`retch_sysinfo::audio` is only used by the `bench_parse_asound_cards`\nbenchmark, which was already cfg-gated. The bare import caused an\nunused-import warning on Windows benchmark runs.\n\nAssisted-By: Claude Sonnet 4.6\n\n* ci: prune rc tags and old releases on stable release\n\nAfter a stable tag is published, delete all rc pre-releases for that\nversion and keep only the 10 most recent stable releases (including\ntheir git tags).\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-14T18:10:12-07:00",
-          "tree_id": "5992c18bc64e11a5c068c7a0b08dbcc15e648ca5",
-          "url": "https://github.com/l1a/retch/commit/a1ab21b8ea5fffe896154a3b8bdde17873a39699"
-        },
-        "date": 1781487685255,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 278907396,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1381321886,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 98.61956852227708,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9481189553592846,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 99.48852072776455,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45585.21407601054,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 499.3036008066591,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 750.4381805447958,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1218442720,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "d21a97a20b1c1f7556ff181c3f5d00450d349058",
           "message": "chore: v0.3.18 release cleanup — version bump, man page, AGENTS.md (#93)\n\nItems overlooked by not following AGENTS.md release checklist and\nsaved memories:\n\n- Bump retch-cli 0.3.17 → 0.3.18 and retch-sysinfo 0.1.17 → 0.1.18\n  (should have been on PR #90 branch before merging)\n- Run `just man` to regenerate docs/retch.1 with updated version\n  (required by the man-page-timing memory and AGENTS.md §Man Pages)\n- Update AGENTS.md \"Last updated\" footer from v0.3.15 to v0.3.18\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-14T19:47:54-07:00",
@@ -21466,6 +21397,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3273192640,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0687d49ba4020e78a8b09d6320347f2757c5ffd",
+          "message": "Consolidate field list into single registry (#139)\n\nReplace four hand-duplicated field-list copies (main.rs collection\nallow-lists + config template, display.rs display allow-lists,\nconfig.rs DEFAULT_FIELDS_BLOCK) with one FIELDS table in src/fields.rs.\nmain.rs and display.rs derive per-strata allow-lists from\nfields_for(mode); both config-generation paths emit the fields block\nfrom config_fields_block().\n\nFixes pre-existing doc drift the consolidation exposed (man page was\nmissing cpu-cache/cpu-usage/public-ip and spelled terminal_font;\nREADME missing gamepad/public-ip) and adds guardrail tests that fail\nCI if any registry key is undocumented or missing from generated\nconfig. Strata sets are byte-for-byte unchanged; pure internal refactor.\n\nResolves the field-wiring de-duplication tech debt (NOTES.md §5).\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-10T09:45:06-07:00",
+          "tree_id": "74f40f025e3cda412809c914329171c301a7e106",
+          "url": "https://github.com/l1a/retch/commit/e0687d49ba4020e78a8b09d6320347f2757c5ffd"
+        },
+        "date": 1783704452914,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 103.04165655031275,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9490884598158487,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 101.72608696344467,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.34611778165927,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47931.36452670403,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 485.69479122415714,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 743.1214713965073,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3145339810,
             "unit": "ns"
           }
         ]
