@@ -11,6 +11,7 @@ use retch_cli::cli::{Cli, CompletionShell};
 use retch_cli::config::Config;
 use retch_cli::display;
 use retch_cli::fetch::{CollectOptions, SystemInfo};
+use retch_cli::fields::{self, Mode};
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -183,152 +184,19 @@ fn main() -> anyhow::Result<()> {
     let config = Config::load(cli.config.as_deref())?;
     let config = config.merge_with_cli(&cli);
 
-    // Determine which fields are active to collect only necessary data
+    // Determine which fields are active to collect only necessary data.
+    // Strata allow-lists are derived from the single field registry (src/fields.rs);
+    // an explicit `config.fields` list bypasses the strata entirely.
     let allowed_fields = if cli.full {
-        Some(vec![
-            // Standard fields
-            "os".to_string(),
-            "kernel".to_string(),
-            "host".to_string(),
-            "cpu".to_string(),
-            "cpu-cache".to_string(),
-            "cpu-usage".to_string(),
-            "motherboard".to_string(),
-            "gpu".to_string(),
-            "display".to_string(),
-            "audio".to_string(),
-            "camera".to_string(),
-            "memory".to_string(),
-            "phys-mem".to_string(),
-            "swap".to_string(),
-            "load".to_string(),
-            "disk".to_string(),
-            "phys-disk".to_string(),
-            "net".to_string(),
-            "uptime".to_string(),
-            // Long fields
-            "bios".to_string(),
-            "btrfs".to_string(),
-            "zpool".to_string(),
-            "font".to_string(),
-            "shell".to_string(),
-            "editor".to_string(),
-            "terminal".to_string(),
-            "terminal-font".to_string(),
-            "terminal-size".to_string(),
-            "desktop".to_string(),
-            "wm".to_string(),
-            "dns".to_string(),
-            "domain".to_string(),
-            "wifi".to_string(),
-            "bluetooth".to_string(),
-            "battery".to_string(),
-            "public-ip".to_string(),
-            "locale".to_string(),
-            "init".to_string(),
-            "chassis".to_string(),
-            "bootmgr".to_string(),
-            "temp".to_string(),
-            "cpu-freq".to_string(),
-            "procs".to_string(),
-            "arch".to_string(),
-            "users".to_string(),
-            "packages".to_string(),
-            // Full-only fields
-            "theme".to_string(),
-            "icons".to_string(),
-            "cursor".to_string(),
-            "gamepad".to_string(),
-            "weather".to_string(),
-            "domain-search".to_string(),
-        ])
+        Some(fields::fields_for(Mode::Full))
     } else if cli.long {
-        Some(vec![
-            // Standard fields
-            "os".to_string(),
-            "kernel".to_string(),
-            "host".to_string(),
-            "cpu".to_string(),
-            "cpu-cache".to_string(),
-            "cpu-usage".to_string(),
-            "motherboard".to_string(),
-            "gpu".to_string(),
-            "display".to_string(),
-            "audio".to_string(),
-            "camera".to_string(),
-            "memory".to_string(),
-            "phys-mem".to_string(),
-            "swap".to_string(),
-            "load".to_string(),
-            "disk".to_string(),
-            "phys-disk".to_string(),
-            "net".to_string(),
-            "uptime".to_string(),
-            // Long-only fields
-            "bios".to_string(),
-            "btrfs".to_string(),
-            "zpool".to_string(),
-            "font".to_string(),
-            "shell".to_string(),
-            "editor".to_string(),
-            "terminal".to_string(),
-            "terminal-font".to_string(),
-            "terminal-size".to_string(),
-            "desktop".to_string(),
-            "wm".to_string(),
-            "dns".to_string(),
-            "domain".to_string(),
-            "wifi".to_string(),
-            "bluetooth".to_string(),
-            "battery".to_string(),
-            "public-ip".to_string(),
-            "locale".to_string(),
-            "init".to_string(),
-            "chassis".to_string(),
-            "bootmgr".to_string(),
-            "temp".to_string(),
-            "cpu-freq".to_string(),
-            "procs".to_string(),
-            "arch".to_string(),
-            "users".to_string(),
-            "packages".to_string(),
-        ])
+        Some(fields::fields_for(Mode::Long))
     } else if cli.short {
-        Some(vec![
-            "os".to_string(),
-            "kernel".to_string(),
-            "host".to_string(),
-            "cpu".to_string(),
-            "gpu".to_string(),
-            "memory".to_string(),
-            "disk".to_string(),
-            "net".to_string(),
-        ])
+        Some(fields::fields_for(Mode::Short))
     } else if let Some(fields) = &config.fields {
         Some(fields.iter().map(|s| s.to_lowercase()).collect())
     } else {
-        // Default (standard) set
-        Some(vec![
-            "os".to_string(),
-            "kernel".to_string(),
-            "host".to_string(),
-            "cpu".to_string(),
-            "cpu-cache".to_string(),
-            "cpu-usage".to_string(),
-            "motherboard".to_string(),
-            "gpu".to_string(),
-            "display".to_string(),
-            "audio".to_string(),
-            "camera".to_string(),
-            "memory".to_string(),
-            "phys-mem".to_string(),
-            "swap".to_string(),
-            "load".to_string(),
-            "disk".to_string(),
-            "phys-disk".to_string(),
-            "net".to_string(),
-            "uptime".to_string(),
-        ])
+        Some(fields::fields_for(Mode::Standard))
     };
 
     // Collect system information
@@ -352,7 +220,10 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn default_config_content() -> String {
-    r##"# retch configuration file
+    // Static scaffolding; the trailing `fields = [...]` block is generated from
+    // the single field registry (src/fields.rs) so it cannot drift from the
+    // strata allow-lists or from config.rs's merge path.
+    let header = r##"# retch configuration file
 #
 # This file uses TOML syntax.
 # All settings below are commented out by default.
@@ -394,23 +265,9 @@ fn default_config_content() -> String {
 # weather_location = ""
 
 # Temperature unit for weather: "fahrenheit" or "celsius"
-# weather_unit = "fahrenheit"
+# weather_unit = "fahrenheit""##;
 
-# List of fields to display (leave empty or omit to show all)
-# Note: "phys-mem" requires running as root (sudo) on Linux to read DMI memory tables.
-# Note: "weather" requires network access and is shown in full mode only by default.
-# Note: "domain-search" queries resolvectl and is shown in full mode only by default.
-# fields = [
-#     "os", "kernel", "host", "chassis", "init", "locale",
-#     "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage",
-#     "gpu", "motherboard", "bios", "bootmgr", "display", "audio",
-#     "camera", "gamepad", "memory", "phys-mem", "swap", "uptime", "procs", "load",
-#     "disk", "phys-disk", "btrfs", "zpool", "temp", "net", "public-ip", "wifi", "bluetooth", "battery",
-#     "shell", "editor", "terminal", "terminal-font", "desktop", "dns", "domain",
-#     "theme", "icons", "cursor", "font", "users", "packages", "weather", "domain-search"
-# ]
-"##
-    .to_string()
+    format!("{}\n\n{}\n", header, fields::config_fields_block())
 }
 
 fn print_default_config() {

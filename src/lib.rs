@@ -33,5 +33,6 @@ pub mod weather {
 pub mod cli;
 pub mod config;
 pub mod display;
+pub mod fields;
 pub mod logo;
 pub mod theme;

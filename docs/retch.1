@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "July 2026" "retch 0.3.39" "System Information Fetcher"
+.TH "RETCH" "1" "July 2026" "retch 0.3.40" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -196,6 +196,14 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
+`\f[CR]cpu\-cache\fP`: CPU L1/L2/L3 cache sizes\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]cpu\-usage\fP`: Current CPU utilization percentage\.
+.El
+.Bl
+.IP \(bu 4
 `\f[CR]gpu\fP`: GPU model(s) and VRAM\.
 .El
 .Bl
@@ -276,6 +284,10 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
+`\f[CR]public\-ip\fP`: Public IP address (queried over the network)\. Long mode and above\.
+.El
+.Bl
+.IP \(bu 4
 `\f[CR]wifi\fP`: Active Wi\-Fi SSID, band frequency, channel, and link rates\.
 .El
 .Bl
@@ -312,7 +324,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
-`\f[CR]terminal_font\fP`: Terminal emulator active font\.
+`\f[CR]terminal\-font\fP`: Terminal emulator active font\.
 .El
 .Bl
 .IP \(bu 4

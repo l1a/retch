@@ -190,3 +190,41 @@ fn test_bench_compiles() {
         String::from_utf8_lossy(&output.stderr)
     );
 }
+
+/// Guardrail against field-list drift (NOTES.md §5): every field key in the
+/// single registry (`src/fields.rs`) must be documented in both the README's
+/// `fields = [...]` array and the man-page source. Adding a field to the
+/// registry without documenting it fails here instead of drifting silently.
+#[test]
+fn test_docs_cover_all_registry_fields() {
+    let manifest = env!("CARGO_MANIFEST_DIR");
+    let readme = fs::read_to_string(format!("{manifest}/README.md")).expect("read README.md");
+    let man = fs::read_to_string(format!("{manifest}/docs/retch.1.md")).expect("read retch.1.md");
+
+    for key in retch_cli::fields::all_keys() {
+        // README lists fields quoted in the `fields = [...]` array.
+        assert!(
+            readme.contains(&format!("\"{key}\"")),
+            "README.md is missing field key {key:?} — add it to the fields array"
+        );
+        // The man page lists each field as a backtick-delimited term.
+        assert!(
+            man.contains(&format!("`{key}`")),
+            "docs/retch.1.md is missing field key {key:?} — document it under FIELDS"
+        );
+    }
+}
+
+/// The generated default-config field block must list every registry field, so
+/// `--generate-config` / `--write-config` stay in sync with the registry.
+#[test]
+fn test_generated_config_covers_all_registry_fields() {
+    let (stdout, _stderr, success) = run_retch(&["--generate-config"]);
+    assert!(success);
+    for key in retch_cli::fields::all_keys() {
+        assert!(
+            stdout.contains(&format!("\"{key}\"")),
+            "--generate-config output missing field key: {key}"
+        );
+    }
+}
