@@ -249,6 +249,22 @@ pr:
     cargo test -q 2>&1
     pass "All tests passed"
 
+    # 8. Security audit (advisory — surfaces RustSec advisories locally before CI,
+    #    but does NOT block: advisories can be newly published against unchanged
+    #    transitive deps, which shouldn't hard-fail otherwise-ready work).
+    info "Running cargo audit..."
+    if ! command -v cargo-audit >/dev/null 2>&1; then
+        info "cargo-audit not installed — installing (cargo install cargo-audit)..."
+        cargo install cargo-audit || info "cargo-audit install failed — skipping audit this run"
+    fi
+    if command -v cargo-audit >/dev/null 2>&1; then
+        if cargo audit; then
+            pass "cargo audit: no advisories"
+        else
+            info "cargo audit reported advisories (above) — advisory only, NOT blocking the gate"
+        fi
+    fi
+
     # Manual checklist
     echo -e "\n${BOLD}Automated checks passed.${NC}\n"
     echo -e "${BOLD}Manual checklist — confirm each before proceeding:${NC}"
