@@ -8,6 +8,7 @@
 use crate::cli::Cli;
 use crate::config::Config;
 use crate::fetch::SystemInfo;
+use crate::fields::{self, Mode};
 use crate::logo;
 use crate::theme::Theme;
 use owo_colors::OwoColorize;
@@ -43,152 +44,20 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
 
     let show_logo = _config.show_logo.unwrap_or(true) && !cli.no_logo && stdout_is_tty;
 
-    // Determine which fields to show
+    // Determine which fields to show. Strata allow-lists are derived from the
+    // single field registry (src/fields.rs) — the same source `main.rs` uses for
+    // collection, so display and collection can no longer drift apart. An explicit
+    // `config.fields` list bypasses the strata.
     let allowed_fields: Option<Vec<String>> = if cli.full {
-        Some(vec![
-            // Standard fields
-            "os".to_string(),
-            "kernel".to_string(),
-            "host".to_string(),
-            "cpu".to_string(),
-            "cpu-cache".to_string(),
-            "cpu-usage".to_string(),
-            "motherboard".to_string(),
-            "gpu".to_string(),
-            "display".to_string(),
-            "audio".to_string(),
-            "camera".to_string(),
-            "memory".to_string(),
-            "phys-mem".to_string(),
-            "swap".to_string(),
-            "load".to_string(),
-            "disk".to_string(),
-            "phys-disk".to_string(),
-            "net".to_string(),
-            "uptime".to_string(),
-            // Long fields
-            "bios".to_string(),
-            "btrfs".to_string(),
-            "zpool".to_string(),
-            "font".to_string(),
-            "shell".to_string(),
-            "editor".to_string(),
-            "terminal".to_string(),
-            "terminal-font".to_string(),
-            "terminal-size".to_string(),
-            "desktop".to_string(),
-            "wm".to_string(),
-            "dns".to_string(),
-            "domain".to_string(),
-            "wifi".to_string(),
-            "bluetooth".to_string(),
-            "battery".to_string(),
-            "public-ip".to_string(),
-            "locale".to_string(),
-            "init".to_string(),
-            "chassis".to_string(),
-            "bootmgr".to_string(),
-            "temp".to_string(),
-            "cpu-freq".to_string(),
-            "procs".to_string(),
-            "arch".to_string(),
-            "users".to_string(),
-            "packages".to_string(),
-            // Full-only fields
-            "theme".to_string(),
-            "icons".to_string(),
-            "cursor".to_string(),
-            "gamepad".to_string(),
-            "weather".to_string(),
-            "domain-search".to_string(),
-        ])
+        Some(fields::fields_for(Mode::Full))
     } else if cli.long {
-        Some(vec![
-            // Standard fields
-            "os".to_string(),
-            "kernel".to_string(),
-            "host".to_string(),
-            "cpu".to_string(),
-            "cpu-cache".to_string(),
-            "cpu-usage".to_string(),
-            "motherboard".to_string(),
-            "gpu".to_string(),
-            "display".to_string(),
-            "audio".to_string(),
-            "camera".to_string(),
-            "memory".to_string(),
-            "phys-mem".to_string(),
-            "swap".to_string(),
-            "load".to_string(),
-            "disk".to_string(),
-            "phys-disk".to_string(),
-            "net".to_string(),
-            "uptime".to_string(),
-            // Long-only fields
-            "bios".to_string(),
-            "btrfs".to_string(),
-            "zpool".to_string(),
-            "font".to_string(),
-            "shell".to_string(),
-            "editor".to_string(),
-            "terminal".to_string(),
-            "terminal-font".to_string(),
-            "terminal-size".to_string(),
-            "desktop".to_string(),
-            "wm".to_string(),
-            "dns".to_string(),
-            "domain".to_string(),
-            "wifi".to_string(),
-            "bluetooth".to_string(),
-            "battery".to_string(),
-            "public-ip".to_string(),
-            "locale".to_string(),
-            "init".to_string(),
-            "chassis".to_string(),
-            "bootmgr".to_string(),
-            "temp".to_string(),
-            "cpu-freq".to_string(),
-            "procs".to_string(),
-            "arch".to_string(),
-            "users".to_string(),
-            "packages".to_string(),
-        ])
+        Some(fields::fields_for(Mode::Long))
     } else if cli.short {
-        Some(vec![
-            "os".to_string(),
-            "kernel".to_string(),
-            "host".to_string(),
-            "cpu".to_string(),
-            "gpu".to_string(),
-            "memory".to_string(),
-            "disk".to_string(),
-            "net".to_string(),
-        ])
+        Some(fields::fields_for(Mode::Short))
     } else if let Some(fields) = &_config.fields {
         Some(fields.iter().map(|s| s.to_lowercase()).collect())
     } else {
-        // Default (standard) set
-        Some(vec![
-            "os".to_string(),
-            "kernel".to_string(),
-            "host".to_string(),
-            "cpu".to_string(),
-            "cpu-cache".to_string(),
-            "cpu-usage".to_string(),
-            "motherboard".to_string(),
-            "gpu".to_string(),
-            "display".to_string(),
-            "audio".to_string(),
-            "camera".to_string(),
-            "memory".to_string(),
-            "phys-mem".to_string(),
-            "swap".to_string(),
-            "load".to_string(),
-            "disk".to_string(),
-            "phys-disk".to_string(),
-            "net".to_string(),
-            "uptime".to_string(),
-        ])
+        Some(fields::fields_for(Mode::Standard))
     };
 
     let should_show = |label: &str| -> bool {

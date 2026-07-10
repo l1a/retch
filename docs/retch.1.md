@@ -108,6 +108,8 @@ You can generate a starting configuration with:
   - `locale`: System locale from `$LC_ALL` / `$LANG`.
   - `cpu`: CPU model name.
   - `cpu-freq`: CPU current/max/min frequencies.
+  - `cpu-cache`: CPU L1/L2/L3 cache sizes.
+  - `cpu-usage`: Current CPU utilization percentage.
   - `gpu`: GPU model(s) and VRAM.
   - `motherboard`: Motherboard manufacturer and model.
   - `bios`: BIOS vendor and version.
@@ -128,6 +130,7 @@ You can generate a starting configuration with:
   - `zpool`: Imported ZFS pool name, allocation, and health (`zpool list`). Linux and macOS with ZFS installed; empty if `zpool` is not present. Long mode and above.
   - `temp`: System temperature sensors.
   - `net`: Active network interfaces and local/public IP addresses.
+  - `public-ip`: Public IP address (queried over the network). Long mode and above.
   - `wifi`: Active Wi-Fi SSID, band frequency, channel, and link rates.
   - `dns`: Configured DNS nameservers (from `/etc/resolv.conf` on Linux/macOS).
   - `domain`: Configured DNS domain name (from `domain` or first `search` entry in `/etc/resolv.conf`). Long mode and above.
@@ -137,7 +140,7 @@ You can generate a starting configuration with:
   - `shell`: Currently running shell name and version (e.g. bash, zsh, fish, nu). Detected from the process tree; falls back to `$SHELL` (login shell).
   - `editor`: Default editor from `$VISUAL` / `$EDITOR`.
   - `terminal`: Terminal emulator name and version.
-  - `terminal_font`: Terminal emulator active font.
+  - `terminal-font`: Terminal emulator active font.
   - `terminal-size`: Terminal dimensions (columns × rows).
   - `desktop`: Desktop environment name (e.g. GNOME, KDE Plasma, XFCE).
   - `wm`: Window manager name (e.g. Mutter, KWin, Sway). Hidden when identical to Desktop.

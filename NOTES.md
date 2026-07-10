@@ -19,6 +19,8 @@ This file contains the details of this specific project (retch). It details the 
 retch/                          ← retch-cli crate (binary)
   src/
     main.rs, display.rs, config.rs, ...
+    fields.rs                   ← single source of truth for the field list +
+                                   output strata (see §5 "Field wiring")
   Cargo.toml                    ← version = "0.3.28" (bump on release)
   Justfile
   docs/retch.1.md               ← man page source (mandown)
@@ -94,7 +96,16 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.39)
+## Current State (v0.3.40)
+- **Field registry**: The displayable-field list and its output strata now live in
+  one place — `src/fields.rs` (`FIELDS` table + `Mode` enum). `main.rs` (collection)
+  and `display.rs` (display) derive their per-strata allow-lists from
+  `fields::fields_for(mode)`, and both config-generation paths (`main.rs`'s
+  full-write template and `config.rs`'s `merge_defaults`) derive the commented
+  `fields = [...]` block from `fields::config_fields_block()`. This replaced the
+  four in-code copies that previously drifted. Two guardrail tests in
+  `tests/cli_tests.rs` assert every registry key is documented in `README.md` and
+  `docs/retch.1.md` and appears in generated config, so drift now fails CI.
 - **Security**: `cargo audit` clean — `crossbeam-epoch` bumped `0.9.18 → 0.9.20`
   (Cargo.lock only) to clear RUSTSEC-2026-0204 (invalid pointer dereference in the
   `fmt::Pointer` impl for `Atomic`/`Shared`). Transitive dependency via `rayon`
@@ -184,7 +195,19 @@ Adds over long:
 - **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
 - **FUSE mounts in `--full`**: v0.3.26 skips all `fuse.*` mounts to avoid 600ms+ hangs from cryfs/EncFS vaults. The `--full` mode redesign (§4) resolves this by re-enabling `statvfs` for fuse.* entries in `--full` only — no separate config key or flag needed.
-- **Field wiring de-duplication (tech debt)**: there is no single source of truth for the field list. Every field name is hand-duplicated across `src/main.rs` (collection allow-lists per strata, *plus* a second copy embedded in the generated `config.toml` template string near the bottom of the file), `src/display.rs` (an independently re-derived display allow-list per strata), `src/config.rs`'s `DEFAULT_FIELDS_BLOCK`, `docs/retch.1.md`, and `README.md` — 6 places total, all fuzzy-matched on raw `&str`/`String` literals with no shared enum or registry. Adding or renaming a field risks silent drift (e.g. collected but not displayed, or vice versa) if any one of the 6 is missed — confirmed firsthand when adding `btrfs`/`zpool` (v0.3.37): the `main.rs` config-template duplicate wasn't caught until a second manual grep pass. Worth consolidating into a single field registry (e.g. a static table of `{name, strata, collector}`) that both `main.rs` and `display.rs` derive their allow-lists from, and that generates the config default-block comment.
+- ~~**Field wiring de-duplication (tech debt)**~~ — resolved in v0.3.39. The field
+  list is now a single `FIELDS` table in `src/fields.rs`. The four *in-code* copies
+  (`main.rs` collection allow-lists + config template, `display.rs` display
+  allow-lists, `config.rs`'s `DEFAULT_FIELDS_BLOCK`) all derive from it via
+  `fields::fields_for(mode)` / `fields::config_fields_block()`. The two *doc* copies
+  (`docs/retch.1.md`, `README.md`) can't be generated from Rust, so a guardrail test
+  (`test_docs_cover_all_registry_fields`) fails CI if either omits a registry key —
+  which caught real pre-existing drift when added (the man page was missing
+  `cpu-cache`/`cpu-usage`/`public-ip`; README was missing `gamepad`/`public-ip`).
+  *Not folded in (deliberate):* the per-collector `should_collect("…")` calls in
+  `crates/sysinfo/src/fetch.rs` remain decentralized — each collector checks its own
+  key, matching is spelling-tolerant, and it lives across the crate boundary, so the
+  drift risk there is low and unifying it would widen the blast radius.
 
 ---
 
@@ -222,6 +245,30 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.40 - Single field registry (field-wiring de-duplication) (July 10, 2026)
+- **`src/fields.rs`**: new single source of truth for the displayable-field list.
+  A `FIELDS` table pairs each canonical field key with the least-verbose `Mode`
+  (`Short`/`Standard`/`Long`/`Full`) it appears in; modes are strictly nested so one
+  `min_mode` per field defines all four strata. Exposes `fields_for(mode)` and
+  `config_fields_block()`.
+- **Consumers rewired**: `main.rs` (collection allow-lists + the full-config
+  template) and `display.rs` (display allow-lists) now call `fields_for(mode)`;
+  `config.rs`'s `merge_defaults` and `main.rs`'s `default_config_content` both emit
+  the commented `fields = [...]` block via `config_fields_block()`. Removed ~318
+  lines of hand-duplicated `&str` lists across four in-code sites that had already
+  drifted apart.
+- **Docs corrected + guarded**: fixed pre-existing drift the consolidation exposed —
+  `docs/retch.1.md` was missing `cpu-cache`, `cpu-usage`, `public-ip` and spelled
+  `terminal_font`; `README.md` was missing `gamepad`, `public-ip`. New guardrail
+  tests (`test_docs_cover_all_registry_fields`,
+  `test_generated_config_covers_all_registry_fields`) fail CI if any registry key is
+  undocumented or missing from generated config, so the drift can't silently return.
+- **Behavior preserved**: strata sets are byte-for-byte identical (unit tests pin
+  short=8 / standard=19 / long=46 / full=52, strict nesting, and exact membership);
+  short/standard/full verified at runtime. Pure internal refactor — no user-visible
+  behavior change.
+- **Version**: Bumped to `0.3.40` (`retch-sysinfo` unchanged at `0.1.33`).
 
 ### v0.3.39 - Security: bump crossbeam-epoch (RUSTSEC-2026-0204) (July 10, 2026)
 - **cargo audit fix**: `crossbeam-epoch` `0.9.18 → 0.9.20` (Cargo.lock only) clears

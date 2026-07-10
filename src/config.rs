@@ -129,13 +129,19 @@ impl Config {
         let mut new_content = existing.trim_end().to_string();
         let mut additions = Vec::new();
 
+        // The fields block is generated from the single field registry
+        // (src/fields.rs) so it stays in sync with the strata allow-lists and
+        // with main.rs's full-config template. Held in a local so the `checks`
+        // array can borrow it alongside the static blocks.
+        let fields_block = crate::fields::config_fields_block();
+
         let checks = [
             ("theme", DEFAULT_THEME_BLOCK),
             ("show_logo", DEFAULT_SHOW_LOGO_BLOCK),
             ("ascii_only", DEFAULT_ASCII_ONLY_BLOCK),
             ("chafa", DEFAULT_CHAFA_BLOCK),
             ("logo", DEFAULT_LOGO_BLOCK),
-            ("fields", DEFAULT_FIELDS_BLOCK),
+            ("fields", fields_block.as_str()),
             ("weather_location", DEFAULT_WEATHER_LOCATION_BLOCK),
             ("weather_unit", DEFAULT_WEATHER_UNIT_BLOCK),
         ];
@@ -199,19 +205,6 @@ const DEFAULT_WEATHER_LOCATION_BLOCK: &str = r##"# Location for weather lookup (
 
 const DEFAULT_WEATHER_UNIT_BLOCK: &str = r##"# Temperature unit for weather: "fahrenheit" or "celsius"
 # weather_unit = "fahrenheit""##;
-
-const DEFAULT_FIELDS_BLOCK: &str = r##"# List of fields to display (leave empty or omit to show all)
-# Note: "phys-mem" requires running as root (sudo) on Linux to read DMI memory tables.
-# Note: "weather" requires network access and is shown in long mode by default.
-# fields = [
-#     "os", "kernel", "host", "chassis", "init", "locale",
-#     "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage",
-#     "gpu", "motherboard", "bios", "bootmgr", "display", "audio",
-#     "camera", "gamepad", "memory", "phys-mem", "swap", "uptime", "procs", "load",
-#     "disk", "phys-disk", "btrfs", "zpool", "temp", "net", "public-ip", "wifi", "bluetooth", "battery",
-#     "shell", "editor", "terminal", "terminal-font", "desktop",
-#     "theme", "icons", "cursor", "font", "users", "packages", "weather"
-# ]"##;
 
 fn contains_key_line(content: &str, key: &str) -> bool {
     for line in content.lines() {
@@ -379,6 +372,6 @@ mod tests {
 
     #[test]
     fn test_default_fields_include_battery() {
-        assert!(DEFAULT_FIELDS_BLOCK.contains("battery"));
+        assert!(crate::fields::config_fields_block().contains("battery"));
     }
 }
