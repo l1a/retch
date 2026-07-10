@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783701152371,
+  "lastUpdate": 1783701581425,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6557,85 +6557,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "370912eb198bcb6c18277c0ed8b8269c910d338f",
-          "message": "Add Claude Code GitHub Workflow (#98)\n\n* \"Claude PR Assistant workflow\"\n\n* \"Claude Code Review workflow\"",
-          "timestamp": "2026-06-14T23:25:19-07:00",
-          "tree_id": "f6b985f66832612aae83720755a10cf19084e1c0",
-          "url": "https://github.com/l1a/retch/commit/370912eb198bcb6c18277c0ed8b8269c910d338f"
-        },
-        "date": 1781505413002,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 1843136.580000001,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 79313926.47999999,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 80014986.8696633,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 992.7304403149676,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 52.20156892788267,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946634925312469,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 55.995392415058504,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7872.78165756081,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1196677.2173721676,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 360.4339815456536,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 262.5677025582077,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "89a895803a7b3b271e4570afe6d7d8e054e9630c",
           "message": "Modify Claude workflow with new permissions and tools\n\nUpdated permissions for actions and pull requests. Added installation of build dependencies and configured allowed tools for Claude.",
           "timestamp": "2026-06-15T10:36:13-07:00",
@@ -10870,6 +10791,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 255.54243803549406,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0e1c1784b9978fdff89b81f40496397a7becfb04",
+          "message": "Bump crossbeam-epoch to clear RUSTSEC-2026-0204 (#140)\n\n* Bump crossbeam-epoch to clear RUSTSEC-2026-0204\n\ncargo audit flagged crossbeam-epoch 0.9.18 (RUSTSEC-2026-0204: invalid\npointer dereference in the fmt::Pointer impl for Atomic/Shared). Bump to\n0.9.20 (Cargo.lock only; transitive via rayon → image/criterion). No\nmanifest or direct-dependency change.\n\nAssisted-By: Claude Opus 4.8\n\n* Add advisory cargo audit step to just pr gate\n\nThe pre-PR gate never ran cargo audit, so RUSTSEC-2026-0204 (crossbeam-\nepoch) only surfaced in CI. Add step 8 to `just pr`: install cargo-audit\nif missing, run it, print advisories. Advisory-only — it does not block\nthe gate, since advisories can be newly published against unchanged\ntransitive deps. Documented in AGENTS.md §4.0 and NOTES.md.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-10T09:25:18-07:00",
+          "tree_id": "20c022c102ba6752d23ea9a6923616b6a5d9b58c",
+          "url": "https://github.com/l1a/retch/commit/0e1c1784b9978fdff89b81f40496397a7becfb04"
+        },
+        "date": 1783701580205,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1097716306.35,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1003.9012386693121,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 49.23786674450595,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946991672611568,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 49.12523114012125,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7822.78498982699,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71693.74462607686,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4856.478563607949,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4970.448576500732,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1283192.9794208074,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 337.12676387518775,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 260.01336402028926,
             "unit": "ns"
           }
         ]
