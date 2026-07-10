@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783702337320,
+  "lastUpdate": 1783702628612,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14751,75 +14751,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "370912eb198bcb6c18277c0ed8b8269c910d338f",
-          "message": "Add Claude Code GitHub Workflow (#98)\n\n* \"Claude PR Assistant workflow\"\n\n* \"Claude Code Review workflow\"",
-          "timestamp": "2026-06-14T23:25:19-07:00",
-          "tree_id": "f6b985f66832612aae83720755a10cf19084e1c0",
-          "url": "https://github.com/l1a/retch/commit/370912eb198bcb6c18277c0ed8b8269c910d338f"
-        },
-        "date": 1781506317760,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 34916738,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1564993857.9999998,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 134.84841532287265,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.393676909663059,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 117.68017385060284,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 41429.7289791456,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 601.9280344429202,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 849.7893485194415,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1337552180,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "89a895803a7b3b271e4570afe6d7d8e054e9630c",
           "message": "Modify Claude workflow with new permissions and tools\n\nUpdated permissions for actions and pull requests. Added installation of build dependencies and configured allowed tools for Claude.",
           "timestamp": "2026-06-15T10:36:13-07:00",
@@ -18104,6 +18035,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3589214750,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0e1c1784b9978fdff89b81f40496397a7becfb04",
+          "message": "Bump crossbeam-epoch to clear RUSTSEC-2026-0204 (#140)\n\n* Bump crossbeam-epoch to clear RUSTSEC-2026-0204\n\ncargo audit flagged crossbeam-epoch 0.9.18 (RUSTSEC-2026-0204: invalid\npointer dereference in the fmt::Pointer impl for Atomic/Shared). Bump to\n0.9.20 (Cargo.lock only; transitive via rayon → image/criterion). No\nmanifest or direct-dependency change.\n\nAssisted-By: Claude Opus 4.8\n\n* Add advisory cargo audit step to just pr gate\n\nThe pre-PR gate never ran cargo audit, so RUSTSEC-2026-0204 (crossbeam-\nepoch) only surfaced in CI. Add step 8 to `just pr`: install cargo-audit\nif missing, run it, print advisories. Advisory-only — it does not block\nthe gate, since advisories can be newly published against unchanged\ntransitive deps. Documented in AGENTS.md §4.0 and NOTES.md.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-10T09:25:18-07:00",
+          "tree_id": "20c022c102ba6752d23ea9a6923616b6a5d9b58c",
+          "url": "https://github.com/l1a/retch/commit/0e1c1784b9978fdff89b81f40496397a7becfb04"
+        },
+        "date": 1783702624370,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 99.48072207744131,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.8394718958379093,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 99.57929197131672,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 78.05496028390264,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 33062.03030397804,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 434.47438883186635,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 652.2339898171533,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3107516835,
             "unit": "ns"
           }
         ]
