@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783812011943,
+  "lastUpdate": 1783812365518,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10914,90 +10914,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "896a3acbc1b5feb1819a84acfb46eb52795d7abe",
-          "message": "Add AUR and Nixpkgs packaging configs (#103)\n\n* Add AUR and Nixpkgs packaging configs\n\nCreates PKGBUILD for Arch Linux and package.nix for Nixpkgs, along\nwith local Nix test building expressions and automated CI workflows\nto verify compilation.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix tar warning in packaging CI\n\nExclude output file from tar archive by writing to /tmp/ first,\nresolving the \"file changed as we read it\" error in CI.\n\nAssisted-By: Gemini 3.5 Flash\n\n* docs: add AUR registration outage note to README.md\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix AUR linker target and dependencies in CI\n\nAdd sqlite pacman dependency and unset runner-inherited CARGO_TARGET\nlinker config in the Arch container to ensure native build/link.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Replace pandoc with mandown for man pages\n\nSwitch the manual page compilation toolchain from pandoc to mandown. Update Justfile, packaging configurations, Nix flake devShell, CI workflows, and documentation references. Regenerate docs/retch.1.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix AUR CI: remove system sqlite package\n\nrusqlite uses bundled feature which compiles sqlite3 statically. Installing the system sqlite package causes ld.lld symbol conflicts on Arch Linux. The system package is not needed.\n\nAssisted-By: Claude Sonnet 4.6\n\n* Disable LTO for AUR PKGBUILD\n\nArch Linux's default makepkg settings enable LTO, which conflicts with static linking of Cargo-compiled C dependencies (like sqlite3 in rusqlite's bundled feature), resulting in undefined symbol errors.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Automate Nixpkgs hash calculation\n\nAdd scripts/calculate_nix_hashes.py to compute source and cargo hashes. Add nix-update recipe to Justfile, and integrate hash calculation into the GitHub Actions release workflow to publish hashes in release notes.\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-06-23T13:54:22-07:00",
-          "tree_id": "b42a76f82aaadcc436f134774a47331b654c10c7",
-          "url": "https://github.com/l1a/retch/commit/896a3acbc1b5feb1819a84acfb46eb52795d7abe"
-        },
-        "date": 1782249242949,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 18512715.16,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 490266598.56000006,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 419185855.25,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 396.8165846613382,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 73.04835175534372,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.831575744375968,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 65.05411078345247,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 5046.39409759654,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1293.0764154679828,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 441.8591973105369,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 84951.09187408631,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 352.8037524201017,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "e751e50d49581e42a9b60a8ce8250769697d64bd",
           "message": "Fix prefetch hash formatting (#104)\n\nAdd --type sha256 to nix-prefetch-url to force hexadecimal output, preventing binascii decoding failures caused by Nix's default base32 output format.\n\nAssisted-By: Gemini 3.5 Flash",
           "timestamp": "2026-06-23T14:30:26-07:00",
@@ -14697,6 +14613,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 327.0612924242334,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "36888f89870197b2e040c9178970859ffc467c42",
+          "message": "Detect Windows bluetooth natively (bthprops) (#148)\n\nReplace the PowerShell spawn (Get-Service bthserv + two Get-PnpDevice\n-Class Bluetooth queries, ~1.8s) with native Win32:\n- power state from the bthserv service via the Service Control Manager\n  (advapi32),\n- adapter hardware name via SetupAPI enumeration of the Bluetooth device\n  class (links setupapi),\n- connected devices via the classic bthprops API (BluetoothFindFirstDevice\n  with fReturnConnected; links bthprops).\n\nHand-written extern \"system\" FFI, no WinRT and no binding crate. The\ndevice-info struct layout was validated at runtime before trusting the\ncount. A pure format_windows_bluetooth fn carries the unit tests.\n\nBehavior change: \"N connected\" now counts actually-connected devices\nrather than the old count of all paired/present Bluetooth PnP nodes (which\nthe old code mislabeled as connected). Adapter name unchanged. On an AMD\nRyzen AI MAX+ 395: --fields bluetooth ~1765ms -> ~150ms; --long 3462 ->\n2934ms.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-11T16:06:28-07:00",
+          "tree_id": "ad23df51a0dfa2097d5eeb928be7307ad5c07e92",
+          "url": "https://github.com/l1a/retch/commit/36888f89870197b2e040c9178970859ffc467c42"
+        },
+        "date": 1783812363274,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 970564177.1,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 394.7988755906464,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 61.2197518273649,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.6720074638723847,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 60.83064487281475,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4085.0576107290085,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 987.5504775473888,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 388.99615197805133,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 64128.44016015576,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 325.5187035786438,
             "unit": "ns"
           }
         ]
