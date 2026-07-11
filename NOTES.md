@@ -96,7 +96,13 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.42)
+## Current State (v0.3.43)
+- **`update_wip.py` substitutions bounded with `count=1`**: the v0.3.42 regex retarget
+  (below) rewrote *every* line containing the header string — including verbatim mentions
+  in WIP.md's notes/open-task prose — which clobbered task lines during the #142 merge.
+  Both `re.sub` calls now pass `count=1` so only the first (top-of-file header) occurrence
+  is rewritten. Verified against a sample with the header strings in both a header line and
+  later prose. Docs/tooling only.
 - **`update_wip.py` fixed**: the post-merge WIP updater now targets the current
   `**main HEAD**:` header (it previously matched an obsolete `**Latest commit on main**:`
   line and silently no-op'd, leaving the pointer stale after every merge). It also
@@ -263,6 +269,16 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.43 - update_wip.py: bound substitutions with count=1 (July 10, 2026)
+- **Follow-up to v0.3.42**: the retargeted `**main HEAD**:` regex had no `count`, so it
+  rewrote every line containing that header string. WIP.md's open-task prose mentions the
+  header verbatim, so the #142 merge clobbered those task lines (repaired by hand). Both
+  `re.sub` calls (Active-Branch and main-HEAD) now pass `count=1`, rewriting only the first
+  top-of-file header occurrence and leaving prose intact. Verified end-to-end against a
+  sample containing the header strings in both a header line and later prose.
+- **Docs/tooling only**: no Rust source touched.
+- **Version**: Bumped to `0.3.43` (`retch-sysinfo` unchanged at `0.1.33`).
 
 ### v0.3.42 - Fix update_wip.py post-merge updater (July 10, 2026)
 - **Stale-pointer bug**: `scripts/update_wip.py` matched an obsolete
