@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783803906778,
+  "lastUpdate": 1783804426231,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18038,80 +18038,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "152d458bb9475caf4f944421182e2c542a451393",
-          "message": "feat: add CPU cache, usage, topology, and freq range fields (v0.3.21) (#101)\n\n* feat: add CPU cache, usage, topology, and freq range fields\n\nCPUCache: Linux reads sysfs /sys/devices/system/cpu/cpu0/cache/;\nmacOS reads hw.l1dcachesize/l1icachesize/l2cachesize/l3cachesize via\nsysctlbyname. Returns None on Windows.\n\nCPUUsage: instantaneous utilization % combined with 1/5/15 min load\naverages â€” e.g. \"12.8% (load: 0.45, 1.23, 0.87)\".\n\nCPU topology: uses sysinfo physical_core_count() to show \"8C / 16T\"\ninstead of a raw thread count.\n- Linux Intel 12th gen+: groups cpufreq policies by max frequency to\n  detect P/E cores â€” \"6P + 4E / 16T\".\n- macOS Apple Silicon: reads hw.nperflevels / hw.perflevel0.logicalcpu /\n  hw.perflevel1.logicalcpu â€” \"4P + 4E / 8T\" on M-series.\n\nCPU Freq (long mode): now includes minâ€“max hardware range from sysfs\ncpufreq on Linux â€” e.g. \"2.38 GHz (0.42 â€“ 5.13 GHz)\".\n\nTests: format_cpu_cores (3 cases), detect_cpu_cache (Linux sysfs\npresence check), detect_cpu_freq_range (ordered pair assertion).\n\nBenchmarks: detect_cpu_cache (Linux+macOS), detect_cpu_freq_range\n(Linux), format_cpu_cores (all platforms).\n\nAssisted-By: Claude Sonnet 4.6\n\n* ci: add dry-run fetcher step to full-test job\n\nRC tag builds now execute the binary with --long on every platform,\nmatching the visibility the build job provides on PRs.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix(cpu-usage): show instantaneous % on Windows without load average\n\nWindows has no load average concept; sysinfo returns zeros. On Windows,\ndisplay just the usage percentage rather than suppressing the field.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-16T14:41:43-07:00",
-          "tree_id": "bf24aa1ba36c56763b1bb1c4cc56933d6673dfac",
-          "url": "https://github.com/l1a/retch/commit/152d458bb9475caf4f944421182e2c542a451393"
-        },
-        "date": 1781648368579,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 270426650,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1528122679.9999998,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 97.98259949919307,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9477261200060116,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 98.14287604342522,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 77.91035813047979,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 43515.74785834676,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 477.5957690676352,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 726.2866170135833,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1381840740,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "f35f42d253ad9e8e1cc3e34d4c38726b2323d21b",
           "message": "chore: add publish and publish-check just recipes (#102)\n\nWraps the two-step crates.io publish sequence (sysinfo first, then CLI)\nso it can be run with a single command.\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-16T15:18:41-07:00",
@@ -21351,6 +21277,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3133746585,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e7427ff1a1011473cda36ef463893d8a10dea342",
+          "message": "Read SMBIOS natively for Windows phys-mem (#147)\n\n* Read SMBIOS natively for Windows phys-mem\n\nReplace the two Get-CimInstance Win32_PhysicalMemory / Win32_ComputerSystem\nPowerShell spawns (~600 ms) with GetSystemFirmwareTable('RSMB') (kernel32),\nparsing SMBIOS type-17 (Memory Device) structures directly, plus\nGlobalMemoryStatusEx as the VM total-memory fallback. Hand-written\nextern \"system\" FFI matching win_reg.rs — no new dependency.\n\nA pure parse_smbios_type17 fn does a bounds-checked walk of the structure\ntable (formatted area + double-null-terminated string set) and carries the\nunit tests. Now also surfaces the SMBIOS Configured Memory Speed field\n(offset 0x20), so Windows shows running-vs-rated speed when they differ\n(e.g. \"8x 16 GB LPDDR5 8000 MT/s (rated 8533 MT/s)\"), matching Linux; the\nold WMI path only reported the rated speed.\n\n--fields phys-mem ~597ms -> ~152ms on an AMD Ryzen AI MAX+ 395; output\nverified against Get-CimInstance Win32_PhysicalMemory.\n\nAssisted-By: Claude Opus 4.8\n\n* Fix clippy byte-str lint on RSMB signature\n\nRust 1.97's clippy flags `[b'R', b'S', b'M', b'B']` (can be a byte str).\nUse `*b\"RSMB\"` instead. Local toolchain was 1.96 so `just check` passed\nlocally but CI (1.97) failed clippy; bumped local toolchain to match.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-11T13:32:19-07:00",
+          "tree_id": "dde402b0cc3e8c191c71996d19858d5d403cf3b0",
+          "url": "https://github.com/l1a/retch/commit/e7427ff1a1011473cda36ef463893d8a10dea342"
+        },
+        "date": 1783804423220,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 101.95684146741111,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9477903983026663,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 102.24185649510773,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 80.40682505787004,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46796.65661217397,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 484.8263244426347,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 733.0641628331191,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2065350490,
             "unit": "ns"
           }
         ]
