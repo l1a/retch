@@ -409,71 +409,342 @@ fn format_size(bytes: u64) -> String {
     }
 }
 
+/// Enumerates physical disks via native Win32 storage IOCTLs.
+///
+/// Replaces the previous `Get-PhysicalDisk` PowerShell spawn (~1.7 s of interpreter
+/// startup) with direct `DeviceIoControl` queries against `\\.\PhysicalDriveN`. Each
+/// drive is opened with **no** access rights (`dwDesiredAccess = 0`) and only
+/// `FILE_ANY_ACCESS` query IOCTLs are used, so no elevation is required.
 #[cfg(target_os = "windows")]
 fn detect_windows() -> Vec<String> {
-    let cmd = "Get-PhysicalDisk | \
-               Select-Object FriendlyName,Size,MediaType,BusType | \
-               ConvertTo-Csv -NoTypeInformation";
-    let Ok(output) = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", cmd])
-        .output()
-    else {
-        return Vec::new();
-    };
-    if !output.status.success() {
-        return Vec::new();
-    }
-    let text = String::from_utf8_lossy(&output.stdout);
-    parse_get_physical_disk(&text)
+    // Physical drive numbers are contiguous from 0 in the common case, but a removed
+    // disk can leave a gap; scan a fixed range and skip any drive that won't open.
+    // A failed CreateFileW on a nonexistent device returns immediately, so this is
+    // still orders of magnitude cheaper than spawning PowerShell.
+    const MAX_DRIVES: u32 = 32;
+    (0..MAX_DRIVES)
+        .filter_map(win_ffi::query_physical_drive)
+        .collect()
 }
 
-/// Parses `Get-PhysicalDisk | ConvertTo-Csv` output into formatted disk labels.
+/// Classifies and formats a single physical disk into its display label, mirroring
+/// the columns the old `Get-PhysicalDisk` parser used (model, size, media type, bus).
 ///
-/// Expected CSV header: `"FriendlyName","Size","MediaType","BusType"`
+/// `bus_type` is a `STORAGE_BUS_TYPE` value; `incurs_seek_penalty` is `None` when the
+/// seek-penalty IOCTL was unavailable (treated as SSD, matching the old "Unspecified"
+/// fallback).
 #[cfg(target_os = "windows")]
-pub fn parse_get_physical_disk(csv: &str) -> Vec<String> {
-    let mut lines = csv.lines();
-    lines.next(); // skip header
-    let mut disks = Vec::new();
-    for line in lines {
-        let fields = unquoted_csv_fields(line);
-        if fields.len() < 4 {
-            continue;
+fn format_disk_label(
+    model: &str,
+    size_bytes: Option<u64>,
+    bus_type: u32,
+    incurs_seek_penalty: Option<bool>,
+) -> String {
+    let kind = if bus_type == win_ffi::BUS_TYPE_NVME {
+        "NVMe SSD"
+    } else {
+        match incurs_seek_penalty {
+            Some(true) => "HDD",
+            // Non-rotational, or unknown (no NVMe bus, no seek-penalty info): treat as
+            // SSD — matches the prior "MediaType Unspecified → SSD" behavior.
+            Some(false) | None => "SSD",
         }
-        let name = fields[0].trim();
-        let size_bytes: Option<u64> = fields[1].trim().parse().ok();
-        let media_type = fields[2].trim();
-        let bus_type = fields[3].trim();
+    };
 
-        let kind = if bus_type.eq_ignore_ascii_case("NVMe") {
-            "NVMe SSD"
-        } else if media_type.eq_ignore_ascii_case("SSD") {
-            "SSD"
-        } else if media_type.eq_ignore_ascii_case("HDD") {
-            "HDD"
-        } else {
-            // "Unspecified" with no NVMe bus — treat as SSD (e.g. eMMC, SD)
-            "SSD"
-        };
-
-        let size_str = size_bytes.map(format_size).unwrap_or_default();
-        let label = if name.is_empty() {
-            format!("{} [{}]", size_str, kind)
-        } else {
-            format!("{} {} [{}]", name, size_str, kind)
-        };
-        disks.push(label.trim().to_string());
-    }
-    disks
+    let name = model.trim();
+    let size_str = size_bytes.map(format_size).unwrap_or_default();
+    let label = if name.is_empty() {
+        format!("{} [{}]", size_str, kind)
+    } else {
+        format!("{} {} [{}]", name, size_str, kind)
+    };
+    label.trim().to_string()
 }
 
-/// Splits one PowerShell `ConvertTo-Csv` line into unquoted fields.
+/// Builds the model/friendly-name string from a storage descriptor's vendor and
+/// product id fields.
 ///
-/// `ConvertTo-Csv` wraps every value in double quotes: `"val1","val2",...`
+/// The product id is the model string Windows surfaces as `Get-PhysicalDisk`'s
+/// `FriendlyName` (e.g. "Samsung SSD 980 Pro"). The vendor id is only prepended when
+/// it adds information — SATA drives report a generic "ATA" vendor that the friendly
+/// name never includes, and USB/NVMe often duplicate the vendor inside the product id.
 #[cfg(target_os = "windows")]
-fn unquoted_csv_fields(line: &str) -> Vec<String> {
-    let line = line.trim().trim_matches('"');
-    line.split("\",\"").map(|s| s.to_string()).collect()
+fn combine_model(vendor: &str, product: &str) -> String {
+    let v = vendor.trim();
+    let p = product.trim();
+    if p.is_empty() {
+        return v.to_string();
+    }
+    if v.is_empty()
+        || v.eq_ignore_ascii_case("ATA")
+        || p.to_ascii_lowercase().contains(&v.to_ascii_lowercase())
+    {
+        p.to_string()
+    } else {
+        format!("{} {}", v, p)
+    }
+}
+
+/// Native Win32 storage IOCTL bindings and per-drive query helpers.
+///
+/// Uses hand-written `extern "system"` declarations to match the crate's existing
+/// Windows FFI style (see `win_reg.rs`) rather than pulling in a Win32 binding crate.
+#[cfg(target_os = "windows")]
+mod win_ffi {
+    use super::{combine_model, format_disk_label};
+    use std::ffi::{c_void, OsStr};
+    use std::mem::size_of;
+    use std::os::windows::ffi::OsStrExt;
+    use std::ptr;
+
+    #[allow(clippy::upper_case_acronyms)]
+    type HANDLE = *mut c_void;
+    const INVALID_HANDLE_VALUE: HANDLE = -1isize as HANDLE;
+    const FILE_SHARE_READ: u32 = 0x0000_0001;
+    const FILE_SHARE_WRITE: u32 = 0x0000_0002;
+    const OPEN_EXISTING: u32 = 3;
+
+    // Both IOCTLs below are FILE_ANY_ACCESS, so a handle opened with zero desired
+    // access can issue them without administrator rights.
+    const IOCTL_STORAGE_QUERY_PROPERTY: u32 = 0x002D_1400;
+    const IOCTL_DISK_GET_DRIVE_GEOMETRY_EX: u32 = 0x0007_00A0;
+
+    // STORAGE_PROPERTY_ID values.
+    const STORAGE_DEVICE_PROPERTY: u32 = 0;
+    const STORAGE_DEVICE_SEEK_PENALTY_PROPERTY: u32 = 7;
+    // STORAGE_QUERY_TYPE value.
+    const PROPERTY_STANDARD_QUERY: u32 = 0;
+
+    /// `STORAGE_BUS_TYPE::BusTypeNvme`.
+    pub const BUS_TYPE_NVME: u32 = 17;
+
+    #[repr(C)]
+    struct StoragePropertyQuery {
+        property_id: u32,
+        query_type: u32,
+        additional_parameters: [u8; 1],
+    }
+
+    #[repr(C)]
+    struct StorageDeviceDescriptor {
+        version: u32,
+        size: u32,
+        device_type: u8,
+        device_type_modifier: u8,
+        removable_media: u8,
+        command_queueing: u8,
+        vendor_id_offset: u32,
+        product_id_offset: u32,
+        product_revision_offset: u32,
+        serial_number_offset: u32,
+        bus_type: u32,
+        raw_properties_length: u32,
+        raw_device_properties: [u8; 1],
+    }
+
+    #[repr(C)]
+    struct DeviceSeekPenaltyDescriptor {
+        version: u32,
+        size: u32,
+        incurs_seek_penalty: u8,
+    }
+
+    #[repr(C)]
+    struct DiskGeometry {
+        cylinders: i64,
+        media_type: u32,
+        tracks_per_cylinder: u32,
+        sectors_per_track: u32,
+        bytes_per_sector: u32,
+    }
+
+    #[repr(C)]
+    struct DiskGeometryEx {
+        geometry: DiskGeometry,
+        disk_size: i64,
+        data: [u8; 1],
+    }
+
+    extern "system" {
+        fn CreateFileW(
+            lp_file_name: *const u16,
+            dw_desired_access: u32,
+            dw_share_mode: u32,
+            lp_security_attributes: *mut c_void,
+            dw_creation_disposition: u32,
+            dw_flags_and_attributes: u32,
+            h_template_file: HANDLE,
+        ) -> HANDLE;
+
+        fn DeviceIoControl(
+            h_device: HANDLE,
+            dw_io_control_code: u32,
+            lp_in_buffer: *const c_void,
+            n_in_buffer_size: u32,
+            lp_out_buffer: *mut c_void,
+            n_out_buffer_size: u32,
+            lp_bytes_returned: *mut u32,
+            lp_overlapped: *mut c_void,
+        ) -> i32;
+
+        fn CloseHandle(h_object: HANDLE) -> i32;
+    }
+
+    /// Opens `\\.\PhysicalDrive{index}` and returns its formatted label, or `None` if
+    /// the drive does not exist or its device descriptor cannot be read.
+    pub fn query_physical_drive(index: u32) -> Option<String> {
+        let path = format!(r"\\.\PhysicalDrive{index}");
+        let path_w: Vec<u16> = OsStr::new(&path).encode_wide().chain(Some(0)).collect();
+
+        // SAFETY: path_w is a valid null-terminated wide string; zero desired access is
+        // sufficient for the FILE_ANY_ACCESS query IOCTLs used below.
+        let handle = unsafe {
+            CreateFileW(
+                path_w.as_ptr(),
+                0,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                ptr::null_mut(),
+                OPEN_EXISTING,
+                0,
+                ptr::null_mut(),
+            )
+        };
+        if handle == INVALID_HANDLE_VALUE || handle.is_null() {
+            return None;
+        }
+
+        let descriptor = query_device_descriptor(handle);
+        let result = descriptor.map(|(bus_type, model)| {
+            let size = query_disk_size(handle);
+            let seek = query_seek_penalty(handle);
+            format_disk_label(&model, size, bus_type, seek)
+        });
+
+        // SAFETY: handle came from a successful CreateFileW and is closed exactly once.
+        unsafe {
+            CloseHandle(handle);
+        }
+        result
+    }
+
+    /// Reads a null-terminated ANSI string embedded in `buf` at `offset` bytes from the
+    /// start. An offset of 0 means the field is absent.
+    fn read_ansi_at(buf: &[u8], offset: usize) -> String {
+        if offset == 0 || offset >= buf.len() {
+            return String::new();
+        }
+        let bytes = &buf[offset..];
+        let end = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
+        String::from_utf8_lossy(&bytes[..end]).trim().to_string()
+    }
+
+    /// Queries `IOCTL_STORAGE_QUERY_PROPERTY` for the device descriptor, returning the
+    /// bus type and combined model string.
+    fn query_device_descriptor(handle: HANDLE) -> Option<(u32, String)> {
+        let query = StoragePropertyQuery {
+            property_id: STORAGE_DEVICE_PROPERTY,
+            query_type: PROPERTY_STANDARD_QUERY,
+            additional_parameters: [0; 1],
+        };
+        // The descriptor is followed inline by its vendor/product/serial strings; a
+        // fixed 1 KiB buffer comfortably holds the header plus those fields.
+        let mut buf = [0u8; 1024];
+        let mut returned: u32 = 0;
+        // SAFETY: query is a valid input buffer of the declared size; buf is writable
+        // and its length is passed as the output size.
+        let ok = unsafe {
+            DeviceIoControl(
+                handle,
+                IOCTL_STORAGE_QUERY_PROPERTY,
+                &query as *const _ as *const c_void,
+                size_of::<StoragePropertyQuery>() as u32,
+                buf.as_mut_ptr() as *mut c_void,
+                buf.len() as u32,
+                &mut returned,
+                ptr::null_mut(),
+            )
+        };
+        if ok == 0 || (returned as usize) < size_of::<StorageDeviceDescriptor>() {
+            return None;
+        }
+        // SAFETY: the IOCTL wrote at least a full StorageDeviceDescriptor into buf,
+        // which is correctly aligned (a [u8; 1024] array plus the descriptor's u32
+        // alignment is satisfied at offset 0).
+        let desc = unsafe { &*(buf.as_ptr() as *const StorageDeviceDescriptor) };
+        let bus_type = desc.bus_type;
+        let vendor = read_ansi_at(&buf, desc.vendor_id_offset as usize);
+        let product = read_ansi_at(&buf, desc.product_id_offset as usize);
+        Some((bus_type, combine_model(&vendor, &product)))
+    }
+
+    /// Queries `IOCTL_DISK_GET_DRIVE_GEOMETRY_EX` for the total disk size in bytes.
+    fn query_disk_size(handle: HANDLE) -> Option<u64> {
+        let mut geo = DiskGeometryEx {
+            geometry: DiskGeometry {
+                cylinders: 0,
+                media_type: 0,
+                tracks_per_cylinder: 0,
+                sectors_per_track: 0,
+                bytes_per_sector: 0,
+            },
+            disk_size: 0,
+            data: [0; 1],
+        };
+        let mut returned: u32 = 0;
+        // SAFETY: geo is a writable DiskGeometryEx passed with its own size.
+        let ok = unsafe {
+            DeviceIoControl(
+                handle,
+                IOCTL_DISK_GET_DRIVE_GEOMETRY_EX,
+                ptr::null(),
+                0,
+                &mut geo as *mut _ as *mut c_void,
+                size_of::<DiskGeometryEx>() as u32,
+                &mut returned,
+                ptr::null_mut(),
+            )
+        };
+        if ok == 0 || geo.disk_size <= 0 {
+            None
+        } else {
+            Some(geo.disk_size as u64)
+        }
+    }
+
+    /// Queries `IOCTL_STORAGE_QUERY_PROPERTY` seek-penalty info. `Some(true)` indicates
+    /// a rotational (HDD) device, `Some(false)` a solid-state device, `None` if the
+    /// property is unavailable.
+    fn query_seek_penalty(handle: HANDLE) -> Option<bool> {
+        let query = StoragePropertyQuery {
+            property_id: STORAGE_DEVICE_SEEK_PENALTY_PROPERTY,
+            query_type: PROPERTY_STANDARD_QUERY,
+            additional_parameters: [0; 1],
+        };
+        let mut desc = DeviceSeekPenaltyDescriptor {
+            version: 0,
+            size: 0,
+            incurs_seek_penalty: 0,
+        };
+        let mut returned: u32 = 0;
+        // SAFETY: query is a valid input buffer; desc is a writable output buffer.
+        let ok = unsafe {
+            DeviceIoControl(
+                handle,
+                IOCTL_STORAGE_QUERY_PROPERTY,
+                &query as *const _ as *const c_void,
+                size_of::<StoragePropertyQuery>() as u32,
+                &mut desc as *mut _ as *mut c_void,
+                size_of::<DeviceSeekPenaltyDescriptor>() as u32,
+                &mut returned,
+                ptr::null_mut(),
+            )
+        };
+        if ok == 0 || (returned as usize) < size_of::<DeviceSeekPenaltyDescriptor>() {
+            None
+        } else {
+            Some(desc.incurs_seek_penalty != 0)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -626,46 +897,97 @@ mod tests {
     }
 
     #[cfg(target_os = "windows")]
+    use super::win_ffi::BUS_TYPE_NVME;
+    #[cfg(target_os = "windows")]
+    use super::{combine_model, format_disk_label};
+
+    #[cfg(target_os = "windows")]
     #[test]
-    fn test_parse_get_physical_disk_nvme() {
-        let csv = r#""FriendlyName","Size","MediaType","BusType"
-"Samsung SSD 980 Pro 1TB","1000204886016","SSD","NVMe"
-"#;
-        let disks = super::parse_get_physical_disk(csv);
-        assert_eq!(disks, vec!["Samsung SSD 980 Pro 1TB 1.0 TB [NVMe SSD]"]);
+    fn test_format_disk_label_nvme() {
+        // NVMe bus type wins regardless of seek-penalty info.
+        let label = format_disk_label(
+            "Samsung SSD 980 Pro",
+            Some(1_000_204_886_016),
+            BUS_TYPE_NVME,
+            Some(false),
+        );
+        assert_eq!(label, "Samsung SSD 980 Pro 1.0 TB [NVMe SSD]");
     }
 
     #[cfg(target_os = "windows")]
     #[test]
-    fn test_parse_get_physical_disk_hdd() {
-        let csv = r#""FriendlyName","Size","MediaType","BusType"
-"WD Blue 2TB","2000398934016","HDD","SATA"
-"#;
-        let disks = super::parse_get_physical_disk(csv);
-        assert_eq!(disks, vec!["WD Blue 2TB 2.0 TB [HDD]"]);
+    fn test_format_disk_label_hdd() {
+        // Non-NVMe bus (SATA = 11) with a seek penalty is an HDD.
+        let label = format_disk_label("WD Blue", Some(2_000_398_934_016), 11, Some(true));
+        assert_eq!(label, "WD Blue 2.0 TB [HDD]");
     }
 
     #[cfg(target_os = "windows")]
     #[test]
-    fn test_parse_get_physical_disk_unspecified_sata_ssd() {
-        // Some SATA SSDs report MediaType as "Unspecified" but BusType as "SATA"
-        let csv = r#""FriendlyName","Size","MediaType","BusType"
-"Crucial CT500MX500SSD1","500107862016","Unspecified","SATA"
-"#;
-        let disks = super::parse_get_physical_disk(csv);
-        assert_eq!(disks, vec!["Crucial CT500MX500SSD1 500 GB [SSD]"]);
+    fn test_format_disk_label_sata_ssd() {
+        // SATA SSD: no seek penalty.
+        let label = format_disk_label(
+            "Crucial CT500MX500SSD1",
+            Some(500_107_862_016),
+            11,
+            Some(false),
+        );
+        assert_eq!(label, "Crucial CT500MX500SSD1 500 GB [SSD]");
     }
 
     #[cfg(target_os = "windows")]
     #[test]
-    fn test_parse_get_physical_disk_multi() {
-        let csv = r#""FriendlyName","Size","MediaType","BusType"
-"Samsung SSD 980 Pro","1000204886016","SSD","NVMe"
-"WD Blue","2000398934016","HDD","SATA"
-"#;
-        let disks = super::parse_get_physical_disk(csv);
-        assert_eq!(disks.len(), 2);
-        assert_eq!(disks[0], "Samsung SSD 980 Pro 1.0 TB [NVMe SSD]");
-        assert_eq!(disks[1], "WD Blue 2.0 TB [HDD]");
+    fn test_format_disk_label_unknown_seek_penalty_defaults_to_ssd() {
+        // No NVMe bus and no seek-penalty info (e.g. eMMC/SD) → SSD fallback.
+        let label = format_disk_label("Some eMMC", Some(64_000_000_000), 13, None);
+        assert_eq!(label, "Some eMMC 64 GB [SSD]");
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_format_disk_label_empty_model() {
+        let label = format_disk_label("", Some(500_107_862_016), 11, Some(false));
+        assert_eq!(label, "500 GB [SSD]");
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_combine_model_generic_ata_vendor_suppressed() {
+        // SATA drives report a generic "ATA" vendor id that FriendlyName omits.
+        assert_eq!(
+            combine_model("ATA", "Samsung SSD 860 EVO"),
+            "Samsung SSD 860 EVO"
+        );
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_combine_model_empty_vendor() {
+        assert_eq!(
+            combine_model("", "Samsung SSD 980 Pro"),
+            "Samsung SSD 980 Pro"
+        );
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_combine_model_vendor_already_in_product() {
+        // Avoid "Samsung Samsung SSD 980 Pro".
+        assert_eq!(
+            combine_model("Samsung", "Samsung SSD 980 Pro"),
+            "Samsung SSD 980 Pro"
+        );
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_combine_model_distinct_vendor_prepended() {
+        assert_eq!(combine_model("Kingston", "A400 SSD"), "Kingston A400 SSD");
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_combine_model_empty_product_falls_back_to_vendor() {
+        assert_eq!(combine_model("SomeVendor", ""), "SomeVendor");
     }
 }

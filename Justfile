@@ -27,9 +27,9 @@ build:
 build-release:
     cargo build --release
 
-# Run tests
+# Run tests (all workspace members, incl. retch-sysinfo)
 test:
-    cargo test
+    cargo test --workspace
 
 # Clean build artifacts
 clean:
@@ -39,14 +39,14 @@ clean:
 fmt:
     cargo fmt
 
-# Run clippy lints
+# Run clippy lints (all workspace members)
 lint:
-    cargo clippy -- -D warnings
+    cargo clippy --workspace -- -D warnings
 
 # Run strict checks (formatting and linting) as done in CI
 check:
     cargo fmt -- --check
-    cargo clippy -- -D warnings
+    cargo clippy --workspace -- -D warnings
 
 # Run security audit (requires cargo-audit)
 audit:
@@ -240,7 +240,7 @@ pr:
 
     # 5. cargo check — updates Cargo.lock; verify it was committed
     info "Running cargo check..."
-    cargo check -q 2>&1
+    cargo check --workspace -q 2>&1
     LOCK_DIRTY=$(git diff --name-only Cargo.lock)
     [ -n "$LOCK_DIRTY" ] && fail "Cargo.lock was updated but not committed — stage and commit it first"
     pass "Cargo.lock is current and committed"
@@ -252,7 +252,7 @@ pr:
 
     # 7. Tests
     info "Running cargo test..."
-    cargo test -q 2>&1
+    cargo test --workspace -q 2>&1
     pass "All tests passed"
 
     # 8. Security audit (advisory — surfaces RustSec advisories locally before CI,

@@ -96,7 +96,31 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.45)
+## Current State (v0.3.46)
+- **Windows `phys-disk` perf: drop PowerShell spawn (~8× faster field)**:
+  `detect_physical_disks` on Windows no longer shells out to PowerShell
+  (`Get-PhysicalDisk | ConvertTo-Csv`, ~1.7 s of interpreter startup). It now opens
+  each `\\.\PhysicalDriveN` (0..32) with zero desired access and queries native storage
+  IOCTLs via hand-written `extern "system"` FFI (matching `win_reg.rs`, no new crate
+  dependency): `IOCTL_STORAGE_QUERY_PROPERTY` (`StorageDeviceProperty` → model/bus type,
+  `StorageDeviceSeekPenaltyProperty` → HDD vs SSD) and `IOCTL_DISK_GET_DRIVE_GEOMETRY_EX`
+  → total size. Both IOCTLs are `FILE_ANY_ACCESS`, so **no elevation is required**
+  (deliberately avoids `IOCTL_DISK_GET_LENGTH_INFO`, which needs read access → admin).
+  Classification mirrors the old parser exactly (NVMe bus → "NVMe SSD"; seek penalty →
+  "HDD"; otherwise "SSD"), and the model string reproduces `Get-PhysicalDisk`'s
+  `FriendlyName` (generic "ATA" vendor id suppressed). Measured on the AMD Ryzen AI MAX+
+  395 / Windows 11 box: `--fields phys-disk` ~1684 ms → ~210 ms; output verified
+  byte-identical to `Get-PhysicalDisk`. First of the Windows PowerShell-spawn probe
+  migrations tracked in WIP.md. `retch-sysinfo` bumped to `0.1.35`.
+- **Pre-PR gate + CI now cover `retch-sysinfo` (`--workspace`)**: the root `Cargo.toml`
+  is both the `retch-cli` package and the workspace root, so a bare `cargo test` /
+  `cargo clippy` only covered `retch-cli` and silently skipped the `crates/sysinfo`
+  member — exactly where most probe code (and this phys-disk change) lives. `just check`,
+  `just test`, `just lint`, the `just pr` test/check/`cargo check` steps, and both
+  `rust.yml` CI jobs now pass `--workspace`. Target scope is unchanged (lib + bins, not
+  `--all-targets`), so test/bench code is still not linted. AGENTS.md §4.0/§4.1 updated
+  to match. This gap let the new phys-disk FFI's clippy lints go unchecked until caught
+  by hand; the gate now enforces them.
 - **`just bench-cli`/`bench-compare` fixed on Windows**: the recipes passed a POSIX-style
   `./target/release/retch` to hyperfine, whose default shell is `cmd.exe` on Windows —
   which can't execute that path (forward slashes, no `.exe`), so hyperfine aborted with a
@@ -287,6 +311,33 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.46 - Windows phys-disk: native storage IOCTLs (July 11, 2026)
+- **Root cause**: `detect_physical_disks` on Windows spawned PowerShell
+  (`Get-PhysicalDisk | Select-Object … | ConvertTo-Csv`) — ~1.7 s of interpreter startup
+  isolated by the per-field timing sweep, one of the ~7 remaining PowerShell-spawn probes
+  making retch slower than fastfetch on Windows. `phys-disk` is in standard/`--long`, so it
+  slowed the common run.
+- **Fix**: enumerate `\\.\PhysicalDrive0..31` with `CreateFileW` (zero desired access) and
+  query native storage IOCTLs via hand-written `extern "system"` FFI, matching the crate's
+  existing Windows FFI style (`win_reg.rs`) — **no new dependency** (WIP.md had floated
+  `windows-sys`; the raw-extern house convention was used instead). `IOCTL_STORAGE_QUERY_PROPERTY`
+  yields the device descriptor (model, bus type) and seek-penalty descriptor (HDD vs SSD);
+  `IOCTL_DISK_GET_DRIVE_GEOMETRY_EX` yields total size. Both are `FILE_ANY_ACCESS`, so the
+  probe needs no admin rights.
+- **Parity**: classification and label format are unchanged; the model string reproduces
+  `Get-PhysicalDisk`'s `FriendlyName` (generic "ATA" SATA vendor id suppressed). Pure
+  `format_disk_label`/`combine_model` helpers replace the old CSV parser and carry the unit
+  tests.
+- **Result** (AMD Ryzen AI MAX+ 395, Windows 11): `--fields phys-disk` ~1684 ms → ~210 ms
+  (~8×); output verified byte-identical to `Get-PhysicalDisk`.
+- **Gate/CI gap fixed (`--workspace`)**: found while verifying this change — a bare
+  `cargo test`/`cargo clippy` at the root only covers the `retch-cli` package and skips
+  the `retch-sysinfo` workspace member (where this change lives). The `just` recipes
+  (`test`, `lint`, `check`) and both `rust.yml` CI jobs now pass `--workspace` (lib+bins
+  scope unchanged, no `--all-targets`); AGENTS.md §4.0/§4.1 updated. The phys-disk FFI's
+  `HANDLE` acronym lint that this surfaced is fixed in-place.
+- **Version**: Bumped to `0.3.46` / `retch-sysinfo 0.1.35` (library behavior change).
 
 ### v0.3.45 - Fix bench-cli/bench-compare on Windows (July 10, 2026)
 - **Bug**: `just bench-cli` and `just bench-compare` failed on Windows. They invoked
