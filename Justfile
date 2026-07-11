@@ -106,6 +106,12 @@ logos:
     done
     @echo "Logo conversion complete."
 
+# OS-appropriate path to the built release binary for hyperfine. hyperfine's
+# default shell is cmd.exe on Windows — which needs backslashes and the .exe
+# suffix to execute a relative path — and sh elsewhere, so a bare POSIX-style
+# './target/release/retch' fails under cmd. Select the right form per OS.
+retch_release_bin := if os_family() == "windows" { 'target\release\retch.exe' } else { './target/release/retch' }
+
 # Run criterion micro-benchmarks
 bench:
     cargo bench
@@ -114,7 +120,7 @@ bench:
 bench-cli:
     @python3 scripts/install_hyperfine.py 2>/dev/null || python scripts/install_hyperfine.py
     cargo build --release
-    hyperfine --warmup 3 --runs 10 './target/release/retch'
+    hyperfine --warmup 3 --runs 10 '{{retch_release_bin}}'
 
 # Compare retch against fastfetch and neofetch (requires: hyperfine)
 bench-compare:
@@ -122,21 +128,21 @@ bench-compare:
     cargo build --release
     @echo "=== Comparing Standard/Default ==="
     @if command -v fastfetch > /dev/null; then \
-        hyperfine --warmup 3 --runs 10 './target/release/retch' 'fastfetch'; \
+        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}}' 'fastfetch'; \
     else \
-        hyperfine --warmup 3 --runs 10 './target/release/retch'; \
+        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}}'; \
     fi
     @echo "=== Comparing Short ==="
     @if command -v fastfetch > /dev/null; then \
-        hyperfine --warmup 3 --runs 10 './target/release/retch --short' 'fastfetch -c none'; \
+        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --short' 'fastfetch -c none'; \
     else \
-        hyperfine --warmup 3 --runs 10 './target/release/retch --short'; \
+        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --short'; \
     fi
     @echo "=== Comparing Long ==="
     @if command -v fastfetch > /dev/null; then \
-        hyperfine --warmup 3 --runs 10 './target/release/retch --long' 'fastfetch -c all'; \
+        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --long' 'fastfetch -c all'; \
     else \
-        hyperfine --warmup 3 --runs 10 './target/release/retch --long'; \
+        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --long'; \
     fi
 
 # Upload local benchmark results to the gh-pages dashboard (requires: hyperfine, gh)
