@@ -96,7 +96,14 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.44)
+## Current State (v0.3.45)
+- **`just bench-cli`/`bench-compare` fixed on Windows**: the recipes passed a POSIX-style
+  `./target/release/retch` to hyperfine, whose default shell is `cmd.exe` on Windows —
+  which can't execute that path (forward slashes, no `.exe`), so hyperfine aborted with a
+  non-zero warmup exit. Added an `os_family()`-selected `retch_release_bin` Justfile
+  variable (`target\release\retch.exe` on Windows, `./target/release/retch` elsewhere) and
+  routed all bench hyperfine calls through it. `just bench` (criterion) was never affected.
+  Justfile-only; verified both recipes now run to completion on Windows.
 - **Windows `net` perf fix (~7× faster `--short`)**: `detect_active_interface_and_local_ip`
   no longer spawns PowerShell (`Get-NetRoute`) to find the default-route interface on
   Windows — that single spawn cost ~977 ms and dominated every mode (`net` is in
@@ -280,6 +287,19 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.45 - Fix bench-cli/bench-compare on Windows (July 10, 2026)
+- **Bug**: `just bench-cli` and `just bench-compare` failed on Windows. They invoked
+  `hyperfine … './target/release/retch'`; with no `--shell`, hyperfine uses `cmd.exe` on
+  Windows, which can't run that POSIX-style path (forward slashes, no `.exe`), so it exited
+  1 in the first warmup run and hyperfine aborted the recipe. `retch` itself was fine
+  (exits 0) and `just bench` (criterion) was unaffected.
+- **Fix**: new Justfile variable `retch_release_bin := if os_family() == "windows" {
+  'target\release\retch.exe' } else { './target/release/retch' }`, used by all bench
+  hyperfine invocations. Verified on Windows: `just bench-cli` and `just bench-compare`
+  now run all comparisons to completion (exit 0).
+- **Justfile-only**: no Rust source or library change.
+- **Version**: Bumped to `0.3.45` (`retch-sysinfo` unchanged at `0.1.34`).
 
 ### v0.3.44 - Windows net-detection perf: drop PowerShell spawn (July 10, 2026)
 - **Root cause**: `detect_active_interface_and_local_ip` shelled out to PowerShell
