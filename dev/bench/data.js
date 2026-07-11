@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783743336513,
+  "lastUpdate": 1783743921256,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18104,75 +18104,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "370912eb198bcb6c18277c0ed8b8269c910d338f",
-          "message": "Add Claude Code GitHub Workflow (#98)\n\n* \"Claude PR Assistant workflow\"\n\n* \"Claude Code Review workflow\"",
-          "timestamp": "2026-06-14T23:25:19-07:00",
-          "tree_id": "f6b985f66832612aae83720755a10cf19084e1c0",
-          "url": "https://github.com/l1a/retch/commit/370912eb198bcb6c18277c0ed8b8269c910d338f"
-        },
-        "date": 1781506770618,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 271007287.99999994,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1330066887.9999998,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 98.99442790149725,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9519670589637688,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 98.82070693309115,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 43531.112831698134,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 500.9949041614336,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 744.0615216998593,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1156603715,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "a7b091ac39d5dedd909ae375d90f9bc423621663",
           "message": "fix(theme): use neutral as auto fallback when headless or GTK unset (#99)\n\n* fix(theme): use neutral as auto fallback when headless or GTK unset\n\nWhen retch runs over SSH or mosh with no display server, `$DISPLAY` and\n`$WAYLAND_DISPLAY` are unset. Previously, `auto` would read GTK settings\nand return `light` if `prefer-dark-theme=false` was set on the remote,\nor fall back to `dark` otherwise â€” both wrong for an unknown background.\n\nNow: skip GTK detection entirely when headless, and fall back to\n`neutral` (safe for any terminal background) when GTK yields nothing.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix(theme): use neutral fallback when display present but no GTK preference\n\nThe correct split for auto theme detection:\n- Headless (no $DISPLAY / $WAYLAND_DISPLAY): neutral (unknown background)\n- GTK explicit dark/light: respected as before\n- Has display but no GTK preference (KDE, no config, etc.): neutral (safe)\n\nneutral uses pure ANSI primaries that work on any terminal background,\nso it is the right choice whenever the background is unknown.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix(theme): also detect SSH via env vars, not just $DISPLAY\n\nShell profiles on many systems set $DISPLAY=:0 even in SSH sessions so\nGUI apps can connect to the running compositor. This caused the headless\nguard to be skipped, GTK detection to find prefer-dark-theme=false, and\nauto theme to resolve to light over SSH.\n\nAlso check $SSH_CLIENT / $SSH_TTY / $SSH_CONNECTION, which SSH always\nsets, so we return neutral regardless of what $DISPLAY says.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix(theme): detect KDE dark/light via kdeglobals BackgroundNormal luminance\n\nRead [Colors:Window] BackgroundNormal=R,G,B from kdeglobals and compute\nluminance (0.299R + 0.587G + 0.114B). Values below 128 indicate a dark\ncolor scheme; 128 and above indicate light. This works for any KDE color\nscheme without relying on scheme name conventions.\n\nChecked after GTK settings so GNOME takes precedence on dual-toolkit\nsystems.\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-15T12:31:58-07:00",
@@ -21432,6 +21363,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 4040054815,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cc5b997b1ce8d887d19a0813bd26c4a8e52b35ab",
+          "message": "Drop PowerShell spawn in Windows net detection (#144)\n\ndetect_active_interface_and_local_ip shelled out to PowerShell\n(Get-NetRoute) on Windows to name the default-route interface. That\nspawn costs ~977ms (PowerShell startup) and, since the `net` field is in\nevery mode, dominated runtime — `retch --short` was ~1.15s, ~11x over\nits <100ms target and ~20x slower than fastfetch.\n\nDerive the active interface instead from the adapter whose\nsysinfo-reported IPs include the outbound local_ip (already resolved via\nthe UDP-connect trick) — no spawn, no new dependency, no FFI. Extracted\na pure match_active_interface helper with a unit test. Resolves to the\nsame interface as before (verified on Windows).\n\nMeasured (AMD Ryzen AI MAX+ 395, Win 11): --short 1149ms -> 163ms (~7x).\nretch-sysinfo bumped 0.1.33 -> 0.1.34 (library behavior change).\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-10T20:42:31-07:00",
+          "tree_id": "e39a81d2e6892fa08bbcacc34138d13dd5af8989",
+          "url": "https://github.com/l1a/retch/commit/cc5b997b1ce8d887d19a0813bd26c4a8e52b35ab"
+        },
+        "date": 1783743917700,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 104.7723051192331,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9476182873873915,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.49677789566654,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 82.14246442855031,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47555.03642090521,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 497.7769606962934,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 731.0691360289424,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3500714375,
             "unit": "ns"
           }
         ]
