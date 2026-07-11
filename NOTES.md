@@ -96,7 +96,21 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.47)
+## Current State (v0.3.48)
+- **Windows `bluetooth` perf: drop PowerShell spawn (~12× faster field)**:
+  `detect_bluetooth` on Windows no longer spawns PowerShell (`Get-Service bthserv` + two
+  `Get-PnpDevice -Class Bluetooth` queries, ~1.8 s). Power state now comes from the
+  `bthserv` service state via the Service Control Manager (advapi32); the adapter's
+  hardware name via SetupAPI enumeration of the Bluetooth device class
+  (`SetupDiGetClassDevsW` + `SetupDiGetDeviceRegistryPropertyW`); and connected devices via
+  the classic `bthprops` Bluetooth API (`BluetoothFindFirstDevice` with `fReturnConnected`).
+  Hand-written `extern "system"` FFI (no WinRT, no binding crate; links `bthprops`/`setupapi`).
+  Measured on the AMD Ryzen AI MAX+ 395 box: `--fields bluetooth` ~1765 ms → ~150 ms;
+  `--long` mode 3462 ms → 2934 ms (bluetooth was the `--long` pole). **Behavior change:** the
+  "N connected" count now reflects *actually-connected* devices (what `fReturnConnected`
+  returns), not the old count of all paired/present PnP device nodes — the label is now
+  accurate and matches fastfetch. Adapter name is unchanged (e.g. "MediaTek Bluetooth
+  Adapter"). `retch-sysinfo` bumped to `0.1.37`.
 - **Windows `phys-mem` perf: drop PowerShell spawns (~4× faster field)**:
   `detect_physical_memory` on Windows no longer spawns PowerShell twice
   (`Get-CimInstance Win32_PhysicalMemory` + a `Win32_ComputerSystem` fallback, ~600 ms).
@@ -322,6 +336,28 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.48 - Windows bluetooth: native bthprops + SetupAPI (July 11, 2026)
+- **Root cause**: `detect_bluetooth` on Windows spawned PowerShell (`Get-Service bthserv`
+  + two `Get-PnpDevice -Class Bluetooth` queries), ~1.8 s — the single biggest Windows
+  probe. Third of the per-probe migrations (after phys-disk #146, phys-mem #147).
+- **Fix** (three native sources, all hand-written `extern "system"` FFI, no WinRT):
+  - Power state: `bthserv` service state via the Service Control Manager (advapi32,
+    default-linked) — the same signal the old `Get-Service` used.
+  - Adapter name: SetupAPI enumeration of `GUID_DEVCLASS_BLUETOOTH`
+    (`SetupDiGetClassDevsW`/`SetupDiEnumDeviceInfo`/`SetupDiGetDeviceRegistryPropertyW`),
+    filtered by the same name keywords the old PowerShell used. Links `setupapi`.
+  - Connected devices: the classic `bthprops` API (`BluetoothFindFirstDevice`/
+    `BluetoothFindNextDevice` with `BLUETOOTH_DEVICE_SEARCH_PARAMS{fReturnConnected}`).
+    Links `bthprops`. The device-info struct layout was validated at runtime (correctly
+    read a device name + `fConnected` flag) before trusting the count.
+- **Behavior change (improvement)**: "N connected" now counts *actually-connected*
+  devices, not the old count of all paired/present Bluetooth PnP nodes (which the old code
+  mislabeled as "connected"). Matches fastfetch semantics. Adapter display unchanged.
+- **Result** (AMD Ryzen AI MAX+ 395, Windows 11): `--fields bluetooth` ~1765 ms → ~150 ms
+  (~12×); `--long` mode 3462 ms → 2934 ms. Verified adapter name matches the old
+  `Get-PnpDevice` output ("MediaTek Bluetooth Adapter").
+- **Version**: Bumped to `0.3.48` / `retch-sysinfo 0.1.37` (library behavior change).
 
 ### v0.3.47 - Windows phys-mem: native SMBIOS table (July 11, 2026)
 - **Root cause**: `detect_physical_memory` on Windows spawned PowerShell twice
