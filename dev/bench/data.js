@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783734721468,
+  "lastUpdate": 1783735007021,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18133,75 +18133,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "d21a97a20b1c1f7556ff181c3f5d00450d349058",
-          "message": "chore: v0.3.18 release cleanup — version bump, man page, AGENTS.md (#93)\n\nItems overlooked by not following AGENTS.md release checklist and\nsaved memories:\n\n- Bump retch-cli 0.3.17 → 0.3.18 and retch-sysinfo 0.1.17 → 0.1.18\n  (should have been on PR #90 branch before merging)\n- Run `just man` to regenerate docs/retch.1 with updated version\n  (required by the man-page-timing memory and AGENTS.md §Man Pages)\n- Update AGENTS.md \"Last updated\" footer from v0.3.15 to v0.3.18\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-14T19:47:54-07:00",
-          "tree_id": "375a36de8d75b5634fc7c6de9cdd52b5b8dba77c",
-          "url": "https://github.com/l1a/retch/commit/d21a97a20b1c1f7556ff181c3f5d00450d349058"
-        },
-        "date": 1781493684178,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 273588728,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1325624908,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 96.54764867389943,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9468420817452294,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 98.46768321048111,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45050.02126136144,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 491.1800926089456,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 736.857083413212,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1165667590,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "a68bf2355d3df73a1a4d3667d7017782f3a25dd8",
           "message": "docs: clean up AGENTS.md — remove stale Next Steps and completed backlog items (#95)\n\n- Removed stale Next Steps section (crates.io publishing done as of\n  v0.3.18; platform native probe work completed in v0.3.12–v0.3.17)\n- Removed completed crates.io publish item from Future Work backlog\n- Updated Last updated date\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-14T21:11:54-07:00",
@@ -21476,6 +21407,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3145339810,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7a3b029a318196f57111112492235841e6692d8c",
+          "message": "Reword WIP reset→update, rename wip script (#141)\n\nWIP.md is an ongoing rolling log, not reset per-PR. Align the docs and\ntooling with that: AGENTS.md §5 and the just merge-pr recipe now say\n\"update\" instead of \"reset\", and scripts/reset_wip.py is renamed to\nscripts/update_wip.py (git mv; behavior unchanged — it still only\nrewrites the Active-Branch and latest-commit lines).\n\nAlso folds in the NOTES.md §5 \"real hardware benchmark section\" backlog\nitem. Docs/tooling only; no Rust source touched.\n\nVersion bumped 0.3.40 → 0.3.41 (patch); man page + Cargo.lock regenerated.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-10T18:14:33-07:00",
+          "tree_id": "3985c178b81541f77e250902c4997776fb98a214",
+          "url": "https://github.com/l1a/retch/commit/7a3b029a318196f57111112492235841e6692d8c"
+        },
+        "date": 1783735003995,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 102.70347930741579,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.95315213757736,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 101.15081229412414,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.24120758957929,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47177.19964344787,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 489.13547731668115,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 746.282863038297,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3438870640,
             "unit": "ns"
           }
         ]
