@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783743921256,
+  "lastUpdate": 1783744444515,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2263,100 +2263,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Linux x64 Benchmarks": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "712d094222d82460bc02d04c0d23df44f329b29a",
-          "message": "Revise security vulnerability reporting process\n\nUpdated the reporting process for security vulnerabilities.",
-          "timestamp": "2026-06-17T17:32:56-07:00",
-          "tree_id": "ca5bc7c66309c25546d56f5d05882075967797bd",
-          "url": "https://github.com/l1a/retch/commit/712d094222d82460bc02d04c0d23df44f329b29a"
-        },
-        "date": 1781743188830,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 2441012.3600000003,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 304372979.96000004,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 304865583.275,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2029.9243868029055,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 56.929446821165854,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.851377745964258,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 57.31836913958845,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 17898.87122820364,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 185802.49628890282,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 12598.829926753253,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 12942.591652816094,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1607569.4331225618,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 388.0843097965296,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 271.7440022179737,
-            "unit": "ns"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -6589,6 +6495,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 266.4614234363651,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "18f0bfa4e337d9a815662b1383dab85187e1ac5c",
+          "message": "Fix bench-cli/bench-compare on Windows (#145)\n\nThe bench recipes passed a POSIX-style './target/release/retch' to\nhyperfine. With no --shell, hyperfine uses cmd.exe on Windows, which\ncan't execute that path (forward slashes, no .exe), so it exited 1 in\nthe first warmup run and aborted the recipe. retch itself was fine and\n`just bench` (criterion) was unaffected.\n\nAdd an os_family()-selected `retch_release_bin` variable\n('target\\release\\retch.exe' on Windows, './target/release/retch'\nelsewhere) and route all bench hyperfine calls through it. Verified both\nrecipes now run to completion on Windows.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-10T21:26:47-07:00",
+          "tree_id": "b2195da8db613809ef3a732f524156e3dd175501",
+          "url": "https://github.com/l1a/retch/commit/18f0bfa4e337d9a815662b1383dab85187e1ac5c"
+        },
+        "date": 1783744443389,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 949093571.25,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2220.081852758127,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 60.954317197274044,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.039883328706498,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 62.142829488299625,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 21176.22431775332,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 204507.150833582,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 14356.34915260162,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 14545.33718901646,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1705330.5766744558,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 370.7197024173432,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 268.9765785256164,
             "unit": "ns"
           }
         ]
