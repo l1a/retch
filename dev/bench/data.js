@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783742625156,
+  "lastUpdate": 1783743336513,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14772,80 +14772,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "f35f42d253ad9e8e1cc3e34d4c38726b2323d21b",
-          "message": "chore: add publish and publish-check just recipes (#102)\n\nWraps the two-step crates.io publish sequence (sysinfo first, then CLI)\nso it can be run with a single command.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-16T15:18:41-07:00",
-          "tree_id": "8472fa8c0437e8868d8e91f26af72d90809dc8e0",
-          "url": "https://github.com/l1a/retch/commit/f35f42d253ad9e8e1cc3e34d4c38726b2323d21b"
-        },
-        "date": 1781650076882,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 34369232,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 2297411262,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 128.83386588355307,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.648793222873691,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 129.14617002560428,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 104.77642796761977,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 43204.358748287654,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 752.2992078349135,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 1038.8461480125143,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2102870800,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "712d094222d82460bc02d04c0d23df44f329b29a",
           "message": "Revise security vulnerability reporting process\n\nUpdated the reporting process for security vulnerabilities.",
           "timestamp": "2026-06-17T17:32:56-07:00",
@@ -18095,6 +18021,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3757221620,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cc5b997b1ce8d887d19a0813bd26c4a8e52b35ab",
+          "message": "Drop PowerShell spawn in Windows net detection (#144)\n\ndetect_active_interface_and_local_ip shelled out to PowerShell\n(Get-NetRoute) on Windows to name the default-route interface. That\nspawn costs ~977ms (PowerShell startup) and, since the `net` field is in\nevery mode, dominated runtime — `retch --short` was ~1.15s, ~11x over\nits <100ms target and ~20x slower than fastfetch.\n\nDerive the active interface instead from the adapter whose\nsysinfo-reported IPs include the outbound local_ip (already resolved via\nthe UDP-connect trick) — no spawn, no new dependency, no FFI. Extracted\na pure match_active_interface helper with a unit test. Resolves to the\nsame interface as before (verified on Windows).\n\nMeasured (AMD Ryzen AI MAX+ 395, Win 11): --short 1149ms -> 163ms (~7x).\nretch-sysinfo bumped 0.1.33 -> 0.1.34 (library behavior change).\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-10T20:42:31-07:00",
+          "tree_id": "e39a81d2e6892fa08bbcacc34138d13dd5af8989",
+          "url": "https://github.com/l1a/retch/commit/cc5b997b1ce8d887d19a0813bd26c4a8e52b35ab"
+        },
+        "date": 1783743334181,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 129.62513021151184,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.035169788916327,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 131.1486542343739,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 101.14822538435007,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 43620.56357626818,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 625.6202380507577,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 838.879547156403,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 4114360265,
             "unit": "ns"
           }
         ]
