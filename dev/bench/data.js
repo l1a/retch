@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783813548898,
+  "lastUpdate": 1783813668621,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10894,90 +10894,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "e751e50d49581e42a9b60a8ce8250769697d64bd",
-          "message": "Fix prefetch hash formatting (#104)\n\nAdd --type sha256 to nix-prefetch-url to force hexadecimal output, preventing binascii decoding failures caused by Nix's default base32 output format.\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-06-23T14:30:26-07:00",
-          "tree_id": "b6460f8f0dbedb5db54470e4530c3c679c262d5b",
-          "url": "https://github.com/l1a/retch/commit/e751e50d49581e42a9b60a8ce8250769697d64bd"
-        },
-        "date": 1782251623096,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 27680926.48,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 465491913.97999996,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 456431438.5,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 369.7105924625137,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 65.46073020202387,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.9197994679836985,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 66.73085523147597,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 5115.777922903848,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1313.9048538481607,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 427.29185294657157,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 83141.20575174536,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 367.84620179688176,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "01cff50855f67afef7c41650489cfb3113951b41",
           "message": "Use nix hash to-sri to convert prefetch (#105)\n\nReplace hex_to_sri with to_sri helper that invokes native nix hash to-sri. This handles Nix's base32 output format natively and robustly without manual base-16 decoding.\n\nAssisted-By: Gemini 3.5 Flash",
           "timestamp": "2026-06-23T14:55:59-07:00",
@@ -14667,6 +14583,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 325.5187035786438,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dfa18d3ba7b91698f61b34f76aaf85b3bd479271",
+          "message": "Drop serial CPU-usage sleep on Windows (#149)\n\nCPU usage needs a delta between two samples. sysinfo enforces a ~200ms\nminimum interval, so collect() slept 200ms then refreshed — and that\nsleep ran serially AFTER the concurrent probe scope, adding ~200ms to\nevery standard/long run.\n\nOn Windows, sample GetSystemTimes (kernel32) just before the scope and\ndiff against a fresh sample at the usage-computation point: the existing\ncollection window is the delta, so no dedicated sleep is added. A ~100ms\nfloor is topped up only when the window is shorter (e.g. an isolated\n`--fields cpu-usage`) so a tiny request reads a real value instead of\nGetSystemTimes quantization noise. A pure usage_percent helper carries\nunit tests. Linux/macOS keep the sysinfo+sleep path (its min interval\nmakes the window-diff unreliable there).\n\nOn an AMD Ryzen AI MAX+ 395: standard mode 1757ms -> 1558ms; isolated\n--fields cpu-usage ~340ms -> ~253ms.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-11T16:26:38-07:00",
+          "tree_id": "ff94a5086c547509df94d6fc37722dd5e6667f45",
+          "url": "https://github.com/l1a/retch/commit/dfa18d3ba7b91698f61b34f76aaf85b3bd479271"
+        },
+        "date": 1783813666684,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1067157347.85,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 425.36687966893095,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 81.94290190821317,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.9156594605745956,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 64.19437139778418,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5096.281490512079,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1507.5220506309238,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 430.1754629589016,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 75368.88917884036,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 353.44810705987635,
             "unit": "ns"
           }
         ]
