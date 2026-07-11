@@ -203,8 +203,8 @@ blocks):
 3. Confirms `NOTES.md` has a `## Current State (v<version>)` header matching the bumped version.
 4. Regenerates the man page (`just man`) and fails if `docs/retch.1` differs from what's committed — regenerate and commit first.
 5. Runs `cargo check` and fails if `Cargo.lock` changed but wasn't committed.
-6. Runs `just check` (`cargo fmt --check` + `cargo clippy -- -D warnings`).
-7. Runs `cargo test`.
+6. Runs `just check` (`cargo fmt --check` + `cargo clippy --workspace -- -D warnings`).
+7. Runs `cargo test --workspace`.
 8. Runs `cargo audit` (installing `cargo-audit` first if it is not already present)
    and prints any RustSec advisories. **Advisory only — it does not fail the gate**,
    because advisories can be newly published against unchanged transitive deps and
@@ -213,8 +213,14 @@ blocks):
 9. Prints the manual checklist below and requires an explicit `y` confirmation before printing "Gate passed."
 
 ### 4.1 Code quality gate
-- [ ] `just check` passes — `cargo fmt --check` + `cargo clippy -- -D warnings`
-- [ ] `cargo test` passes — all unit and integration tests green
+- [ ] `just check` passes — `cargo fmt --check` + `cargo clippy --workspace -- -D warnings`
+- [ ] `cargo test --workspace` passes — all unit and integration tests green
+
+> **Why `--workspace`:** the root `Cargo.toml` is both the `retch-cli` package and the
+> workspace root, so a bare `cargo test` / `cargo clippy` covers only `retch-cli` and
+> silently skips the `crates/sysinfo` (`retch-sysinfo`) member — where most of the actual
+> system-probing code lives. `--workspace` lints and tests every member. (Target scope is
+> unchanged — lib + bins, not `--all-targets` — so test/bench code is still not linted.)
 
 ### 4.2 Tests
 - [ ] Every new public function or non-trivial private function has at least one unit test.

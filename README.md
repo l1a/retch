@@ -235,7 +235,7 @@ separator_color = "bright_black"
 
 # Ordered list of system information fields to display
 # Note: "phys-mem" requires root (sudo) on Linux to read DMI memory tables. On Windows, uses Win32_PhysicalMemory via PowerShell.
-# Note: "phys-disk" on Windows uses Get-PhysicalDisk via PowerShell.
+# Note: "phys-disk" on Windows uses native storage IOCTLs (no PowerShell, no admin).
 # Note: "weather" requires network access; shown in full mode only by default.
 # Note: "domain-search" queries resolvectl; shown in full mode only by default.
 fields = [
