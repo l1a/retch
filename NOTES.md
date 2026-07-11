@@ -96,7 +96,18 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.46)
+## Current State (v0.3.47)
+- **Windows `phys-mem` perf: drop PowerShell spawns (~4× faster field)**:
+  `detect_physical_memory` on Windows no longer spawns PowerShell twice
+  (`Get-CimInstance Win32_PhysicalMemory` + a `Win32_ComputerSystem` fallback, ~600 ms).
+  It now reads the raw SMBIOS table via `GetSystemFirmwareTable('RSMB')` (kernel32) and
+  parses type-17 (Memory Device) structures directly, with `GlobalMemoryStatusEx` as the
+  VM fallback — hand-written `extern "system"` FFI, no new dependency. Measured on the AMD
+  Ryzen AI MAX+ 395 box: `--fields phys-mem` ~597 ms → ~152 ms. **Display enhancement:** the
+  SMBIOS Configured Memory Speed field (offset 0x20) is now surfaced, so Windows shows the
+  actual running speed alongside the rated speed when they differ (e.g.
+  `8× 16 GB LPDDR5 8000 MT/s (rated 8533 MT/s)`) — matching the Linux dmidecode behavior;
+  the old WMI path only reported the rated speed. `retch-sysinfo` bumped to `0.1.36`.
 - **Windows `phys-disk` perf: drop PowerShell spawn (~8× faster field)**:
   `detect_physical_disks` on Windows no longer shells out to PowerShell
   (`Get-PhysicalDisk | ConvertTo-Csv`, ~1.7 s of interpreter startup). It now opens
@@ -311,6 +322,30 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.47 - Windows phys-mem: native SMBIOS table (July 11, 2026)
+- **Root cause**: `detect_physical_memory` on Windows spawned PowerShell twice
+  (`Get-CimInstance Win32_PhysicalMemory` for DIMM rows + a `Win32_ComputerSystem` VM
+  fallback), ~600 ms of interpreter startup. Second of the per-probe PowerShell-spawn
+  migrations (after phys-disk #146).
+- **Fix**: read the raw SMBIOS table via `GetSystemFirmwareTable('RSMB')` (kernel32) and
+  parse type-17 (Memory Device) structures directly; `GlobalMemoryStatusEx` provides the
+  VM total-memory fallback. Hand-written `extern "system"` FFI (matching `win_reg.rs`), no
+  new dependency. A pure `parse_smbios_type17` fn (bounds-checked structure walk over the
+  double-null-terminated string sets) carries the unit tests.
+- **Display enhancement**: the SMBIOS Configured Memory Speed field (offset 0x20) is now
+  read, so Windows surfaces the actual running speed vs the rated speed when they differ
+  (e.g. `8× 16 GB LPDDR5 8000 MT/s (rated 8533 MT/s)`), matching the Linux dmidecode path.
+  The old `Win32_PhysicalMemory` route only reported the rated speed. Verified against
+  `Get-CimInstance Win32_PhysicalMemory` (Speed 8533 / ConfiguredClockSpeed 8000) on the
+  AMD Ryzen AI MAX+ 395.
+- **Offset gotcha (caught by runtime verification)**: SMBIOS Speed is at offset 0x15, not
+  0x14 (0x13–0x14 is the Type Detail WORD). The initial self-consistent unit tests encoded
+  the wrong offset and passed; comparing live output to WMI exposed it.
+- **Result** (AMD Ryzen AI MAX+ 395, Windows 11): `--fields phys-mem` ~597 ms → ~152 ms
+  (~4×). Standard-mode wall-clock is unchanged for now — `camera` (~1359 ms) still masks it
+  until that probe is migrated.
+- **Version**: Bumped to `0.3.47` / `retch-sysinfo 0.1.36` (library behavior change).
 
 ### v0.3.46 - Windows phys-disk: native storage IOCTLs (July 11, 2026)
 - **Root cause**: `detect_physical_disks` on Windows spawned PowerShell
