@@ -96,7 +96,13 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.41)
+## Current State (v0.3.42)
+- **`update_wip.py` fixed**: the post-merge WIP updater now targets the current
+  `**main HEAD**:` header (it previously matched an obsolete `**Latest commit on main**:`
+  line and silently no-op'd, leaving the pointer stale after every merge). It also
+  reconstructs the `— **v<version>**` suffix from `Cargo.toml` and forces UTF-8 on file
+  I/O, subprocess decoding, and stdout so commit subjects containing `→`/em-dashes (common
+  in this repo) don't crash `just merge-pr` on a cp1252 Windows console. Docs/tooling only.
 - **WIP.md handling wording**: AGENTS.md §5, the `just merge-pr` recipe, and the
   helper script now consistently say *update* (not *reset*) WIP.md, reflecting that
   WIP.md is an ongoing rolling log whose notes/open-tasks are preserved across merges.
@@ -257,6 +263,22 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.42 - Fix update_wip.py post-merge updater (July 10, 2026)
+- **Stale-pointer bug**: `scripts/update_wip.py` matched an obsolete
+  `**Latest commit on main**:` line that no longer exists in WIP.md, so the substitution
+  silently no-op'd and left `**main HEAD**:` stale after every `just merge-pr` (observed
+  live after the #141 merge). Regex retargeted to `**main HEAD**:`, output rewritten to the
+  current format (backtick hash — subject — **v<version>**), with the version read from
+  `Cargo.toml`. A function replacement is used so regex metacharacters in a commit subject
+  are treated literally.
+- **Windows UTF-8 crash averted**: because the fix now writes the commit subject into
+  WIP.md, and this repo's subjects contain `→`/em-dashes, `Path.read_text`/`write_text`,
+  `subprocess` decoding, and stdout are all pinned to UTF-8 — otherwise the default cp1252
+  console/locale on the Windows dev box would crash the script mid-merge. Verified
+  end-to-end against a commit subject containing `→`.
+- **Docs/tooling only**: no Rust source touched.
+- **Version**: Bumped to `0.3.42` (`retch-sysinfo` unchanged at `0.1.33`).
 
 ### v0.3.41 - WIP.md handling wording: "reset" → "update" (July 10, 2026)
 - **Consistent "update" wording**: AGENTS.md §5 ("reset `WIP.md`" → "update `WIP.md`",
