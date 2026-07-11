@@ -192,6 +192,9 @@ impl SystemInfo {
             refresh_kind = refresh_kind.with_processes(sysinfo::ProcessRefreshKind::nothing());
         }
 
+        // `mut` is only needed off-Windows (refresh_cpu_usage below); on Windows CPU usage
+        // comes from GetSystemTimes, so `sys` is never mutated there.
+        #[cfg_attr(target_os = "windows", allow(unused_mut))]
         let mut sys = System::new_with_specifics(refresh_kind);
 
         let os = System::long_os_version()
@@ -358,6 +361,14 @@ impl SystemInfo {
                 None
             }
         };
+
+        // Windows: sample cumulative CPU times before the concurrent probes run, so CPU
+        // usage can be computed over the real collection window below. In a normal run the
+        // window is already long enough; a floor is enforced later only for tiny requests.
+        #[cfg(target_os = "windows")]
+        let cpu_sample0 = win_cpu::sample();
+        #[cfg(target_os = "windows")]
+        let cpu_t0 = std::time::Instant::now();
 
         // Compute slow system queries concurrently in parallel threads
         let (
@@ -623,17 +634,20 @@ impl SystemInfo {
             None
         };
 
-        // CPU usage — refresh twice with a short sleep so sysinfo has a delta
+        // CPU usage. On Unix, sysinfo needs a delta between two refreshes and enforces a
+        // ~200 ms minimum interval, so we sleep once. On Windows we instead diff the
+        // GetSystemTimes sample taken before the concurrent scope against a fresh one — the
+        // collection window is the delta, so no sleep is added to the run.
         let cpu_usage = if should_collect("cpu-usage")
             || should_collect("cpu usage")
             || should_collect("cpu_usage")
         {
-            std::thread::sleep(std::time::Duration::from_millis(200));
-            sys.refresh_cpu_usage();
-            let usage: f32 =
-                sys.cpus().iter().map(|c| c.cpu_usage()).sum::<f32>() / sys.cpus().len() as f32;
             #[cfg(not(target_os = "windows"))]
             {
+                std::thread::sleep(std::time::Duration::from_millis(200));
+                sys.refresh_cpu_usage();
+                let usage: f32 =
+                    sys.cpus().iter().map(|c| c.cpu_usage()).sum::<f32>() / sys.cpus().len() as f32;
                 let avg = System::load_average();
                 let load_str = format!("{:.2}, {:.2}, {:.2}", avg.one, avg.five, avg.fifteen);
                 if usage > 0.0 {
@@ -646,10 +660,24 @@ impl SystemInfo {
             }
             #[cfg(target_os = "windows")]
             {
-                if usage > 0.0 {
-                    Some(format!("{:.1}%", usage))
-                } else {
-                    None
+                // The concurrent scope above is usually the sampling window; only top it up
+                // to a ~100 ms floor when few fields were requested (so an isolated
+                // `--fields cpu-usage` still reads sensibly rather than sampling noise).
+                let floor = std::time::Duration::from_millis(100);
+                let elapsed = cpu_t0.elapsed();
+                if elapsed < floor {
+                    std::thread::sleep(floor - elapsed);
+                }
+                match (cpu_sample0, win_cpu::sample()) {
+                    (Some(s0), Some(s1)) => {
+                        let usage = win_cpu::usage_percent(s0, s1);
+                        if usage > 0.0 {
+                            Some(format!("{:.1}%", usage))
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
                 }
             }
         } else {
@@ -1341,9 +1369,80 @@ fn detect_bootmgr() -> Option<String> {
     }
 }
 
+/// Windows CPU-usage sampling via `GetSystemTimes` (kernel32, default-linked).
+///
+/// Replaces the per-run 200 ms sleep sysinfo needs for a usage delta: two samples are
+/// diffed across the existing concurrent-probe window instead, so no sleep is added.
+#[cfg(target_os = "windows")]
+mod win_cpu {
+    #[repr(C)]
+    struct FileTime {
+        low: u32,
+        high: u32,
+    }
+
+    impl FileTime {
+        fn ticks(&self) -> u64 {
+            ((self.high as u64) << 32) | self.low as u64
+        }
+    }
+
+    extern "system" {
+        fn GetSystemTimes(idle: *mut FileTime, kernel: *mut FileTime, user: *mut FileTime) -> i32;
+    }
+
+    /// Cumulative `(idle, kernel, user)` CPU ticks (100 ns units). `kernel` includes idle,
+    /// per the Win32 contract. `None` if the call fails.
+    pub fn sample() -> Option<(u64, u64, u64)> {
+        let mut idle = FileTime { low: 0, high: 0 };
+        let mut kernel = FileTime { low: 0, high: 0 };
+        let mut user = FileTime { low: 0, high: 0 };
+        // SAFETY: three valid, writable FILETIME out-parameters.
+        let ok = unsafe { GetSystemTimes(&mut idle, &mut kernel, &mut user) };
+        if ok == 0 {
+            None
+        } else {
+            Some((idle.ticks(), kernel.ticks(), user.ticks()))
+        }
+    }
+
+    /// System-wide CPU busy percentage between two `sample()` snapshots. Because `kernel`
+    /// includes idle, `total = Δkernel + Δuser` and `busy = total − Δidle`.
+    pub fn usage_percent(s0: (u64, u64, u64), s1: (u64, u64, u64)) -> f32 {
+        let idle = s1.0.saturating_sub(s0.0);
+        let kernel = s1.1.saturating_sub(s0.1);
+        let user = s1.2.saturating_sub(s0.2);
+        let total = kernel + user;
+        if total == 0 {
+            0.0
+        } else {
+            (100.0 * total.saturating_sub(idle) as f64 / total as f64) as f32
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_win_cpu_usage_percent() {
+        use super::win_cpu::usage_percent;
+        // kernel includes idle. Δidle=50, Δkernel=100 (incl. idle), Δuser=50 → total=150,
+        // busy=150-50=100 → 66.67%.
+        let u = usage_percent((0, 0, 0), (50, 100, 50));
+        assert!((u - 66.6667).abs() < 0.01, "got {}", u);
+
+        // Fully idle: Δidle == Δkernel, Δuser=0 → 0%.
+        assert_eq!(usage_percent((0, 0, 0), (100, 100, 0)), 0.0);
+
+        // Fully busy: no idle delta → 100%.
+        assert_eq!(usage_percent((0, 0, 0), (0, 100, 100)), 100.0);
+
+        // No time elapsed (zero total) → 0%, no divide-by-zero.
+        assert_eq!(usage_percent((5, 10, 10), (5, 10, 10)), 0.0);
+    }
 
     #[test]
     fn test_format_cpu_cores_no_hyperthreading() {
