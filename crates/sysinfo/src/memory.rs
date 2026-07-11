@@ -474,7 +474,7 @@ mod win_ffi {
     use std::mem::size_of;
 
     // 'RSMB' provider signature, as the multi-char DWORD Windows expects.
-    const RSMB: u32 = u32::from_be_bytes([b'R', b'S', b'M', b'B']);
+    const RSMB: u32 = u32::from_be_bytes(*b"RSMB");
     // RawSMBIOSData header: Used20CallingMethod, Major, Minor, DmiRevision (4 bytes),
     // then a u32 Length, then the SMBIOS structure table.
     const RAW_SMBIOS_HEADER_LEN: usize = 8;
