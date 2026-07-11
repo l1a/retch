@@ -67,11 +67,14 @@ def main():
     
     text = wip_file.read_text(encoding="utf-8")
     
-    # 1. Update Active Branch to none
+    # 1. Update Active Branch to none.
+    #    count=1: only the first (top-of-file header) occurrence — guards against
+    #    the header string also appearing in the notes/open-task prose below.
     text = re.sub(
         r'### Active Branch:.*',
         '### Active Branch: none (main is current)',
-        text
+        text,
+        count=1,
     )
     
     # 2. Update the "main HEAD" pointer to the latest commit on main.
@@ -82,6 +85,9 @@ def main():
     #    A function replacement is used so any regex-metacharacters in the
     #    commit subject (e.g. "\1", "\g") are treated literally, not as
     #    backreferences.
+    #    count=1: the header string also appears verbatim in the notes/open-task
+    #    prose, so an unbounded sub would rewrite those lines too — only the first
+    #    (top-of-file header) occurrence must be touched.
     version = read_cargo_version(root_dir)
     version_suffix = f" — **v{version}**" if version else ""
     new_head_line = f'**main HEAD**: `{commit_hash}` — {commit_msg}{version_suffix}'
@@ -89,6 +95,7 @@ def main():
         r'\*\*main HEAD\*\*:.*',
         lambda _m: new_head_line,
         text,
+        count=1,
     )
 
     wip_file.write_text(text, encoding="utf-8")
