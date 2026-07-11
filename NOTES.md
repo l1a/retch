@@ -96,7 +96,18 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.43)
+## Current State (v0.3.44)
+- **Windows `net` perf fix (~7× faster `--short`)**: `detect_active_interface_and_local_ip`
+  no longer spawns PowerShell (`Get-NetRoute`) to find the default-route interface on
+  Windows — that single spawn cost ~977 ms and dominated every mode (`net` is in
+  short/standard/long). It now derives the active interface as the adapter whose
+  sysinfo-reported IPs include the outbound `local_ip` (already resolved via the
+  UDP-connect trick), via the new pure `match_active_interface` helper. Measured on an
+  AMD Ryzen AI MAX+ 395 / Windows 11 box: `--short` 1149 ms → 163 ms. Same
+  `active_interface` value as before (verified: matches the "Wi-Fi" adapter), so display
+  behavior is unchanged; falls back to `None` only when no adapter IP matches (offline),
+  which degrades gracefully to the existing "first Up interface" display path.
+  `retch-sysinfo` bumped to `0.1.34` for the library behavior change.
 - **`update_wip.py` substitutions bounded with `count=1`**: the v0.3.42 regex retarget
   (below) rewrote *every* line containing the header string — including verbatim mentions
   in WIP.md's notes/open-task prose — which clobbered task lines during the #142 merge.
@@ -269,6 +280,24 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.44 - Windows net-detection perf: drop PowerShell spawn (July 10, 2026)
+- **Root cause**: `detect_active_interface_and_local_ip` shelled out to PowerShell
+  (`Get-NetRoute -DestinationPrefix 0.0.0.0/0 …`) on Windows to name the default-route
+  interface. PowerShell startup is ~977 ms, and since the `net` field is in every mode,
+  this inflated `--short`/standard/`--long` alike. Isolated by per-field timing: every
+  other `--short` field was ~135 ms; `net` was ~1183 ms.
+- **Fix**: identify the active interface as the adapter whose sysinfo-reported IPs contain
+  the outbound `local_ip` (already computed via the UDP-connect trick) — no process spawn,
+  no new dependency, no FFI. Extracted a pure `match_active_interface` helper with a unit
+  test. On Windows sysinfo reports the "Wi-Fi" adapter with its IP, so the resolved active
+  interface matches what the old PowerShell alias produced; display is unchanged.
+- **Result** (AMD Ryzen AI MAX+ 395, Windows 11): `--short` 1149 ms → 163 ms (~7×).
+  retch is still ~2.6× behind fastfetch's 63 ms in short mode on Windows (startup margin,
+  tracked separately), but the pathological ~1 s spawn is gone. Wiki
+  `Compared-to-fastfetch-and-neofetch.md` "Real-hardware benchmarks" section carries the
+  pre-fix numbers and the investigation note.
+- **Version**: Bumped to `0.3.44` / `retch-sysinfo 0.1.34` (library behavior change).
 
 ### v0.3.43 - update_wip.py: bound substitutions with count=1 (July 10, 2026)
 - **Follow-up to v0.3.42**: the retargeted `**main HEAD**:` regex had no `count`, so it

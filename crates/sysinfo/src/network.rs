@@ -52,13 +52,27 @@ pub fn detect_active_interface_and_local_ip() -> (Option<String>, Option<String>
         }
         #[cfg(target_os = "windows")]
         {
-            std::process::Command::new("powershell")
-                .args(["-Command", "Get-NetRoute -DestinationPrefix 0.0.0.0/0 | Select-Object -First 1 -ExpandProperty InterfaceAlias"])
-                .output()
-                .ok()
-                .and_then(|o| String::from_utf8(o.stdout).ok())
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
+            // Identify the active (default-route) interface as the adapter whose
+            // assigned IPs include the outbound `local_ip` we just resolved via the
+            // UDP-connect trick. This avoids spawning PowerShell `Get-NetRoute`,
+            // which costs ~1s of startup on Windows and dominated `--short` runtime.
+            // sysinfo already exposes per-interface IPs on Windows (see
+            // `detect_networks`), so no process spawn or extra API call is needed.
+            local_ip
+                .as_deref()
+                .and_then(|ip| ip.parse::<std::net::IpAddr>().ok())
+                .and_then(|target| {
+                    let networks = Networks::new_with_refreshed_list();
+                    match_active_interface(
+                        networks.iter().map(|(name, data)| {
+                            (
+                                name.to_string(),
+                                data.ip_networks().iter().map(|n| n.addr).collect(),
+                            )
+                        }),
+                        target,
+                    )
+                })
         }
         #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
         {
@@ -67,6 +81,23 @@ pub fn detect_active_interface_and_local_ip() -> (Option<String>, Option<String>
     };
 
     (local_ip, active_interface)
+}
+
+/// Returns the name of the interface whose assigned IPs include `local_ip`.
+///
+/// Used on Windows to identify the active (default-route) interface without a
+/// slow `Get-NetRoute` PowerShell spawn: the outbound local IP the OS picks to
+/// reach the internet uniquely belongs to the adapter carrying the default
+/// route, so matching it against each adapter's IP set yields the same answer.
+#[cfg(any(target_os = "windows", test))]
+fn match_active_interface(
+    ifaces: impl Iterator<Item = (String, Vec<std::net::IpAddr>)>,
+    local_ip: std::net::IpAddr,
+) -> Option<String> {
+    ifaces
+        .into_iter()
+        .find(|(_, ips)| ips.contains(&local_ip))
+        .map(|(name, _)| name)
 }
 
 /// Fetches the public IP address via an external service (best-effort, 2s timeout).
@@ -759,6 +790,33 @@ pub fn parse_resolvectl_search(content: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_match_active_interface() {
+        use std::net::IpAddr;
+        let target: IpAddr = "192.168.1.50".parse().unwrap();
+        let ifaces = vec![
+            ("lo".to_string(), vec!["127.0.0.1".parse().unwrap()]),
+            (
+                "Ethernet".to_string(),
+                vec!["192.168.1.50".parse().unwrap(), "fe80::1".parse().unwrap()],
+            ),
+            ("Wi-Fi".to_string(), vec!["10.0.0.2".parse().unwrap()]),
+        ];
+        // Matches the adapter that actually holds the outbound local IP.
+        assert_eq!(
+            match_active_interface(ifaces.into_iter(), target),
+            Some("Ethernet".to_string())
+        );
+
+        // No adapter holds the target IP -> None (e.g. offline / unresolved).
+        let orphan: IpAddr = "8.8.8.8".parse().unwrap();
+        let ifaces2 = vec![(
+            "lo".to_string(),
+            vec!["127.0.0.1".parse::<IpAddr>().unwrap()],
+        )];
+        assert_eq!(match_active_interface(ifaces2.into_iter(), orphan), None);
+    }
 
     #[test]
     fn test_format_bytes() {
