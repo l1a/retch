@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783741796311,
+  "lastUpdate": 1783742194295,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6552,100 +6552,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "f35f42d253ad9e8e1cc3e34d4c38726b2323d21b",
-          "message": "chore: add publish and publish-check just recipes (#102)\n\nWraps the two-step crates.io publish sequence (sysinfo first, then CLI)\nso it can be run with a single command.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-16T15:18:41-07:00",
-          "tree_id": "8472fa8c0437e8868d8e91f26af72d90809dc8e0",
-          "url": "https://github.com/l1a/retch/commit/f35f42d253ad9e8e1cc3e34d4c38726b2323d21b"
-        },
-        "date": 1781649109298,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 1580173.06,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 332419995.25999993,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 338574351.425,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 979.0268131601039,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.56775244746031,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946397232299018,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.578766063448526,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7618.459143385709,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 69589.93519360267,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4703.055307751118,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4754.1681663832405,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1201399.7925687202,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 349.9695278020158,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 253.69860617038324,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "712d094222d82460bc02d04c0d23df44f329b29a",
           "message": "Revise security vulnerability reporting process\n\nUpdated the reporting process for security vulnerabilities.",
           "timestamp": "2026-06-17T17:32:56-07:00",
@@ -10875,6 +10781,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 275.98573734527565,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cc5b997b1ce8d887d19a0813bd26c4a8e52b35ab",
+          "message": "Drop PowerShell spawn in Windows net detection (#144)\n\ndetect_active_interface_and_local_ip shelled out to PowerShell\n(Get-NetRoute) on Windows to name the default-route interface. That\nspawn costs ~977ms (PowerShell startup) and, since the `net` field is in\nevery mode, dominated runtime — `retch --short` was ~1.15s, ~11x over\nits <100ms target and ~20x slower than fastfetch.\n\nDerive the active interface instead from the adapter whose\nsysinfo-reported IPs include the outbound local_ip (already resolved via\nthe UDP-connect trick) — no spawn, no new dependency, no FFI. Extracted\na pure match_active_interface helper with a unit test. Resolves to the\nsame interface as before (verified on Windows).\n\nMeasured (AMD Ryzen AI MAX+ 395, Win 11): --short 1149ms -> 163ms (~7x).\nretch-sysinfo bumped 0.1.33 -> 0.1.34 (library behavior change).\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-10T20:42:31-07:00",
+          "tree_id": "e39a81d2e6892fa08bbcacc34138d13dd5af8989",
+          "url": "https://github.com/l1a/retch/commit/cc5b997b1ce8d887d19a0813bd26c4a8e52b35ab"
+        },
+        "date": 1783742192937,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 907663825.8,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 999.2419776843808,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 47.67406202354221,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9468922643165625,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 47.501573228405526,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7894.878567149838,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71801.04380157226,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4841.430704259407,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4954.254375386765,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1205345.2010010474,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 337.09098522233273,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 268.9278005671328,
             "unit": "ns"
           }
         ]
