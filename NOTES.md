@@ -96,7 +96,12 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.40)
+## Current State (v0.3.41)
+- **WIP.md handling wording**: AGENTS.md §5, the `just merge-pr` recipe, and the
+  helper script now consistently say *update* (not *reset*) WIP.md, reflecting that
+  WIP.md is an ongoing rolling log whose notes/open-tasks are preserved across merges.
+  `scripts/reset_wip.py` was renamed to `scripts/update_wip.py`. Docs/tooling only —
+  no runtime behavior change.
 - **Field registry**: The displayable-field list and its output strata now live in
   one place — `src/fields.rs` (`FIELDS` table + `Mode` enum). `main.rs` (collection)
   and `display.rs` (display) derive their per-strata allow-lists from
@@ -191,6 +196,13 @@ Adds over long:
 ---
 
 ## 5. Future Work / Backlog
+- **"Real hardware" benchmark section on the wiki**: The wiki benchmark pages
+  currently reflect CI-runner / local numbers, which are noisy and not
+  representative (e.g. GitHub-hosted runners, or local runs skewed by FUSE
+  statvfs delays — see §9 session notes). Add a dedicated "real hardware"
+  benchmarks section documenting retch-vs-fastfetch timings measured on actual
+  physical machines (with CPU/OS/spec context per run), so the published numbers
+  are meaningful rather than runner-dependent.
 - **Package repository submissions**: Submit retch to AUR (Arch User Repository) and nixpkgs so it appears in the [Repology](https://repology.org/project/retch/versions) packaging status widget. The Nix flake (contributed by @quixaq) is a useful starting point for the nixpkgs submission.
 - **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
@@ -245,6 +257,20 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.41 - WIP.md handling wording: "reset" → "update" (July 10, 2026)
+- **Consistent "update" wording**: AGENTS.md §5 ("reset `WIP.md`" → "update `WIP.md`",
+  with a clarifying note that WIP.md is a rolling log, not reset per-PR), the
+  `just merge-pr` recipe comment, and the helper script now all say *update*. This
+  aligns the docs/tooling with WIP.md's own protocol header ("never reset per-PR").
+- **Script rename**: `scripts/reset_wip.py` → `scripts/update_wip.py` (via `git mv`);
+  `Justfile` `merge-pr` updated to call the new name. Script behavior is unchanged — it
+  still only rewrites the Active-Branch and latest-commit lines and preserves the
+  notes/open-task sections. (Pre-existing note: the script's `**Latest commit on main**:`
+  regex predates the current WIP header format and is left as-is — out of scope here.)
+- **Backlog**: added the "real hardware" benchmark section item to §5 Future Work.
+- **Docs/tooling only**: no Rust source touched, no runtime behavior change.
+- **Version**: Bumped to `0.3.41` (`retch-sysinfo` unchanged at `0.1.33`).
 
 ### v0.3.40 - Single field registry (field-wiring de-duplication) (July 10, 2026)
 - **`src/fields.rs`**: new single source of truth for the displayable-field list.

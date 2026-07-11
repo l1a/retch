@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Ken Tobias
 """
-Resets WIP.md after merging a feature branch to main.
+Updates WIP.md after merging a feature branch to main.
 Sets Active Branch to none and updates the latest commit details from git.
+WIP.md is an ongoing, rolling log — this only rewrites the Active-Branch and
+latest-commit lines; it preserves the notes and open-task sections.
 """
 
 import subprocess
@@ -26,7 +28,7 @@ def main():
     root_dir = Path(__file__).resolve().parent.parent
     wip_file = root_dir / "WIP.md"
     if not wip_file.exists():
-        print("WIP.md not found. Skipping reset.", file=sys.stderr)
+        print("WIP.md not found. Skipping update.", file=sys.stderr)
         return
 
     # Get latest commit info on main

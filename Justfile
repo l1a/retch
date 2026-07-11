@@ -179,7 +179,7 @@ nixpkgs-release VERSION="":
 tldr-release:
     @python3 scripts/tldr_release.py
 
-# Merge the active PR, switch to main, pull, delete the branch, and reset WIP.md (requires gh)
+# Merge the active PR, switch to main, pull, delete the branch, and update WIP.md (requires gh)
 merge-pr:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -195,7 +195,7 @@ merge-pr:
     git pull
     echo "Deleting local branch $BRANCH..."
     git branch -D "$BRANCH" 2>/dev/null || true
-    python3 scripts/reset_wip.py
+    python3 scripts/update_wip.py
 
 # Pre-PR gate: run all automated checks and print manual checklist before opening a PR.
 # All items must pass before calling `gh pr create`.
