@@ -96,7 +96,17 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.48)
+## Current State (v0.3.49)
+- **Windows `cpu-usage` perf: drop the serial 200 ms sleep**: the CPU-usage field needs a
+  delta between two samples. sysinfo enforces a ~200 ms minimum interval, so the code slept
+  200 ms — and that sleep ran **serially, after** the concurrent probe scope, adding ~200 ms
+  to every standard/long run. On Windows it now diffs a `GetSystemTimes` (kernel32) snapshot
+  taken *before* the concurrent scope against a fresh one, so the collection window is the
+  delta — no dedicated sleep in a normal run. A ~100 ms floor is topped up only when very
+  few fields are requested (so an isolated `--fields cpu-usage` reads sensibly instead of
+  sampling noise). Linux/macOS keep the sysinfo+sleep path (sysinfo's minimum interval).
+  Measured on the AMD Ryzen AI MAX+ 395 box: standard mode 1757 ms → 1558 ms; isolated
+  `--fields cpu-usage` ~340 ms → ~253 ms. `retch-sysinfo` bumped to `0.1.38`.
 - **Windows `bluetooth` perf: drop PowerShell spawn (~12× faster field)**:
   `detect_bluetooth` on Windows no longer spawns PowerShell (`Get-Service bthserv` + two
   `Get-PnpDevice -Class Bluetooth` queries, ~1.8 s). Power state now comes from the
@@ -336,6 +346,25 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.49 - Windows cpu-usage: no serial sleep (July 11, 2026)
+- **Root cause**: CPU usage is a delta between two CPU-time samples; sysinfo enforces a
+  ~200 ms minimum refresh interval, so `collect()` slept 200 ms then called
+  `refresh_cpu_usage()`. That sleep ran **serially after** the concurrent `thread::scope`,
+  so it added ~200 ms to the wall-clock of every standard/long run (not a PowerShell spawn
+  — the odd one out in the migration list, but a real serial cost).
+- **Fix (Windows)**: sample `GetSystemTimes` (kernel32, default-linked) just before the
+  concurrent scope and diff against a fresh sample at the usage-computation point, so the
+  existing collection window *is* the delta — no dedicated sleep. A pure `usage_percent`
+  helper (kernel-includes-idle math) carries unit tests. A ~100 ms floor is topped up only
+  when the collection window is shorter than that (e.g. an isolated `--fields cpu-usage`),
+  so a tiny request still reads a real value rather than `GetSystemTimes` quantization noise.
+  Linux/macOS are unchanged (sysinfo + 200 ms sleep) because sysinfo's minimum interval
+  makes the window-diff approach unreliable there.
+- **Result** (AMD Ryzen AI MAX+ 395, Windows 11): standard mode 1757 ms → 1558 ms; isolated
+  `--fields cpu-usage` ~340 ms → ~253 ms. Verified stable idle readings (~0.5–1.7%) across
+  repeated isolated runs (previously ~50% sampling noise before the floor was added).
+- **Version**: Bumped to `0.3.49` / `retch-sysinfo 0.1.38` (library behavior change).
 
 ### v0.3.48 - Windows bluetooth: native bthprops + SetupAPI (July 11, 2026)
 - **Root cause**: `detect_bluetooth` on Windows spawned PowerShell (`Get-Service bthserv`
