@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783811599565,
+  "lastUpdate": 1783812011943,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6622,100 +6622,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "896a3acbc1b5feb1819a84acfb46eb52795d7abe",
-          "message": "Add AUR and Nixpkgs packaging configs (#103)\n\n* Add AUR and Nixpkgs packaging configs\n\nCreates PKGBUILD for Arch Linux and package.nix for Nixpkgs, along\nwith local Nix test building expressions and automated CI workflows\nto verify compilation.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix tar warning in packaging CI\n\nExclude output file from tar archive by writing to /tmp/ first,\nresolving the \"file changed as we read it\" error in CI.\n\nAssisted-By: Gemini 3.5 Flash\n\n* docs: add AUR registration outage note to README.md\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix AUR linker target and dependencies in CI\n\nAdd sqlite pacman dependency and unset runner-inherited CARGO_TARGET\nlinker config in the Arch container to ensure native build/link.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Replace pandoc with mandown for man pages\n\nSwitch the manual page compilation toolchain from pandoc to mandown. Update Justfile, packaging configurations, Nix flake devShell, CI workflows, and documentation references. Regenerate docs/retch.1.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix AUR CI: remove system sqlite package\n\nrusqlite uses bundled feature which compiles sqlite3 statically. Installing the system sqlite package causes ld.lld symbol conflicts on Arch Linux. The system package is not needed.\n\nAssisted-By: Claude Sonnet 4.6\n\n* Disable LTO for AUR PKGBUILD\n\nArch Linux's default makepkg settings enable LTO, which conflicts with static linking of Cargo-compiled C dependencies (like sqlite3 in rusqlite's bundled feature), resulting in undefined symbol errors.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Automate Nixpkgs hash calculation\n\nAdd scripts/calculate_nix_hashes.py to compute source and cargo hashes. Add nix-update recipe to Justfile, and integrate hash calculation into the GitHub Actions release workflow to publish hashes in release notes.\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-06-23T13:54:22-07:00",
-          "tree_id": "b42a76f82aaadcc436f134774a47331b654c10c7",
-          "url": "https://github.com/l1a/retch/commit/896a3acbc1b5feb1819a84acfb46eb52795d7abe"
-        },
-        "date": 1782248895891,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 1405136.4800000004,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 347526104.58000004,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 338297323.55,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 974.8240293178482,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.58882639808312,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9464253902109028,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.627578264574325,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7665.555618665552,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 70672.58988041028,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4708.206183547975,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4804.260708652201,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1219260.3037668956,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 352.863291431882,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 256.62682360458,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "e751e50d49581e42a9b60a8ce8250769697d64bd",
           "message": "Fix prefetch hash formatting (#104)\n\nAdd --type sha256 to nix-prefetch-url to force hexadecimal output, preventing binascii decoding failures caused by Nix's default base32 output format.\n\nAssisted-By: Gemini 3.5 Flash",
           "timestamp": "2026-06-23T14:30:26-07:00",
@@ -10905,6 +10811,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 264.39702075805116,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "36888f89870197b2e040c9178970859ffc467c42",
+          "message": "Detect Windows bluetooth natively (bthprops) (#148)\n\nReplace the PowerShell spawn (Get-Service bthserv + two Get-PnpDevice\n-Class Bluetooth queries, ~1.8s) with native Win32:\n- power state from the bthserv service via the Service Control Manager\n  (advapi32),\n- adapter hardware name via SetupAPI enumeration of the Bluetooth device\n  class (links setupapi),\n- connected devices via the classic bthprops API (BluetoothFindFirstDevice\n  with fReturnConnected; links bthprops).\n\nHand-written extern \"system\" FFI, no WinRT and no binding crate. The\ndevice-info struct layout was validated at runtime before trusting the\ncount. A pure format_windows_bluetooth fn carries the unit tests.\n\nBehavior change: \"N connected\" now counts actually-connected devices\nrather than the old count of all paired/present Bluetooth PnP nodes (which\nthe old code mislabeled as connected). Adapter name unchanged. On an AMD\nRyzen AI MAX+ 395: --fields bluetooth ~1765ms -> ~150ms; --long 3462 ->\n2934ms.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-11T16:06:28-07:00",
+          "tree_id": "ad23df51a0dfa2097d5eeb928be7307ad5c07e92",
+          "url": "https://github.com/l1a/retch/commit/36888f89870197b2e040c9178970859ffc467c42"
+        },
+        "date": 1783812011094,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 696383803.35,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 997.2823101633423,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 47.37254193215877,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946864770187557,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 47.50564527468173,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7866.132875244165,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70465.66429791003,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4824.503505143566,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4893.119822630225,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1197475.3722589775,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 338.0089978240321,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 269.84910836991634,
             "unit": "ns"
           }
         ]
