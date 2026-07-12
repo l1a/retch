@@ -93,26 +93,24 @@ pub(crate) fn detect_camera() -> Vec<String> {
 
     #[cfg(target_os = "windows")]
     {
-        let cmd = "Get-PnpDevice -Class Camera,Image -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'OK' } | Select-Object -ExpandProperty FriendlyName";
-        if let Ok(output) = std::process::Command::new("powershell")
-            .args(["-Command", cmd])
-            .output()
-        {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                let mut cameras = Vec::new();
-                for line in stdout.lines() {
-                    let trimmed = line.trim().to_string();
-                    if !trimmed.is_empty() && is_real_camera(&trimmed) {
-                        let cleaned = clean_camera_name(&trimmed);
-                        if !cameras.contains(&cleaned) {
-                            cameras.push(cleaned);
-                        }
+        // Native equivalent of `Get-PnpDevice -Class Camera,Image -PresentOnly`: enumerate
+        // present devices in the Camera and Image setup classes via SetupAPI, then apply the
+        // same real-camera filter, name cleanup, and de-duplication as the other platforms.
+        let mut cameras = Vec::new();
+        for guid in [
+            &crate::win_setupapi::GUID_DEVCLASS_CAMERA,
+            &crate::win_setupapi::GUID_DEVCLASS_IMAGE,
+        ] {
+            for name in crate::win_setupapi::present_device_names(guid) {
+                if is_real_camera(&name) {
+                    let cleaned = clean_camera_name(&name);
+                    if !cleaned.is_empty() && !cameras.contains(&cleaned) {
+                        cameras.push(cleaned);
                     }
                 }
-                return cameras;
             }
         }
-        Vec::new()
+        cameras
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]

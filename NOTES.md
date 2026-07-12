@@ -96,7 +96,26 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.49)
+## Current State (v0.3.50)
+- **Windows `camera` perf: drop PowerShell spawn (~9× faster field) — completes the Windows
+  native-FFI migration**: `detect_camera` on Windows no longer spawns PowerShell
+  (`Get-PnpDevice -Class Camera,Image -PresentOnly`, ~1.36 s). It now enumerates the Camera
+  and Image device setup classes via a new shared SetupAPI helper
+  (`crate::win_setupapi::present_device_names`), then applies the same `is_real_camera`
+  filter, `clean_camera_name` cleanup, and de-duplication as the other platforms. The
+  `win_setupapi` module (hand-written `extern "system"` FFI, links `setupapi`) is shared with
+  `bluetooth`, which was refactored onto it (removing its private SetupAPI copy). Measured on
+  the AMD Ryzen AI MAX+ 395 box: `--fields camera` ~1359 ms → ~155 ms. Camera was the last
+  standard-mode PowerShell pole, so **standard mode dropped 1558 ms → 273 ms**. Output
+  verified against `Get-PnpDevice` (all real cameras; the IR camera is filtered as before).
+  `retch-sysinfo` bumped to `0.1.39`.
+- **Windows perf milestone**: with `net` (#144) plus phys-disk/phys-mem/bluetooth/cpu-usage/
+  camera all native, retch on Windows went from slower-than-fastfetch across the board to
+  **faster in standard mode and at parity in long** (AMD Ryzen AI MAX+ 395, vs fastfetch):
+  short 164 ms vs 74 ms; **standard 273 ms vs 1348 ms (~4.9× faster)**; long 1554 ms vs
+  1340 ms. Cumulative since the start of the migration: short 1149→164, standard 1993→273,
+  long 3462→1554 ms. Remaining Windows PowerShell spawns are `--full`-only (`gamepad`) or
+  `--long` (`dns`, `battery`) — candidates for future migration.
 - **Windows `cpu-usage` perf: drop the serial 200 ms sleep**: the CPU-usage field needs a
   delta between two samples. sysinfo enforces a ~200 ms minimum interval, so the code slept
   200 ms — and that sleep ran **serially, after** the concurrent probe scope, adding ~200 ms
@@ -346,6 +365,25 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.50 - Windows camera: native SetupAPI (completes migration) (July 11, 2026)
+- **Root cause**: `detect_camera` on Windows spawned PowerShell (`Get-PnpDevice -Class
+  Camera,Image -PresentOnly`), ~1.36 s. Last of the per-probe migrations (#146–#150).
+- **Fix**: new shared `crate::win_setupapi` module (`SetupDiGetClassDevsW` +
+  `SetupDiGetDeviceRegistryPropertyW`, links `setupapi`) exposes
+  `present_device_names(class_guid)` — the native equivalent of `Get-PnpDevice -Class X
+  -PresentOnly`. Camera enumerates the Camera + Image classes and reuses the existing
+  `is_real_camera`/`clean_camera_name`/dedup logic. `bluetooth` (which had introduced a
+  private SetupAPI copy in #148) was refactored onto the shared module, removing the
+  duplication — mirroring the shared `win_reg.rs` pattern.
+- **Result** (AMD Ryzen AI MAX+ 395, Windows 11): `--fields camera` ~1359 ms → ~155 ms
+  (~9×). Camera was the last standard-mode PowerShell pole, so **standard mode 1558 ms →
+  273 ms**. Verified vs `Get-PnpDevice` (all real cameras present; IR camera filtered as
+  before). bluetooth output unchanged after the refactor.
+- **Milestone**: retch on Windows now beats fastfetch in standard mode (273 ms vs 1348 ms,
+  ~4.9×) and is at parity in long (1554 ms vs 1340 ms), having started this migration series
+  slower across the board. Cumulative: short 1149→164, standard 1993→273, long 3462→1554 ms.
+- **Version**: Bumped to `0.3.50` / `retch-sysinfo 0.1.39` (library behavior change).
 
 ### v0.3.49 - Windows cpu-usage: no serial sleep (July 11, 2026)
 - **Root cause**: CPU usage is a delta between two CPU-time samples; sysinfo enforces a
