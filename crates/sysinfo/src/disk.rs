@@ -745,6 +745,31 @@ mod win_ffi {
             Some(desc.incurs_seek_penalty != 0)
         }
     }
+
+    #[cfg(test)]
+    mod layout {
+        use std::mem::{offset_of, size_of};
+
+        // The driver reads these `#[repr(C)]` buffers by fixed offset, so pin the layout —
+        // an accidental field reorder or padding change would silently corrupt reads.
+        #[test]
+        fn ffi_struct_layout() {
+            assert_eq!(size_of::<super::StoragePropertyQuery>(), 12);
+            assert_eq!(size_of::<super::StorageDeviceDescriptor>(), 40);
+            assert_eq!(
+                offset_of!(super::StorageDeviceDescriptor, vendor_id_offset),
+                12
+            );
+            assert_eq!(
+                offset_of!(super::StorageDeviceDescriptor, product_id_offset),
+                16
+            );
+            assert_eq!(offset_of!(super::StorageDeviceDescriptor, bus_type), 28);
+            assert_eq!(size_of::<super::DeviceSeekPenaltyDescriptor>(), 12);
+            assert_eq!(size_of::<super::DiskGeometryEx>(), 40);
+            assert_eq!(offset_of!(super::DiskGeometryEx, disk_size), 24);
+        }
+    }
 }
 
 #[cfg(test)]

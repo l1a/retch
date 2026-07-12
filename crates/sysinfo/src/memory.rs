@@ -550,6 +550,17 @@ mod win_ffi {
             Some(status.total_phys)
         }
     }
+
+    #[cfg(test)]
+    mod layout {
+        use std::mem::size_of;
+
+        // `MemoryStatusEx.length` must equal the OS's sizeof or GlobalMemoryStatusEx fails.
+        #[test]
+        fn ffi_struct_layout() {
+            assert_eq!(size_of::<super::MemoryStatusEx>(), 64);
+        }
+    }
 }
 
 #[cfg(test)]

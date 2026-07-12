@@ -96,7 +96,16 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.50)
+## Current State (v0.3.51)
+- **FFI struct-layout assertion tests (test hardening)**: added `size_of`/`offset_of!`
+  assertions for the Windows `#[repr(C)]` FFI structs whose layout the drivers/APIs depend
+  on — disk (`StoragePropertyQuery`, `StorageDeviceDescriptor` incl. `bus_type`/vendor/product
+  offsets, `DeviceSeekPenaltyDescriptor`, `DiskGeometryEx` incl. `disk_size`), memory
+  (`MemoryStatusEx`), bluetooth (`ServiceStatus`, `DeviceSearchParams`, `SystemTime`,
+  `DeviceInfo` incl. `f_connected`/`sz_name`), cpu (`FileTime`), and `win_setupapi`
+  (`SpDevinfoData`, already present). These guard against accidental field reorder/padding
+  regressions — the class of bug the pure parse tests can't catch (cf. the #147 phys-mem
+  offset bug). Test-only; no runtime change. `retch-sysinfo` bumped to `0.1.40`.
 - **Windows `camera` perf: drop PowerShell spawn (~9× faster field) — completes the Windows
   native-FFI migration**: `detect_camera` on Windows no longer spawns PowerShell
   (`Get-PnpDevice -Class Camera,Image -PresentOnly`, ~1.36 s). It now enumerates the Camera
@@ -365,6 +374,18 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.51 - FFI struct-layout assertion tests (July 11, 2026)
+- **Test hardening** following the Windows native-FFI migration (#146–#150). The pure
+  parsers/formatters are well unit-tested, but the `#[repr(C)]` FFI structs the OS reads/
+  writes by offset were only runtime-verified. Added `size_of` + targeted `offset_of!`
+  assertions for each: disk storage descriptors/geometry, `MemoryStatusEx`, the bluetooth
+  `bthprops`/SCM structs, `win_cpu::FileTime`, and `win_setupapi::SpDevinfoData`. These catch
+  accidental field-reorder/padding regressions at test time — the failure mode the parse
+  tests can't (the #147 phys-mem offset bug was found only by runtime comparison).
+- **Test-only**: no runtime behavior change. Runs on Windows CI (the structs are
+  `#[cfg(windows)]`). `retch-sysinfo` → 0.1.40.
+- **Version**: Bumped to `0.3.51` / `retch-sysinfo 0.1.40`.
 
 ### v0.3.50 - Windows camera: native SetupAPI (completes migration) (July 11, 2026)
 - **Root cause**: `detect_camera` on Windows spawned PowerShell (`Get-PnpDevice -Class
