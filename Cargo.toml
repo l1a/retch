@@ -6,11 +6,11 @@ members = [
 
 [package]
 name = "retch-cli"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 authors = ["Ken Tobias"]
 description = "A fast, feature-rich system information fetcher written in Rust (similar to fastfetch or neofetch)"
-license = "GPL-3.0"
+license = "GPL-3.0-or-later"
 repository = "https://github.com/l1a/retch"
 readme = "README.md"
 keywords = ["system", "fetch", "cli"]
@@ -21,7 +21,7 @@ name = "retch"
 path = "src/main.rs"
 
 [dependencies]
-retch-sysinfo = { path = "crates/sysinfo", version = "=0.1.40" }
+retch-sysinfo = { path = "crates/sysinfo", version = "=0.1.41" }
 clap = { version = "4.6", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 toml = "1.1"

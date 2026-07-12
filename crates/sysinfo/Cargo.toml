@@ -1,10 +1,10 @@
 [package]
 name = "retch-sysinfo"
-version = "0.1.40"
+version = "0.1.41"
 edition = "2021"
 authors = ["Ken Tobias"]
 description = "System information gathering library for retch"
-license = "GPL-3.0"
+license = "GPL-3.0-or-later"
 repository = "https://github.com/l1a/retch"
 
 [dependencies]
