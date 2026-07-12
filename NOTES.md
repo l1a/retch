@@ -96,7 +96,17 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.51)
+## Current State (v0.3.52)
+- **`upload_local_bench.py` cp1252 crash fixed (Windows)**: `just bench-upload` (and the
+  `post-merge` hook that runs it) crashed on Windows with `UnicodeDecodeError: 'charmap'
+  codec can't decode byte 0x9d` — the gh-pages `data.js` is UTF-8 (commit messages embed
+  `→`/em-dashes) but was read with the default cp1252. Pinned UTF-8 on all file I/O
+  (`data.js` read+write, the hyperfine JSON temp read) and on `run_capture`'s subprocess
+  decoding (`git log --format=%B`), plus a UTF-8 stdout guard — the same fix class as
+  `update_wip.py` (#142). Verified: the crash reproduces on the live `data.js` with the
+  default encoding and reads cleanly (845 KB) with UTF-8; `append_entry` and
+  `git_commit_info` run without error. This unblocks the Windows "real hardware" numbers
+  reaching the benchmark dashboard. Tooling-only; `retch-sysinfo` unchanged.
 - **FFI struct-layout assertion tests (test hardening)**: added `size_of`/`offset_of!`
   assertions for the Windows `#[repr(C)]` FFI structs whose layout the drivers/APIs depend
   on — disk (`StoragePropertyQuery`, `StorageDeviceDescriptor` incl. `bus_type`/vendor/product
@@ -374,6 +384,20 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.3.52 - Fix upload_local_bench.py cp1252 crash (July 12, 2026)
+- **Bug**: `just bench-upload` and the `post-merge` git hook crashed on Windows with
+  `UnicodeDecodeError: 'charmap' codec can't decode byte 0x9d` — so no local Windows
+  "real hardware" numbers were reaching the gh-pages benchmark dashboard. The gh-pages
+  `data.js` is UTF-8 (commit messages embed `→`/em-dashes) but `open()` used the default
+  cp1252 on Windows.
+- **Fix**: pinned `encoding="utf-8"` on every file operation (the `data.js` read and write,
+  the hyperfine JSON temp read) and on `run_capture`'s subprocess text decoding (git output),
+  plus a `sys.stdout.reconfigure` UTF-8 guard. Same fix class as `update_wip.py` (#142).
+- **Verified**: reproduced the crash on the live `data.js` under the default encoding; the
+  UTF-8 read succeeds (845 KB) and `append_entry`/`git_commit_info` run clean.
+- **Tooling-only**: no Rust source touched; `retch-sysinfo` unchanged at `0.1.40`.
+- **Version**: Bumped to `0.3.52` (`retch-sysinfo` unchanged).
 
 ### v0.3.51 - FFI struct-layout assertion tests (July 11, 2026)
 - **Test hardening** following the Windows native-FFI migration (#146–#150). The pure
