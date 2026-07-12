@@ -96,7 +96,12 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.4.0)
+## Current State (v0.4.1)
+- **v0.4.1 — license SPDX fix + first crates.io publish of the 0.4.x line**: corrected the
+  deprecated `license = "GPL-3.0"` to `GPL-3.0-or-later` in both crate manifests (matching the
+  source SPDX headers), since per-version crates.io license metadata is permanent. This is the
+  version published to crates.io — reversing the long-standing GitHub-only hold. `retch-cli`
+  → `0.4.1`, `retch-sysinfo` → `0.1.41`. No functional code change vs v0.4.0.
 - **v0.4.0 milestone release**: minor version bump marking the completed Windows native-FFI
   migration (the first GitHub Release since v0.3.40). Rolls up #141–#152 — every Windows
   PowerShell-spawn probe replaced with native Win32 FFI (net, phys-disk, phys-mem, bluetooth,
@@ -392,6 +397,17 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.4.1 - License SPDX fix + crates.io publish (July 12, 2026)
+- **License metadata**: `license = "GPL-3.0"` → `GPL-3.0-or-later` in both `Cargo.toml`
+  manifests, matching the `SPDX-License-Identifier: GPL-3.0-or-later` headers in the source.
+  `GPL-3.0` is a deprecated SPDX id; corrected before publishing since per-version license
+  metadata on crates.io is permanent.
+- **crates.io publish**: this release **reverses the standing GitHub-only hold** — retch is
+  published to crates.io again for the first time since `retch-cli 0.3.35` / `retch-sysinfo
+  0.1.31`. Published `retch-sysinfo 0.1.41` then `retch-cli 0.4.1` (dependency order).
+- **No functional change** vs v0.4.0 — version bump + license string only.
+- **Version**: Bumped to `0.4.1` / `retch-sysinfo 0.1.41`.
 
 ### v0.4.0 - Windows native-FFI migration milestone release (July 12, 2026)
 - **Minor version bump** (0.3.52 → 0.4.0) marking the first GitHub Release since v0.3.40 and
