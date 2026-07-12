@@ -498,6 +498,23 @@ mod windows_impl {
         let devices = if on { connected_devices() } else { Vec::new() };
         Some(format_windows_bluetooth(on, &adapter, &devices))
     }
+
+    #[cfg(test)]
+    mod layout {
+        use std::mem::{offset_of, size_of};
+
+        // `dw_size` fields must match the OS's sizeof, and the API fills these `#[repr(C)]`
+        // buffers by offset — pin the layout so a reorder/padding change can't slip through.
+        #[test]
+        fn ffi_struct_layout() {
+            assert_eq!(size_of::<super::ServiceStatus>(), 28);
+            assert_eq!(size_of::<super::DeviceSearchParams>(), 40);
+            assert_eq!(size_of::<super::SystemTime>(), 16);
+            assert_eq!(size_of::<super::DeviceInfo>(), 560);
+            assert_eq!(offset_of!(super::DeviceInfo, f_connected), 20);
+            assert_eq!(offset_of!(super::DeviceInfo, sz_name), 64);
+        }
+    }
 }
 
 #[cfg(test)]

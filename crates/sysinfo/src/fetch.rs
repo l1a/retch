@@ -1419,6 +1419,17 @@ mod win_cpu {
             (100.0 * total.saturating_sub(idle) as f64 / total as f64) as f32
         }
     }
+
+    #[cfg(test)]
+    mod layout {
+        use std::mem::size_of;
+
+        // Two u32 FILETIME words = 8 bytes; the ticks() reader depends on this.
+        #[test]
+        fn filetime_size() {
+            assert_eq!(size_of::<super::FileTime>(), 8);
+        }
+    }
 }
 
 #[cfg(test)]
