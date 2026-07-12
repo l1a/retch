@@ -96,7 +96,15 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.3.52)
+## Current State (v0.4.0)
+- **v0.4.0 milestone release**: minor version bump marking the completed Windows native-FFI
+  migration (the first GitHub Release since v0.3.40). Rolls up #141–#152 — every Windows
+  PowerShell-spawn probe replaced with native Win32 FFI (net, phys-disk, phys-mem, bluetooth,
+  cpu-usage, camera), the `--workspace` test/lint gate fix, FFI struct-layout assertion tests,
+  and the WIP/bench tooling fixes. Headline: retch on Windows went from slower-than-fastfetch
+  across the board to **~4.9× faster in standard mode** (273 vs 1348 ms) and parity in
+  `--long`. Version-marker bump only — no code change in this step; `retch-sysinfo` stays at
+  `0.1.40`. crates.io intentionally remains at `retch-cli 0.3.35` / `retch-sysinfo 0.1.31`.
 - **`upload_local_bench.py` cp1252 crash fixed (Windows)**: `just bench-upload` (and the
   `post-merge` hook that runs it) crashed on Windows with `UnicodeDecodeError: 'charmap'
   codec can't decode byte 0x9d` — the gh-pages `data.js` is UTF-8 (commit messages embed
@@ -384,6 +392,22 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.4.0 - Windows native-FFI migration milestone release (July 12, 2026)
+- **Minor version bump** (0.3.52 → 0.4.0) marking the first GitHub Release since v0.3.40 and
+  the completion of the Windows PowerShell-spawn → native-Win32-FFI migration. This release
+  rolls up #141–#152:
+  - **Perf**: `net` (#144), `phys-disk` (#146), `phys-mem` (#147), `bluetooth` (#148),
+    `cpu-usage` (#149), `camera` (#150) all moved off PowerShell spawns to native FFI. On an
+    AMD Ryzen AI MAX+ 395: short 1149→164 ms, **standard 1993→273 ms (now ~4.9× faster than
+    fastfetch)**, long 3462→1554 ms (parity). phys-mem also gained running-vs-rated speed.
+  - **Quality/tooling**: `--workspace` test+lint gate fix (#146), FFI struct-layout assertion
+    tests (#151), WIP updater fixes (#141–#143), bench-recipe (#145) and bench-upload (#152)
+    Windows fixes.
+- **Version-marker only** at this step (no code change); `retch-sysinfo` unchanged at `0.1.40`.
+  crates.io remains intentionally held (`retch-cli 0.3.35` / `retch-sysinfo 0.1.31`) — GitHub
+  Release only, matching the v0.3.36–v0.3.40 pattern.
+- **Version**: Bumped to `0.4.0` (`retch-sysinfo` unchanged at `0.1.40`).
 
 ### v0.3.52 - Fix upload_local_bench.py cp1252 crash (July 12, 2026)
 - **Bug**: `just bench-upload` and the `post-merge` git hook crashed on Windows with
