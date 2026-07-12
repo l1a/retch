@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783870523484,
+  "lastUpdate": 1783870919122,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6714,100 +6714,6 @@ window.BENCHMARK_DATA = {
       {
         "commit": {
           "author": {
-            "email": "49699333+dependabot[bot]@users.noreply.github.com",
-            "name": "dependabot[bot]",
-            "username": "dependabot[bot]"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "220df5465b33d99038bf92cb7e1a29bea0b75fb6",
-          "message": "deps(deps): bump sysinfo in the cargo-dependencies group (#109)\n\nBumps the cargo-dependencies group with 1 update: [sysinfo](https://github.com/GuillaumeGomez/sysinfo).\n\n\nUpdates `sysinfo` from 0.39.3 to 0.39.5\n- [Changelog](https://github.com/GuillaumeGomez/sysinfo/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/GuillaumeGomez/sysinfo/compare/v0.39.3...v0.39.5)\n\n---\nupdated-dependencies:\n- dependency-name: sysinfo\n  dependency-version: 0.39.5\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: cargo-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
-          "timestamp": "2026-06-23T21:41:04-07:00",
-          "tree_id": "d0637dc2f48db2f5807ba1634a9d71a51b466c96",
-          "url": "https://github.com/l1a/retch/commit/220df5465b33d99038bf92cb7e1a29bea0b75fb6"
-        },
-        "date": 1782277164495,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 1581933.3800000001,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 272828466.4800001,
-            "unit": "ns"
-          },
-          {
-            "name": "SystemInfo__collect",
-            "value": 272844111.95,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 978.4527002084,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.601537375420016,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9468566794025195,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.64875027442868,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7768.591327199023,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 71054.19897696606,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4782.582638725272,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4864.294900852815,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1199882.044388771,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 349.226123777695,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 252.85332798495898,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -10947,6 +10853,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 271.77215174508717,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "88162b293638dfad573a4b63f046cd27aca023f4",
+          "message": "Bump to 0.4.1; fix license SPDX for crates.io (#154)\n\nCorrect the deprecated `license = \"GPL-3.0\"` to `GPL-3.0-or-later` in both\ncrate manifests (matching the SPDX-License-Identifier headers in the\nsource) ahead of publishing to crates.io, where per-version license\nmetadata is permanent.\n\nBump retch-cli 0.4.0 -> 0.4.1 and retch-sysinfo 0.1.40 -> 0.1.41 (v0.4.0\nis already tagged, so the license fix requires a new version). No\nfunctional code change. This is the version published to crates.io,\nreversing the prior GitHub-Release-only hold.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-12T08:27:56-07:00",
+          "tree_id": "20fc220a727f5d7f59bb468da3002cf8631afc81",
+          "url": "https://github.com/l1a/retch/commit/88162b293638dfad573a4b63f046cd27aca023f4"
+        },
+        "date": 1783870918022,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 757938029,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1002.1667740537757,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 47.35678232759617,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9467155676312418,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 47.252631032545374,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7892.781434750284,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71258.28555687043,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4843.918943427719,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4936.561871165844,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1210697.0589131787,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 338.8863356369337,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 257.87668352072086,
             "unit": "ns"
           }
         ]
