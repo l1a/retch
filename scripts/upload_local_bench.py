@@ -30,7 +30,12 @@ def run(cmd, **kwargs):
 
 
 def run_capture(cmd):
-    return subprocess.run(cmd, check=True, capture_output=True, text=True).stdout.strip()
+    # Force UTF-8 decoding: git output (commit messages carry →/em-dashes in this repo) is
+    # UTF-8, but Python's default text decoding is cp1252 on Windows and crashes on bytes
+    # undefined there (e.g. 0x9d). Same class of fix as scripts/update_wip.py.
+    return subprocess.run(
+        cmd, check=True, capture_output=True, text=True, encoding="utf-8"
+    ).stdout.strip()
 
 
 def suite_name():
@@ -129,7 +134,7 @@ def run_hyperfine(warmup, runs):
                 "--export-json", tmp_path,
             ] + cmds)
 
-            with open(tmp_path) as f:
+            with open(tmp_path, encoding="utf-8") as f:
                 data = json.load(f)
             
             for res in data.get("results", []):
@@ -172,7 +177,10 @@ def dump_data_js(data):
 
 def append_entry(gh_pages_dir, suite, commit_info, benches):
     data_file = os.path.join(gh_pages_dir, DATA_PATH)
-    with open(data_file) as f:
+    # data.js is UTF-8 (commit messages embed →/em-dashes); reading it with the Windows
+    # default cp1252 crashes on bytes like 0x9d. This was the observed `just bench-upload`
+    # failure. The matching write below is pinned to UTF-8 for the same reason.
+    with open(data_file, encoding="utf-8") as f:
         content = f.read()
 
     data = load_data_js(content)
@@ -202,7 +210,7 @@ def append_entry(gh_pages_dir, suite, commit_info, benches):
 
     data["lastUpdate"] = int(time.time() * 1000)
 
-    with open(data_file, "w") as f:
+    with open(data_file, "w", encoding="utf-8") as f:
         f.write(dump_data_js(data))
 
     return True
@@ -242,6 +250,11 @@ def push_to_gh_pages(benches, commit_info, suite):
 
 
 def main():
+    # Ensure prints don't crash on a cp1252 Windows console if any label ever carries
+    # non-ASCII (matches scripts/update_wip.py).
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+
     parser = argparse.ArgumentParser(description="Upload local benchmarks to gh-pages dashboard.")
     parser.add_argument("--runs", type=int, default=10, help="hyperfine --runs (default 10)")
     parser.add_argument("--warmup", type=int, default=3, help="hyperfine --warmup (default 3)")
