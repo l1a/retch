@@ -341,62 +341,6 @@ mod windows_impl {
         fn CloseServiceHandle(handle: Handle) -> i32;
     }
 
-    // SetupAPI (setupapi.dll) — enumerate the Bluetooth device class for the adapter's
-    // hardware friendly name (what the old `Get-PnpDevice -Class Bluetooth` reported).
-    const DIGCF_PRESENT: u32 = 0x0000_0002;
-    const SPDRP_DEVICEDESC: u32 = 0x0000_0000;
-    const SPDRP_FRIENDLYNAME: u32 = 0x0000_000C;
-    const INVALID_HANDLE_VALUE: Handle = -1isize as Handle;
-
-    // GUID_DEVCLASS_BLUETOOTH = {e0cbf06c-cd8b-4647-bb8a-263b43f0f974}
-    const GUID_DEVCLASS_BLUETOOTH: Guid = Guid {
-        data1: 0xe0cb_f06c,
-        data2: 0xcd8b,
-        data3: 0x4647,
-        data4: [0xbb, 0x8a, 0x26, 0x3b, 0x43, 0xf0, 0xf9, 0x74],
-    };
-
-    #[repr(C)]
-    struct Guid {
-        data1: u32,
-        data2: u16,
-        data3: u16,
-        data4: [u8; 8],
-    }
-
-    #[repr(C)]
-    struct SpDevinfoData {
-        cb_size: u32,
-        class_guid: Guid,
-        dev_inst: u32,
-        reserved: usize,
-    }
-
-    #[link(name = "setupapi")]
-    extern "system" {
-        fn SetupDiGetClassDevsW(
-            class_guid: *const Guid,
-            enumerator: *const u16,
-            hwnd_parent: Handle,
-            flags: u32,
-        ) -> Handle;
-        fn SetupDiEnumDeviceInfo(
-            dev_info: Handle,
-            index: u32,
-            dev_info_data: *mut SpDevinfoData,
-        ) -> i32;
-        fn SetupDiGetDeviceRegistryPropertyW(
-            dev_info: Handle,
-            dev_info_data: *const SpDevinfoData,
-            property: u32,
-            property_reg_data_type: *mut u32,
-            property_buffer: *mut u8,
-            property_buffer_size: u32,
-            required_size: *mut u32,
-        ) -> i32;
-        fn SetupDiDestroyDeviceInfoList(dev_info: Handle) -> i32;
-    }
-
     const BLUETOOTH_MAX_NAME_SIZE: usize = 248;
 
     #[repr(C)]
@@ -503,65 +447,12 @@ mod windows_impl {
         .any(|k| l.contains(k))
     }
 
-    /// Reads a device's friendly name (falling back to its device description) via SetupAPI.
-    fn device_name(dev_info: Handle, data: &SpDevinfoData) -> Option<String> {
-        for prop in [SPDRP_FRIENDLYNAME, SPDRP_DEVICEDESC] {
-            let mut buf = [0u16; 512];
-            let mut required = 0u32;
-            // SAFETY: buf is writable with its byte-size passed; data is a valid SP_DEVINFO_DATA.
-            let ok = unsafe {
-                SetupDiGetDeviceRegistryPropertyW(
-                    dev_info,
-                    data,
-                    prop,
-                    ptr::null_mut(),
-                    buf.as_mut_ptr() as *mut u8,
-                    (buf.len() * 2) as u32,
-                    &mut required,
-                )
-            };
-            if ok != 0 {
-                if let Some(name) = wide_to_string(&buf) {
-                    return Some(name);
-                }
-            }
-        }
-        None
-    }
-
-    /// The Bluetooth adapter's hardware friendly name, via SetupAPI enumeration of the
-    /// Bluetooth device class (what the old `Get-PnpDevice -Class Bluetooth` reported).
+    /// The Bluetooth adapter's hardware friendly name, via the shared SetupAPI helper over
+    /// the Bluetooth device class (what the old `Get-PnpDevice -Class Bluetooth` reported).
     fn adapter_name() -> Option<String> {
-        // SAFETY: the device-info set is created and destroyed in-scope.
-        unsafe {
-            let dev_info = SetupDiGetClassDevsW(
-                &GUID_DEVCLASS_BLUETOOTH,
-                ptr::null(),
-                ptr::null_mut(),
-                DIGCF_PRESENT,
-            );
-            if dev_info == INVALID_HANDLE_VALUE {
-                return None;
-            }
-            let mut result = None;
-            let mut index = 0u32;
-            loop {
-                let mut data: SpDevinfoData = std::mem::zeroed();
-                data.cb_size = size_of::<SpDevinfoData>() as u32;
-                if SetupDiEnumDeviceInfo(dev_info, index, &mut data) == 0 {
-                    break;
-                }
-                index += 1;
-                if let Some(name) = device_name(dev_info, &data) {
-                    if looks_like_adapter(&name) {
-                        result = Some(name);
-                        break;
-                    }
-                }
-            }
-            SetupDiDestroyDeviceInfoList(dev_info);
-            result
-        }
+        crate::win_setupapi::present_device_names(&crate::win_setupapi::GUID_DEVCLASS_BLUETOOTH)
+            .into_iter()
+            .find(|name| looks_like_adapter(name))
     }
 
     /// Names of currently-connected Bluetooth devices across all radios.
