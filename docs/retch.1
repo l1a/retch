@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "July 2026" "retch 0.5.1" "System Information Fetcher"
+.TH "RETCH" "1" "July 2026" "retch 0.6.0" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -13,87 +13,87 @@ retch \- a fast, feature\-rich system information fetcher
 \fBretch\fP is a fast system information tool written in Rust\. It displays detailed information about your system including OS, CPU, memory, audio, disks, network, Wi\-Fi, Bluetooth, and more, with support for high\-quality ASCII and graphical logos\.
 
 .SH "OPTIONS"
-\fB\-h, \-\-help\fP
+\fB\fB\-h, \-\-help\fP\fP
 .RS
 Show help information\.
 .RE
-\fB\-V, \-\-version\fP
+\fB\fB\-V, \-\-version\fP\fP
 .RS
 Print version information\.
 .RE
-\fB\-m, \-\-mode\fP \fIMODE\fP
+\fB\fB\-m, \-\-mode\fP \fIMODE\fP\fP
 .RS
 Select output mode (`\f[CR]short\fP`, `\f[CR]long\fP`, or `\f[CR]custom\fP`)\.
 .RE
-\fB\-c, \-\-config\fP \fIFILE\fP
+\fB\fB\-c, \-\-config\fP \fIFILE\fP\fP
 .RS
 Path to a custom configuration file instead of the default\.
 .RE
-\fB\-\-ascii\-logo\fP
+\fB\fB\-\-ascii\-logo\fP\fP
 .RS
 Force ASCII logo output, disabling graphical and Chafa rendering\.
 .RE
-\fB\-\-chafa\-logo\fP
+\fB\fB\-\-chafa\-logo\fP\fP
 .RS
 Force Chafa symbols output, disabling high\-res graphical protocols (Kitty, Sixel, iTerm2)\.
 .RE
-\fB\-\-no\-logo\fP
+\fB\fB\-\-no\-logo\fP\fP
 .RS
 Disable the logo entirely\.
 .RE
-\fB\-\-logo\fP \fILOGO\fP
+\fB\fB\-\-logo\fP \fILOGO\fP\fP
 .RS
 Force a specific distribution logo by name/ID (e\.g\. `\f[CR]pop\fP`, `\f[CR]manjaro\fP`, `\f[CR]endeavouros\fP`, `\f[CR]opensuse\fP`, `\f[CR]ubuntu\fP`, `\f[CR]fedora\fP`, `\f[CR]macos\fP`, `\f[CR]windows\fP`)\.
 .RE
-\fB\-\-theme\fP \fITHEME\fP
+\fB\fB\-\-theme\fP \fITHEME\fP\fP
 .RS
 Use a specific theme (e\.g\. `\f[CR]default\fP`, `\f[CR]dark\fP`, `\f[CR]light\fP`, or community themes)\.
 .RE
-\fB\-\-list\-themes\fP
+\fB\fB\-\-list\-themes\fP\fP
 .RS
 List all available built\-in themes\.
 .RE
-\fB\-\-print\-theme\-template\fP
+\fB\fB\-\-print\-theme\-template\fP\fP
 .RS
 Print an example custom theme template to stdout\.
 .RE
-\fB\-\-print\-logos\fP
+\fB\fB\-\-print\-logos\fP\fP
 .RS
 Print all available logos\.
 .RE
-\fB\-\-list\-distros\fP
+\fB\fB\-\-list\-distros\fP\fP
 .RS
 List known supported distributions\.
 .RE
-\fB\-\-completions\fP \fISHELL\fP
+\fB\fB\-\-completions\fP \fISHELL\fP\fP
 .RS
 Generate shell completion scripts for the specified shell\. Supported shells are: `\f[CR]bash\fP`, `\f[CR]elvish\fP`, `\f[CR]fish\fP`, `\f[CR]power\-shell\fP`, `\f[CR]zsh\fP`, `\f[CR]nushell\fP`\.
 .RE
-\fB\-\-generate\-config\fP
+\fB\fB\-\-generate\-config\fP\fP
 .RS
 Print a default configuration file to stdout\.
 .RE
-\fB\-\-write\-config\fP [\fIPATH\fP]\fP
+\fB\fB\-\-write\-config\fP [\fIPATH\fP]\fP
 .RS
 Write the default configuration to a file (uses `\f[CR]~/\.config/retch/config\.toml\fP` if no path is given)\.
 .RE
-\fB\-\-merge\-config\fP
+\fB\fB\-\-merge\-config\fP\fP
 .RS
 Merge default configuration settings (as comments) into an existing config file at the default path (or custom path if `\f[CR]\-\-config\fP` is supplied)\.
 .RE
-\fB\-\-fields\fP \fIFIELDS\fP
+\fB\fB\-\-fields\fP \fIFIELDS\fP\fP
 .RS
 Comma\-separated list of fields to display, overriding the config file's default list\.
 .RE
-\fB\-s, \-\-short\fP
+\fB\fB\-s, \-\-short\fP\fP
 .RS
 Short output mode\. Equivalent to `\f[CR]\-\-mode short\fP`\. Shows: OS, Kernel, Host, CPU, GPU, Memory, Disk\.
 .RE
-\fB\-l, \-\-long\fP
+\fB\fB\-l, \-\-long\fP\fP
 .RS
 Long output mode\. Shows diagnostics fields \-\- firmware, thermals (consolidated: one reading per physical unit), shell, desktop, network, Bluetooth, battery, packages, and more\. Does not include cosmetic or slow\-running fields (use `\f[CR]\-\-full\fP` for those)\.
 .RE
-\fB\-f, \-\-full\fP
+\fB\fB\-f, \-\-full\fP\fP
 .RS
 Full output mode\. Shows everything in `\f[CR]\-\-long\fP` plus slow and cosmetic fields: UI theme, icons, cursor, weather (requires network), and FUSE mounts\. Expect multi\-second runtimes\.
 .RE

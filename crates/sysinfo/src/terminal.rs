@@ -7,8 +7,9 @@ use sysinfo::System;
 
 /// Returns the current terminal dimensions as `"COLSxROWS"`, or `None` if unavailable.
 ///
-/// Uses `TIOCGWINSZ` ioctl on Linux/macOS. Falls back to `$COLUMNS`/`$LINES` env vars.
-/// Returns `None` when stdout is not a TTY (e.g. piped output) or on Windows.
+/// Uses `TIOCGWINSZ` ioctl on Linux/macOS and `GetConsoleScreenBufferInfo` on
+/// Windows. Falls back to `$COLUMNS`/`$LINES` env vars. Returns `None` when
+/// stdout is not a console (e.g. piped output) and no fallback is set.
 pub(crate) fn detect_terminal_size() -> Option<String> {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
@@ -24,6 +25,12 @@ pub(crate) fn detect_terminal_size() -> Option<String> {
             return Some(format!("{}x{}", ws.ws_col, ws.ws_row));
         }
     }
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(size) = terminal_size_windows() {
+            return Some(size);
+        }
+    }
     // Fallback: env vars set by some shells
     if let (Ok(cols), Ok(rows)) = (std::env::var("COLUMNS"), std::env::var("LINES")) {
         if let (Ok(c), Ok(r)) = (cols.trim().parse::<u16>(), rows.trim().parse::<u16>()) {
@@ -33,6 +40,107 @@ pub(crate) fn detect_terminal_size() -> Option<String> {
         }
     }
     None
+}
+
+/// `COORD` — a console screen coordinate pair.
+#[cfg(target_os = "windows")]
+#[repr(C)]
+struct Coord {
+    x: i16,
+    y: i16,
+}
+
+/// `SMALL_RECT` — an inclusive console rectangle.
+#[cfg(target_os = "windows")]
+#[repr(C)]
+struct SmallRect {
+    left: i16,
+    top: i16,
+    right: i16,
+    bottom: i16,
+}
+
+/// `CONSOLE_SCREEN_BUFFER_INFO` — layout the OS fills by offset, so field
+/// order and `#[repr(C)]` are load-bearing (see the `size_of` guard test).
+#[cfg(target_os = "windows")]
+#[repr(C)]
+struct ConsoleScreenBufferInfo {
+    size: Coord,
+    cursor_position: Coord,
+    attributes: u16,
+    window: SmallRect,
+    maximum_window_size: Coord,
+}
+
+/// Windows: reads the console viewport size via `GetConsoleScreenBufferInfo`.
+///
+/// Uses the *window* rectangle (visible viewport), not `dwSize` — the latter is
+/// the scrollback buffer height, which is typically far larger than the visible
+/// rows. Returns `None` when stdout is not attached to a console (redirected or
+/// piped), letting the caller fall through to the env-var path.
+#[cfg(target_os = "windows")]
+fn terminal_size_windows() -> Option<String> {
+    #[allow(clippy::upper_case_acronyms)]
+    type HANDLE = *mut std::ffi::c_void;
+    // (DWORD)-11 — STD_OUTPUT_HANDLE.
+    const STD_OUTPUT_HANDLE: u32 = 0xFFFF_FFF5;
+
+    // kernel32 is linked by default on the MSVC target.
+    extern "system" {
+        fn GetStdHandle(n_std_handle: u32) -> HANDLE;
+        fn GetConsoleScreenBufferInfo(
+            h_console_output: HANDLE,
+            lp_info: *mut ConsoleScreenBufferInfo,
+        ) -> i32;
+    }
+
+    // SAFETY: GetStdHandle returns a handle value without touching memory.
+    let handle = unsafe { GetStdHandle(STD_OUTPUT_HANDLE) };
+    // INVALID_HANDLE_VALUE is (HANDLE)-1; a null handle means "no such stream".
+    if handle.is_null() || handle == (-1isize as HANDLE) {
+        return None;
+    }
+
+    let mut info = ConsoleScreenBufferInfo {
+        size: Coord { x: 0, y: 0 },
+        cursor_position: Coord { x: 0, y: 0 },
+        attributes: 0,
+        window: SmallRect {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        },
+        maximum_window_size: Coord { x: 0, y: 0 },
+    };
+    // SAFETY: `info` is a correctly-laid-out CONSOLE_SCREEN_BUFFER_INFO the OS
+    // fills in full; `handle` is a valid console output handle checked above.
+    let ok = unsafe { GetConsoleScreenBufferInfo(handle, &mut info) };
+    if ok == 0 {
+        return None;
+    }
+    window_rect_to_size(
+        info.window.left,
+        info.window.top,
+        info.window.right,
+        info.window.bottom,
+    )
+}
+
+/// Converts an inclusive console window rect to a `"COLSxROWS"` string.
+///
+/// The visible size is `right - left + 1` columns by `bottom - top + 1` rows.
+/// Returns `None` for a degenerate (empty or inverted) rect. Split out of
+/// [`terminal_size_windows`] so the arithmetic is unit-tested without a console.
+#[cfg(any(target_os = "windows", test))]
+fn window_rect_to_size(left: i16, top: i16, right: i16, bottom: i16) -> Option<String> {
+    let cols = right as i32 - left as i32 + 1;
+    let rows = bottom as i32 - top as i32 + 1;
+    if cols > 0 && rows > 0 {
+        Some(format!("{}x{}", cols, rows))
+    } else {
+        None
+    }
 }
 
 pub(crate) fn detect_terminal(sys: &System) -> Option<String> {
@@ -345,4 +453,37 @@ pub(crate) fn detect_terminal_font(terminal: Option<&str>) -> Option<String> {
     }
 
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_window_rect_to_size() {
+        // A typical 120x30 console: inclusive rect 0..=119 / 0..=29.
+        assert_eq!(
+            window_rect_to_size(0, 0, 119, 29),
+            Some("120x30".to_string())
+        );
+        // A single cell.
+        assert_eq!(window_rect_to_size(0, 0, 0, 0), Some("1x1".to_string()));
+        // Non-zero origin still measures the span, not the offset.
+        assert_eq!(window_rect_to_size(5, 2, 84, 26), Some("80x25".to_string()));
+        // Inverted/degenerate rect -> None (guards against a bogus read).
+        assert_eq!(window_rect_to_size(10, 0, 0, 10), None);
+        assert_eq!(window_rect_to_size(0, 10, 10, 0), None);
+    }
+
+    /// The OS writes `CONSOLE_SCREEN_BUFFER_INFO` by offset, so its size must
+    /// match the Win32 definition (5 `COORD`/`SMALL_RECT` shorts + one `WORD`).
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_console_screen_buffer_info_layout() {
+        use std::mem::size_of;
+        assert_eq!(size_of::<Coord>(), 4);
+        assert_eq!(size_of::<SmallRect>(), 8);
+        // 4 (size) + 4 (cursor) + 2 (attributes) + 8 (window) + 4 (max) = 22.
+        assert_eq!(size_of::<ConsoleScreenBufferInfo>(), 22);
+    }
 }
