@@ -96,7 +96,33 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.0)
+## Current State (v0.6.1)
+- **v0.6.1 — fix two Windows output bugs: `Camera` listing scanners, `Users` = 0**
+  (Windows cross-platform-parity series, bugfix group):
+  - **Camera**: the Windows path enumerated the `Camera` **and** `Image` (WIA) *setup*
+    classes, but scanners/printers share the Image class with some real webcams (a
+    Logitech BRIO is Image-class here), so a scanner (`EPSON ET-3850 Series`) was listed as
+    a camera. Fixed by enumerating the `KSCATEGORY_VIDEO_CAMERA` **device-interface** class
+    instead (`win_setupapi::present_interface_device_names`, new `DIGCF_DEVICEINTERFACE`
+    path) — only real cameras register that interface, so scanners are excluded while
+    Image-class webcams are kept. Also filters the synthetic "Windows Virtual Camera Device"
+    (Windows-only helper `is_windows_virtual_camera`, so Linux/macOS virtual-cam naming is
+    untouched). The now-unused `GUID_DEVCLASS_CAMERA`/`GUID_DEVCLASS_IMAGE` consts were
+    removed. Verified live on arrakis: `Camera` now lists only `Logitech BRIO` + `ASUS FHD
+    webcam` (EPSON scanner, ASUS IR camera, and the virtual camera all gone).
+  - **Users**: `sysinfo`'s `Users` on Windows are keyed by SID, so the Unix `uid >= 1000`
+    filter never matched and the count was 0. New `win_users` module counts active
+    interactive login sessions via `WTSEnumerateSessionsW` + `WTSQuerySessionInformationW`
+    (wtsapi32) — `query user`/"who" semantics; the pure `count_active_user_sessions` helper
+    is unit-tested. Verified live: `Users: 1`. Additionally, per the "if it doesn't work,
+    don't show it" request, `display.rs` now **suppresses `Users` when the count is 0**
+    (mirrors the `packages` guard), so an undetermined count shows nothing rather than a
+    misleading `0` (also hides the macOS 501-vs-1000 undercount case).
+  - Non-Windows camera/users behavior unchanged. FFI house style (hand-written
+    `extern "system"`, `// SAFETY:`, `size_of` layout guards for `WTS_SESSION_INFOW`).
+    The camera enumeration change is FFI (verified live, not unit-testable); the virtual-cam
+    filter, the WTS session-count logic, and the layout are unit-tested. `retch-sysinfo`
+    → `0.1.45`. Patch bump (bugfixes).
 - **v0.6.0 — Windows `domain` + `terminal-size` (cross-platform parity, quick wins)**:
   two `--long` fields that previously returned `None` on Windows now have native arms,
   the first of the Windows cross-platform-parity feature series (distinct from the earlier
@@ -471,7 +497,68 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 ---
 
+## 6a. Windows cross-platform parity — known issues / backlog
+
+Existing `retch` fields that behave worse (or not at all) on Windows than on Linux/macOS.
+Distinct from the §6 fastfetch gap and from the completed PowerShell→FFI *perf* migration.
+Tracked as the "Windows parity" series; reported by the maintainer 2026-07-13 (arrakis,
+Windows 11, Windows Terminal).
+
+**Fixed**
+- ~~**Camera lists scanners as cameras**~~ — fixed v0.6.1 (enumerate the
+  `KSCATEGORY_VIDEO_CAMERA` interface, not the Image setup class; also drops the synthetic
+  virtual camera).
+- ~~**Users = 0 with a user logged in**~~ — fixed v0.6.1 (`WTSEnumerateSessionsW` session
+  count; `Users` suppressed when the count is 0).
+
+**Open**
+- **Bluetooth shows only 1 of 2 connected devices** (bug). `bluetooth.rs` Windows path uses
+  `BluetoothFindFirstDevice`/`BluetoothFindNextDevice` with `{fReturnConnected}` — audit the
+  enumeration loop / search-params against a box with 2 connected devices.
+- **`Display` shows the GPU name + resolution, not the monitor model** (parity gap). Windows
+  `display.rs` uses `EnumDisplayDevicesW`/`EnumDisplaySettingsW` (adapter + mode) and doesn't
+  parse the monitor EDID for vendor/model like Linux does. Fix: read the monitor EDID
+  (SetupAPI monitor class → registry `EDID` blob) and reuse the existing EDID parser.
+- **Logo renders above the text, not beside it (upper-right)** on Windows Terminal
+  (CLI/rendering, retch-cli `src/`). Likely terminal-detection / cursor-positioning specific
+  to Windows Terminal.
+- **`chafa` mode doesn't work on Windows even when requested on the CLI** (CLI). Investigate
+  PATH resolution, protocol-detection override, and Windows spawn/path handling.
+
+**Deliberately not implemented on Windows** (no faithful native source): `load` (no
+load-average equivalent), `editor` (env-only `$VISUAL`/`$EDITOR`), conhost `terminal-font`
+(only Windows Terminal has a parseable config).
+
+---
+
 ## 7. Major Achievements
+
+### v0.6.1 - Fix Windows Camera (scanners) + Users (=0) bugs (July 13, 2026)
+- **Camera listed scanners as cameras** (user-reported, confirmed live: `EPSON ET-3850
+  Series`). Root cause: the Windows path enumerated the `Camera` + `Image` (WIA) *setup*
+  classes; scanners/printers share the Image class with some real webcams (the Logitech BRIO
+  is Image-class on the test box), and `is_real_camera` has no scanner keyword to catch an
+  "EPSON ET-3850 Series". **Fix**: enumerate the `KSCATEGORY_VIDEO_CAMERA` **device-interface**
+  class instead — only real cameras register it, so scanners are excluded while Image-class
+  webcams are kept. Added `win_setupapi::present_interface_device_names` (a
+  `DIGCF_DEVICEINTERFACE` enumeration sharing the existing `enumerate_names` core) and the
+  `KSCATEGORY_VIDEO_CAMERA` GUID; removed the now-unused `GUID_DEVCLASS_CAMERA`/`_IMAGE`.
+  Also drops the synthetic "Windows Virtual Camera Device" via a Windows-only
+  `is_windows_virtual_camera` helper (Linux/macOS untouched). Verified live: `Camera` now
+  lists only `Logitech BRIO` + `ASUS FHD webcam`.
+- **Users showed 0 with a user logged in** (user-reported, confirmed live). Root cause:
+  `sysinfo` keys Windows users by SID, so the Unix `uid >= 1000` filter never matched.
+  **Fix**: new `win_users` module counts active interactive sessions via
+  `WTSEnumerateSessionsW` + `WTSQuerySessionInformationW` (wtsapi32) — `query user` semantics.
+  Verified live: `Users: 1`. Per the "if it doesn't work, don't show it" request,
+  `display.rs` now suppresses `Users` when the count is 0 (mirrors `packages`), hiding an
+  undetermined value instead of printing a misleading `0`.
+- **Tests**: pure `count_active_user_sessions` + `WTS_SESSION_INFOW` `size_of` layout guard
+  (Windows) and `is_windows_virtual_camera` unit test. The camera *interface*-enumeration
+  change is FFI, so it's verified live rather than unit-tested (per AGENTS §4.2). Non-Windows
+  camera/users behavior unchanged; `cargo test --workspace` green (87 sysinfo lib + 40 cli +
+  15 integration), `just check` clean.
+- **Version**: Bumped to `0.6.1` / `retch-sysinfo 0.1.45`. Patch (bugfixes).
 
 ### v0.6.0 - Windows domain + terminal-size (parity quick wins) (July 13, 2026)
 - **New Windows field arms** (both `--long`, previously `None` on Windows):

@@ -57,6 +57,8 @@ pub mod zfs;
 pub(crate) mod win_reg;
 #[cfg(target_os = "windows")]
 pub(crate) mod win_setupapi;
+#[cfg(target_os = "windows")]
+pub(crate) mod win_users;
 
 #[cfg(target_os = "macos")]
 pub(crate) mod macos_ffi;

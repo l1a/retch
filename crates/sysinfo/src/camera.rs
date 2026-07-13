@@ -12,6 +12,17 @@ pub fn is_real_camera(name: &str) -> bool {
         && !name_lower.contains("depth camera")
 }
 
+/// Whether `name` is the Windows synthetic frame-server camera.
+///
+/// Windows exposes a "Windows Virtual Camera Device" (and similarly-named virtual
+/// sources) that register the camera interface but aren't physical capture devices;
+/// exclude them so the camera list reflects real hardware. Windows-only so Linux/macOS
+/// virtual-camera naming (e.g. OBS) is left untouched.
+#[cfg(any(target_os = "windows", test))]
+fn is_windows_virtual_camera(name: &str) -> bool {
+    name.to_lowercase().contains("virtual camera")
+}
+
 pub fn clean_camera_name(name: &str) -> String {
     let trimmed = name.trim();
     if trimmed.starts_with("Integrated Camera:") {
@@ -93,20 +104,22 @@ pub(crate) fn detect_camera() -> Vec<String> {
 
     #[cfg(target_os = "windows")]
     {
-        // Native equivalent of `Get-PnpDevice -Class Camera,Image -PresentOnly`: enumerate
-        // present devices in the Camera and Image setup classes via SetupAPI, then apply the
-        // same real-camera filter, name cleanup, and de-duplication as the other platforms.
+        // Enumerate present devices exposing the KSCATEGORY_VIDEO_CAMERA *interface* class,
+        // then apply the same real-camera filter, name cleanup, and de-duplication as the
+        // other platforms. This deliberately replaces the earlier Camera + Image *setup*-class
+        // enumeration: scanners/printers live in the Image (WIA) setup class alongside some
+        // real webcams (e.g. a Logitech BRIO), so enumerating that class listed a scanner
+        // (e.g. "EPSON ET-3850 Series") as a camera. Only real cameras register the video
+        // camera interface, so filtering by it excludes scanners while keeping Image-class
+        // webcams.
         let mut cameras = Vec::new();
-        for guid in [
-            &crate::win_setupapi::GUID_DEVCLASS_CAMERA,
-            &crate::win_setupapi::GUID_DEVCLASS_IMAGE,
-        ] {
-            for name in crate::win_setupapi::present_device_names(guid) {
-                if is_real_camera(&name) {
-                    let cleaned = clean_camera_name(&name);
-                    if !cleaned.is_empty() && !cameras.contains(&cleaned) {
-                        cameras.push(cleaned);
-                    }
+        for name in crate::win_setupapi::present_interface_device_names(
+            &crate::win_setupapi::KSCATEGORY_VIDEO_CAMERA,
+        ) {
+            if is_real_camera(&name) && !is_windows_virtual_camera(&name) {
+                let cleaned = clean_camera_name(&name);
+                if !cleaned.is_empty() && !cameras.contains(&cleaned) {
+                    cameras.push(cleaned);
                 }
             }
         }
@@ -132,6 +145,16 @@ mod tests {
         assert!(is_real_camera("FaceTime HD Camera"));
         assert!(is_real_camera("Integrated Camera"));
         assert!(is_real_camera("HD Webcam C920"));
+    }
+
+    #[test]
+    fn test_is_windows_virtual_camera() {
+        // The Windows synthetic frame-server camera is excluded...
+        assert!(is_windows_virtual_camera("Windows Virtual Camera Device"));
+        assert!(is_windows_virtual_camera("OBS Virtual Camera"));
+        // ...while physical webcams are kept.
+        assert!(!is_windows_virtual_camera("Logitech BRIO"));
+        assert!(!is_windows_virtual_camera("ASUS FHD webcam"));
     }
 
     #[test]
