@@ -1039,6 +1039,19 @@ pub fn format_cpu_cores(logical: usize, physical: Option<usize>) -> String {
         return hybrid;
     }
 
+    format_cpu_cores_plain(logical, physical)
+}
+
+/// Pure fallback formatter used when no hybrid (P/E) topology is detected.
+///
+/// `Some(p)` with `p < logical` → `"{p}C / {logical}T"` (SMT/hyperthreading present);
+/// otherwise `"{logical} cores"`. This is split out of [`format_cpu_cores`] so it can
+/// be unit-tested deterministically: [`format_cpu_cores`] reads the *host's* real CPU
+/// topology (`/sys/.../cpufreq` on Linux, `hw.perflevel*` sysctls on macOS) and returns
+/// a `"NP + ME / KT"` string on hybrid machines, so calling it with fixed arguments does
+/// not exercise this fallback path on such hardware (which is exactly what made the old
+/// tests fail on Intel P/E hybrids).
+fn format_cpu_cores_plain(logical: usize, physical: Option<usize>) -> String {
     match physical {
         Some(p) if p < logical => format!("{}C / {}T", p, logical),
         _ => format!("{} cores", logical),
@@ -1455,22 +1468,27 @@ mod tests {
         assert_eq!(usage_percent((5, 10, 10), (5, 10, 10)), 0.0);
     }
 
+    // NOTE: these exercise the pure fallback formatter `format_cpu_cores_plain`, not the
+    // public `format_cpu_cores`. The latter first reads the *host's* real CPU topology and
+    // returns a "NP + ME / KT" hybrid string on Intel P/E (and Apple Silicon) machines,
+    // ignoring the passed-in counts — so calling it with fixed args is machine-dependent
+    // and fails on hybrids (an i7-1360P produced "8P + 8E / 16T" for `(16, Some(8))`).
     #[test]
     fn test_format_cpu_cores_no_hyperthreading() {
         // Physical == logical: show plain "N cores"
-        assert_eq!(format_cpu_cores(4, Some(4)), "4 cores");
+        assert_eq!(format_cpu_cores_plain(4, Some(4)), "4 cores");
     }
 
     #[test]
     fn test_format_cpu_cores_hyperthreaded() {
         // Physical < logical: show "NC / NT"
-        assert_eq!(format_cpu_cores(16, Some(8)), "8C / 16T");
+        assert_eq!(format_cpu_cores_plain(16, Some(8)), "8C / 16T");
     }
 
     #[test]
     fn test_format_cpu_cores_unknown_physical() {
         // No physical count available: fall back to "N cores"
-        assert_eq!(format_cpu_cores(8, None), "8 cores");
+        assert_eq!(format_cpu_cores_plain(8, None), "8 cores");
     }
 
     #[test]
@@ -1478,7 +1496,7 @@ mod tests {
         // Degenerate: physical reported as 0 — treat same as unknown
         // physical(0) < logical(8), so would print "0C / 8T"; acceptable but
         // let's confirm the branch taken
-        let result = format_cpu_cores(8, Some(0));
+        let result = format_cpu_cores_plain(8, Some(0));
         assert!(result.contains("8"), "should mention 8 threads: {}", result);
     }
 
