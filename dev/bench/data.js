@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783979624047,
+  "lastUpdate": 1783979684689,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18124,80 +18124,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "distinct": true,
-          "id": "d89aa928c05f9ff70640a355b7aa104df5933a86",
-          "message": "docs: update NOTES for v0.3.23 release and nixpkgs PR\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-06-24T10:56:28-07:00",
-          "tree_id": "4de75ab73dd70c0da1ffc10be9ba0f151bfd5c5f",
-          "url": "https://github.com/l1a/retch/commit/d89aa928c05f9ff70640a355b7aa104df5933a86"
-        },
-        "date": 1782326008295,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 286100266,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1585276695.9999998,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 96.76205477207026,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9497500073659615,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.45087450555816,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 80.72111045683906,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46710.460659783814,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 501.2545139647738,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 763.1274821198751,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1415258645,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
           "id": "cb511d8ada171c399172dfebc8bde41a8137148f",
           "message": "perf: fix chafa and nmcli performance bottlenecks\n\nAssisted-By: Gemini 3.5 Flash",
           "timestamp": "2026-06-24T11:12:15-07:00",
@@ -21327,6 +21253,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2351829810,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c4f762eed77a36ac3d95a1beb6a4cab62afb2965",
+          "message": "Add Windows domain and terminal-size fields (#159)\n\nTwo --long fields that previously returned None on Windows now have\nnative arms — the first of the Windows cross-platform-parity feature\nseries (distinct from the completed PowerShell->FFI perf migration).\n\n- domain: primary DNS suffix via GetComputerNameExW(ComputerNameDnsDomain)\n  (kernel32, two-call size probe). A workgroup host's empty suffix maps to\n  None via the pure clean_domain helper — not the NetBIOS WORKGROUP name —\n  matching the Linux/macOS /etc/resolv.conf DNS-domain semantics.\n- terminal-size: console viewport via GetStdHandle + GetConsoleScreenBufferInfo,\n  using the srWindow rect (not dwSize, the scrollback buffer). Pure\n  window_rect_to_size helper does the inclusive-rect -> \"COLSxROWS\" math;\n  piped output has no console -> graceful None -> existing env fallback.\n\nHand-written extern \"system\" FFI, no binding crate (house style); // SAFETY:\non every unsafe. Non-Windows arms untouched. New tests: clean_domain,\nwindow_rect_to_size, and a CONSOLE_SCREEN_BUFFER_INFO size_of layout guard.\nVerified live on arrakis (Windows 11): domain correctly absent (DNS suffix\ngenuinely empty), terminal-size renders 100x40.\n\nretch-cli 0.5.1 -> 0.6.0, retch-sysinfo 0.1.43 -> 0.1.44.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-13T14:13:18-07:00",
+          "tree_id": "89121134b1cdf90e97f3ba23b740bd744dbf5193",
+          "url": "https://github.com/l1a/retch/commit/c4f762eed77a36ac3d95a1beb6a4cab62afb2965"
+        },
+        "date": 1783979681012,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 104.60849946766382,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948137282330988,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 102.65134591236149,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.63624301645739,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45625.22585755799,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 490.1246627065525,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 747.2225988964921,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2163348725,
             "unit": "ns"
           }
         ]
