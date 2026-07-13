@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783919017244,
+  "lastUpdate": 1783919376429,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -11107,80 +11107,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "447f7796abf0b7810da7499a874504400076dfb6",
-          "message": "Merge pull request #111 from l1a/fix/performance-regression\n\nperf: fix performance regression and align hyperfine mode comparisons",
-          "timestamp": "2026-06-24T12:14:54-07:00",
-          "tree_id": "40e34e3cc0a351717b334d171164482fee0e379a",
-          "url": "https://github.com/l1a/retch/commit/447f7796abf0b7810da7499a874504400076dfb6"
-        },
-        "date": 1782329693708,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 751054791.7,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 433.596794107278,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 80.29001647965403,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.2489857066509527,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 64.92173591998898,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 6282.74249748275,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1702.3677635017516,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 444.0235277623909,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 97201.22439008334,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 436.4236937237285,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -14795,6 +14721,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 339.88925279551245,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fbb9672b8c95616671974128187d9d3b32f0fe53",
+          "message": "Fix network status bracket color nesting (#158)\n\nowo_colors closes every foreground color with the default-reset \\x1b[39m, so\nthe green \"Up\" / red \"Down\" embedded in the Net value cancelled the enclosing\nvalue color (and, for the active interface, the bright-blue highlight). Everything\nafter [Up] fell back to the terminal default: the active line's opening [ was blue\nbut the closing ] and the RX/TX stats were not.\n\nAdd colorize_nested(text, prefix) which re-asserts the enclosing color after every\ninterior \\x1b[39m so nested colored spans restore the surrounding color instead of\nfalling to default. It is byte-identical to the old plain wrap when there is no\nnested reset, so only the Net field's rendering changes. Theme::color_value routes\nthrough it and the active-interface highlight uses ACTIVE_IFACE_PREFIX. The library\nnetwork.rs is untouched. Four regression tests cover the helper.\n\nBump retch-cli to 0.5.1 (retch-sysinfo unchanged at 0.1.43); regen man page.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-12T21:49:19-07:00",
+          "tree_id": "15c36368910c46efd1ba4d0a4f43df2b81c63aa0",
+          "url": "https://github.com/l1a/retch/commit/fbb9672b8c95616671974128187d9d3b32f0fe53"
+        },
+        "date": 1783919373753,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 771281975.2,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 415.6456687275747,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 72.67613568060668,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.8507210507630887,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 60.705384193066664,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4257.955209606525,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1054.8313787695529,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 394.98030362141645,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 71207.64268886857,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 360.1226709791345,
             "unit": "ns"
           }
         ]
