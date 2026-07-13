@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783909939859,
+  "lastUpdate": 1783910466585,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17938,80 +17938,6 @@ window.BENCHMARK_DATA = {
       {
         "commit": {
           "author": {
-            "email": "49699333+dependabot[bot]@users.noreply.github.com",
-            "name": "dependabot[bot]",
-            "username": "dependabot[bot]"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "3386d46e7b612993957b9aec731e7cb6c823c6b7",
-          "message": "ci(deps): bump cachix/install-nix-action from 27 to 31 (#108)\n\nBumps [cachix/install-nix-action](https://github.com/cachix/install-nix-action) from 27 to 31.\n- [Release notes](https://github.com/cachix/install-nix-action/releases)\n- [Changelog](https://github.com/cachix/install-nix-action/blob/master/RELEASE.md)\n- [Commits](https://github.com/cachix/install-nix-action/compare/v27...v31)\n\n---\nupdated-dependencies:\n- dependency-name: cachix/install-nix-action\n  dependency-version: '31'\n  dependency-type: direct:production\n  update-type: version-update:semver-major\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
-          "timestamp": "2026-06-23T21:40:57-07:00",
-          "tree_id": "9e82cb04434e6f6f68fe35f70ce025c17f3e333e",
-          "url": "https://github.com/l1a/retch/commit/3386d46e7b612993957b9aec731e7cb6c823c6b7"
-        },
-        "date": 1782278522013,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 288803379.99999994,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1619447620,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 104.03683475504383,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.948321182817801,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 104.93739864285621,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 78.88708520911196,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 44432.984649678445,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 492.03716488222574,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 758.9269531762081,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1450879255,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -21171,6 +21097,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1928506500,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "be732f18be8ed35c252a364cc1241d542d0962ef",
+          "message": "Enforce LF line endings via .gitattributes (#156)\n\nThe working tree is shared across Linux/macOS/Windows via Syncthing. With no\n.gitattributes and core.autocrlf=false, a Windows checkout wrote CRLF, Syncthing\npropagated those bytes to the Linux clones, and git reported the entire tree as\nmodified — a phantom 13811+/13811- whole-tree diff with zero content changes\n(git diff --ignore-all-space empty). This blocked the just-pr clean-tree checks.\n\nAdd `* text=auto eol=lf` to force LF on checkout on every OS (essential for a\nbyte-identical Syncthing-shared tree) and `*.png binary` to protect the logo\nassets. HEAD was already stored as LF, so no tracked content changes.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-12T18:59:28-07:00",
+          "tree_id": "09a0473cae06eab0155f9d17e371c9dc4271dea9",
+          "url": "https://github.com/l1a/retch/commit/be732f18be8ed35c252a364cc1241d542d0962ef"
+        },
+        "date": 1783910463365,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 103.09708538630926,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9478684628068628,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 107.45622345957683,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.69336495732352,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 48012.672800042834,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 503.69055683121906,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 761.7528181153327,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2419477820,
             "unit": "ns"
           }
         ]
