@@ -164,6 +164,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             print_line("Display", display);
         }
     }
+    if let Some(brightness) = &info.brightness {
+        print_line("Brightness", brightness);
+    }
     if let Some(audio) = &info.audio {
         print_line("Audio", audio);
     }
@@ -185,6 +188,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     }
     if let Some(bat) = &info.battery {
         print_line("Battery", bat);
+    }
+    if let Some(power) = &info.power_adapter {
+        print_line("Power Adapter", power);
     }
     print_line("Memory Usage", &info.memory);
     if let Some(phys_mem) = &info.physical_memory {
@@ -298,6 +304,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         if !duplicate {
             print_line("WM", wm);
         }
+    }
+    if let Some(lm) = &info.login_manager {
+        print_line("Login Manager", lm);
     }
     if let Some(ui_theme) = &info.ui_theme {
         print_line("Theme", ui_theme);

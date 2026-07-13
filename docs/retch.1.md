@@ -115,6 +115,7 @@ You can generate a starting configuration with:
   - `bios`: BIOS vendor and version.
   - `bootmgr`: Second-stage bootloader (GRUB, systemd-boot, etc.).
   - `display`: Connected monitor displays with refresh rates and resolution.
+  - `brightness`: Current backlight brightness as a percentage (from `/sys/class/backlight`). Linux only. Long mode and above.
   - `audio`: Audio card controller and active sound servers (PipeWire, PulseAudio, ALSA, CoreAudio, Windows Audio).
   - `camera`: Connected camera/webcam names.
   - `gamepad`: Connected gamepad/controller names.
@@ -137,6 +138,7 @@ You can generate a starting configuration with:
   - `domain-search`: Per-interface DNS search domain lists (from `resolvectl status` or `/etc/resolv.conf` `search`). Full mode only.
   - `bluetooth`: Bluetooth adapter details and connected device count/names.
   - `battery`: Battery capacity, vendor/model, time remaining, and health.
+  - `power-adapter`: AC power adapter name and connection state (from `/sys/class/power_supply` `Mains` supply). Linux only. Long mode and above.
   - `shell`: Currently running shell name and version (e.g. bash, zsh, fish, nu). Detected from the process tree; falls back to `$SHELL` (login shell).
   - `editor`: Default editor from `$VISUAL` / `$EDITOR`.
   - `terminal`: Terminal emulator name and version.
@@ -144,6 +146,7 @@ You can generate a starting configuration with:
   - `terminal-size`: Terminal dimensions (columns × rows).
   - `desktop`: Desktop environment name (e.g. GNOME, KDE Plasma, XFCE).
   - `wm`: Window manager name (e.g. Mutter, KWin, Sway). Hidden when identical to Desktop.
+  - `login-manager`: Active display/login manager (GDM, SDDM, LightDM, greetd, …), resolved from the `display-manager.service` systemd unit. Linux only. Long mode and above.
   - `theme`: UI Theme settings.
   - `icons`: UI icon pack.
   - `cursor`: UI mouse cursor settings.
