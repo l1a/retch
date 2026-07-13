@@ -119,7 +119,12 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         print_line("Locale", locale);
     }
     print_line("Arch", &info.arch);
-    print_line("Users", &info.users.to_string());
+    // Suppress "Users: 0" — a 0 means the count couldn't be determined (e.g. the Unix
+    // uid>=1000 heuristic on a platform that keys users differently), not that nobody is
+    // logged in. Mirrors the `packages` guard below.
+    if info.users > 0 {
+        print_line("Users", &info.users.to_string());
+    }
     if let Some(pkgs) = info.packages {
         if pkgs > 0 {
             print_line("Packages", &pkgs.to_string());

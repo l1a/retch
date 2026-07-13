@@ -15,6 +15,7 @@ use std::ptr;
 type Handle = *mut c_void;
 const INVALID_HANDLE_VALUE: Handle = -1isize as Handle;
 const DIGCF_PRESENT: u32 = 0x0000_0002;
+const DIGCF_DEVICEINTERFACE: u32 = 0x0000_0010;
 const SPDRP_DEVICEDESC: u32 = 0x0000_0000;
 const SPDRP_FRIENDLYNAME: u32 = 0x0000_000C;
 
@@ -35,20 +36,19 @@ pub const GUID_DEVCLASS_BLUETOOTH: Guid = Guid {
     data4: [0xbb, 0x8a, 0x26, 0x3b, 0x43, 0xf0, 0xf9, 0x74],
 };
 
-/// `GUID_DEVCLASS_CAMERA` = {ca3e7ab9-b4c3-4ae6-8251-579ef933890f}
-pub const GUID_DEVCLASS_CAMERA: Guid = Guid {
-    data1: 0xca3e_7ab9,
-    data2: 0xb4c3,
-    data3: 0x4ae6,
-    data4: [0x82, 0x51, 0x57, 0x9e, 0xf9, 0x33, 0x89, 0x0f],
-};
-
-/// `GUID_DEVCLASS_IMAGE` = {6bdd1fc6-810f-11d0-bec7-08002be2092f}
-pub const GUID_DEVCLASS_IMAGE: Guid = Guid {
-    data1: 0x6bdd_1fc6,
-    data2: 0x810f,
-    data3: 0x11d0,
-    data4: [0xbe, 0xc7, 0x08, 0x00, 0x2b, 0xe2, 0x09, 0x2f],
+/// `KSCATEGORY_VIDEO_CAMERA` device *interface* class =
+/// {e5323777-f976-4f5b-9b55-b94699c46e44}.
+///
+/// Real video-capture cameras register this interface; scanners/printers in the Image
+/// (WIA) setup class do **not**. Enumerating by this interface (rather than the Camera +
+/// Image setup classes) therefore returns webcams while excluding scanners/MFPs — a
+/// scanner and a webcam can share the Image setup class, so only the interface reliably
+/// distinguishes them.
+pub const KSCATEGORY_VIDEO_CAMERA: Guid = Guid {
+    data1: 0xe532_3777,
+    data2: 0xf976,
+    data3: 0x4f5b,
+    data4: [0x9b, 0x55, 0xb9, 0x46, 0x99, 0xc4, 0x6e, 0x44],
 };
 
 #[repr(C)]
@@ -117,14 +117,17 @@ fn device_name(dev_info: Handle, data: &SpDevinfoData) -> Option<String> {
     None
 }
 
-/// Friendly names of all *present* devices in the given setup class (the native
-/// equivalent of `Get-PnpDevice -Class <class> -PresentOnly`).
-pub fn present_device_names(class_guid: &Guid) -> Vec<String> {
+/// Friendly names of present devices selected by `class_guid` interpreted per `flags`.
+///
+/// With `DIGCF_PRESENT` alone, `class_guid` is a *setup* class; adding
+/// `DIGCF_DEVICEINTERFACE` interprets it as a device *interface* class. Either way the
+/// underlying devnodes are enumerated via `SetupDiEnumDeviceInfo` and their friendly
+/// names read.
+fn enumerate_names(class_guid: &Guid, flags: u32) -> Vec<String> {
     let mut names = Vec::new();
     // SAFETY: the device-info set is created and destroyed in-scope.
     unsafe {
-        let dev_info =
-            SetupDiGetClassDevsW(class_guid, ptr::null(), ptr::null_mut(), DIGCF_PRESENT);
+        let dev_info = SetupDiGetClassDevsW(class_guid, ptr::null(), ptr::null_mut(), flags);
         if dev_info == INVALID_HANDLE_VALUE {
             return names;
         }
@@ -143,6 +146,20 @@ pub fn present_device_names(class_guid: &Guid) -> Vec<String> {
         SetupDiDestroyDeviceInfoList(dev_info);
     }
     names
+}
+
+/// Friendly names of all *present* devices in the given setup class (the native
+/// equivalent of `Get-PnpDevice -Class <class> -PresentOnly`).
+pub fn present_device_names(class_guid: &Guid) -> Vec<String> {
+    enumerate_names(class_guid, DIGCF_PRESENT)
+}
+
+/// Friendly names of all *present* devices exposing the given device *interface* class.
+///
+/// Use this when the setup class is ambiguous — e.g. cameras and scanners share the Image
+/// setup class, but only cameras expose [`KSCATEGORY_VIDEO_CAMERA`].
+pub fn present_interface_device_names(interface_guid: &Guid) -> Vec<String> {
+    enumerate_names(interface_guid, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE)
 }
 
 #[cfg(test)]

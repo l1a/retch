@@ -8,7 +8,11 @@
 
 use crate::gpu;
 use chrono::TimeZone;
-use sysinfo::{Components, System, Users};
+use sysinfo::{Components, System};
+// `Users` is only used for the non-Windows user count; on Windows the WTS-based
+// `win_users` path is used instead, so importing it there would be an unused import.
+#[cfg(not(target_os = "windows"))]
+use sysinfo::Users;
 
 /// Options for controlling what system information is gathered.
 ///
@@ -781,20 +785,29 @@ impl SystemInfo {
         // Current logged in user
         let current_user = std::env::var("USER").ok();
 
-        // Number of interactive users (UID >= 1000, excluding system accounts)
+        // Number of interactive users. On Unix, count local human accounts (UID >= 1000,
+        // excluding system accounts). On Windows, `sysinfo` keys users by SID (which won't
+        // parse as a UID), so count active interactive login sessions via the WTS API
+        // instead. A 0 result is suppressed at display time (see `display.rs`).
         let users = if should_collect("users") {
-            Users::new_with_refreshed_list()
-                .iter()
-                .filter(|user| {
-                    // UID is exposed via Display
-                    let uid_str = user.id().to_string();
-                    if let Ok(uid) = uid_str.parse::<u32>() {
-                        uid >= 1000
-                    } else {
-                        false
-                    }
-                })
-                .count()
+            #[cfg(target_os = "windows")]
+            {
+                crate::win_users::active_user_session_count()
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                Users::new_with_refreshed_list()
+                    .iter()
+                    .filter(|user| {
+                        // UID is exposed via Display
+                        user.id()
+                            .to_string()
+                            .parse::<u32>()
+                            .map(|uid| uid >= 1000)
+                            .unwrap_or(false)
+                    })
+                    .count()
+            }
         } else {
             0
         };
