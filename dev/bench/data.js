@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783977653233,
+  "lastUpdate": 1783978065280,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6964,90 +6964,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "distinct": true,
-          "id": "f38e23d53463405bbe973aa41c6ba9f794feabb9",
-          "message": "chore: update checklists for version bump man pages\n\nAssisted-By: Gemini 2.5 Pro",
-          "timestamp": "2026-06-24T12:19:13-07:00",
-          "tree_id": "75eec970de36474ac08d3746351c260f654e5e8b",
-          "url": "https://github.com/l1a/retch/commit/f38e23d53463405bbe973aa41c6ba9f794feabb9"
-        },
-        "date": 1782329602420,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 306645914.75,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 975.7810335471531,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.61310752017196,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9467889939139815,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.36492407572624,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7760.674476987566,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 70766.5802694843,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4829.180145261978,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4899.902133379938,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1219566.6718639615,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 346.63614093785304,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 260.8489582473952,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
           "id": "485da1be8ba30a6409d4220e303ee1380f4c8937",
           "message": "docs: document default set notes in NOTES\n\nAssisted-By: Gemini 2.5 Pro",
           "timestamp": "2026-06-24T12:31:27-07:00",
@@ -11147,6 +11063,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 280.1692882647714,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c4f762eed77a36ac3d95a1beb6a4cab62afb2965",
+          "message": "Add Windows domain and terminal-size fields (#159)\n\nTwo --long fields that previously returned None on Windows now have\nnative arms — the first of the Windows cross-platform-parity feature\nseries (distinct from the completed PowerShell->FFI perf migration).\n\n- domain: primary DNS suffix via GetComputerNameExW(ComputerNameDnsDomain)\n  (kernel32, two-call size probe). A workgroup host's empty suffix maps to\n  None via the pure clean_domain helper — not the NetBIOS WORKGROUP name —\n  matching the Linux/macOS /etc/resolv.conf DNS-domain semantics.\n- terminal-size: console viewport via GetStdHandle + GetConsoleScreenBufferInfo,\n  using the srWindow rect (not dwSize, the scrollback buffer). Pure\n  window_rect_to_size helper does the inclusive-rect -> \"COLSxROWS\" math;\n  piped output has no console -> graceful None -> existing env fallback.\n\nHand-written extern \"system\" FFI, no binding crate (house style); // SAFETY:\non every unsafe. Non-Windows arms untouched. New tests: clean_domain,\nwindow_rect_to_size, and a CONSOLE_SCREEN_BUFFER_INFO size_of layout guard.\nVerified live on arrakis (Windows 11): domain correctly absent (DNS suffix\ngenuinely empty), terminal-size renders 100x40.\n\nretch-cli 0.5.1 -> 0.6.0, retch-sysinfo 0.1.43 -> 0.1.44.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-13T14:13:18-07:00",
+          "tree_id": "89121134b1cdf90e97f3ba23b740bd744dbf5193",
+          "url": "https://github.com/l1a/retch/commit/c4f762eed77a36ac3d95a1beb6a4cab62afb2965"
+        },
+        "date": 1783978064110,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 996479670.45,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 982.0335067257538,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 46.98805065734125,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9470309869222753,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 47.496058402432,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7710.667280498512,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70358.01964414767,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4774.644692499829,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4880.704455015406,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1232667.8591640848,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 333.8251928970768,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 266.38121250426735,
             "unit": "ns"
           }
         ]
