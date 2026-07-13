@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783909312392,
+  "lastUpdate": 1783909321439,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17958,80 +17958,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "220df5465b33d99038bf92cb7e1a29bea0b75fb6",
-          "message": "deps(deps): bump sysinfo in the cargo-dependencies group (#109)\n\nBumps the cargo-dependencies group with 1 update: [sysinfo](https://github.com/GuillaumeGomez/sysinfo).\n\n\nUpdates `sysinfo` from 0.39.3 to 0.39.5\n- [Changelog](https://github.com/GuillaumeGomez/sysinfo/blob/main/CHANGELOG.md)\n- [Commits](https://github.com/GuillaumeGomez/sysinfo/compare/v0.39.3...v0.39.5)\n\n---\nupdated-dependencies:\n- dependency-name: sysinfo\n  dependency-version: 0.39.5\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: cargo-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
-          "timestamp": "2026-06-23T21:41:04-07:00",
-          "tree_id": "d0637dc2f48db2f5807ba1634a9d71a51b466c96",
-          "url": "https://github.com/l1a/retch/commit/220df5465b33d99038bf92cb7e1a29bea0b75fb6"
-        },
-        "date": 1782278519092,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 273338320,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1537727129.9999998,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 99.33936463051808,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9477196162020207,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 99.8941823011662,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 79.2731305157754,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46225.09515190932,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 497.16112566802576,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 751.6524213329463,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1386222025,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "49699333+dependabot[bot]@users.noreply.github.com",
-            "name": "dependabot[bot]",
-            "username": "dependabot[bot]"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "3386d46e7b612993957b9aec731e7cb6c823c6b7",
           "message": "ci(deps): bump cachix/install-nix-action from 27 to 31 (#108)\n\nBumps [cachix/install-nix-action](https://github.com/cachix/install-nix-action) from 27 to 31.\n- [Release notes](https://github.com/cachix/install-nix-action/releases)\n- [Changelog](https://github.com/cachix/install-nix-action/blob/master/RELEASE.md)\n- [Commits](https://github.com/cachix/install-nix-action/compare/v27...v31)\n\n---\nupdated-dependencies:\n- dependency-name: cachix/install-nix-action\n  dependency-version: '31'\n  dependency-type: direct:production\n  update-type: version-update:semver-major\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
           "timestamp": "2026-06-23T21:40:57-07:00",
@@ -21191,6 +21117,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2397747900,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "84a7d7c354231007c97f94f25b262266bb64e146",
+          "message": "Fix machine-dependent format_cpu_cores tests (#155)\n\n`format_cpu_cores` reads the host's real CPU topology (Linux /sys cpufreq,\nmacOS hw.perflevel*) and returns a \"NP + ME / KT\" hybrid string on Intel P/E\nand Apple Silicon machines, ignoring its passed-in (logical, physical) counts.\nThe four fallback unit tests called it with fixed args, so they passed on\nnon-hybrid CPUs/CI runners but failed on a hybrid host — an i7-1360P produced\n\"8P + 8E / 16T\" for (16, Some(8)) where the test expected \"8C / 16T\", hard-\nfailing `just pr` there.\n\nExtract the pure fallback into `format_cpu_cores_plain` and retarget the four\ntests at it, so they no longer depend on the runner's hardware. Public\nbehavior of `format_cpu_cores` is unchanged.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-12T18:41:15-07:00",
+          "tree_id": "26f59d72e69fb5f71508fb9427bd765258b160f2",
+          "url": "https://github.com/l1a/retch/commit/84a7d7c354231007c97f94f25b262266bb64e146"
+        },
+        "date": 1783909318096,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 103.80381141995367,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947701739245224,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 103.28237431663847,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.78208980502248,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47071.20008356332,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 494.59946993906567,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 755.6456807637077,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1928506500,
             "unit": "ns"
           }
         ]
