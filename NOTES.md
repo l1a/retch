@@ -96,7 +96,16 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.4.1)
+## Current State (v0.4.2)
+- **v0.4.2 — fix machine-dependent `format_cpu_cores` unit tests**: `format_cpu_cores` reads
+  the *host's* real CPU topology (`/sys/.../cpufreq` on Linux, `hw.perflevel*` sysctls on
+  macOS) and returns a `"NP + ME / KT"` hybrid string on Intel P/E (and Apple Silicon)
+  machines, ignoring its passed-in `(logical, physical)` counts. The four fallback unit tests
+  called it with fixed args, so they passed on non-hybrid CPUs/CI runners but failed on a
+  hybrid host — an i7-1360P produced `"8P + 8E / 16T"` where the test expected `"8C / 16T"`,
+  hard-failing `just pr` there. Extracted the pure fallback into `format_cpu_cores_plain`
+  (public behavior unchanged) and retargeted the four tests at it, so they no longer depend
+  on the runner's hardware. Internal refactor + test fix; `retch-sysinfo` → `0.1.42`.
 - **v0.4.1 — license SPDX fix + first crates.io publish of the 0.4.x line**: corrected the
   deprecated `license = "GPL-3.0"` to `GPL-3.0-or-later` in both crate manifests (matching the
   source SPDX headers), since per-version crates.io license metadata is permanent. This is the
@@ -397,6 +406,24 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.4.2 - Fix machine-dependent format_cpu_cores tests (July 12, 2026)
+- **Bug**: the four `format_cpu_cores` unit tests were machine-dependent. `format_cpu_cores`
+  first reads the host's real CPU topology (Linux `/sys/.../cpufreq`, macOS `hw.perflevel*`)
+  and, on an Intel P/E or Apple Silicon hybrid, returns a `"NP + ME / KT"` string that ignores
+  the passed-in counts. So calling it with fixed args exercised the fallback only on
+  non-hybrid CPUs. On an i7-1360P (corrino) it returned `"8P + 8E / 16T"` for `(16, Some(8))`
+  where `test_format_cpu_cores_hyperthreaded` expected `"8C / 16T"` — hard-failing `just pr`
+  on that machine. The failure had gone unnoticed because it was only ever run on non-hybrid
+  hosts and CI runners.
+- **Fix**: extracted the pure fallback (`match physical { … }`) into a private
+  `format_cpu_cores_plain(logical, physical)` and pointed all four fallback tests at it, so
+  they test the deterministic formatting without touching host hardware. `format_cpu_cores`'s
+  public behavior is unchanged — it still detects hybrid topology first, then delegates to the
+  helper.
+- **Internal refactor + test-only fix**: no user-visible behavior change. `retch-sysinfo`
+  → `0.1.42`.
+- **Version**: Bumped to `0.4.2` / `retch-sysinfo 0.1.42`.
 
 ### v0.4.1 - License SPDX fix + crates.io publish (July 12, 2026)
 - **License metadata**: `license = "GPL-3.0"` → `GPL-3.0-or-later` in both `Cargo.toml`
