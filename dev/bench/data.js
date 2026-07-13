@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783981069470,
+  "lastUpdate": 1783981604927,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18119,80 +18119,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "cb511d8ada171c399172dfebc8bde41a8137148f",
-          "message": "perf: fix chafa and nmcli performance bottlenecks\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-06-24T11:12:15-07:00",
-          "tree_id": "73aa12c54edcd985c05025eaa5c69f7f525872d6",
-          "url": "https://github.com/l1a/retch/commit/cb511d8ada171c399172dfebc8bde41a8137148f"
-        },
-        "date": 1782326975960,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 277813000.00000006,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1542324350,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 96.65166529678162,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.948945502652814,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 96.94637483787858,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 80.80773616059156,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45209.204128416895,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 493.48226688718023,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 743.8807309416729,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1375962100,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -21317,6 +21243,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2163348725,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "30195b0eaaf4f96b4b6fe43c11001046a871537b",
+          "message": "Fix Windows Camera (scanners) and Users (=0) bugs (#160)\n\nTwo user-reported Windows output bugs in the cross-platform-parity series.\n\nCamera listed scanners as cameras (e.g. \"EPSON ET-3850 Series\"). The Windows\npath enumerated the Camera + Image (WIA) setup classes, but scanners/printers\nshare the Image class with some real webcams (a Logitech BRIO is Image-class),\nand is_real_camera has no keyword to catch an EPSON model string. Fixed by\nenumerating the KSCATEGORY_VIDEO_CAMERA device-interface class instead — only\nreal cameras register it, so scanners are excluded while Image-class webcams are\nkept. Added win_setupapi::present_interface_device_names (DIGCF_DEVICEINTERFACE,\nsharing the existing enumerate_names core) + the KSCATEGORY_VIDEO_CAMERA GUID;\nremoved the now-unused GUID_DEVCLASS_CAMERA/_IMAGE. Also drops the synthetic\n\"Windows Virtual Camera Device\" via a Windows-only is_windows_virtual_camera\nhelper (Linux/macOS untouched).\n\nUsers showed 0 with a user logged in: sysinfo keys Windows users by SID, so the\nUnix uid>=1000 filter never matched. New win_users module counts active\ninteractive sessions via WTSEnumerateSessionsW + WTSQuerySessionInformationW\n(wtsapi32; query-user semantics), with a pure unit-tested count helper. Per the\n\"if it doesn't work, don't show it\" request, display.rs now suppresses Users\nwhen the count is 0 (mirrors the packages guard).\n\nNon-Windows camera/users behavior unchanged. FFI house style (hand-written\nextern \"system\", // SAFETY:, WTS_SESSION_INFOW size_of guard). Verified live on\narrakis: Camera = Logitech BRIO + ASUS FHD webcam only; Users: 1.\n\nretch-cli 0.6.0 -> 0.6.1, retch-sysinfo 0.1.44 -> 0.1.45. Patch (bugfixes).\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-13T14:46:19-07:00",
+          "tree_id": "13dc79f2b8c9dd3041dc8f5dfc070fb42bba266a",
+          "url": "https://github.com/l1a/retch/commit/30195b0eaaf4f96b4b6fe43c11001046a871537b"
+        },
+        "date": 1783981601848,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 103.13722831750647,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947521180222803,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 102.3555970330946,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 79.79668307188942,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45881.713331547624,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 491.42894449802736,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 743.4321431771018,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2573082490,
             "unit": "ns"
           }
         ]
