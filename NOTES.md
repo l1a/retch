@@ -96,7 +96,27 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.5.0)
+## Current State (v0.5.1)
+- **v0.5.1 — fix nested ANSI color reset on the network line (`[Up]` bracket color)**:
+  `owo_colors` closes every foreground color with `\x1b[39m` (reset to the terminal
+  *default*, not to the enclosing color). The `Net` value embeds a green `"Up"` / red
+  `"Down"` inside a value string that `Theme::color_value` wraps in the theme value color
+  (white) and — for the **active** interface — `display.rs` additionally wraps in
+  bright-blue. That inner reset dropped everything after `[Up]` (the closing `]` and the
+  RX/TX stats) back to the terminal default: on the active interface the opening `[` was
+  blue but the `]` was not, and on every interface the RX/TX tail lost the value color.
+  Fixed with a new `colorize_nested(text, prefix)` helper (`src/theme.rs`) that re-asserts
+  the enclosing color after every interior `\x1b[39m`, so nested colored spans restore the
+  surrounding color instead of falling to default; it composes at arbitrary depth and is
+  byte-identical to the old plain wrap when there is no nested reset (so **all non-`Net`
+  fields are unchanged**). `Theme::color_value` routes through it, and the active-interface
+  highlight uses it with the bright-blue prefix (`ACTIVE_IFACE_PREFIX`). Library
+  `crates/sysinfo/src/network.rs` is untouched — the green/red `Up`/`Down` stays; only the
+  CLI wrapping layers changed. Four regression tests cover the helper, including a
+  "no default-colored tail" invariant. Verified live: the active `Net` line now renders
+  name/brackets/RX/TX uniformly bright-blue with only `Up` green; non-active lines render
+  the whole value in the value color with only `Up`/`Down` colored. CLI-only fix;
+  `retch-sysinfo` unchanged at `0.1.43`. Patch bump.
 - **v0.5.0 — three new Linux fastfetch-gap fields (`login-manager`, `brightness`,
   `power-adapter`)**: closes three of the NOTES §6 hardware/UI gaps, each a cheap
   single-source Linux probe in the simple sequential `detect_*` style (like `init`/`chassis`):
@@ -430,6 +450,33 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.5.1 - Fix nested ANSI color reset on the network line (July 12, 2026)
+- **Bug**: the opening `[` of the network `[Up]` status was colored while the closing `]`
+  (and the RX/TX stats after it) were not. Root cause: `owo_colors` closes every foreground
+  color with `\x1b[39m` (reset to the terminal *default*, not the enclosing color). The `Net`
+  value embeds a green `"Up"` / red `"Down"`; `Theme::color_value` wraps the whole value in
+  the theme value color (white), and `display.rs` additionally wraps the **active** interface
+  in bright-blue. The inner `\x1b[39m` from `Up`/`Down` cancelled the enclosing color, so
+  everything after `[Up]` fell back to the terminal default — leaving the active line's `[`
+  blue but `]`/RX/TX default, and every line's RX/TX tail un-valued.
+- **Fix**: new `colorize_nested(text, prefix)` in `src/theme.rs` re-asserts `prefix` after
+  every interior `\x1b[39m`, so a nested colored span restores the surrounding color on exit.
+  It composes at arbitrary nesting depth and, when `text` has no interior reset, is
+  byte-identical to the previous `text.color(Rgb)` wrap — so **only the `Net` field's
+  rendering changes; all other fields are untouched**. `Theme::color_value` now routes through
+  it; the active-interface highlight uses `colorize_nested(net, ACTIVE_IFACE_PREFIX)`
+  (bright-blue) instead of `.bright_blue()`. The now-unused `owo_colors::OwoColorize` import
+  was dropped from `display.rs`.
+- **Library untouched**: `crates/sysinfo/src/network.rs` still emits the green/red
+  `Up`/`Down`; the fix lives entirely in the CLI wrapping layers. `retch-sysinfo` stays at
+  `0.1.43`.
+- **Tests**: four unit tests for the helper — `rgb_prefix` matches `owo_colors`'s output;
+  plain text wraps identically to the old path; the enclosing color is re-asserted after an
+  interior reset; and a "no default-colored tail" invariant (after wrapping, the only bare
+  reset is the final closer). Verified live on corrino: active `Net` line uniformly
+  bright-blue except green `Up`; non-active lines value-colored except `Up`/`Down`.
+- **Version**: Bumped to `0.5.1` (`retch-sysinfo` unchanged at `0.1.43`). CLI-only patch.
 
 ### v0.5.0 - Three new Linux fastfetch-gap fields (July 12, 2026)
 - **New fields** (all `--long`+, Linux-only, `None` on macOS/Windows):

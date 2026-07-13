@@ -10,8 +10,7 @@ use crate::config::Config;
 use crate::fetch::SystemInfo;
 use crate::fields::{self, Mode};
 use crate::logo;
-use crate::theme::Theme;
-use owo_colors::OwoColorize;
+use crate::theme::{colorize_nested, Theme, ACTIVE_IFACE_PREFIX};
 
 /// Renders the collected system information to the terminal.
 ///
@@ -239,7 +238,10 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             for net in &info.networks {
                 if let Some(ref active) = info.active_interface {
                     if net.contains(active) {
-                        print_line("Net", &net.bright_blue().to_string());
+                        // Re-assert bright blue after the nested green "Up" /
+                        // red "Down" reset so the whole active line stays blue
+                        // (brackets and RX/TX included), not just up to "[".
+                        print_line("Net", &colorize_nested(net, ACTIVE_IFACE_PREFIX));
                     }
                 }
             }

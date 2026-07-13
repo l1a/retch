@@ -321,8 +321,13 @@ impl Theme {
     }
 
     /// Apply the theme's value color to the given text.
+    ///
+    /// Uses [`colorize_nested`] rather than a plain `owo_colors` wrap so that a
+    /// value string containing a *nested* colored span (e.g. the green `Up` /
+    /// red `Down` inside a network line) keeps the value color for the text that
+    /// follows the nested span, instead of dropping to the terminal default.
     pub fn color_value(&self, text: &str) -> String {
-        text.color(self.value_color).to_string()
+        colorize_nested(text, &rgb_prefix(self.value_color))
     }
 
     /// Apply the theme's accent color to the given text.
@@ -335,6 +340,47 @@ impl Theme {
         text.color(self.separator_color).to_string()
     }
 }
+
+/// ANSI escape that resets the foreground color to the terminal default.
+///
+/// This is the closer `owo_colors` emits for *every* foreground color
+/// (`\x1b[32m…\x1b[39m` for green, `\x1b[38;2;…m…\x1b[39m` for truecolor, etc.),
+/// which is why it is the hook [`colorize_nested`] re-asserts after.
+const FG_RESET: &str = "\u{1b}[39m";
+
+/// Build the SGR prefix that sets the foreground to the given truecolor RGB.
+///
+/// Matches the sequence `owo_colors` emits for `text.color(Rgb(r, g, b))`, so
+/// swapping a plain `owo_colors` wrap for [`colorize_nested`] is byte-identical
+/// when the wrapped text contains no nested color.
+fn rgb_prefix(color: Rgb) -> String {
+    let Rgb(r, g, b) = color;
+    format!("\u{1b}[38;2;{r};{g};{b}m")
+}
+
+/// Wrap `text` in the foreground color given by `prefix`, re-asserting that
+/// color after any nested foreground-reset already present in `text`.
+///
+/// `owo_colors` closes a colored span with `\x1b[39m` — reset the foreground to
+/// the terminal *default*, not to the enclosing color. So when a colored value
+/// contains a nested colored span (e.g. the green `Up` inside an otherwise
+/// white — or, for the active interface, bright-blue — network line), that
+/// inner reset drops everything after it back to the default color. Inserting a
+/// fresh `prefix` after every interior [`FG_RESET`] keeps the enclosing color
+/// intact across the nested span, so color nesting composes correctly at any
+/// depth. With no interior reset this is exactly `prefix + text + FG_RESET`,
+/// i.e. identical to a plain `owo_colors` wrap.
+pub(crate) fn colorize_nested(text: &str, prefix: &str) -> String {
+    let inner = text.replace(FG_RESET, &format!("{FG_RESET}{prefix}"));
+    format!("{prefix}{inner}{FG_RESET}")
+}
+
+/// SGR prefix used to highlight the active network interface (bright blue).
+///
+/// Kept as the exact sequence `owo_colors`' `.bright_blue()` emits so the
+/// display layer can compose it through [`colorize_nested`] without changing
+/// the rendered color.
+pub(crate) const ACTIVE_IFACE_PREFIX: &str = "\u{1b}[94m";
 
 #[cfg(test)]
 mod tests {
@@ -443,5 +489,72 @@ mod tests {
         assert_eq!(parse_color("#fffffff"), None);
         // Invalid hex chars
         assert_eq!(parse_color("#ff643g"), None);
+    }
+
+    #[test]
+    fn test_rgb_prefix_matches_owo() {
+        // Must be byte-identical to what owo_colors emits for the same color,
+        // so colorize_nested is a drop-in for a plain `.color(Rgb)` wrap.
+        assert_eq!(rgb_prefix(Rgb(255, 255, 255)), "\u{1b}[38;2;255;255;255m");
+        assert_eq!(
+            rgb_prefix(Rgb(255, 255, 255)),
+            "x".color(Rgb(255, 255, 255))
+                .to_string()
+                .replace("x\u{1b}[39m", "")
+        );
+    }
+
+    #[test]
+    fn test_colorize_nested_plain_text_is_plain_wrap() {
+        // With no interior reset, colorize_nested == prefix + text + reset,
+        // i.e. identical to a plain owo_colors wrap — other fields are unchanged.
+        let prefix = rgb_prefix(Rgb(255, 255, 255));
+        assert_eq!(
+            colorize_nested("hello", &prefix),
+            format!("{prefix}hello\u{1b}[39m"),
+        );
+    }
+
+    #[test]
+    fn test_colorize_nested_reasserts_after_interior_reset() {
+        // A nested green span ("Up") ends with FG_RESET; the enclosing color
+        // must be re-asserted right after it so the trailing text keeps it.
+        let prefix = "\u{1b}[94m"; // bright blue
+        let nested = format!("[{}]tail", "Up".color(Rgb(0, 255, 0)));
+        let out = colorize_nested(&nested, prefix);
+        // Every interior reset is immediately followed by a re-assert of prefix.
+        assert!(out.contains(&format!("\u{1b}[39m{prefix}")));
+        // The trailing "]tail" is not left dangling in the default color: the
+        // last thing before it (after "Up") is a prefix re-assert.
+        assert!(out.contains(&format!("\u{1b}[39m{prefix}]tail")));
+        // Opens and closes with the enclosing color.
+        assert!(out.starts_with(prefix));
+        assert!(out.ends_with("\u{1b}[39m"));
+    }
+
+    #[test]
+    fn test_colorize_nested_no_default_colored_tail() {
+        // Regression for the network "[Up]" bracket-color bug: after wrapping,
+        // there must be no point where a foreground reset is followed by
+        // visible text without the enclosing color being re-asserted first
+        // (other than the single final reset that closes the whole span).
+        let prefix = rgb_prefix(Rgb(255, 255, 255));
+        let net = format!(
+            "eth0 (10.0.0.1) [{}] RX: 1 GB TX: 2 GB",
+            "Up".color(Rgb(0, 255, 0))
+        );
+        let out = colorize_nested(&net, &prefix);
+        // Strip the intended re-assert sequences; the only remaining bare reset
+        // should be the final closer, which must sit at the very end.
+        let stripped = out.replace(&format!("\u{1b}[39m{prefix}"), "");
+        assert!(
+            stripped.ends_with("\u{1b}[39m"),
+            "unexpected mid-string bare reset in {out:?}"
+        );
+        assert_eq!(
+            stripped.matches("\u{1b}[39m").count(),
+            1,
+            "exactly one bare reset (the final closer) should remain: {out:?}"
+        );
     }
 }
