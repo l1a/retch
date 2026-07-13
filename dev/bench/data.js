@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783979684689,
+  "lastUpdate": 1783980031382,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7013,90 +7013,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "485da1be8ba30a6409d4220e303ee1380f4c8937",
-          "message": "docs: document default set notes in NOTES\n\nAssisted-By: Gemini 2.5 Pro",
-          "timestamp": "2026-06-24T12:31:27-07:00",
-          "tree_id": "ca4119acbfdfeee6b90c27723a146c8529d0cef2",
-          "url": "https://github.com/l1a/retch/commit/485da1be8ba30a6409d4220e303ee1380f4c8937"
-        },
-        "date": 1782330718664,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 277457774.15,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 975.8288284064723,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.67101058535026,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9469501861320784,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.320459007800984,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7860.649083890498,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 71057.44918732531,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4794.805789446119,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4874.66687371053,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1219078.9344382533,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 345.9766560184008,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 259.1845278833508,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -11201,6 +11117,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 266.38121250426735,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "30195b0eaaf4f96b4b6fe43c11001046a871537b",
+          "message": "Fix Windows Camera (scanners) and Users (=0) bugs (#160)\n\nTwo user-reported Windows output bugs in the cross-platform-parity series.\n\nCamera listed scanners as cameras (e.g. \"EPSON ET-3850 Series\"). The Windows\npath enumerated the Camera + Image (WIA) setup classes, but scanners/printers\nshare the Image class with some real webcams (a Logitech BRIO is Image-class),\nand is_real_camera has no keyword to catch an EPSON model string. Fixed by\nenumerating the KSCATEGORY_VIDEO_CAMERA device-interface class instead — only\nreal cameras register it, so scanners are excluded while Image-class webcams are\nkept. Added win_setupapi::present_interface_device_names (DIGCF_DEVICEINTERFACE,\nsharing the existing enumerate_names core) + the KSCATEGORY_VIDEO_CAMERA GUID;\nremoved the now-unused GUID_DEVCLASS_CAMERA/_IMAGE. Also drops the synthetic\n\"Windows Virtual Camera Device\" via a Windows-only is_windows_virtual_camera\nhelper (Linux/macOS untouched).\n\nUsers showed 0 with a user logged in: sysinfo keys Windows users by SID, so the\nUnix uid>=1000 filter never matched. New win_users module counts active\ninteractive sessions via WTSEnumerateSessionsW + WTSQuerySessionInformationW\n(wtsapi32; query-user semantics), with a pure unit-tested count helper. Per the\n\"if it doesn't work, don't show it\" request, display.rs now suppresses Users\nwhen the count is 0 (mirrors the packages guard).\n\nNon-Windows camera/users behavior unchanged. FFI house style (hand-written\nextern \"system\", // SAFETY:, WTS_SESSION_INFOW size_of guard). Verified live on\narrakis: Camera = Logitech BRIO + ASUS FHD webcam only; Users: 1.\n\nretch-cli 0.6.0 -> 0.6.1, retch-sysinfo 0.1.44 -> 0.1.45. Patch (bugfixes).\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-13T14:46:19-07:00",
+          "tree_id": "13dc79f2b8c9dd3041dc8f5dfc070fb42bba266a",
+          "url": "https://github.com/l1a/retch/commit/30195b0eaaf4f96b4b6fe43c11001046a871537b"
+        },
+        "date": 1783980030201,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 766839452.75,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 976.3920143585071,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 46.95859296974557,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9465957764809705,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 47.4478228786708,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7723.195722882391,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70663.7612491789,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4743.584169698707,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4858.348325067212,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1224340.0969867671,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 334.2938266932096,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 270.8340814757119,
             "unit": "ns"
           }
         ]
