@@ -96,7 +96,29 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.5.1)
+## Current State (v0.6.0)
+- **v0.6.0 — Windows `domain` + `terminal-size` (cross-platform parity, quick wins)**:
+  two `--long` fields that previously returned `None` on Windows now have native arms,
+  the first of the Windows cross-platform-parity feature series (distinct from the earlier
+  PowerShell→FFI *perf* migration). `domain` (`crates/sysinfo/src/network.rs`) queries the
+  primary DNS suffix via `GetComputerNameExW(ComputerNameDnsDomain)` (kernel32, default-linked,
+  two-call size probe); a workgroup host reports an empty suffix → `None` (the pure
+  `clean_domain` helper maps empty→None), deliberately **not** the NetBIOS `WORKGROUP` name,
+  matching the Linux/macOS `/etc/resolv.conf` DNS-domain semantics. `terminal-size`
+  (`crates/sysinfo/src/terminal.rs`) reads the console viewport via `GetStdHandle` +
+  `GetConsoleScreenBufferInfo`, using the **window** rect (not `dwSize`, which is the huge
+  scrollback buffer); the pure `window_rect_to_size` helper does the inclusive-rect→`"CxR"`
+  arithmetic. When stdout is redirected/piped there is no console → graceful `None` → the
+  existing `$COLUMNS`/`$LINES` env fallback (same as Linux piped). Hand-written
+  `extern "system"` FFI, no binding crate (house style). Both Linux/macOS arms are
+  byte-identical (new `#[cfg(target_os = "windows")]` arms only). New tests: `clean_domain`,
+  `window_rect_to_size`, and a `CONSOLE_SCREEN_BUFFER_INFO` `size_of` layout guard (Windows).
+  Verified live on the AMD Ryzen AI MAX+ 395 box (arrakis): `domain` correctly absent
+  (primary DNS suffix genuinely empty, confirmed vs `IPGlobalProperties`/registry);
+  `terminal-size` renders `100x40` through the display path. `retch-sysinfo` → `0.1.44`.
+  Minor bump (new user-visible fields on Windows). `load`/`editor`/`terminal-font` on Windows
+  deliberately **not** implemented — no faithful native source (documented in the feature-gap
+  notes).
 - **v0.5.1 — fix nested ANSI color reset on the network line (`[Up]` bracket color)**:
   `owo_colors` closes every foreground color with `\x1b[39m` (reset to the terminal
   *default*, not to the enclosing color). The `Net` value embeds a green `"Up"` / red
@@ -450,6 +472,37 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.6.0 - Windows domain + terminal-size (parity quick wins) (July 13, 2026)
+- **New Windows field arms** (both `--long`, previously `None` on Windows):
+  - `domain` — primary DNS suffix via `GetComputerNameExW(ComputerNameDnsDomain)` (kernel32,
+    default-linked). Two-call size-probe pattern; a workgroup host's empty suffix maps to
+    `None` via the pure `clean_domain` helper. Intentionally not the NetBIOS `WORKGROUP`
+    (that isn't a DNS domain) — matches the Linux/macOS `/etc/resolv.conf` semantics.
+  - `terminal-size` — console viewport via `GetStdHandle` + `GetConsoleScreenBufferInfo`.
+    Uses the `srWindow` rect (visible viewport), **not** `dwSize` (scrollback buffer height).
+    The pure `window_rect_to_size` helper does the inclusive-rect→`"COLSxROWS"` math. Piped
+    output has no console → graceful `None` → existing `$COLUMNS`/`$LINES` env fallback.
+- **First of the Windows cross-platform-parity series** — distinct from the completed
+  PowerShell→native-FFI *perf* migration (v0.4.0). These close fields that returned `None`
+  off Linux/macOS, per the "group related fields" cadence agreed for this series.
+- **House style**: hand-written `extern "system"` FFI, no binding crate; `// SAFETY:` on every
+  `unsafe`; `#[allow(clippy::upper_case_acronyms)]` on the `HANDLE` alias. Both non-Windows
+  arms untouched (new `#[cfg(target_os = "windows")]` arms only).
+- **Testability** (the `format_cpu_cores` lesson): pure helpers `clean_domain` /
+  `window_rect_to_size` are host-independently unit-tested, gated
+  `#[cfg(any(target_os = "windows", test))]` so they aren't dead code elsewhere. Added a
+  `CONSOLE_SCREEN_BUFFER_INFO` `size_of` layout guard (Windows, per the #151 convention).
+- **Verified live** on arrakis (AMD Ryzen AI MAX+ 395, Windows 11 Pro): `domain` correctly
+  absent (primary DNS suffix genuinely empty — cross-checked against
+  `IPGlobalProperties.DomainName` and the `Tcpip\Parameters\Domain` registry value);
+  `terminal-size` renders `100x40` via the display path. `cargo test --workspace` green
+  (84 sysinfo lib + 40 cli + 15 integration), `just check` clean.
+- **Deliberately not implemented on Windows**: `load` (no native load-average equivalent;
+  the processor-queue-length counter is a different metric), `editor` (env-only `$VISUAL`/
+  `$EDITOR`, no OS API), and `terminal-font` for conhost (only Windows Terminal has a
+  parseable config). Noted so they aren't mistaken for oversights.
+- **Version**: Bumped to `0.6.0` / `retch-sysinfo 0.1.44`.
 
 ### v0.5.1 - Fix nested ANSI color reset on the network line (July 12, 2026)
 - **Bug**: the opening `[` of the network `[Up]` status was colored while the closing `]`

@@ -656,19 +656,88 @@ pub fn parse_resolv_conf(content: &str) -> Vec<String> {
         .collect()
 }
 
-/// Returns the configured DNS search domain name.
+/// Returns the configured DNS domain name.
 ///
-/// Reads the `domain` directive from `/etc/resolv.conf` (takes precedence),
-/// falling back to the first entry of the `search` directive. Returns `None`
-/// when neither is present or the file is unreadable.
+/// On Linux/macOS, reads the `domain` directive from `/etc/resolv.conf` (takes
+/// precedence), falling back to the first entry of the `search` directive. On
+/// Windows, queries the primary DNS domain via `GetComputerNameExW`
+/// (`ComputerNameDnsDomain`). Returns `None` when no domain is configured (e.g.
+/// a workgroup machine) or the source is unavailable.
 pub fn detect_domain() -> Option<String> {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
         if let Ok(content) = std::fs::read_to_string("/etc/resolv.conf") {
             return parse_domain_from_resolv_conf(&content);
         }
+        None
     }
-    None
+    #[cfg(target_os = "windows")]
+    {
+        detect_domain_windows()
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    {
+        None
+    }
+}
+
+/// Windows: returns the host's primary DNS domain via `GetComputerNameExW`.
+///
+/// Uses the two-call size-probing convention: a first call with a null buffer
+/// reports the required length, the second fills the buffer. A workgroup
+/// (non-domain-joined) host reports an empty DNS domain, which
+/// [`clean_domain`] maps to `None`.
+#[cfg(target_os = "windows")]
+fn detect_domain_windows() -> Option<String> {
+    use std::os::windows::ffi::OsStringExt;
+
+    // COMPUTER_NAME_FORMAT::ComputerNameDnsDomain
+    const COMPUTER_NAME_DNS_DOMAIN: i32 = 2;
+
+    // kernel32 is linked by default on the MSVC target.
+    extern "system" {
+        fn GetComputerNameExW(name_type: i32, lp_buffer: *mut u16, n_size: *mut u32) -> i32;
+    }
+
+    // First call: null buffer + size 0 asks the OS for the required length
+    // (in wide chars, including the trailing NUL). It fails and sets `size`.
+    let mut size: u32 = 0;
+    // SAFETY: the null-buffer / zero-size form is the documented size probe;
+    // the OS only writes the required length back through `size`.
+    unsafe {
+        GetComputerNameExW(COMPUTER_NAME_DNS_DOMAIN, std::ptr::null_mut(), &mut size);
+    }
+    if size == 0 {
+        return None;
+    }
+
+    let mut buf = vec![0u16; size as usize];
+    // SAFETY: `buf` has `size` wide chars of capacity; `size` is passed by
+    // pointer so the OS reports the final length (excluding the NUL). The call
+    // writes at most `size` code units.
+    let ok = unsafe { GetComputerNameExW(COMPUTER_NAME_DNS_DOMAIN, buf.as_mut_ptr(), &mut size) };
+    if ok == 0 {
+        return None;
+    }
+
+    let s = std::ffi::OsString::from_wide(&buf[..size as usize])
+        .to_string_lossy()
+        .into_owned();
+    clean_domain(&s)
+}
+
+/// Trims a raw domain string and maps the empty string to `None`.
+///
+/// A non-domain-joined Windows host reports an empty DNS domain; treat that as
+/// "no domain configured" rather than surfacing an empty value.
+#[cfg(any(target_os = "windows", test))]
+fn clean_domain(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
 }
 
 /// Returns per-interface DNS search domain lists.
@@ -790,6 +859,23 @@ pub fn parse_resolvectl_search(content: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_clean_domain() {
+        // Normal domain passes through.
+        assert_eq!(
+            clean_domain("corp.example.com"),
+            Some("corp.example.com".to_string())
+        );
+        // Surrounding whitespace is trimmed.
+        assert_eq!(
+            clean_domain("  example.org \n"),
+            Some("example.org".to_string())
+        );
+        // A workgroup host reports an empty domain -> None (not Some("")).
+        assert_eq!(clean_domain(""), None);
+        assert_eq!(clean_domain("   "), None);
+    }
 
     #[test]
     fn test_match_active_interface() {
