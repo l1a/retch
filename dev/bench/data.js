@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783914222684,
+  "lastUpdate": 1783914735817,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17957,80 +17957,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "ce1e6d15e07936c6632ff5fcc156d23aac99e347",
-          "message": "Merge pull request #110 from l1a/feature/physical-memory-disk\n\nfeat: add PhysDisk and PhysMem fields (v0.3.23)",
-          "timestamp": "2026-06-24T10:24:48-07:00",
-          "tree_id": "53e59729a4c4d031fa6462ce01421b02d939e8ac",
-          "url": "https://github.com/l1a/retch/commit/ce1e6d15e07936c6632ff5fcc156d23aac99e347"
-        },
-        "date": 1782324222500,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - fastfetch",
-            "value": 258821676,
-            "unit": "ns"
-          },
-          {
-            "name": "CLI execution - retch",
-            "value": 1474979046,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 96.78049883850375,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9477404305841928,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 98.89441202501952,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 80.73804370136426,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45629.917308579985,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 496.81698511939896,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 759.709051145697,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1312267270,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -21175,6 +21101,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2419477820,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "280db85bc07aaa37fe6e22c1428c57d3a95ba55b",
+          "message": "Add Linux login-manager/brightness/power-adapter (#157)\n\nThree new --long fields closing NOTES §6 fastfetch gaps, each a cheap\nsingle-source Linux probe in the sequential detect_* style (like init/chassis):\n\n- login-manager: resolves the display-manager.service systemd unit symlink\n  (GDM/SDDM/LightDM/greetd/…), prettified.\n- brightness: reads /sys/class/backlight/*/{brightness,max_brightness} as a %.\n- power-adapter: reads the Mains supply under /sys/class/power_supply (name +\n  connected state; wattage omitted — sysfs Mains rarely exposes it).\n\nAll three are Linux-only (None elsewhere). Each detector wraps a pure helper\n(login_manager_from_unit / brightness_percent / format_power_adapter), split\nout and unit-tested host-independently per the v0.4.2 format_cpu_cores lesson;\nhelpers + tests are cfg(linux) so they aren't dead code under clippy -D warnings\non other platforms. Verified live on corrino (greetd, 51%, AC (connected)).\n\nretch-cli 0.4.3 -> 0.5.0, retch-sysinfo 0.1.42 -> 0.1.43.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-12T20:11:45-07:00",
+          "tree_id": "c4f4b86a753026bf48a3009deb1ece1f46ea99bc",
+          "url": "https://github.com/l1a/retch/commit/280db85bc07aaa37fe6e22c1428c57d3a95ba55b"
+        },
+        "date": 1783914733275,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 102.18062921261183,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9477502961633926,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 102.14781784137934,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.43481127396957,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46881.74308551313,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 496.6098381030747,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 742.8951286051954,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2351829810,
             "unit": "ns"
           }
         ]
