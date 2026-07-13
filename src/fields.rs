@@ -132,6 +132,10 @@ const FIELDS: &[FieldDef] = &[
         min_mode: Mode::Standard,
     },
     FieldDef {
+        key: "brightness",
+        min_mode: Mode::Long,
+    },
+    FieldDef {
         key: "audio",
         min_mode: Mode::Standard,
     },
@@ -213,6 +217,10 @@ const FIELDS: &[FieldDef] = &[
         key: "battery",
         min_mode: Mode::Long,
     },
+    FieldDef {
+        key: "power-adapter",
+        min_mode: Mode::Long,
+    },
     // --- Environment ---
     FieldDef {
         key: "shell",
@@ -240,6 +248,10 @@ const FIELDS: &[FieldDef] = &[
     },
     FieldDef {
         key: "wm",
+        min_mode: Mode::Long,
+    },
+    FieldDef {
+        key: "login-manager",
         min_mode: Mode::Long,
     },
     // --- Cosmetic / slow (Full-only unless noted) ---
@@ -362,8 +374,8 @@ mod tests {
         // A change here should be deliberate and accompany a docs/NOTES update.
         assert_eq!(fields_for(Mode::Short).len(), 8, "short field count");
         assert_eq!(fields_for(Mode::Standard).len(), 19, "standard field count");
-        assert_eq!(fields_for(Mode::Long).len(), 46, "long field count");
-        assert_eq!(fields_for(Mode::Full).len(), 52, "full field count");
+        assert_eq!(fields_for(Mode::Long).len(), 49, "long field count");
+        assert_eq!(fields_for(Mode::Full).len(), 55, "full field count");
     }
 
     #[test]
@@ -390,6 +402,14 @@ mod tests {
         assert!(long.contains("bios"));
         assert!(long.contains("terminal-size"));
         assert!(long.contains("wm"));
+        assert!(long.contains("login-manager"));
+        assert!(long.contains("brightness"));
+        assert!(long.contains("power-adapter"));
+        // New Long fields must not leak into standard.
+        assert!(
+            !standard.contains("brightness"),
+            "brightness is long+, not standard"
+        );
         assert!(!long.contains("weather"), "weather is full-only");
         assert!(!long.contains("gamepad"), "gamepad is full-only");
 

@@ -96,7 +96,19 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.4.3)
+## Current State (v0.5.0)
+- **v0.5.0 — three new Linux fastfetch-gap fields (`login-manager`, `brightness`,
+  `power-adapter`)**: closes three of the NOTES §6 hardware/UI gaps, each a cheap
+  single-source Linux probe in the simple sequential `detect_*` style (like `init`/`chassis`):
+  `login-manager` resolves the `display-manager.service` systemd unit symlink (GDM/SDDM/
+  LightDM/greetd/…); `brightness` reads `/sys/class/backlight/*/{brightness,max_brightness}`
+  as a percentage; `power-adapter` reads the `Mains` supply under `/sys/class/power_supply`
+  (name + connected state; wattage deliberately omitted — sysfs `Mains` rarely exposes it).
+  All three are `--long`+, Linux-only (`None` elsewhere). Each has a **pure formatting helper**
+  (`login_manager_from_unit`/`brightness_percent`/`format_power_adapter`) split out from its
+  `/sys`-reading detector and unit-tested host-independently — applying the PR #155
+  `format_cpu_cores` lesson. Verified live on corrino (greetd, 51%, `AC (connected)`).
+  `retch-sysinfo` → `0.1.43`. Minor bump (new user-visible fields).
 - **v0.4.3 — enforce LF line endings via `.gitattributes`**: added a repo-root
   `.gitattributes` (`* text=auto eol=lf`, `*.png binary`) so every checkout uses LF on all
   platforms. The working tree is shared across Linux/macOS/Windows via Syncthing, so a
@@ -335,7 +347,8 @@ Adds over standard:
 - `bios` — firmware vendor, version, date
 - `temp` (consolidated) — **one representative reading per physical unit**: CPU, GPU, SSD/NVMe, WiFi adapter, System/Motherboard. Rule: highest sensor within each category (worst-case thermal indicator). All other sensor readings are deferred to `--full`.
 - `domain` — current DNS domain name (from `/etc/resolv.conf` `domain` directive or `hostname -d`)
-- `public-ip`, `wifi`, `bluetooth`, `battery`, `shell`, `editor`, `terminal`, `terminal-size`, `desktop`, `wm`, `dns`, `users`, `packages`, `locale`, `init`, `chassis`, `bootmgr`
+- `public-ip`, `wifi`, `bluetooth`, `battery`, `power-adapter`, `shell`, `editor`, `terminal`, `terminal-size`, `desktop`, `wm`, `login-manager`, `brightness`, `dns`, `users`, `packages`, `locale`, `init`, `chassis`, `bootmgr`
+- `brightness` (Linux), `power-adapter` (Linux), `login-manager` (Linux) — new v0.5.0 fastfetch-gap fields
 
 ### `--full`
 Long plus everything slow, verbose, or cosmetic. Suitable for reporting, screenshots, or deep diagnostics. Users should expect multi-second runtimes.
@@ -388,10 +401,10 @@ Adds over long:
 Below is a comparison of information gathered by `fastfetch` that is currently missing in `retch`.
 
 ### Hardware
-- **Brightness**: Monitor brightness level
+- ~~**Brightness**: Monitor brightness level~~ — added in v0.5.0 (`brightness` field, Linux; `/sys/class/backlight`)
 - **Keyboard**: Connected keyboards
 - **Mouse**: Connected mice
-- **PowerAdapter**: Charger name and wattage
+- ~~**PowerAdapter**: Charger name and wattage~~ — added in v0.5.0 (`power-adapter` field, Linux; `/sys/class/power_supply` `Mains`. Name + connection state; wattage not yet reported)
 - **TPM**: Trusted Platform Module device info
 
 ### GPU / Graphics
@@ -407,7 +420,7 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 ### Desktop Environment & UI
 - **WMTheme**: Window manager theme
-- **LM**: Login manager (GDM, SDDM, etc.)
+- ~~**LM**: Login manager (GDM, SDDM, etc.)~~ — added in v0.5.0 (`login-manager` field, Linux; `display-manager.service` systemd unit)
 - **Wallpaper**: Current wallpaper file path
 - **TerminalTheme**: Terminal foreground/background colors
 
@@ -417,6 +430,31 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.5.0 - Three new Linux fastfetch-gap fields (July 12, 2026)
+- **New fields** (all `--long`+, Linux-only, `None` on macOS/Windows):
+  - `login-manager` — active display/login manager, resolved from the
+    `/etc/systemd/system/display-manager.service` systemd alias symlink and prettified
+    (gdm/gdm3→GDM, sddm→SDDM, lightdm→LightDM, greetd, …; unknown units Title-cased).
+  - `brightness` — backlight brightness as a percentage, from the first (vendor-preferred)
+    `/sys/class/backlight/*` device's `brightness`/`max_brightness`.
+  - `power-adapter` — AC adapter name + connection state, from the `Mains`-type supply under
+    `/sys/class/power_supply`. Wattage omitted (sysfs `Mains` rarely exposes it) rather than
+    emit a misleading value.
+- **Testability**: each detector is a thin `/sys`/systemd-reading wrapper over a **pure
+  helper** (`login_manager_from_unit`, `brightness_percent`, `format_power_adapter`) that is
+  unit-tested without touching host hardware — the direct lesson from the v0.4.2
+  `format_cpu_cores` flaky-test fix. Helpers + their tests are `#[cfg(target_os = "linux")]`
+  so they aren't dead code (clippy `-D warnings`) on other platforms.
+- **Wiring**: one `FieldDef` row each in `src/fields.rs` (golden strata counts updated:
+  Long 46→49, Full 52→55), sequential gated collection + `SystemInfo` fields in
+  `crates/sysinfo/src/fetch.rs`, `print_line` arms in `src/display.rs`; config generation and
+  docs guardrails auto-cover them via the registry.
+- **Verified live** on corrino (i7-1360P, Fedora 44): `--long` shows `Login Manager: greetd`,
+  `Brightness: 51%`, `Power Adapter: AC (connected)`; absent from default/`--short`.
+- **Closes** the Brightness, PowerAdapter, and LM items in NOTES §6 / the fastfetch-comparison
+  wiki page.
+- **Version**: Bumped to `0.5.0` / `retch-sysinfo 0.1.43`.
 
 ### v0.4.3 - Enforce LF line endings via .gitattributes (July 12, 2026)
 - **Problem**: the working tree is shared across Linux/macOS/Windows machines via Syncthing.

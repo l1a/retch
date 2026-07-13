@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "July 2026" "retch 0.4.3" "System Information Fetcher"
+.TH "RETCH" "1" "July 2026" "retch 0.5.0" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -224,6 +224,10 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
+`\f[CR]brightness\fP`: Current backlight brightness as a percentage (from `\f[CR]/sys/class/backlight\fP`)\. Linux only\. Long mode and above\.
+.El
+.Bl
+.IP \(bu 4
 `\f[CR]audio\fP`: Audio card controller and active sound servers (PipeWire, PulseAudio, ALSA, CoreAudio, Windows Audio)\.
 .El
 .Bl
@@ -312,6 +316,10 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
+`\f[CR]power\-adapter\fP`: AC power adapter name and connection state (from `\f[CR]/sys/class/power_supply\fP` `\f[CR]Mains\fP` supply)\. Linux only\. Long mode and above\.
+.El
+.Bl
+.IP \(bu 4
 `\f[CR]shell\fP`: Currently running shell name and version (e\.g\. bash, zsh, fish, nu)\. Detected from the process tree; falls back to `\f[CR]$SHELL\fP` (login shell)\.
 .El
 .Bl
@@ -337,6 +345,10 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .Bl
 .IP \(bu 4
 `\f[CR]wm\fP`: Window manager name (e\.g\. Mutter, KWin, Sway)\. Hidden when identical to Desktop\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]login\-manager\fP`: Active display/login manager (GDM, SDDM, LightDM, greetd, \.\.\.), resolved from the `\f[CR]display\-manager\.service\fP` systemd unit\. Linux only\. Long mode and above\.
 .El
 .Bl
 .IP \(bu 4

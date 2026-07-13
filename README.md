@@ -241,11 +241,11 @@ separator_color = "bright_black"
 fields = [
     "os", "kernel", "host", "domain", "domain-search", "chassis", "init", "locale",
     "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage", "gpu",
-    "motherboard", "bios", "bootmgr", "display", "audio", "camera", "gamepad",
+    "motherboard", "bios", "bootmgr", "display", "brightness", "audio", "camera", "gamepad",
     "memory", "phys-mem", "swap", "uptime", "procs", "load",
     "disk", "phys-disk", "btrfs", "zpool", "temp",
-    "net", "public-ip", "wifi", "dns", "bluetooth", "battery",
-    "shell", "editor", "terminal", "terminal-font", "terminal-size", "desktop", "wm",
+    "net", "public-ip", "wifi", "dns", "bluetooth", "battery", "power-adapter",
+    "shell", "editor", "terminal", "terminal-font", "terminal-size", "desktop", "wm", "login-manager",
     "theme", "icons", "cursor", "font", "users", "packages", "weather"
 ]
 ```

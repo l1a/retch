@@ -150,6 +150,12 @@ pub struct SystemInfo {
     pub btrfs: Vec<String>,
     /// Imported ZFS pools with allocation and health status.
     pub zpool: Vec<String>,
+    /// Active display/login manager (GDM, SDDM, LightDM, …). Linux only.
+    pub login_manager: Option<String>,
+    /// Current backlight brightness as a percentage. Linux only.
+    pub brightness: Option<String>,
+    /// AC power adapter name and connection state. Linux only.
+    pub power_adapter: Option<String>,
 }
 
 impl SystemInfo {
@@ -712,6 +718,24 @@ impl SystemInfo {
             None
         };
 
+        let login_manager = if should_collect("login-manager") || should_collect("lm") {
+            detect_login_manager()
+        } else {
+            None
+        };
+
+        let brightness = if should_collect("brightness") {
+            detect_brightness()
+        } else {
+            None
+        };
+
+        let power_adapter = if should_collect("power-adapter") {
+            detect_power_adapter()
+        } else {
+            None
+        };
+
         let editor = if should_collect("editor") {
             std::env::var("VISUAL")
                 .ok()
@@ -834,6 +858,9 @@ impl SystemInfo {
             terminal_size,
             btrfs,
             zpool,
+            login_manager,
+            brightness,
+            power_adapter,
         })
     }
 }
@@ -1382,6 +1409,180 @@ fn detect_bootmgr() -> Option<String> {
     }
 }
 
+/// Detects the active display/login manager (GDM, SDDM, LightDM, …).
+///
+/// Linux only. Resolves the `display-manager.service` systemd alias symlink
+/// (`/etc/systemd/system/display-manager.service` → e.g. `…/gdm.service`) and prettifies
+/// the unit name via [`login_manager_from_unit`]. This is the cheapest reliable signal on
+/// any systemd system (no subprocess, single `read_link`); non-systemd setups return `None`.
+fn detect_login_manager() -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        let target = std::fs::read_link("/etc/systemd/system/display-manager.service").ok()?;
+        let unit = target.file_name().and_then(|n| n.to_str())?;
+        login_manager_from_unit(unit)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        None
+    }
+}
+
+/// Pure helper: maps a systemd display-manager unit file name to a display name.
+///
+/// Strips a trailing `.service` and prettifies well-known managers; unknown managers are
+/// Title-cased so new ones still render reasonably. Returns `None` for an empty stem.
+/// Split out from [`detect_login_manager`] so it is unit-testable without touching `/etc`.
+#[cfg(target_os = "linux")]
+fn login_manager_from_unit(unit: &str) -> Option<String> {
+    let stem = unit.strip_suffix(".service").unwrap_or(unit).trim();
+    if stem.is_empty() {
+        return None;
+    }
+    let pretty = match stem.to_lowercase().as_str() {
+        "gdm" | "gdm3" => "GDM",
+        "sddm" => "SDDM",
+        "lightdm" => "LightDM",
+        "lxdm" => "LXDM",
+        "xdm" => "XDM",
+        "ly" => "Ly",
+        "greetd" => "greetd",
+        "slim" => "SLiM",
+        "nodm" => "nodm",
+        "entrance" => "Entrance",
+        _ => {
+            // Title-case the first letter, keep the rest as-is (e.g. "emptty" → "Emptty").
+            let mut chars = stem.chars();
+            return chars
+                .next()
+                .map(|c| c.to_uppercase().collect::<String>() + chars.as_str());
+        }
+    };
+    Some(pretty.to_string())
+}
+
+/// Detects the current backlight brightness as a percentage.
+///
+/// Linux only. Reads `brightness` and `max_brightness` from the first
+/// `/sys/class/backlight/*` device (preferring a vendor backlight over a raw ACPI one), and
+/// formats via [`brightness_percent`]. Machines with no backlight (most desktops) return
+/// `None`, so the field simply does not render.
+fn detect_brightness() -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        use std::path::Path;
+        let dir = Path::new("/sys/class/backlight");
+        if !dir.exists() {
+            return None;
+        }
+        // Collect device dirs; prefer a vendor/GPU backlight (e.g. intel_backlight,
+        // amdgpu_bl0) over a generic ACPI one (acpi_video0) when several are present.
+        let mut devices: Vec<std::path::PathBuf> = std::fs::read_dir(dir)
+            .ok()?
+            .flatten()
+            .map(|e| e.path())
+            .collect();
+        devices.sort_by_key(|p| {
+            let name = p
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+            // Lower sort key = higher preference.
+            if name.contains("acpi") || name.contains("video") {
+                1
+            } else {
+                0
+            }
+        });
+        for dev in devices {
+            let cur = std::fs::read_to_string(dev.join("brightness"))
+                .ok()
+                .and_then(|s| s.trim().parse::<u64>().ok());
+            let max = std::fs::read_to_string(dev.join("max_brightness"))
+                .ok()
+                .and_then(|s| s.trim().parse::<u64>().ok());
+            if let (Some(cur), Some(max)) = (cur, max) {
+                if let Some(pct) = brightness_percent(cur, max) {
+                    return Some(pct);
+                }
+            }
+        }
+        None
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        None
+    }
+}
+
+/// Pure helper: formats a raw brightness/max pair as a rounded percentage string.
+///
+/// Returns `None` when `max` is 0 (divide-by-zero guard). Split out from
+/// [`detect_brightness`] so it is unit-testable without a real backlight device.
+#[cfg(target_os = "linux")]
+fn brightness_percent(cur: u64, max: u64) -> Option<String> {
+    if max == 0 {
+        return None;
+    }
+    let pct = (cur as f64 / max as f64 * 100.0).round() as u64;
+    Some(format!("{}%", pct))
+}
+
+/// Detects the AC power adapter (name + connection state).
+///
+/// Linux only. Scans `/sys/class/power_supply/*` for a `Mains`-type supply (the AC
+/// adapter), reads its `online` flag, and formats via [`format_power_adapter`]. Wattage is
+/// not reported: `Mains` entries rarely expose it in sysfs, so emitting it would be
+/// unreliable. Returns `None` when no AC adapter is present (e.g. a desktop with no
+/// power_supply class, or a battery-only view).
+fn detect_power_adapter() -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        use std::path::Path;
+        let dir = Path::new("/sys/class/power_supply");
+        if !dir.exists() {
+            return None;
+        }
+        for entry in std::fs::read_dir(dir).ok()?.flatten() {
+            let path = entry.path();
+            let supply_type = std::fs::read_to_string(path.join("type"))
+                .map(|s| s.trim().to_string())
+                .unwrap_or_default();
+            if supply_type != "Mains" {
+                continue;
+            }
+            let name = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("AC")
+                .to_string();
+            let online = std::fs::read_to_string(path.join("online"))
+                .map(|s| s.trim().to_string())
+                .unwrap_or_default();
+            return Some(format_power_adapter(&name, &online));
+        }
+        None
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        None
+    }
+}
+
+/// Pure helper: formats an AC adapter name + `online` flag ("0"/"1") into a display string.
+///
+/// Split out from [`detect_power_adapter`] so it is unit-testable without a real adapter.
+#[cfg(target_os = "linux")]
+fn format_power_adapter(name: &str, online: &str) -> String {
+    let state = match online.trim() {
+        "1" => "connected",
+        "0" => "not connected",
+        _ => "unknown",
+    };
+    format!("{} ({})", name, state)
+}
+
 /// Windows CPU-usage sampling via `GetSystemTimes` (kernel32, default-linked).
 ///
 /// Replaces the per-run 200 ms sleep sysinfo needs for a usage delta: two samples are
@@ -1448,6 +1649,58 @@ mod win_cpu {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_login_manager_from_unit() {
+        assert_eq!(
+            login_manager_from_unit("gdm.service").as_deref(),
+            Some("GDM")
+        );
+        assert_eq!(
+            login_manager_from_unit("gdm3.service").as_deref(),
+            Some("GDM")
+        );
+        assert_eq!(
+            login_manager_from_unit("sddm.service").as_deref(),
+            Some("SDDM")
+        );
+        assert_eq!(
+            login_manager_from_unit("lightdm.service").as_deref(),
+            Some("LightDM")
+        );
+        // Unknown manager: Title-cased, .service stripped, rest preserved.
+        assert_eq!(
+            login_manager_from_unit("emptty.service").as_deref(),
+            Some("Emptty")
+        );
+        // No .service suffix is tolerated.
+        assert_eq!(login_manager_from_unit("ly").as_deref(), Some("Ly"));
+        // Empty / suffix-only stems yield None.
+        assert_eq!(login_manager_from_unit("").as_deref(), None);
+        assert_eq!(login_manager_from_unit(".service").as_deref(), None);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_brightness_percent() {
+        assert_eq!(brightness_percent(50, 100).as_deref(), Some("50%"));
+        assert_eq!(brightness_percent(100, 100).as_deref(), Some("100%"));
+        assert_eq!(brightness_percent(0, 100).as_deref(), Some("0%"));
+        // Rounding: 133/255 ≈ 52.16% → 52%.
+        assert_eq!(brightness_percent(133, 255).as_deref(), Some("52%"));
+        // Divide-by-zero guard.
+        assert_eq!(brightness_percent(10, 0), None);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_format_power_adapter() {
+        assert_eq!(format_power_adapter("AC", "1"), "AC (connected)");
+        assert_eq!(format_power_adapter("ADP1", "0"), "ADP1 (not connected)");
+        // Missing/garbage online flag degrades to "unknown" rather than panicking.
+        assert_eq!(format_power_adapter("AC", ""), "AC (unknown)");
+    }
 
     #[cfg(target_os = "windows")]
     #[test]
