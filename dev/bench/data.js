@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783919376429,
+  "lastUpdate": 1783919984771,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14809,70 +14809,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "447f7796abf0b7810da7499a874504400076dfb6",
-          "message": "Merge pull request #111 from l1a/fix/performance-regression\n\nperf: fix performance regression and align hyperfine mode comparisons",
-          "timestamp": "2026-06-24T12:14:54-07:00",
-          "tree_id": "40e34e3cc0a351717b334d171164482fee0e379a",
-          "url": "https://github.com/l1a/retch/commit/447f7796abf0b7810da7499a874504400076dfb6"
-        },
-        "date": 1782330304821,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 128.72620079442856,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 4.502998200847257,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 132.8917525803017,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 95.39311227375524,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 42715.726477811004,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 599.8046545316474,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 891.7571671254984,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1403281920,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -17997,6 +17933,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3515455530,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fbb9672b8c95616671974128187d9d3b32f0fe53",
+          "message": "Fix network status bracket color nesting (#158)\n\nowo_colors closes every foreground color with the default-reset \\x1b[39m, so\nthe green \"Up\" / red \"Down\" embedded in the Net value cancelled the enclosing\nvalue color (and, for the active interface, the bright-blue highlight). Everything\nafter [Up] fell back to the terminal default: the active line's opening [ was blue\nbut the closing ] and the RX/TX stats were not.\n\nAdd colorize_nested(text, prefix) which re-asserts the enclosing color after every\ninterior \\x1b[39m so nested colored spans restore the surrounding color instead of\nfalling to default. It is byte-identical to the old plain wrap when there is no\nnested reset, so only the Net field's rendering changes. Theme::color_value routes\nthrough it and the active-interface highlight uses ACTIVE_IFACE_PREFIX. The library\nnetwork.rs is untouched. Four regression tests cover the helper.\n\nBump retch-cli to 0.5.1 (retch-sysinfo unchanged at 0.1.43); regen man page.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-12T21:49:19-07:00",
+          "tree_id": "15c36368910c46efd1ba4d0a4f43df2b81c63aa0",
+          "url": "https://github.com/l1a/retch/commit/fbb9672b8c95616671974128187d9d3b32f0fe53"
+        },
+        "date": 1783919981336,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 122.72653035746316,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.31671226230092,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 123.3158819133641,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 95.00406099877314,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41386.72105676448,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 571.7687017181754,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 809.5142737253739,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2106396785,
             "unit": "ns"
           }
         ]
