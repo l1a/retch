@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783980031382,
+  "lastUpdate": 1783980444524,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -11215,80 +11215,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "485da1be8ba30a6409d4220e303ee1380f4c8937",
-          "message": "docs: document default set notes in NOTES\n\nAssisted-By: Gemini 2.5 Pro",
-          "timestamp": "2026-06-24T12:31:27-07:00",
-          "tree_id": "ca4119acbfdfeee6b90c27723a146c8529d0cef2",
-          "url": "https://github.com/l1a/retch/commit/485da1be8ba30a6409d4220e303ee1380f4c8937"
-        },
-        "date": 1782331106136,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1292405916.65,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 359.1535732415094,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 65.32469433038106,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.8379946321716552,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 69.295672515174,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 5394.412905814112,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1328.1087743821934,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 411.1559086474466,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 84804.5987174111,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 373.2432203887281,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -14903,6 +14829,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 387.28623695779095,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "30195b0eaaf4f96b4b6fe43c11001046a871537b",
+          "message": "Fix Windows Camera (scanners) and Users (=0) bugs (#160)\n\nTwo user-reported Windows output bugs in the cross-platform-parity series.\n\nCamera listed scanners as cameras (e.g. \"EPSON ET-3850 Series\"). The Windows\npath enumerated the Camera + Image (WIA) setup classes, but scanners/printers\nshare the Image class with some real webcams (a Logitech BRIO is Image-class),\nand is_real_camera has no keyword to catch an EPSON model string. Fixed by\nenumerating the KSCATEGORY_VIDEO_CAMERA device-interface class instead — only\nreal cameras register it, so scanners are excluded while Image-class webcams are\nkept. Added win_setupapi::present_interface_device_names (DIGCF_DEVICEINTERFACE,\nsharing the existing enumerate_names core) + the KSCATEGORY_VIDEO_CAMERA GUID;\nremoved the now-unused GUID_DEVCLASS_CAMERA/_IMAGE. Also drops the synthetic\n\"Windows Virtual Camera Device\" via a Windows-only is_windows_virtual_camera\nhelper (Linux/macOS untouched).\n\nUsers showed 0 with a user logged in: sysinfo keys Windows users by SID, so the\nUnix uid>=1000 filter never matched. New win_users module counts active\ninteractive sessions via WTSEnumerateSessionsW + WTSQuerySessionInformationW\n(wtsapi32; query-user semantics), with a pure unit-tested count helper. Per the\n\"if it doesn't work, don't show it\" request, display.rs now suppresses Users\nwhen the count is 0 (mirrors the packages guard).\n\nNon-Windows camera/users behavior unchanged. FFI house style (hand-written\nextern \"system\", // SAFETY:, WTS_SESSION_INFOW size_of guard). Verified live on\narrakis: Camera = Logitech BRIO + ASUS FHD webcam only; Users: 1.\n\nretch-cli 0.6.0 -> 0.6.1, retch-sysinfo 0.1.44 -> 0.1.45. Patch (bugfixes).\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-13T14:46:19-07:00",
+          "tree_id": "13dc79f2b8c9dd3041dc8f5dfc070fb42bba266a",
+          "url": "https://github.com/l1a/retch/commit/30195b0eaaf4f96b4b6fe43c11001046a871537b"
+        },
+        "date": 1783980441460,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 883933687.65,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 416.33934865207095,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 60.042790402096635,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.8259547680098378,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 61.457243076482484,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4213.901771627012,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1007.5960304824919,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 417.1596853593552,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 68584.51884974656,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 348.52004993879405,
             "unit": "ns"
           }
         ]
