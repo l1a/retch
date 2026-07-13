@@ -1,0 +1,12 @@
+# Line-ending normalization.
+#
+# This repo is developed across Linux, macOS, and Windows machines that share the
+# working tree via Syncthing (see NOTES.md / WIP.md). Because the *same bytes* are
+# synced to every OS, we force LF on checkout everywhere — otherwise Windows would
+# check out CRLF, Syncthing would propagate those CRLFs to the Linux/macOS clones,
+# and git there would report the entire tree as "modified" (a phantom whole-tree
+# diff with zero content changes). Pinning `eol=lf` keeps every machine byte-identical.
+* text=auto eol=lf
+
+# Binary assets — never touch line endings.
+*.png binary

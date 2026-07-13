@@ -96,7 +96,18 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.4.2)
+## Current State (v0.4.3)
+- **v0.4.3 — enforce LF line endings via `.gitattributes`**: added a repo-root
+  `.gitattributes` (`* text=auto eol=lf`, `*.png binary`) so every checkout uses LF on all
+  platforms. The working tree is shared across Linux/macOS/Windows via Syncthing, so a
+  Windows checkout writing CRLF would propagate those CRLFs to the Linux/macOS clones,
+  making git report the *entire* tree as modified — a phantom whole-tree diff with zero
+  content changes (observed on the corrino box: 13811 insertions / 13811 deletions, all
+  line-ending flips, `git diff --ignore-all-space` empty). Pinning `eol=lf` keeps every
+  machine byte-identical; `*.png binary` protects the 17 `assets/logos/*.png` from any
+  normalization. Same class of cross-OS Syncthing artifact as the `core.filemode false`
+  exec-bit workaround. Tooling/repo-hygiene only — no Rust source or library change;
+  `retch-sysinfo` unchanged at `0.1.42`.
 - **v0.4.2 — fix machine-dependent `format_cpu_cores` unit tests**: `format_cpu_cores` reads
   the *host's* real CPU topology (`/sys/.../cpufreq` on Linux, `hw.perflevel*` sysctls on
   macOS) and returns a `"NP + ME / KT"` hybrid string on Intel P/E (and Apple Silicon)
@@ -406,6 +417,25 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ---
 
 ## 7. Major Achievements
+
+### v0.4.3 - Enforce LF line endings via .gitattributes (July 12, 2026)
+- **Problem**: the working tree is shared across Linux/macOS/Windows machines via Syncthing.
+  With no `.gitattributes` and `core.autocrlf=false`, a Windows checkout (or an editor there)
+  wrote CRLF line endings, Syncthing propagated those CRLF bytes to the Linux clones, and git
+  on Linux then reported *every tracked file* as modified — a phantom whole-tree diff (observed
+  on the corrino box: 13811 insertions / 13811 deletions, exactly equal, all line-ending flips;
+  `git diff --ignore-all-space` empty, i.e. zero content changes). This blocks the `just pr`
+  clean-tree checks and drowns any real diff.
+- **Fix**: added a repo-root `.gitattributes` — `* text=auto eol=lf` forces LF on checkout on
+  every OS (essential for a byte-identical Syncthing-shared tree), and `*.png binary` protects
+  the 17 `assets/logos/*.png` from any normalization. HEAD was already stored as LF, so the
+  normalization commit changes no tracked content — the diff is just `.gitattributes` + the
+  version bump artifacts.
+- **Same class** as the existing `core.filemode false` workaround for Windows/NTFS phantom
+  exec-bit diffs; this is the line-ending analog.
+- **Tooling/repo-hygiene only**: no Rust source or library change. `retch-sysinfo` unchanged
+  at `0.1.42`.
+- **Version**: Bumped to `0.4.3` (`retch-sysinfo` unchanged at `0.1.42`).
 
 ### v0.4.2 - Fix machine-dependent format_cpu_cores tests (July 12, 2026)
 - **Bug**: the four `format_cpu_cores` unit tests were machine-dependent. `format_cpu_cores`
