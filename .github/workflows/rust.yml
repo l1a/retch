@@ -65,7 +65,7 @@ jobs:
       if: ${{ !matrix.container }}
       uses: dtolnay/rust-toolchain@stable
 
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
     - name: Format check
       run: cargo fmt -- --check
     - name: Clippy
@@ -110,7 +110,7 @@ jobs:
             os: windows-11-arm
 
     steps:
-    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
     - name: Install Rust toolchain (Ubuntu Container)
       if: startsWith(matrix.platform, 'ubuntu')
@@ -190,7 +190,7 @@ jobs:
         run: |
           dnf install -y git curl gcc make sqlite-devel
 
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Install Rust toolchain (Fedora)
         if: startsWith(matrix.platform, 'fedora')
@@ -245,7 +245,7 @@ jobs:
       contents: write   # Required to create GitHub Releases
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Download release assets
         uses: actions/download-artifact@v8
