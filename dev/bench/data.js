@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784909120986,
+  "lastUpdate": 1784909562385,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -11220,80 +11220,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "616ce0be9684e55037a517f1c5b4e646f9d395c1",
-          "message": "chore: add just nixpkgs-release automation script (#114)\n\nAutomates the full retch â†’ nixpkgs release pipeline without requiring\na local Nix installation: tags the version, polls the GitHub release for\nCI-computed hashes, updates the nixpkgs fork branch, and opens a PR.\n\nUsage: just nixpkgs-release [VERSION]\nOverride fork path with NIXPKGS_DIR env var.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-25T13:14:18-07:00",
-          "tree_id": "1aa03e00e034b8c11e50ecbc06a482e87c8275ef",
-          "url": "https://github.com/l1a/retch/commit/616ce0be9684e55037a517f1c5b4e646f9d395c1"
-        },
-        "date": 1782419659430,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 741013479.2,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 378.438225437826,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 75.93892505121701,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.1583495469544256,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 72.52047397686665,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 6872.7359406511605,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 2190.50320233659,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 439.6468661270151,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 110618.91967637939,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 364.52268131227834,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "cc924b5dc321850fda70d1fd023e08d3849a39e4",
           "message": "docs: update AGENTS.md last-updated footer to v0.3.25 (#113)\n\n* chore: add just nixpkgs-release automation script\n\nAutomates the full retch â†’ nixpkgs release pipeline without requiring\na local Nix installation: tags the version, polls the GitHub release for\nCI-computed hashes, updates the nixpkgs fork branch, and opens a PR.\n\nUsage: just nixpkgs-release [VERSION]\nOverride fork path with NIXPKGS_DIR env var.\n\nAssisted-By: Claude Sonnet 4.6\n\n* docs: update AGENTS.md last-updated footer to v0.3.25\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-25T13:12:53-07:00",
@@ -14903,6 +14829,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 537.7588427382486,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a9cbad3234c6ec06f444e623a84b3ff72efbcd50",
+          "message": "Bump deps + CI actions (Dependabot #161/163/164) (#167)\n\nConsolidate three open Dependabot PRs into one gated PR so the release-hygiene\nsteps they bypass (retch version bump, NOTES/man regen) are performed. No\nruntime behavior change.\n\n- Rust deps (#164, cargo-dependencies group, all patch-level, lockfile-only\n  since the Cargo.toml specs are caret ranges): clap 4.6.1->4.6.4 (pulls syn v3\n  via clap_builder/clap_derive), serde 1.0.228->1.0.229, toml 1.1.2->1.1.3,\n  clap_complete_nushell 4.6.0->4.6.1, anyhow 1.0.103->1.0.104,\n  libc 0.2.186->0.2.189, sysinfo 0.39.5->0.39.6, serde_json 1.0.150->1.0.151.\n- actions/checkout 7.0.0->7.0.1 (#163) across benchmark/claude/\n  claude-code-review/packaging/rust/security (both SHA-pinned and @v7 uses).\n- softprops/action-gh-release 3.0.1->3.0.2 (#161) in the rust.yml release job.\n\nretch-cli -> 0.6.3; retch-sysinfo unchanged (0.1.46, no source change).\nWorkspace fmt/clippy/test all green.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-24T08:51:12-07:00",
+          "tree_id": "0627e675b46ff2705a23fb6064df75bf587aac13",
+          "url": "https://github.com/l1a/retch/commit/a9cbad3234c6ec06f444e623a84b3ff72efbcd50"
+        },
+        "date": 1784909560092,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1260065429.05,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 633.1207946972198,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 85.43870675348974,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.544991953754507,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 89.3879345483654,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6099.677172203592,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1396.3024140979192,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 486.3295010350588,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 100292.15587956284,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 497.66930322618157,
             "unit": "ns"
           }
         ]
