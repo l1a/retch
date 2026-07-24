@@ -96,7 +96,20 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.2)
+## Current State (v0.6.3)
+- **v0.6.3 — dependency + CI-action bumps (consolidated Dependabot #161/#163/#164)**
+  (chore; no runtime behavior change). Rolls three open Dependabot PRs into one gated PR so
+  the release-hygiene steps Dependabot skips (retch version bump, NOTES/man regen) are done:
+  - **8 Rust crates** (`cargo-dependencies` group, #164), all patch-level, lockfile-only
+    (specs are caret ranges so `Cargo.toml` is untouched): `clap` 4.6.1→4.6.4 (pulls
+    `syn` v3 via `clap_builder`/`clap_derive`), `serde` 1.0.228→1.0.229, `toml`
+    1.1.2→1.1.3, `clap_complete_nushell` 4.6.0→4.6.1, `anyhow` 1.0.103→1.0.104, `libc`
+    0.2.186→0.2.189, `sysinfo` 0.39.5→0.39.6, `serde_json` 1.0.150→1.0.151.
+  - **2 GitHub Actions**: `actions/checkout` 7.0.0→7.0.1 (#163 — both the SHA-pinned and
+    `@v7`→`@v7.0.1` uses across benchmark/claude/claude-code-review/packaging/rust/security)
+    and `softprops/action-gh-release` 3.0.1→3.0.2 (#161, rust.yml release job).
+  - `retch-cli` → 0.6.3; `retch-sysinfo` unchanged (`0.1.46` — no source change, only its
+    transitive lockfile deps moved). Patch bump. All workspace tests/clippy/fmt green.
 - **v0.6.2 — unblock `just pr` on Linux: machine-independent display tests + man-page
   regen** (docs/test hygiene; no runtime behavior change). Two coupled fixes, bundled
   because the second is what actually let the gate pass on the reinstalled Fedora box:
