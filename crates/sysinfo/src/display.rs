@@ -442,6 +442,22 @@ pub fn parse_macos_displays(stdout: &str) -> Vec<String> {
 /// [`get_monitor_name_for_port`], falling back to the port name itself.
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 pub fn parse_xrandr_displays(stdout: &str) -> Vec<String> {
+    parse_xrandr_displays_with(stdout, get_monitor_name_for_port)
+}
+
+/// Pure core of [`parse_xrandr_displays`], parameterised over the port→monitor-name
+/// resolver so the parsing logic can be unit-tested without touching live `/sys/class/drm`
+/// EDID data.
+///
+/// `resolve` maps an xrandr connector name (e.g. `"DP-1"`) to a human-readable monitor
+/// model, or `None` when no EDID model is available — in which case the connector name is
+/// used verbatim. Production passes [`get_monitor_name_for_port`]; tests pass a stub
+/// (typically `|_| None`) so assertions see the fixture's connector names rather than
+/// whatever monitors happen to be plugged into the machine running the test suite.
+pub fn parse_xrandr_displays_with(
+    stdout: &str,
+    resolve: impl Fn(&str) -> Option<String>,
+) -> Vec<String> {
     let mut displays = Vec::new();
     let mut current_display = None;
     let mut current_port = None;
@@ -462,7 +478,7 @@ pub fn parse_xrandr_displays(stdout: &str) -> Vec<String> {
         } else if line.contains('*') {
             if let Some(res) = current_display.take() {
                 let port = current_port.take().unwrap_or_default();
-                let name = get_monitor_name_for_port(&port).unwrap_or_else(|| port.clone());
+                let name = resolve(&port).unwrap_or_else(|| port.clone());
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 let mut added = false;
                 for part in parts {
@@ -684,7 +700,7 @@ mod tests {
                       DP-1 connected primary 2560x1440+0+0\n\
                          2560x1440     143.97*+\n\
                          1920x1080     60.00\n";
-        let parsed = parse_xrandr_displays(sample);
+        let parsed = parse_xrandr_displays_with(sample, |_| None);
         assert_eq!(parsed, vec!["DP-1 (2560x1440 @ 143.97Hz)".to_string()]);
     }
 
@@ -696,7 +712,7 @@ mod tests {
                          1920x1080     60.00*+\n\
                       DP-1 connected 1920x1080+1920+0\n\
                          1920x1080    144.00*+\n";
-        let parsed = parse_xrandr_displays(sample);
+        let parsed = parse_xrandr_displays_with(sample, |_| None);
         assert_eq!(
             parsed,
             vec![
@@ -708,11 +724,36 @@ mod tests {
 
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     #[test]
+    fn test_parse_xrandr_resolver_substitutes_monitor_name() {
+        // When the resolver returns a model name, it must replace the connector name;
+        // when it returns None, the connector name is kept verbatim.
+        let sample = "Screen 0: minimum 320 x 200, current 3840 x 1080\n\
+                      HDMI-1 connected 1920x1080+0+0\n\
+                         1920x1080     60.00*+\n\
+                      DP-1 connected 1920x1080+1920+0\n\
+                         1920x1080    144.00*+\n";
+        let parsed = parse_xrandr_displays_with(sample, |port| {
+            (port == "DP-1").then(|| "DELL S3422DW".to_string())
+        });
+        assert_eq!(
+            parsed,
+            vec![
+                "HDMI-1 (1920x1080 @ 60.00Hz)".to_string(),
+                "DELL S3422DW (1920x1080 @ 144.00Hz)".to_string(),
+            ]
+        );
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    #[test]
     fn test_parse_xrandr_no_connected_displays() {
         let sample = "Screen 0: minimum 320 x 200, current 0 x 0\n\
                       HDMI-1 disconnected\n\
                       DP-1 disconnected\n";
-        assert_eq!(parse_xrandr_displays(sample), Vec::<String>::new());
+        assert_eq!(
+            parse_xrandr_displays_with(sample, |_| None),
+            Vec::<String>::new()
+        );
     }
 
     // ── parse_macos_displays ──────────────────────────────────────────────────
