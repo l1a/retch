@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784907129752,
+  "lastUpdate": 1784907732095,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14922,70 +14922,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "04d2442f2ab2a46ae627bbe76af2e08ecec87220",
-          "message": "Merge pull request #112 from l1a/feat/windows-phys-disk-mem\n\nfeat: implement Windows PhysDisk and PhysMem detection",
-          "timestamp": "2026-06-24T22:33:30-07:00",
-          "tree_id": "9c6c912cc8c4f04055290db2ab35fc64cc3e8675",
-          "url": "https://github.com/l1a/retch/commit/04d2442f2ab2a46ae627bbe76af2e08ecec87220"
-        },
-        "date": 1782367456577,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 120.88160115414026,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.46542044931409,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 120.97264475417651,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 99.3859221981465,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 41229.83339456761,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 583.025843317094,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 840.502909310256,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2919451805,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "616ce0be9684e55037a517f1c5b4e646f9d395c1",
           "message": "chore: add just nixpkgs-release automation script (#114)\n\nAutomates the full retch â†’ nixpkgs release pipeline without requiring\na local Nix installation: tags the version, polls the GitHub release for\nCI-computed hashes, updates the nixpkgs fork branch, and opens a PR.\n\nUsage: just nixpkgs-release [VERSION]\nOverride fork path with NIXPKGS_DIR env var.\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-25T13:14:18-07:00",
@@ -18105,6 +18041,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2458504400,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2b4a083ed6b7696bd56727cbcc285ed5ac45030f",
+          "message": "Unblock just pr on Linux: tests + man regen (#165)\n\nTwo coupled docs/test-hygiene fixes (no runtime behavior change), bundled\nbecause the first is what lets `just pr` pass on the reinstalled Fedora box.\n\n1. Machine-independent xrandr display tests. parse_xrandr_displays called\n   get_monitor_name_for_port (live /sys/class/drm EDID) inline, so the\n   fixture tests substituted the physically-attached monitor for the\n   fixture's connector name (DP-1 -> the panel's EDID model ATNA33AA08-0).\n   These tests are cfg(not(macos/windows)) and never ran on the old Windows\n   arrakis, so the defect was latent until the first cargo test after the\n   Fedora reinstall. Same class as #155. Extract a pure\n   parse_xrandr_displays_with(stdout, resolve); the public wrapper passes\n   get_monitor_name_for_port (production unchanged) and the tests pass\n   |_| None. Add a regression test asserting the resolver is honored.\n\n2. Regenerate docs/retch.1. The committed page carried double-bold groff\n   runs from the Windows #160 `just man` run, where the recipe's\n   sed 's/\\fB\\fB/\\fB/g' strip did not take effect. Linux regeneration\n   produces the intended single-bold output, matching the recipe's intent.\n\nPatch bump: retch-cli 0.6.2, retch-sysinfo 0.1.46 (new pub\nparse_xrandr_displays_with).\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-24T08:10:26-07:00",
+          "tree_id": "545ecee36947f96e29585e4dcc803424559d5b6b",
+          "url": "https://github.com/l1a/retch/commit/2b4a083ed6b7696bd56727cbcc285ed5ac45030f"
+        },
+        "date": 1784907728136,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 137.13709820264597,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 4.988165437105097,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 129.0333309039558,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 101.12353704311572,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 43449.255394887245,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 554.9077884933824,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 835.0526640078581,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2770485590,
             "unit": "ns"
           }
         ]
