@@ -24,7 +24,7 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           git config --global --add safe.directory '*'
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - name: Install fastfetch and hyperfine
         run: |
@@ -71,7 +71,7 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           git config --global --add safe.directory '*'
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - name: Install fastfetch and hyperfine
         run: |
@@ -110,7 +110,7 @@ jobs:
     needs: benchmark-linux-arm
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -155,7 +155,7 @@ jobs:
     needs: benchmark-macos-arm
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -205,7 +205,7 @@ jobs:
     needs: benchmark-windows-x64
     runs-on: windows-11-arm
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
