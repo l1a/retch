@@ -96,7 +96,30 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.1)
+## Current State (v0.6.2)
+- **v0.6.2 — unblock `just pr` on Linux: machine-independent display tests + man-page
+  regen** (docs/test hygiene; no runtime behavior change). Two coupled fixes, bundled
+  because the second is what actually let the gate pass on the reinstalled Fedora box:
+  - **Machine-independent xrandr display tests** (`crates/sysinfo/src/display.rs`,
+    `retch-sysinfo` → `0.1.46`). `parse_xrandr_displays` called `get_monitor_name_for_port`
+    directly, which reads live `/sys/class/drm/*/edid`, so the "parse this fixture" tests
+    substituted whatever monitor was physically attached to the test machine for the
+    fixture's connector name. They were `#[cfg(not(macos/windows))]`, so they never ran on
+    the old Windows arrakis; the first `cargo test` after the Fedora reinstall failed
+    (`DP-1` → the panel's EDID model `ATNA33AA08-0`). Same defect class as #155. Fix
+    (same pattern as #155): extracted a pure `parse_xrandr_displays_with(stdout, resolve)`
+    parameterised over the port→name resolver; the public `parse_xrandr_displays` passes
+    `get_monitor_name_for_port` (production unchanged), and the fixture tests pass `|_| None`
+    so they assert connector names. Added a regression test asserting the resolver *is*
+    honored when it returns `Some`. No runtime change.
+  - **Man page regen** (`docs/retch.1`). The committed page carried double-bold groff runs
+    (`\fB\fB…\fP\fP`) from the Windows #160 `just man` run, where the recipe's
+    `sed 's/\\fB\\fB/\\fB/g'` strip didn't take effect. `just man` on Linux produces the
+    intended single-bold output (0 double-bold sequences), matching the recipe's intent, so
+    the Linux output is canonical. **Cross-machine caveat:** a future Windows `just man` may
+    re-introduce the double-bold diff; the next Windows session should regenerate and expect
+    the single-bold form (tracked in WIP.md).
+  - Patch bump. `retch-sysinfo` → `0.1.46` (new `pub parse_xrandr_displays_with`).
 - **v0.6.1 — fix two Windows output bugs: `Camera` listing scanners, `Users` = 0**
   (Windows cross-platform-parity series, bugfix group):
   - **Camera**: the Windows path enumerated the `Camera` **and** `Image` (WIA) *setup*
