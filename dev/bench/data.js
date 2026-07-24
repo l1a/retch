@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784907732095,
+  "lastUpdate": 1784908269433,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18119,70 +18119,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "447f7796abf0b7810da7499a874504400076dfb6",
-          "message": "Merge pull request #111 from l1a/fix/performance-regression\n\nperf: fix performance regression and align hyperfine mode comparisons",
-          "timestamp": "2026-06-24T12:14:54-07:00",
-          "tree_id": "40e34e3cc0a351717b334d171164482fee0e379a",
-          "url": "https://github.com/l1a/retch/commit/447f7796abf0b7810da7499a874504400076dfb6"
-        },
-        "date": 1782330838615,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 96.42742454737068,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9468082015966406,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 96.49626072025013,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 79.37048145912203,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47247.42730073445,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 483.2227021554645,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 735.4185824856269,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1380498555,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -21307,6 +21243,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2573082490,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2b4a083ed6b7696bd56727cbcc285ed5ac45030f",
+          "message": "Unblock just pr on Linux: tests + man regen (#165)\n\nTwo coupled docs/test-hygiene fixes (no runtime behavior change), bundled\nbecause the first is what lets `just pr` pass on the reinstalled Fedora box.\n\n1. Machine-independent xrandr display tests. parse_xrandr_displays called\n   get_monitor_name_for_port (live /sys/class/drm EDID) inline, so the\n   fixture tests substituted the physically-attached monitor for the\n   fixture's connector name (DP-1 -> the panel's EDID model ATNA33AA08-0).\n   These tests are cfg(not(macos/windows)) and never ran on the old Windows\n   arrakis, so the defect was latent until the first cargo test after the\n   Fedora reinstall. Same class as #155. Extract a pure\n   parse_xrandr_displays_with(stdout, resolve); the public wrapper passes\n   get_monitor_name_for_port (production unchanged) and the tests pass\n   |_| None. Add a regression test asserting the resolver is honored.\n\n2. Regenerate docs/retch.1. The committed page carried double-bold groff\n   runs from the Windows #160 `just man` run, where the recipe's\n   sed 's/\\fB\\fB/\\fB/g' strip did not take effect. Linux regeneration\n   produces the intended single-bold output, matching the recipe's intent.\n\nPatch bump: retch-cli 0.6.2, retch-sysinfo 0.1.46 (new pub\nparse_xrandr_displays_with).\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-24T08:10:26-07:00",
+          "tree_id": "545ecee36947f96e29585e4dcc803424559d5b6b",
+          "url": "https://github.com/l1a/retch/commit/2b4a083ed6b7696bd56727cbcc285ed5ac45030f"
+        },
+        "date": 1784908263694,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 102.48218500684997,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.94733909784003,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 101.32634693579624,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.59246117887184,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46557.00100567789,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 488.7468268798646,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 728.4509923388956,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1947541185,
             "unit": "ns"
           }
         ]
