@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784910201222,
+  "lastUpdate": 1784910787308,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18119,70 +18119,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "485da1be8ba30a6409d4220e303ee1380f4c8937",
-          "message": "docs: document default set notes in NOTES\n\nAssisted-By: Gemini 2.5 Pro",
-          "timestamp": "2026-06-24T12:31:27-07:00",
-          "tree_id": "ca4119acbfdfeee6b90c27723a146c8529d0cef2",
-          "url": "https://github.com/l1a/retch/commit/485da1be8ba30a6409d4220e303ee1380f4c8937"
-        },
-        "date": 1782332425118,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 96.61758739632278,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946825002343431,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 96.79261608229427,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 79.31214353444103,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47020.360633353,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 482.1440510091742,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 746.9015069226948,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1313774420,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -21307,6 +21243,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1947541185,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a9cbad3234c6ec06f444e623a84b3ff72efbcd50",
+          "message": "Bump deps + CI actions (Dependabot #161/163/164) (#167)\n\nConsolidate three open Dependabot PRs into one gated PR so the release-hygiene\nsteps they bypass (retch version bump, NOTES/man regen) are performed. No\nruntime behavior change.\n\n- Rust deps (#164, cargo-dependencies group, all patch-level, lockfile-only\n  since the Cargo.toml specs are caret ranges): clap 4.6.1->4.6.4 (pulls syn v3\n  via clap_builder/clap_derive), serde 1.0.228->1.0.229, toml 1.1.2->1.1.3,\n  clap_complete_nushell 4.6.0->4.6.1, anyhow 1.0.103->1.0.104,\n  libc 0.2.186->0.2.189, sysinfo 0.39.5->0.39.6, serde_json 1.0.150->1.0.151.\n- actions/checkout 7.0.0->7.0.1 (#163) across benchmark/claude/\n  claude-code-review/packaging/rust/security (both SHA-pinned and @v7 uses).\n- softprops/action-gh-release 3.0.1->3.0.2 (#161) in the rust.yml release job.\n\nretch-cli -> 0.6.3; retch-sysinfo unchanged (0.1.46, no source change).\nWorkspace fmt/clippy/test all green.\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-24T08:51:12-07:00",
+          "tree_id": "0627e675b46ff2705a23fb6064df75bf587aac13",
+          "url": "https://github.com/l1a/retch/commit/a9cbad3234c6ec06f444e623a84b3ff72efbcd50"
+        },
+        "date": 1784910782587,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 101.2384483431831,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9480980790364066,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 101.10453118460836,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.66661207282868,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46974.30415556398,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 491.6363409003058,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 741.5692882966953,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1703847100,
             "unit": "ns"
           }
         ]
