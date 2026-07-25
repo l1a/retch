@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784995444670,
+  "lastUpdate": 1784997646017,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2803,90 +2803,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Linux x64 Benchmarks": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "bf9f9116909d0291a83a77f97482debe1f6e4ec5",
-          "message": "chore: add just nixpkgs-release automation script (#115)\n\nAutomates the full retch â†’ nixpkgs release pipeline without requiring\na local Nix installation: tags the version, polls the GitHub release for\nCI-computed hashes, updates the nixpkgs fork branch, and opens a PR.\n\nUsage: just nixpkgs-release [VERSION]\nOverride fork path with NIXPKGS_DIR env var.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-27T08:04:58-07:00",
-          "tree_id": "1aa03e00e034b8c11e50ecbc06a482e87c8275ef",
-          "url": "https://github.com/l1a/retch/commit/bf9f9116909d0291a83a77f97482debe1f6e4ec5"
-        },
-        "date": 1782573119595,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 242996759.26666665,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2030.7446210045703,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 57.83870946166612,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.864561294566234,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 58.07063069642553,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 17383.117357003757,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 182565.7593096706,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 12414.106495883196,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 12512.417815566154,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1606638.139405865,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 375.45944689788394,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 262.46798435989365,
-            "unit": "ns"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -6999,6 +6915,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 255.56089452983898,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "586012cefc4c98dfa9ab5b227b0832620797265c",
+          "message": "Lint graphics feature in just check (v0.6.5) (#170)\n\nAdd `cargo clippy --features graphics -- -D warnings` to the `check` recipe\n(and therefore the `just pr` gate). The base64 0.22->0.23 bump surfaced that\nbase64/image/icy_sixel and their src/logo.rs call sites live behind the\noptional `graphics` feature, which the default `cargo clippy --workspace`\nnever compiles -- so a graphics-only lint or API break could pass the gate\nunseen. Targets retch-cli (which defines the feature), not --workspace.\n\nTooling only, no runtime change. Closes the LOCAL gate gap; CI still builds\ndefault features, so a CI graphics job would be a separate follow-up.\nretch-cli -> 0.6.5; retch-sysinfo unchanged (0.1.46).\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-25T09:33:31-07:00",
+          "tree_id": "f944cee1876f95b5314bfca44f0ba40a154033bb",
+          "url": "https://github.com/l1a/retch/commit/586012cefc4c98dfa9ab5b227b0832620797265c"
+        },
+        "date": 1784997645074,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 719137456.3,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2063.6482766172276,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 58.51999121072517,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.814444623143443,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 57.830762357688776,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 18298.801064084968,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 191228.88569279696,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12923.891776267605,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 13010.664518051257,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1614494.9636026472,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 398.5197853543041,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 272.71750375570105,
             "unit": "ns"
           }
         ]
