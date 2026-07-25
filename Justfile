@@ -47,6 +47,10 @@ lint:
 check:
     cargo fmt -- --check
     cargo clippy --workspace -- -D warnings
+    # Also lint the optional `graphics` feature (base64/image/icy_sixel in src/logo.rs),
+    # which the default --workspace clippy above does not compile. Targets retch-cli (the
+    # package that defines the feature), not --workspace.
+    cargo clippy --features graphics -- -D warnings
 
 # Run security audit (requires cargo-audit)
 audit:

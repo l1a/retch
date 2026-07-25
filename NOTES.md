@@ -96,7 +96,16 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.4)
+## Current State (v0.6.5)
+- **v0.6.5 — lint the `graphics` feature in `just check`** (tooling; no runtime change).
+  Adds `cargo clippy --features graphics -- -D warnings` to the `check` recipe (and thus to
+  the `just pr` gate). Closes the gap found during the v0.6.4 base64 bump: `base64`/`image`/
+  `icy_sixel` (and their `src/logo.rs` call sites) are behind the optional `graphics` feature,
+  which the default `cargo clippy --workspace` never compiles — so a graphics-only API break
+  or lint could pass the gate unseen. Targets `retch-cli` (which defines the feature), not
+  `--workspace`. Note: CI's build matrix still builds default features, so this closes the
+  **local** gate gap only; a CI graphics-feature job would be a separate follow-up.
+  `retch-cli` → 0.6.5; `retch-sysinfo` unchanged (`0.1.46`). Patch bump.
 - **v0.6.4 — `base64` 0.22 → 0.23 (Dependabot #166)** (chore; no runtime behavior change).
   A semver-breaking 0.x bump that the v0.6.3 consolidation deliberately left out because,
   unlike the patch bumps, it could change the API. Verified compatible: `base64` is used
