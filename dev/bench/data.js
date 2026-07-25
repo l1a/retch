@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784994282062,
+  "lastUpdate": 1784994911982,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14922,70 +14922,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "cc924b5dc321850fda70d1fd023e08d3849a39e4",
-          "message": "docs: update AGENTS.md last-updated footer to v0.3.25 (#113)\n\n* chore: add just nixpkgs-release automation script\n\nAutomates the full retch â†’ nixpkgs release pipeline without requiring\na local Nix installation: tags the version, polls the GitHub release for\nCI-computed hashes, updates the nixpkgs fork branch, and opens a PR.\n\nUsage: just nixpkgs-release [VERSION]\nOverride fork path with NIXPKGS_DIR env var.\n\nAssisted-By: Claude Sonnet 4.6\n\n* docs: update AGENTS.md last-updated footer to v0.3.25\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-25T13:12:53-07:00",
-          "tree_id": "1aa03e00e034b8c11e50ecbc06a482e87c8275ef",
-          "url": "https://github.com/l1a/retch/commit/cc924b5dc321850fda70d1fd023e08d3849a39e4"
-        },
-        "date": 1782420364748,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 122.0921802497171,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.326021110777621,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 120.41166842056926,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 94.11519195577338,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 41753.24152894572,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 564.2731723139825,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 829.0526823032384,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3257129430,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "bf9f9116909d0291a83a77f97482debe1f6e4ec5",
           "message": "chore: add just nixpkgs-release automation script (#115)\n\nAutomates the full retch â†’ nixpkgs release pipeline without requiring\na local Nix installation: tags the version, polls the GitHub release for\nCI-computed hashes, updates the nixpkgs fork branch, and opens a PR.\n\nUsage: just nixpkgs-release [VERSION]\nOverride fork path with NIXPKGS_DIR env var.\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-27T08:04:58-07:00",
@@ -18105,6 +18041,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1812153010,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7c0cf9c9583413e1b1d346274f3367162daef52e",
+          "message": "Bump base64 0.22 -> 0.23 (Dependabot #166) (#169)\n\nThe one genuinely-new bump from Dependabot #166 (the other 8 crates in that\ngroup already landed in #167/v0.6.3). A semver-breaking 0.x bump, held out of\nthe v0.6.3 consolidation pending an API check. No runtime behavior change.\n\nbase64 is used only under the optional `graphics` feature (src/logo.rs, two\ngeneral_purpose::STANDARD.encode() sites for the Kitty/iTerm2 inline-image\nprotocol). The Engine encode API is unchanged in 0.23: build + clippy\n-D warnings are clean *with --features graphics* (the default gate does not\ncompile base64), and tests pass with and without the feature. `cargo bench`\nis unchanged (base64 is not on any benchmarked path). Widened the Cargo.toml\nspec \"0.22\" -> \"0.23\" since the caret range wouldn't admit 0.23.\n\nretch-cli -> 0.6.4; retch-sysinfo unchanged (0.1.46).\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-25T08:22:25-07:00",
+          "tree_id": "5c659664226725eb40ca8c915bafbcf13fe02f12",
+          "url": "https://github.com/l1a/retch/commit/7c0cf9c9583413e1b1d346274f3367162daef52e"
+        },
+        "date": 1784994908775,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 125.75091081359726,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.316893860025843,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 125.54940493391427,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 96.5268852346032,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 44104.502675086704,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 570.738999112332,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 829.8544418083686,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2903597250,
             "unit": "ns"
           }
         ]
