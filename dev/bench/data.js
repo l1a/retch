@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784999817500,
+  "lastUpdate": 1785000004373,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14922,70 +14922,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "2b42bfaa80b8a2f163ea057a8015bdd5dd601eb7",
-          "message": "docs/ci: branch cleanup policy and skip CI on docs-only PRs (#116)\n\n* docs: document branch-deletion policy in AGENTS.md\n\nAssisted-By: Claude Sonnet 4.6\n\n* ci: skip Rust/Security/Packaging workflows on docs-only PRs\n\nAdd paths filters to pull_request triggers so the full CI matrix\ndoes not run when only docs, scripts, or config files change.\nPush-to-main continues to run unconditionally.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-27T08:29:33-07:00",
-          "tree_id": "81fad1b28f95d6c6e1f50b3e961f2a81c7ea145d",
-          "url": "https://github.com/l1a/retch/commit/2b42bfaa80b8a2f163ea057a8015bdd5dd601eb7"
-        },
-        "date": 1782575834939,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 72.98859996051064,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 3.1692117679980507,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 71.05158134458142,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 53.08049581102231,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 27618.26037187816,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 297.08951893927605,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 448.23345726322066,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1594350285,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "ee330bee589f3cc23883fa67e627ad06b31d2d2b",
           "message": "fix: rebuild release binary if signal-killed on post-merge bench (#117)\n\nA Syncthing-synced binary compiled with target-cpu=native on a\ndifferent CPU microarchitecture crashes with SIGILL during sysinfo\ngathering. Cargo considers it up-to-date so `cargo build --release`\nis a no-op. Detect signal-killed exit (Python returncode < 0) and\nforce `cargo clean -p retch-cli && cargo build --release`.\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-27T08:59:12-07:00",
@@ -18105,6 +18041,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1343056805,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "da6c74f858f9d84a8b3b076473c1026f04aef412",
+          "message": "Show ASCII logo without a TTY; fix CI dry-run (v0.6.6) (#171)\n\ndisplay.rs gated the logo purely on stdout_is_tty, so `retch --ascii-logo`\nrendered no logo when piped/redirected -- including CI's full-test \"Run\nfetcher (dry run)\" step, which showed no logo.\n\nExtract a pure `should_show_logo(config_show_logo, no_logo, ascii_logo,\nstdout_is_tty)` helper: `--no-logo` always wins; `--ascii-logo` now forces the\nlogo on regardless of TTY or config (ASCII is plain, pipe-safe text, mirroring\nhow --no-logo is always honored); auto mode is unchanged (default-on,\nTTY-gated). --chafa-logo/graphical modes are deliberately not forced (they emit\nterminal-only control sequences).\n\nUpdate the CI full-test dry-run to `cargo run --release -- --full --ascii-logo`\nso it exercises every field AND the ASCII-logo path. 4 new unit tests on the\nhelper; verified live that piped `--full --ascii-logo` shows the logo while\npiped `--full` alone still shows none.\n\nretch-cli -> 0.6.6; retch-sysinfo unchanged (0.1.46).\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-25T09:48:23-07:00",
+          "tree_id": "88dc56bcc4160f88dae2e60506f62a93c2ca7ea4",
+          "url": "https://github.com/l1a/retch/commit/da6c74f858f9d84a8b3b076473c1026f04aef412"
+        },
+        "date": 1785000001071,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 124.1177297174831,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.354359005587351,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 125.71557372125565,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 98.7546796646213,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42143.69726025978,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 619.850779514156,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 897.4932088676305,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2294988865,
             "unit": "ns"
           }
         ]
