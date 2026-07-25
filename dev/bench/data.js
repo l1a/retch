@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784998054899,
+  "lastUpdate": 1784998506235,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -11220,80 +11220,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "bf9f9116909d0291a83a77f97482debe1f6e4ec5",
-          "message": "chore: add just nixpkgs-release automation script (#115)\n\nAutomates the full retch â†’ nixpkgs release pipeline without requiring\na local Nix installation: tags the version, polls the GitHub release for\nCI-computed hashes, updates the nixpkgs fork branch, and opens a PR.\n\nUsage: just nixpkgs-release [VERSION]\nOverride fork path with NIXPKGS_DIR env var.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-27T08:04:58-07:00",
-          "tree_id": "1aa03e00e034b8c11e50ecbc06a482e87c8275ef",
-          "url": "https://github.com/l1a/retch/commit/bf9f9116909d0291a83a77f97482debe1f6e4ec5"
-        },
-        "date": 1782573858128,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 693115991.7,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 334.4869188894123,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 60.439383308502315,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.6643929666106665,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 60.28471551179884,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 4057.0818251797527,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 975.2822751823527,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 386.15024054455864,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 63574.98199173827,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 322.31402895444654,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "2b42bfaa80b8a2f163ea057a8015bdd5dd601eb7",
           "message": "docs/ci: branch cleanup policy and skip CI on docs-only PRs (#116)\n\n* docs: document branch-deletion policy in AGENTS.md\n\nAssisted-By: Claude Sonnet 4.6\n\n* ci: skip Rust/Security/Packaging workflows on docs-only PRs\n\nAdd paths filters to pull_request triggers so the full CI matrix\ndoes not run when only docs, scripts, or config files change.\nPush-to-main continues to run unconditionally.\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-27T08:29:33-07:00",
@@ -14903,6 +14829,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 375.7496564237437,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "586012cefc4c98dfa9ab5b227b0832620797265c",
+          "message": "Lint graphics feature in just check (v0.6.5) (#170)\n\nAdd `cargo clippy --features graphics -- -D warnings` to the `check` recipe\n(and therefore the `just pr` gate). The base64 0.22->0.23 bump surfaced that\nbase64/image/icy_sixel and their src/logo.rs call sites live behind the\noptional `graphics` feature, which the default `cargo clippy --workspace`\nnever compiles -- so a graphics-only lint or API break could pass the gate\nunseen. Targets retch-cli (which defines the feature), not --workspace.\n\nTooling only, no runtime change. Closes the LOCAL gate gap; CI still builds\ndefault features, so a CI graphics job would be a separate follow-up.\nretch-cli -> 0.6.5; retch-sysinfo unchanged (0.1.46).\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-25T09:33:31-07:00",
+          "tree_id": "f944cee1876f95b5314bfca44f0ba40a154033bb",
+          "url": "https://github.com/l1a/retch/commit/586012cefc4c98dfa9ab5b227b0832620797265c"
+        },
+        "date": 1784998504257,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1203127012.7,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 690.5506254268487,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 73.90300629999662,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.8979347074455712,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 89.81535565507677,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6483.621165679588,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1466.2905073649667,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 544.7701623241278,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 112252.23903792942,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 374.86487225103605,
             "unit": "ns"
           }
         ]
