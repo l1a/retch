@@ -96,7 +96,16 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.6)
+## Current State (v0.6.7)
+- **v0.6.7 — CI `graphics-feature` job** (CI only; no runtime change). Adds a dedicated
+  `graphics-feature` job to `rust.yml` that runs `cargo clippy --features graphics -- -D
+  warnings` + `cargo build --features graphics` on one ubuntu runner (same non-tag triggers
+  as `build`). Closes the *CI* half of the gap v0.6.5 fixed locally: the default `build`
+  matrix never compiles the optional `graphics` feature (base64/image/icy_sixel + the
+  `src/logo.rs` inline-image paths), so a graphics-only lint or API break could pass CI
+  unseen — as the base64 0.22→0.23 bump nearly did. Mirrors the local `just check` graphics
+  step so gate and CI agree. `retch-cli` → 0.6.7; `retch-sysinfo` unchanged (`0.1.46`).
+  Patch bump.
 - **v0.6.6 — `--ascii-logo` renders even without a TTY; CI dry-run shows the logo**
   (small behaviour fix + CI). Previously `display.rs` gated the logo purely on
   `stdout_is_tty`, so `retch --ascii-logo` produced no logo when piped/redirected — and the
