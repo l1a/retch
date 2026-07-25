@@ -175,7 +175,15 @@ pub fn get_distro_colors(distro: Option<&str>) -> Vec<&'static str> {
         Some("kali") => vec!["\x1b[34m", "\x1b[37m"],
         Some("zorin") => vec!["\x1b[36m", "\x1b[37m"],
         Some("garuda") => vec!["\x1b[35m", "\x1b[36m"],
-        Some("macos") => vec!["\x1b[32m", "\x1b[33m", "\x1b[31m", "\x1b[35m", "\x1b[34m"],
+        // Grayscale (silver) ramp, matching the modern monochrome Apple logo rather than the
+        // legacy rainbow. 256-colour greys (light→medium) read on light and dark terminals.
+        Some("macos") => vec![
+            "\x1b[38;5;252m",
+            "\x1b[38;5;250m",
+            "\x1b[38;5;248m",
+            "\x1b[38;5;246m",
+            "\x1b[38;5;244m",
+        ],
         Some("windows") => vec!["\x1b[36m"],
         _ => vec!["\x1b[30m", "\x1b[37m", "\x1b[33m"], // Tux
     }

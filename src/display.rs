@@ -84,6 +84,21 @@ fn plan_layout(
     }
 }
 
+/// Split the Wi-Fi detail string into `(hardware, connection)` for two-line display.
+///
+/// The Linux `iw` path builds `"{adapter model} [{iface}] - {SSID} ({band/rate})"` — hardware
+/// and connection joined by `" - "`. Splitting on the first `" - "` puts the adapter on one
+/// line ("Wi-Fi") and the live connection on a second ("Wi-Fi Link"), so neither is the
+/// 150+ char line that used to wrap and collide with the logo. The fallback detectors
+/// (nmcli/iwgetid/macOS/Windows) return only the connection with no `" - "`, so those render
+/// as a single line (`connection` is `None`).
+fn split_wifi_line(wifi: &str) -> (&str, Option<&str>) {
+    match wifi.split_once(" - ") {
+        Some((hardware, connection)) => (hardware, Some(connection)),
+        None => (wifi, None),
+    }
+}
+
 /// Renders the collected system information to the terminal.
 ///
 /// This function handles theme selection, logo rendering (including fallbacks
@@ -149,6 +164,8 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                         || (norm_label == "dns server" && norm_f == "dns")
                         // "memory" field key matches "Memory Usage" display label
                         || (norm_label == "memory usage" && norm_f == "memory")
+                        // "Wi-Fi Link" (the connection line) maps to the "wifi" field key
+                        || (norm_label == "wi fi link" && norm_f == "wifi")
                 })
             }
             None => true,
@@ -262,7 +279,13 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         }
     }
     if let Some(wifi) = &info.wifi {
-        print_line("Wi-Fi", wifi);
+        // Split the (often 150+ char) Wi-Fi string into a hardware line and a connection line
+        // so neither wraps and collides with the logo. See `split_wifi_line`.
+        let (hardware, connection) = split_wifi_line(wifi);
+        print_line("Wi-Fi", hardware);
+        if let Some(conn) = connection {
+            print_line("Wi-Fi Link", conn);
+        }
     }
     if let Some(bt) = &info.bluetooth {
         print_line("Bluetooth", bt);
@@ -928,6 +951,37 @@ mod tests {
         let p = plan_layout(&[50, 30, 54], 20, 40, 120, true);
         assert!(p.side_by_side);
         assert_eq!(p.text_column_width, 58); // widest of the 3 (54) + 4
+    }
+
+    // ── split_wifi_line ───────────────────────────────────────────────────────
+
+    #[test]
+    fn test_split_wifi_hardware_and_connection() {
+        // The real `iw`-path shape: "{adapter} [{iface}] - {ssid} ({details})".
+        let s = "MEDIATEK Corp. MT7925 802.11be [Filogic 360] [wlp194s0] - myssid (5.0 GHz ch36 [↓866 ↑866])";
+        let (hw, conn) = split_wifi_line(s);
+        assert_eq!(
+            hw,
+            "MEDIATEK Corp. MT7925 802.11be [Filogic 360] [wlp194s0]"
+        );
+        assert_eq!(conn, Some("myssid (5.0 GHz ch36 [↓866 ↑866])"));
+    }
+
+    #[test]
+    fn test_split_wifi_splits_on_first_separator() {
+        // Only the first " - " (the hardware|connection boundary) splits; a " - " inside the
+        // SSID/details stays with the connection.
+        let (hw, conn) = split_wifi_line("Card X [wlan0] - Guest - 5G (5 GHz)");
+        assert_eq!(hw, "Card X [wlan0]");
+        assert_eq!(conn, Some("Guest - 5G (5 GHz)"));
+    }
+
+    #[test]
+    fn test_split_wifi_connection_only_fallback() {
+        // Fallback detectors (nmcli/iwgetid/macOS/Windows) have no " - " → single line.
+        let (hw, conn) = split_wifi_line("myssid (300 Mbps)");
+        assert_eq!(hw, "myssid (300 Mbps)");
+        assert_eq!(conn, None);
     }
 
     #[test]

@@ -112,7 +112,19 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
   stacks at 90 cols. 7 new `plan_layout` unit tests. Also made CI consistent: the `build`
   job's "Run fetcher (dry run)" step now uses `retch --full --ascii-logo` (was `--long`,
   no logo), matching the `full-test` dry run — so both CI dry runs exercise every field and
-  the logo/layout path. `retch-cli` → 0.6.8; `retch-sysinfo` unchanged (`0.1.46`). Patch bump.
+  the logo/layout path.
+  - **Wi-Fi split into two lines** (`src/display.rs`). The `iw` path builds a single
+    `"{adapter} [{iface}] - {SSID} ({band/rate})"` string that ran 150+ chars and wrapped into
+    the logo. New pure `split_wifi_line` splits on the `" - "` boundary → a **`Wi-Fi`** line
+    (adapter hardware) and a **`Wi-Fi Link`** line (live connection). Fallback detectors
+    (nmcli/iwgetid/macOS/Windows) have no `" - "` and render as a single `Wi-Fi` line.
+    `Wi-Fi Link` is aliased to the `wifi` field key in `should_show` (like `dns`/`memory`).
+    3 unit tests.
+  - **macOS/Apple logo is grayscale, not rainbow** (`src/logo.rs`). The ASCII Apple logo's
+    5 colour bands were the legacy rainbow (green/yellow/red/magenta/blue); replaced with a
+    256-colour grey (silver) ramp to match the modern monochrome Apple logo. (The graphical
+    `assets/logos/macos.png` is a separate asset — untouched here.)
+  - `retch-cli` → 0.6.8; `retch-sysinfo` unchanged (`0.1.46`). Patch bump.
 - **v0.6.7 — CI `graphics-feature` job** (CI only; no runtime change). Adds a dedicated
   `graphics-feature` job to `rust.yml` that runs `cargo clippy --features graphics -- -D
   warnings` + `cargo build --features graphics` on one ubuntu runner (same non-tag triggers
