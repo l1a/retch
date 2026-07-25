@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784993432020,
+  "lastUpdate": 1784993840974,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7018,90 +7018,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "616ce0be9684e55037a517f1c5b4e646f9d395c1",
-          "message": "chore: add just nixpkgs-release automation script (#114)\n\nAutomates the full retch â†’ nixpkgs release pipeline without requiring\na local Nix installation: tags the version, polls the GitHub release for\nCI-computed hashes, updates the nixpkgs fork branch, and opens a PR.\n\nUsage: just nixpkgs-release [VERSION]\nOverride fork path with NIXPKGS_DIR env var.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-25T13:14:18-07:00",
-          "tree_id": "1aa03e00e034b8c11e50ecbc06a482e87c8275ef",
-          "url": "https://github.com/l1a/retch/commit/616ce0be9684e55037a517f1c5b4e646f9d395c1"
-        },
-        "date": 1782419301775,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 355749450.575,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 969.2594259295229,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.15262815579065,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946617894043139,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.19354041913208,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7889.343017365063,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 70277.94934604775,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4739.931477217535,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4842.212926090031,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1207642.2507097006,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 341.68761921644443,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 278.5914650076496,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "bf9f9116909d0291a83a77f97482debe1f6e4ec5",
           "message": "chore: add just nixpkgs-release automation script (#115)\n\nAutomates the full retch â†’ nixpkgs release pipeline without requiring\na local Nix installation: tags the version, polls the GitHub release for\nCI-computed hashes, updates the nixpkgs fork branch, and opens a PR.\n\nUsage: just nixpkgs-release [VERSION]\nOverride fork path with NIXPKGS_DIR env var.\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-27T08:04:58-07:00",
@@ -11201,6 +11117,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 258.64590744549776,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7c0cf9c9583413e1b1d346274f3367162daef52e",
+          "message": "Bump base64 0.22 -> 0.23 (Dependabot #166) (#169)\n\nThe one genuinely-new bump from Dependabot #166 (the other 8 crates in that\ngroup already landed in #167/v0.6.3). A semver-breaking 0.x bump, held out of\nthe v0.6.3 consolidation pending an API check. No runtime behavior change.\n\nbase64 is used only under the optional `graphics` feature (src/logo.rs, two\ngeneral_purpose::STANDARD.encode() sites for the Kitty/iTerm2 inline-image\nprotocol). The Engine encode API is unchanged in 0.23: build + clippy\n-D warnings are clean *with --features graphics* (the default gate does not\ncompile base64), and tests pass with and without the feature. `cargo bench`\nis unchanged (base64 is not on any benchmarked path). Widened the Cargo.toml\nspec \"0.22\" -> \"0.23\" since the caret range wouldn't admit 0.23.\n\nretch-cli -> 0.6.4; retch-sysinfo unchanged (0.1.46).\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-25T08:22:25-07:00",
+          "tree_id": "5c659664226725eb40ca8c915bafbcf13fe02f12",
+          "url": "https://github.com/l1a/retch/commit/7c0cf9c9583413e1b1d346274f3367162daef52e"
+        },
+        "date": 1784993839854,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 753423364.6,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1007.6960296423891,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 47.302581194290994,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9470137151455056,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 46.66796752625789,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7842.085495846963,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70932.31324569421,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4825.386109040612,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4913.376763594888,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1283826.7666593129,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 345.39568732061616,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 255.71565226783574,
             "unit": "ns"
           }
         ]
