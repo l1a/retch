@@ -109,8 +109,10 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
   so it works identically for ASCII, Chafa (both `Lines`) and the graphical image protocols
   (Kitty/iTerm2/Sixel — `height_lines` + fixed image column). Verified in a pseudo-terminal:
   `--full` renders the logo beside the text at 140 cols (previously stacked) and correctly
-  stacks at 90 cols. 7 new `plan_layout` unit tests. `retch-cli` → 0.6.8; `retch-sysinfo`
-  unchanged (`0.1.46`). Patch bump.
+  stacks at 90 cols. 7 new `plan_layout` unit tests. Also made CI consistent: the `build`
+  job's "Run fetcher (dry run)" step now uses `retch --full --ascii-logo` (was `--long`,
+  no logo), matching the `full-test` dry run — so both CI dry runs exercise every field and
+  the logo/layout path. `retch-cli` → 0.6.8; `retch-sysinfo` unchanged (`0.1.46`). Patch bump.
 - **v0.6.7 — CI `graphics-feature` job** (CI only; no runtime change). Adds a dedicated
   `graphics-feature` job to `rust.yml` that runs `cargo clippy --features graphics -- -D
   warnings` + `cargo build --features graphics` on one ubuntu runner (same non-tag triggers
