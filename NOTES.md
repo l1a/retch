@@ -96,7 +96,18 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.3)
+## Current State (v0.6.4)
+- **v0.6.4 — `base64` 0.22 → 0.23 (Dependabot #166)** (chore; no runtime behavior change).
+  A semver-breaking 0.x bump that the v0.6.3 consolidation deliberately left out because,
+  unlike the patch bumps, it could change the API. Verified compatible: `base64` is used
+  only under the optional `graphics` feature (`src/logo.rs`, two `general_purpose::STANDARD
+  .encode()` call sites for the Kitty/iTerm2 inline-image protocol), and the `Engine` encode
+  API is unchanged in 0.23 — builds and clippy (`-D warnings`) are clean **with the
+  `graphics` feature enabled**, which the default gate does not exercise. `Cargo.toml` spec
+  widened `"0.22"` → `"0.23"` (caret range wouldn't admit 0.23 otherwise). Tests green with
+  and without `graphics`; `cargo bench` unchanged (base64 is not on any benchmarked path —
+  it only runs when emitting a graphical logo). `retch-cli` → 0.6.4; `retch-sysinfo`
+  unchanged (`0.1.46`). Patch bump.
 - **v0.6.3 — dependency + CI-action bumps (consolidated Dependabot #161/#163/#164)**
   (chore; no runtime behavior change). Rolls three open Dependabot PRs into one gated PR so
   the release-hygiene steps Dependabot skips (retch version bump, NOTES/man regen) are done:
