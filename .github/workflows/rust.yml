@@ -80,6 +80,22 @@ jobs:
       if: runner.os == 'macOS'
       run: system_profiler SPDisplaysDataType
 
+  # The optional `graphics` feature (base64/image/icy_sixel + src/logo.rs) is NOT compiled
+  # by the default `build` job above, so a graphics-only lint or API break can pass CI
+  # unseen — as the base64 0.22->0.23 bump nearly did. Lint + build it explicitly on one
+  # runner. Mirrors the local `just check` graphics step so the gate and CI agree.
+  graphics-feature:
+    runs-on: ubuntu-latest
+    if: github.ref_type != 'tag'
+    steps:
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+    - name: Clippy (graphics feature)
+      run: cargo clippy --features graphics -- -D warnings
+    - name: Build (graphics feature)
+      run: cargo build --features graphics --verbose
+
   full-test:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
