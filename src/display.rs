@@ -40,6 +40,50 @@ fn should_show_logo(
     config_show_logo.unwrap_or(true) && stdout_is_tty // auto mode: default-on, but TTY-gated
 }
 
+/// Result of [`plan_layout`]: whether the logo sits beside the text, and the column the text
+/// is padded to (where the logo begins).
+struct LayoutPlan {
+    side_by_side: bool,
+    text_column_width: usize,
+}
+
+/// Decide side-by-side vs. stacked layout, and the text-column width, from the geometry of
+/// the info block and the currently-selected logo.
+///
+/// Only the info lines that actually sit **beside** the logo — the first `logo_height` rows —
+/// constrain the layout. In `--long`/`--full` the widest lines (Wi-Fi, Network, Battery) fall
+/// *below* the logo, where nothing overlaps them, so they must neither widen the text column
+/// nor force a stacked layout. Basing the decision on every line (the previous behaviour) let
+/// a single 150+ char Wi-Fi line push the logo above the text on any normal-width terminal.
+///
+/// This is logo-type-agnostic: `logo_height`/`logo_width` are supplied by the caller from the
+/// active logo, so it works identically for ASCII art, Chafa (both rendered as text lines),
+/// and the graphical image protocols (Kitty/iTerm2/Sixel, whose height is their pixel-derived
+/// row count and whose width is the fixed image column).
+///
+/// `info_widths` are the ANSI-stripped visible widths of the info lines, in render order.
+fn plan_layout(
+    info_widths: &[usize],
+    logo_height: usize,
+    logo_width: usize,
+    term_width: usize,
+    show_logo: bool,
+) -> LayoutPlan {
+    let beside_count = info_widths.len().min(logo_height);
+    let max_beside_width = info_widths[..beside_count]
+        .iter()
+        .copied()
+        .max()
+        .unwrap_or(0);
+    let text_column_width = std::cmp::max(max_beside_width + 4, 45);
+    let side_by_side =
+        show_logo && term_width >= 95 && term_width >= text_column_width + logo_width;
+    LayoutPlan {
+        side_by_side,
+        text_column_width,
+    }
+}
+
 /// Renders the collected system information to the terminal.
 ///
 /// This function handles theme selection, logo rendering (including fallbacks
@@ -525,25 +569,36 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         count
     };
 
-    let max_text_width = info_lines
-        .iter()
-        .map(|line| visible_len(line))
-        .max()
-        .unwrap_or(0);
-    let text_column_width = std::cmp::max(max_text_width + 4, 45);
+    let info_widths: Vec<usize> = info_lines.iter().map(|line| visible_len(line)).collect();
 
-    let max_logo_width = match &active_logo {
-        ActiveLogo::Lines(logo_lines) => logo_lines
-            .iter()
-            .map(|line| visible_len(line))
-            .max()
-            .unwrap_or(0),
-        ActiveLogo::Kitty(_, _) | ActiveLogo::Iterm2(_, _) | ActiveLogo::Sixel(_, _) => 40,
-        ActiveLogo::None => 0,
+    // Height (row count) and width of the active logo, whatever its kind. ASCII and Chafa are
+    // both `Lines`; the graphical protocols carry their pixel-derived row count and use the
+    // fixed image column width.
+    let (logo_height, max_logo_width) = match &active_logo {
+        ActiveLogo::Lines(logo_lines) => (
+            logo_lines.len(),
+            logo_lines
+                .iter()
+                .map(|line| visible_len(line))
+                .max()
+                .unwrap_or(0),
+        ),
+        ActiveLogo::Kitty(_, h) | ActiveLogo::Iterm2(_, h) | ActiveLogo::Sixel(_, h) => (*h, 40),
+        ActiveLogo::None => (0, 0),
     };
 
-    let side_by_side =
-        show_logo && term_width >= 95 && term_width >= (text_column_width + max_logo_width);
+    // Only the lines beside the logo constrain placement — a long Wi-Fi/Network line below it
+    // must not force a stacked layout. See `plan_layout`.
+    let LayoutPlan {
+        side_by_side,
+        text_column_width,
+    } = plan_layout(
+        &info_widths,
+        logo_height,
+        max_logo_width,
+        term_width,
+        show_logo,
+    );
 
     println!(); // leading newline
 
@@ -808,6 +863,71 @@ mod tests {
         assert!(!should_show_logo(Some(false), false, false, true));
         // ...but an explicit --ascii-logo still forces it on (CLI overrides config default).
         assert!(should_show_logo(Some(false), false, true, false));
+    }
+
+    // ── plan_layout ───────────────────────────────────────────────────────────
+
+    // A ~20-row logo with the widest beside-logo line = 54 (e.g. the CPU line), then a very
+    // long Wi-Fi line (158) far below it — the real --full shape on this hardware.
+    fn realistic_full_widths() -> Vec<usize> {
+        let mut w = vec![40; 20]; // rows 0..20 sit beside the logo
+        w[13] = 54; // CPU line, still beside the logo
+        w.extend([158, 91, 79, 60, 45, 62]); // Wi-Fi/Net/Battery/etc., all BELOW the logo
+        w
+    }
+
+    #[test]
+    fn test_layout_long_line_below_logo_stays_side_by_side() {
+        // The 158-wide Wi-Fi line is below the 20-row logo, so it must NOT force a stack.
+        let p = plan_layout(&realistic_full_widths(), 20, 40, 120, true);
+        assert!(p.side_by_side);
+        // Text column is driven by the widest BESIDE-logo line (54), not the 158 below it.
+        assert_eq!(p.text_column_width, 58); // 54 + 4
+    }
+
+    #[test]
+    fn test_layout_old_behavior_would_have_stacked() {
+        // Sanity: the pre-fix rule (widest of ALL lines) would need 158+4+40 = 202 cols and
+        // stack at 120. Confirm the *new* rule does not, on the same inputs.
+        let widths = realistic_full_widths();
+        let old_text_col = std::cmp::max(widths.iter().copied().max().unwrap() + 4, 45);
+        assert!(120 < old_text_col + 40); // old rule: stacked
+        assert!(plan_layout(&widths, 20, 40, 120, true).side_by_side); // new rule: side-by-side
+    }
+
+    #[test]
+    fn test_layout_long_line_within_logo_forces_stack() {
+        // A 158-wide line among the first `logo_height` rows WOULD overlap the logo → stack.
+        let mut w = vec![40; 20];
+        w[5] = 158;
+        assert!(!plan_layout(&w, 20, 40, 120, true).side_by_side);
+    }
+
+    #[test]
+    fn test_layout_narrow_terminal_stacks() {
+        assert!(!plan_layout(&[40; 30], 20, 40, 94, true).side_by_side); // < 95 hard floor
+        assert!(!plan_layout(&[40; 30], 20, 40, 80, true).side_by_side);
+    }
+
+    #[test]
+    fn test_layout_show_logo_false_stacks() {
+        assert!(!plan_layout(&[40; 30], 20, 40, 200, false).side_by_side);
+    }
+
+    #[test]
+    fn test_layout_column_floor_and_graphical_width() {
+        // Tiny lines → text column floored at 45; graphical logo width (40) still applies.
+        let p = plan_layout(&[10; 25], 20, 40, 100, true);
+        assert!(p.side_by_side);
+        assert_eq!(p.text_column_width, 45); // max(10+4, 45)
+    }
+
+    #[test]
+    fn test_layout_logo_taller_than_text() {
+        // Fewer info lines than logo rows: all lines are beside the logo (no panic on slice).
+        let p = plan_layout(&[50, 30, 54], 20, 40, 120, true);
+        assert!(p.side_by_side);
+        assert_eq!(p.text_column_width, 58); // widest of the 3 (54) + 4
     }
 
     #[test]
