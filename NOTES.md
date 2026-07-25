@@ -96,7 +96,20 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.5)
+## Current State (v0.6.6)
+- **v0.6.6 — `--ascii-logo` renders even without a TTY; CI dry-run shows the logo**
+  (small behaviour fix + CI). Previously `display.rs` gated the logo purely on
+  `stdout_is_tty`, so `retch --ascii-logo` produced no logo when piped/redirected — and the
+  CI `full-test` "Run fetcher (dry run)" step (piped, non-TTY) showed no logo. Extracted a
+  pure `should_show_logo(config_show_logo, no_logo, ascii_logo, stdout_is_tty)` helper:
+  `--no-logo` still always wins; **`--ascii-logo` now forces the logo on regardless of TTY or
+  config** (ASCII is plain, pipe-safe text — mirrors how `--no-logo` is always honored);
+  auto mode is unchanged (default-on, TTY-gated). `--chafa-logo`/graphical modes are
+  deliberately *not* forced (they emit terminal-only control sequences). The CI dry-run now
+  runs `cargo run --release -- --full --ascii-logo`, so it exercises every field **and** the
+  ASCII-logo path. 4 new unit tests on the helper; verified live that piped
+  `retch --full --ascii-logo` shows the logo while piped `retch --full` still shows none.
+  `retch-cli` → 0.6.6; `retch-sysinfo` unchanged (`0.1.46`). Patch bump.
 - **v0.6.5 — lint the `graphics` feature in `just check`** (tooling; no runtime change).
   Adds `cargo clippy --features graphics -- -D warnings` to the `check` recipe (and thus to
   the `just pr` gate). Closes the gap found during the v0.6.4 base64 bump: `base64`/`image`/

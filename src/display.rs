@@ -12,6 +12,34 @@ use crate::fields::{self, Mode};
 use crate::logo;
 use crate::theme::{colorize_nested, Theme, ACTIVE_IFACE_PREFIX};
 
+/// Decide whether to render a logo at all.
+///
+/// In *auto* mode the logo is shown only when stdout is a TTY: the graphical and
+/// Chafa heuristics (and the side-by-side layout) are meaningless when output is
+/// piped or redirected, so we suppress the logo there. Two explicit overrides break
+/// that rule:
+/// - `no_logo` (from `--no-logo` or config) always wins → no logo.
+/// - `ascii_logo` (from `--ascii-logo`) forces the logo on **even without a TTY**:
+///   ASCII art is plain, pipe-safe text, so a caller (e.g. `retch --ascii-logo | cat`,
+///   or CI's `full-test` dry run) that explicitly asks for it should get it — mirroring
+///   how `--no-logo` is honored regardless of TTY. `--chafa-logo`/graphical modes are
+///   deliberately NOT forced here, since they emit terminal-specific control sequences
+///   that are only meaningful on a real terminal.
+fn should_show_logo(
+    config_show_logo: Option<bool>,
+    no_logo: bool,
+    ascii_logo: bool,
+    stdout_is_tty: bool,
+) -> bool {
+    if no_logo {
+        return false; // explicit suppression always wins
+    }
+    if ascii_logo {
+        return true; // explicit ASCII request forces the logo on, TTY or not, config or not
+    }
+    config_show_logo.unwrap_or(true) && stdout_is_tty // auto mode: default-on, but TTY-gated
+}
+
 /// Renders the collected system information to the terminal.
 ///
 /// This function handles theme selection, logo rendering (including fallbacks
@@ -41,7 +69,12 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     // (e.g. bat) allocates a PTY, giving a false positive.
     let stdout_is_tty = std::io::IsTerminal::is_terminal(&std::io::stdout());
 
-    let show_logo = _config.show_logo.unwrap_or(true) && !cli.no_logo && stdout_is_tty;
+    let show_logo = should_show_logo(
+        _config.show_logo,
+        cli.no_logo,
+        cli.ascii_logo,
+        stdout_is_tty,
+    );
 
     // Determine which fields to show. Strata allow-lists are derived from the
     // single field registry (src/fields.rs) — the same source `main.rs` uses for
@@ -745,6 +778,37 @@ fn terminal_cell_height_px() -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── should_show_logo ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_show_logo_auto_requires_tty() {
+        // Auto mode (no explicit flags): logo only on a TTY.
+        assert!(should_show_logo(None, false, false, true));
+        assert!(!should_show_logo(None, false, false, false));
+    }
+
+    #[test]
+    fn test_show_logo_ascii_forces_without_tty() {
+        // --ascii-logo forces the logo even when stdout is not a TTY (pipe / CI).
+        assert!(should_show_logo(None, false, true, false));
+        assert!(should_show_logo(None, false, true, true));
+    }
+
+    #[test]
+    fn test_show_logo_no_logo_always_wins() {
+        // --no-logo suppresses even when --ascii-logo is set or on a TTY.
+        assert!(!should_show_logo(None, true, true, true));
+        assert!(!should_show_logo(None, true, false, true));
+    }
+
+    #[test]
+    fn test_show_logo_config_disable() {
+        // config show_logo=false suppresses in auto mode...
+        assert!(!should_show_logo(Some(false), false, false, true));
+        // ...but an explicit --ascii-logo still forces it on (CLI overrides config default).
+        assert!(should_show_logo(Some(false), false, true, false));
+    }
 
     #[test]
     fn test_consolidate_temps_basic() {
