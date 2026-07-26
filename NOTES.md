@@ -96,7 +96,33 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.8)
+## Current State (v0.6.9)
+- **v0.6.9 — graphical logo placement survives scrolling (prompt at the bottom of the
+  screen)** (rendering fix). User report: under Rio, the graphical logo rendered *above*
+  the text (indented at the logo column) instead of beside it. Root cause is **not
+  Rio-specific**: v0.6.8's `render_graphical_side_by_side` did save (`ESC 7`) → draw →
+  restore (`ESC 8`), which is only correct when nothing scrolls in between. With the shell
+  prompt at/near the bottom row — the normal state of a used terminal — the image draw and
+  its trailing newline scroll the screen, and DECSC/DECRC restore a **viewport-relative**
+  position, so the restore lands one row *below* the image bottom and all text prints under
+  the logo. Reproduced byte-for-byte in both **Rio 0.4.12 and kitty** via scripted windows
+  with `ESC [6n` cursor-position reports (fresh screen: correct in both; bottom row: broken
+  in both — v0.6.8's kitty verification had only exercised the fresh-screen case). Fix:
+  pure `graphical_side_by_side_prelude(text_column_width, logo_rows)` **reserves the logo
+  rows with newlines first, then cursor-ups back to the image-top row**, so any scrolling
+  happens *before* the cursor save and nothing between save and restore can scroll;
+  choreography after the reservation is unchanged (right-shift, DECSC, draw, DECRC, CR,
+  text). Fresh-screen rendering is unaffected (reserve-then-up is a no-op without a
+  scroll). `logo_rows == 0` emits no reservation/cursor-up (`CSI 0 A` still moves one row
+  on real terminals). Verified: fixed choreography lands the cursor on the image-top row at
+  the bottom of the screen in both Rio and kitty (DSR-verified), and the patched binary's
+  PTY byte stream shows reservation → up → right → DECSC → kitty APC → DECRC → CR → text.
+  Residual (documented) risk: the draw can only scroll if the image's real row count
+  exceeds the `graphical_logo_height_lines` estimate — the same estimate `plan_layout`
+  already trusts. 3 new prelude unit tests. Also folded in the tracked packaging-refresh
+  task: in-repo reference copies `packaging/aur/PKGBUILD` and `packaging/nixpkgs/
+  package.nix` bumped 0.3.21 → 0.6.8 (released AUR sha256 + release-CI nix hashes).
+  `retch-cli` → 0.6.9; `retch-sysinfo` unchanged (`0.1.46`). Patch bump.
 - **v0.6.8 — logo sits beside the text in `--long`/`--full` again** (layout fix). The
   side-by-side vs. stacked decision (and the text-column width) was computed from the widest
   of *all* info lines, so one very long line — a 150+ char `Wi-Fi` line, or the `Net`/`Battery`
