@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785079740028,
+  "lastUpdate": 1785080268934,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18232,70 +18232,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "9f7a7fd8c88af96dbbc43c912115f9ee1ba8386f",
-          "message": "feat: add just install-completions recipe (#118)\n\nGenerates and installs shell completions for bash, zsh, fish, elvish,\nnushell, and powershell to their correct XDG user locations. Also adds\nXDG path variables at the top of the Justfile and updates `just install`\nto depend on both install-man and install-completions.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-27T09:37:34-07:00",
-          "tree_id": "d9c8234aa1d97872442e3e68b1a968f215f50f90",
-          "url": "https://github.com/l1a/retch/commit/9f7a7fd8c88af96dbbc43c912115f9ee1ba8386f"
-        },
-        "date": 1782580663263,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 103.21259364835605,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.94807931183246,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 103.71064003933952,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 80.46843634407664,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47275.72755845812,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 488.3893526364207,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 750.7543918380404,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2431065180,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "71466e09694d76209fdf3bc02eef9cdfc6155c0d",
           "message": "docs: add performance regression vigilance guideline to AGENTS.md (#119)\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-27T09:53:59-07:00",
@@ -21415,6 +21351,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2750815045,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fd8164049e99da545e8fe98d3f0b76e8c09b6faa",
+          "message": "Fix AMD GPU names via libdrm amdgpu.ids (v0.6.10) (#175)\n\nThe Strix Halo iGPU (1002:1586) was reported as 'Radeon 880M / 890M':\nimprove_amd_gpu_name's first-substring-wins table matched the 'Strix'\n(Strix Point) entry against pci.ids' 'Strix Halo [...]' name, and\npci.ids cannot separate 1586's revision variants (8040S/8050S/8060S)\nat all.\n\nResolve AMD names on Linux through /usr/share/libdrm/amdgpu.ids first,\nkeyed by device id + revision from sysfs (how fastfetch does it), with\ngraceful fallback to the pci.ids + codename path. Order 'Strix Halo'\nbefore 'Strix' in the fallback table and add 'Krackan'.\n\nVerified live on Strix Halo: 'AMD Radeon 8060S Graphics (32 GB)'.\n\nAssisted-By: Claude Fable 5",
+          "timestamp": "2026-07-26T07:58:18-07:00",
+          "tree_id": "30c6fa2ba1ee6c45f748cc640eb4ed19adc3000a",
+          "url": "https://github.com/l1a/retch/commit/fd8164049e99da545e8fe98d3f0b76e8c09b6faa"
+        },
+        "date": 1785080265838,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 104.9117335303991,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.949756195139035,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 101.1485513152032,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.57883807451604,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47174.63156960493,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 500.8658210645478,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 741.3340361837797,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2963082055,
             "unit": "ns"
           }
         ]
