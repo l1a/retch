@@ -99,6 +99,39 @@ fn split_wifi_line(wifi: &str) -> (&str, Option<&str>) {
     }
 }
 
+/// Render an image-protocol logo (Kitty/iTerm2/Sixel) beside the info text, scroll-safely.
+///
+/// The image is drawn **first**, at the top of the logo column, with the draw bracketed by
+/// save/restore (`\x1b7`/`\x1b8`) so it lands at the correct row *before* any text is printed
+/// or the screen scrolls. The info lines are then printed top-to-bottom at column 0, so the
+/// terminal scrolls naturally and carries the cell-anchored image with it.
+///
+/// This replaces the previous "print all text, then `\x1b[{n}A` back up and draw" approach,
+/// which broke for tall output (`--long`/`--full`): once the info block was taller than the
+/// viewport, the cursor-up was clamped at the top of the screen and the image was drawn in
+/// the *middle* of the text instead of beside its top rows.
+fn render_graphical_side_by_side(
+    text_column_width: usize,
+    info_lines: &[String],
+    logo_rows: usize,
+    draw: impl FnOnce(),
+) {
+    use std::io::Write;
+    // Move to the top of the logo column, save, draw the image, restore, return to column 0.
+    print!("\x1b[{}C\x1b7", text_column_width);
+    draw(); // emits the image escape (and may move the cursor / print a newline)
+    print!("\x1b8\r");
+    for line in info_lines {
+        println!("{}", line);
+    }
+    // If the image is taller than the text block, advance past its bottom edge so a following
+    // shell prompt doesn't overlap it.
+    for _ in info_lines.len()..logo_rows {
+        println!();
+    }
+    let _ = std::io::stdout().flush();
+}
+
 /// Renders the collected system information to the terminal.
 ///
 /// This function handles theme selection, logo rendering (including fallbacks
@@ -641,57 +674,20 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                     println!("{}{}{}", info_line, padding, logo_line);
                 }
             }
-            ActiveLogo::Kitty(bytes, height_lines) => {
-                for line in &info_lines {
-                    println!("{}", line);
-                }
-                let num_lines = info_lines.len();
-                print!("\x1b7"); // DEC save cursor
-                if num_lines > 0 {
-                    print!("\x1b[{}A", num_lines); // Move up
-                }
-                print!("\x1b[{}C", text_column_width); // Move right
-                logo::print_graphical_logo(&bytes);
-                print!("\x1b8"); // DEC restore cursor
-                                 // Advance past the logo's bottom edge if it extends below the text.
-                let overflow = height_lines.saturating_sub(num_lines);
-                if overflow > 0 {
-                    print!("\x1b[{}B", overflow);
-                }
+            ActiveLogo::Kitty(bytes, logo_rows) => {
+                render_graphical_side_by_side(text_column_width, &info_lines, logo_rows, || {
+                    logo::print_graphical_logo(&bytes)
+                });
             }
-            ActiveLogo::Iterm2(bytes, height_lines) => {
-                for line in &info_lines {
-                    println!("{}", line);
-                }
-                let num_lines = info_lines.len();
-                print!("\x1b7"); // DEC save cursor
-                if num_lines > 0 {
-                    print!("\x1b[{}A", num_lines); // Move up
-                }
-                print!("\x1b[{}C", text_column_width); // Move right
-                logo::print_iterm2_logo(&bytes);
-                print!("\x1b8"); // DEC restore cursor
-                let overflow = height_lines.saturating_sub(num_lines);
-                if overflow > 0 {
-                    print!("\x1b[{}B", overflow);
-                }
+            ActiveLogo::Iterm2(bytes, logo_rows) => {
+                render_graphical_side_by_side(text_column_width, &info_lines, logo_rows, || {
+                    logo::print_iterm2_logo(&bytes)
+                });
             }
-            ActiveLogo::Sixel(bytes, height_lines) => {
-                for line in &info_lines {
-                    println!("{}", line);
-                }
-                let num_lines = info_lines.len();
-                print!("\x1b7"); // DEC save cursor
-                if num_lines > 0 {
-                    print!("\x1b[{}A", num_lines); // Move up
-                }
-                print!("\x1b[{}C", text_column_width); // Move right
-                logo::print_sixel_logo(&bytes);
-                print!("\x1b8"); // DEC restore cursor
-                let overflow = height_lines.saturating_sub(num_lines);
-                if overflow > 0 {
-                    print!("\x1b[{}B", overflow);
-                }
+            ActiveLogo::Sixel(bytes, logo_rows) => {
+                render_graphical_side_by_side(text_column_width, &info_lines, logo_rows, || {
+                    logo::print_sixel_logo(&bytes)
+                });
             }
             ActiveLogo::None => {
                 for line in &info_lines {
