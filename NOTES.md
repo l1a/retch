@@ -96,7 +96,55 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.10)
+## Current State (v0.6.11)
+- **v0.6.11 — `Domain` follows the default route, not a split-tunnel VPN (Linux)** (bugfix
+  ×3, `crates/sysinfo/src/network.rs`). User report: `--long` showed
+  `Domain: netbird.cloud` (a NetBird split-tunnel VPN on `wt0`) where the default route is
+  `wlp194s0`, whose domain is `lan`. Root cause: under systemd-resolved `/etc/resolv.conf`
+  is the **stub** file whose `search` line is the *merged* set of every link's domains
+  (`search netbird.cloud lan`), attributable to no interface; `parse_domain_from_resolv_conf`
+  had no `domain` directive to find and fell back to the **first `search` entry** — the
+  VPN's. The field never considered interfaces at all. Fix: on Linux, `detect_domain` now
+  resolves the **IP default-route interface** (`/proc/net/route`, reusing the existing
+  `parse_proc_net_route`) and reports *that link's* own domain from `resolvectl status`.
+  Deliberately keyed on the routing table, **not** resolvectl's per-link `Default Route:`
+  field — that is systemd-resolved's DNS-routing flag and was `yes` for both the VPN and the
+  Wi-Fi link simultaneously, so it cannot identify the default route. New pure
+  `parse_resolvectl_domains` → `ResolvectlDomains { global, links }` plus
+  `resolve_default_route_domain` → `DefaultRouteDomain::{Managed(Option<String>), Unmanaged}`.
+  The `Managed(None)` case is load-bearing: when resolved manages the default link but that
+  link has no domain, retch reports **nothing** rather than falling back to the merged
+  resolv.conf list, which would resurrect the VPN domain; a `Global` domain
+  (`resolved.conf` `Domains=`) is accepted first since it belongs to no interface.
+  `Unmanaged` (link absent from resolvectl) still falls back to resolv.conf, so
+  static-resolv.conf and non-systemd hosts behave exactly as before. A full-tunnel VPN that
+  *is* the default route correctly reports the VPN's domain.
+  - **Two latent bugs fixed in the same parser** (both visible in `--full` on the reporting
+    machine): **routing-only domains were shown as search domains** — systemd prefixes a
+    domain with `~` when it should only *route* queries to a link, never be appended as a
+    search suffix, but the filter special-cased only the exact catch-all `~.`, so
+    `Domain Search: wt0: netbird.cloud, ~gammatile.com, ~101.100.in-addr.arpa` leaked; now
+    every `~` entry is excluded. And **wrapped resolvectl output was silently dropped** —
+    resolvectl continues long values on following label-less lines, and the old
+    single-line parser ignored them (`wt0`'s continuation was lost); the parser now
+    consumes continuations, ending the value at the next `label:` line (domain names cannot
+    contain `:`). Sections are matched by content (`Global` / `Link N (iface)`) rather than
+    indentation, since label padding varies with the longest label present. A link
+    reporting both `DNS Domain:` and `DNS Search Domains:` now yields one merged entry
+    instead of two lines.
+  - **Perf:** `resolvectl status` (~5 ms) is now needed by the `--long` `domain` field, so a
+    process-lifetime `OnceLock` cache shares one invocation with `--full`'s `domain-search`
+    (which already spawned it) — `--full` keeps a single spawn instead of gaining a second,
+    `--long` grows by ~5 ms (~1%). Safe because retch is a one-shot process. Measured after:
+    `--long` 486 ms, `--full` 1294 ms.
+  - `parse_resolvectl_search` is now a thin formatter over the structured parser, so both
+    fields share one code path. macOS (configd writes the primary service's domain to
+    resolv.conf) and Windows (`GetComputerNameExW`) arms are untouched. Verified live on
+    arrakis: `Domain: lan`, `Domain Search: wlp194s0: lan` / `wt0: netbird.cloud`.
+    10 new unit tests, keyed on the machine's verbatim `resolvectl` output (default-route
+    vs. VPN selection both ways, routing-only filtering, continuation lines, other wrapped
+    fields, unmanaged fallback, managed-without-domain, Global fallback, label merging,
+    routing-table selection). `retch-sysinfo` → `0.1.48`; `retch-cli` → 0.6.11. Patch bump.
 - **v0.6.10 — correct AMD GPU marketing names via libdrm `amdgpu.ids` (Linux)** (bugfix).
   User report: the Strix Halo box (arrakis, Ryzen AI MAX+ 395) showed `GPU: Radeon 880M /
   890M` where fastfetch showed `AMD Radeon 8060S Graphics`. Two stacked defects in
@@ -574,7 +622,9 @@ Standard plus diagnostics. Aimed at understanding system health and network conf
 Adds over standard:
 - `bios` — firmware vendor, version, date
 - `temp` (consolidated) — **one representative reading per physical unit**: CPU, GPU, SSD/NVMe, WiFi adapter, System/Motherboard. Rule: highest sensor within each category (worst-case thermal indicator). All other sensor readings are deferred to `--full`.
-- `domain` — current DNS domain name (from `/etc/resolv.conf` `domain` directive or `hostname -d`)
+- `domain` — current DNS domain name. Linux: the default-route interface's own domain (via
+  `resolvectl`), so a split-tunnel VPN's domain is not reported unless the VPN *is* the
+  default route; falls back to `/etc/resolv.conf`'s `domain`/first `search` entry
 - `public-ip`, `wifi`, `bluetooth`, `battery`, `power-adapter`, `shell`, `editor`, `terminal`, `terminal-size`, `desktop`, `wm`, `login-manager`, `brightness`, `dns`, `users`, `packages`, `locale`, `init`, `chassis`, `bootmgr`
 - `brightness` (Linux), `power-adapter` (Linux), `login-manager` (Linux) — new v0.5.0 fastfetch-gap fields
 
