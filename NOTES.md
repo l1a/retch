@@ -124,6 +124,14 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
     5 colour bands were the legacy rainbow (green/yellow/red/magenta/blue); replaced with a
     256-colour grey (silver) ramp to match the modern monochrome Apple logo. (The graphical
     `assets/logos/macos.png` is a separate asset — untouched here.)
+  - **Graphical (image) logo no longer lands mid-text** (`src/display.rs`). The side-by-side
+    path for Kitty/iTerm2/Sixel printed *all* info lines then `\x1b[{n}A`-ed back up to draw
+    the image beside the top rows — but for tall `--long`/`--full` output the block exceeds
+    the viewport, so after scrolling the cursor-up clamped at the top of the screen and the
+    image was drawn in the *middle* of the text (seen on kitty). Now the image is drawn
+    **first**, at the top of the logo column, bracketed by save/restore, then the text prints
+    top-to-bottom and scrolls naturally with the cell-anchored image. Shared
+    `render_graphical_side_by_side` helper; byte-level choreography verified in a kitty pty.
   - `retch-cli` → 0.6.8; `retch-sysinfo` unchanged (`0.1.46`). Patch bump.
 - **v0.6.7 — CI `graphics-feature` job** (CI only; no runtime change). Adds a dedicated
   `graphics-feature` job to `rust.yml` that runs `cargo clippy --features graphics -- -D
