@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785078746598,
+  "lastUpdate": 1785079104228,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -11328,80 +11328,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "d76a7d5246a051893671a84ed973b52bbe56e1b1",
-          "message": "fix: skip FUSE and pseudo mounts in disk detection (#120)\n\n* fix: skip FUSE and pseudo mounts in disk detection\n\nsysinfo::Disks::new_with_refreshed_list() calls statvfs on every entry\nin /proc/mounts, including FUSE mounts that can block for hundreds of\nmilliseconds (e.g. cryfs vault: 613ms).\n\nOn Linux, replace sysinfo disk enumeration with a direct /proc/mounts\nreader that filters pseudo/FUSE filesystem types before calling statvfs.\nmacOS and Windows continue to use sysinfo::Disks unchanged.\n\nReduces disk field timing from ~634ms to ~2ms on affected machines.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: restore cross-platform deps moved to linux-only target by mistake\n\ndirs, chrono, anyhow, owo-colors, and rusqlite are used unconditionally\nacross macOS/Windows; only libc should be linux-only.\n\nAssisted-By: claude-sonnet-4-6\n\n* fix: mark is_skip_fs as linux-only to silence dead_code on macOS/Windows\n\nThe function is only called from detect_logical_linux which is already\ncfg-gated; clippy -D warnings caught it on the macOS CI job.\n\nAssisted-By: claude-sonnet-4-6\n\n* fix: make libc an unconditional dep to avoid lock file mismatch on AUR CI\n\nSome cargo versions handle cfg-gated deps in the lock file differently.\nlibc compiles on all platforms; the Linux-specific code that uses it is\nalready cfg-gated, so making it unconditional is safe.\n\nAssisted-By: claude-sonnet-4-6",
-          "timestamp": "2026-06-27T10:34:03-07:00",
-          "tree_id": "1740235a0c0c2d66418ef5eac4e55c0e3132401a",
-          "url": "https://github.com/l1a/retch/commit/d76a7d5246a051893671a84ed973b52bbe56e1b1"
-        },
-        "date": 1782582820799,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 672097135.4,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 352.70537309970604,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 66.80224729181421,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.7773008200297487,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 62.805780698269324,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 5254.465985941525,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1326.9355620957144,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 411.85368168579237,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 75931.72432249787,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 347.25622774878144,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "7733084c8ee1c58721066fc0199ac3c4ec3b2f4d",
           "message": "chore: bump version to v0.3.26 (#121)\n\n* chore: bump version to v0.3.26\n\nFollows fix for FUSE mount statvfs hang (PR #120).\n\nAssisted-By: claude-sonnet-4-6\n\n* docs: add mandatory pre-PR gate checklist to AGENTS.md\n\nForces explicit per-item verification output before gh pr create so\nno version bump or doc step can be silently skipped.\n\nAssisted-By: claude-sonnet-4-6",
           "timestamp": "2026-06-27T10:56:14-07:00",
@@ -15011,6 +14937,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 329.03581665244405,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fd8164049e99da545e8fe98d3f0b76e8c09b6faa",
+          "message": "Fix AMD GPU names via libdrm amdgpu.ids (v0.6.10) (#175)\n\nThe Strix Halo iGPU (1002:1586) was reported as 'Radeon 880M / 890M':\nimprove_amd_gpu_name's first-substring-wins table matched the 'Strix'\n(Strix Point) entry against pci.ids' 'Strix Halo [...]' name, and\npci.ids cannot separate 1586's revision variants (8040S/8050S/8060S)\nat all.\n\nResolve AMD names on Linux through /usr/share/libdrm/amdgpu.ids first,\nkeyed by device id + revision from sysfs (how fastfetch does it), with\ngraceful fallback to the pci.ids + codename path. Order 'Strix Halo'\nbefore 'Strix' in the fallback table and add 'Krackan'.\n\nVerified live on Strix Halo: 'AMD Radeon 8060S Graphics (32 GB)'.\n\nAssisted-By: Claude Fable 5",
+          "timestamp": "2026-07-26T07:58:18-07:00",
+          "tree_id": "30c6fa2ba1ee6c45f748cc640eb4ed19adc3000a",
+          "url": "https://github.com/l1a/retch/commit/fd8164049e99da545e8fe98d3f0b76e8c09b6faa"
+        },
+        "date": 1785079101299,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 789184666.8,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 393.4640823170622,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 61.25554603405463,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.6690004065299455,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 61.30376645596506,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4310.636019256971,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1014.1997970747689,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 385.0289899401757,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 65742.46349343739,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 322.69978103865475,
             "unit": "ns"
           }
         ]
