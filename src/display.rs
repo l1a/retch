@@ -99,17 +99,45 @@ fn split_wifi_line(wifi: &str) -> (&str, Option<&str>) {
     }
 }
 
+/// Escape prelude for [`render_graphical_side_by_side`]: reserve `logo_rows` rows with
+/// newlines, move back up to the image-top row, shift right to the logo column, and save the
+/// cursor (`\x1b7`).
+///
+/// The reservation is the scroll-safety mechanism: printing the newlines *first* forces any
+/// scrolling to happen before the cursor is saved, so nothing between the save and the
+/// restore can scroll. Without it, drawing the image with the cursor near the bottom margin
+/// scrolled the screen mid-draw, and `\x1b8` — which restores a *viewport-relative*
+/// position — landed on the row below the image instead of beside its top (text rendered
+/// under the logo; reproduced on Rio and kitty alike whenever the prompt sat near the
+/// bottom of a used terminal).
+///
+/// `logo_rows == 0` emits no reservation and no cursor-up (`CSI 0 A` would still move one
+/// row on real terminals).
+fn graphical_side_by_side_prelude(text_column_width: usize, logo_rows: usize) -> String {
+    let mut prelude = String::new();
+    if logo_rows > 0 {
+        prelude.push_str(&"\n".repeat(logo_rows));
+        prelude.push_str(&format!("\x1b[{}A", logo_rows));
+    }
+    prelude.push_str(&format!("\x1b[{}C\x1b7", text_column_width));
+    prelude
+}
+
 /// Render an image-protocol logo (Kitty/iTerm2/Sixel) beside the info text, scroll-safely.
 ///
-/// The image is drawn **first**, at the top of the logo column, with the draw bracketed by
-/// save/restore (`\x1b7`/`\x1b8`) so it lands at the correct row *before* any text is printed
-/// or the screen scrolls. The info lines are then printed top-to-bottom at column 0, so the
-/// terminal scrolls naturally and carries the cell-anchored image with it.
+/// The logo's rows are **reserved first** (newlines, then cursor-up — see
+/// [`graphical_side_by_side_prelude`]) so any scrolling happens up front; the image is then
+/// drawn at the top of the logo column bracketed by save/restore (`\x1b7`/`\x1b8`), which is
+/// only valid because no scroll can occur between the two. The info lines are then printed
+/// top-to-bottom at column 0, so the terminal scrolls naturally and carries the cell-anchored
+/// image with it.
 ///
-/// This replaces the previous "print all text, then `\x1b[{n}A` back up and draw" approach,
-/// which broke for tall output (`--long`/`--full`): once the info block was taller than the
-/// viewport, the cursor-up was clamped at the top of the screen and the image was drawn in
-/// the *middle* of the text instead of beside its top rows.
+/// This replaces two broken predecessors: "print all text, then `\x1b[{n}A` back up and draw"
+/// (clamped at the viewport top for tall `--long`/`--full` output, drawing the image
+/// mid-text) and the v0.6.8 unreserved save/draw/restore (correct on a fresh screen, but with
+/// the prompt near the bottom the draw scrolled the screen and the restore landed *below* the
+/// image). Residual risk: the draw can still scroll only if the image's real row count
+/// exceeds `logo_rows` — the same cell-height estimate the layout already trusts.
 fn render_graphical_side_by_side(
     text_column_width: usize,
     info_lines: &[String],
@@ -117,8 +145,12 @@ fn render_graphical_side_by_side(
     draw: impl FnOnce(),
 ) {
     use std::io::Write;
-    // Move to the top of the logo column, save, draw the image, restore, return to column 0.
-    print!("\x1b[{}C\x1b7", text_column_width);
+    // Reserve the logo rows (scroll now, if at all), return to the image-top row at the
+    // logo column, save, draw the image, restore, return to column 0.
+    print!(
+        "{}",
+        graphical_side_by_side_prelude(text_column_width, logo_rows)
+    );
     draw(); // emits the image escape (and may move the cursor / print a newline)
     print!("\x1b8\r");
     for line in info_lines {
@@ -947,6 +979,36 @@ mod tests {
         let p = plan_layout(&[50, 30, 54], 20, 40, 120, true);
         assert!(p.side_by_side);
         assert_eq!(p.text_column_width, 58); // widest of the 3 (54) + 4
+    }
+
+    // ── graphical_side_by_side_prelude ────────────────────────────────────────
+
+    #[test]
+    fn test_prelude_reserves_rows_before_saving_cursor() {
+        // Regression for the below-the-logo bug (Rio/kitty, prompt at the bottom row): the
+        // scroll-forcing reservation (newlines) and the cursor-up must both come BEFORE the
+        // cursor save, so nothing between save and restore can scroll.
+        let p = graphical_side_by_side_prelude(52, 3);
+        assert_eq!(p, "\n\n\n\x1b[3A\x1b[52C\x1b7");
+    }
+
+    #[test]
+    fn test_prelude_v068_shape_only_differs_by_reservation() {
+        // With the reservation stripped, the prelude is exactly the v0.6.8 bytes — the fresh
+        // top-of-screen rendering (where no scroll happens) is unchanged.
+        let p = graphical_side_by_side_prelude(45, 20);
+        assert_eq!(
+            p.replace(&format!("{}\x1b[20A", "\n".repeat(20)), ""),
+            "\x1b[45C\x1b7"
+        );
+    }
+
+    #[test]
+    fn test_prelude_zero_rows_skips_reservation_and_cursor_up() {
+        // CSI 0 A still moves one row on real terminals, so logo_rows == 0 must emit
+        // neither the reservation nor the cursor-up.
+        let p = graphical_side_by_side_prelude(45, 0);
+        assert_eq!(p, "\x1b[45C\x1b7");
     }
 
     // ── split_wifi_line ───────────────────────────────────────────────────────

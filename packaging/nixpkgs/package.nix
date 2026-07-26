@@ -8,16 +8,16 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "retch";
-  version = "0.3.21";
+  version = "0.6.8";
 
   src = fetchFromGitHub {
     owner = "l1a";
     repo = "retch";
     rev = "v${version}";
-    hash = lib.fakeHash; # Will be filled in by Nix CI / builder
+    hash = "sha256-MDdKOYNkBIuO6iw0P7Z/1pps5QwpKDgugX/GhY/WQRw=";
   };
 
-  cargoHash = lib.fakeHash; # Will be filled in by Nix CI / builder
+  cargoHash = "sha256-LMf62gbjZVKqsUF9f3JaN4qqsd9vPinr55s2rZGgCEc=";
 
   nativeBuildInputs = [
     pkg-config
