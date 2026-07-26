@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785027718269,
+  "lastUpdate": 1785028301636,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18124,70 +18124,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "2b42bfaa80b8a2f163ea057a8015bdd5dd601eb7",
-          "message": "docs/ci: branch cleanup policy and skip CI on docs-only PRs (#116)\n\n* docs: document branch-deletion policy in AGENTS.md\n\nAssisted-By: Claude Sonnet 4.6\n\n* ci: skip Rust/Security/Packaging workflows on docs-only PRs\n\nAdd paths filters to pull_request triggers so the full CI matrix\ndoes not run when only docs, scripts, or config files change.\nPush-to-main continues to run unconditionally.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-27T08:29:33-07:00",
-          "tree_id": "81fad1b28f95d6c6e1f50b3e961f2a81c7ea145d",
-          "url": "https://github.com/l1a/retch/commit/2b42bfaa80b8a2f163ea057a8015bdd5dd601eb7"
-        },
-        "date": 1782576402525,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 103.22797142580335,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9487674668259496,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 103.53721375594014,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 80.69551138158917,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 44290.10234919807,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 488.4627049591578,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 743.7912499373322,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2393408175,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "ee330bee589f3cc23883fa67e627ad06b31d2d2b",
           "message": "fix: rebuild release binary if signal-killed on post-merge bench (#117)\n\nA Syncthing-synced binary compiled with target-cpu=native on a\ndifferent CPU microarchitecture crashes with SIGILL during sysinfo\ngathering. Cargo considers it up-to-date so `cargo build --release`\nis a no-op. Detect signal-killed exit (Python returncode < 0) and\nforce `cargo clean -p retch-cli && cargo build --release`.\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-27T08:59:12-07:00",
@@ -21307,6 +21243,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2340924195,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fa886633f69e0ee0a7db86ea7dc9773ceec03be9",
+          "message": "Keep logo beside text in --long/--full (v0.6.8) (#173)\n\n* Keep logo beside text in --long/--full (v0.6.8)\n\nThe side-by-side vs. stacked layout decision (and the text-column width) was\ncomputed from the widest of ALL info lines. In --long/--full a single very long\nline -- a 150+ char Wi-Fi line, or the Net/Battery lines -- inflated the text\ncolumn past the terminal width and forced the logo to stack ABOVE the text,\neven though those long lines sit well BELOW the logo.\n\nExtract a pure `plan_layout(info_widths, logo_height, logo_width, term_width,\nshow_logo)` that considers only the info lines that actually sit BESIDE the\nlogo (the first `logo_height` rows). Long lines below the logo render at column\n0 with the full terminal width and no longer affect placement.\n\nLogo-type-agnostic: logo_height/logo_width come from the active logo, so it\nworks identically for ASCII, Chafa (both rendered as text `Lines`) and the\ngraphical image protocols (Kitty/iTerm2/Sixel -- height_lines + fixed image\ncolumn).\n\nVerified in a pseudo-terminal: --full renders the logo beside the text at\n140 cols (previously stacked) and correctly stacks at 90 cols. 7 new\nplan_layout unit tests. retch-cli -> 0.6.8; retch-sysinfo unchanged (0.1.46).\n\nAssisted-By: Claude Opus 4.8\n\n* CI: build-job dry run uses --full --ascii-logo too\n\nThe `build` job's \"Run fetcher (dry run)\" step still ran `cargo run -- --long`\n(no logo). Make it `cargo run -- --full --ascii-logo`, matching the full-test\ndry run, so every CI dry run exercises all fields and the logo/layout path.\n\nAssisted-By: Claude Opus 4.8\n\n* Split Wi-Fi into two lines; grayscale Apple logo\n\nTwo display tweaks requested on top of the layout fix (same PR):\n\n- Wi-Fi: the iw path builds a single \"{adapter} [{iface}] - {SSID} (band/rate)\"\n  string that ran 150+ chars and wrapped into the logo. Split on the \" - \"\n  boundary via a pure `split_wifi_line` into a `Wi-Fi` line (adapter hardware)\n  and a `Wi-Fi Link` line (live connection). Fallback detectors have no \" - \"\n  and stay one line. `Wi-Fi Link` is aliased to the `wifi` field key in\n  should_show (like dns/memory). 3 unit tests.\n\n- macOS/Apple ASCII logo: replace the legacy rainbow colour bands\n  (green/yellow/red/magenta/blue) with a 256-colour grey (silver) ramp,\n  matching the modern monochrome Apple logo. Graphical macos.png untouched.\n\nretch-cli stays 0.6.8 (same PR); retch-sysinfo unchanged.\n\nAssisted-By: Claude Opus 4.8\n\n* Fix graphical logo landing mid-text in --long/--full\n\nThe side-by-side path for image protocols (Kitty/iTerm2/Sixel) printed ALL the\ninfo lines first, then did `\\x1b[{n}A` to move back up and draw the image to the\nright of the top rows. For tall output (--long/--full) the info block is taller\nthan the viewport, so by the time the text finished the screen had scrolled and\nthe cursor-up was clamped at the top of the viewport -- the image was drawn in\nthe MIDDLE of the text, overlapping it (reported on kitty).\n\nDraw the image FIRST instead: move to the top of the logo column, bracket the\nimage draw with save/restore (\\x1b7/\\x1b8) so it lands at the correct row before\nany text is printed or the screen scrolls, then print the info lines\ntop-to-bottom at column 0. The terminal scrolls naturally and carries the\ncell-anchored image with it. Shared `render_graphical_side_by_side` helper for\nall three protocols. Verified the escape choreography (right/save/image/restore/\nCR/text) at the byte level in a kitty pty.\n\nretch-cli stays 0.6.8 (same PR).\n\nAssisted-By: Claude Opus 4.8\n\n* docs(NOTES): record graphical logo placement fix (v0.6.8)\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-25T17:31:49-07:00",
+          "tree_id": "9b82d07a4ddf3e53b29bc8579d9a7acdcf12908e",
+          "url": "https://github.com/l1a/retch/commit/fa886633f69e0ee0a7db86ea7dc9773ceec03be9"
+        },
+        "date": 1785028298087,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 103.9189948556677,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947838278272153,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.33947423743555,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.63412907118939,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 48665.511983363525,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 498.5794557384913,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 745.5376633519681,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2142895335,
             "unit": "ns"
           }
         ]
