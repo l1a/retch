@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785026347773,
+  "lastUpdate": 1785026741465,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7018,90 +7018,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "9f7a7fd8c88af96dbbc43c912115f9ee1ba8386f",
-          "message": "feat: add just install-completions recipe (#118)\n\nGenerates and installs shell completions for bash, zsh, fish, elvish,\nnushell, and powershell to their correct XDG user locations. Also adds\nXDG path variables at the top of the Justfile and updates `just install`\nto depend on both install-man and install-completions.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-27T09:37:34-07:00",
-          "tree_id": "d9c8234aa1d97872442e3e68b1a968f215f50f90",
-          "url": "https://github.com/l1a/retch/commit/9f7a7fd8c88af96dbbc43c912115f9ee1ba8386f"
-        },
-        "date": 1782579083461,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 273740592.85,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 974.6149155360487,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.72078853974671,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9467868126806893,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.61903784920979,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7781.614741543152,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 70484.55437917661,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4732.440111004668,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4833.233018797444,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1211629.208807294,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 341.91629068235375,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 257.1526739766763,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "71466e09694d76209fdf3bc02eef9cdfc6155c0d",
           "message": "docs: add performance regression vigilance guideline to AGENTS.md (#119)\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-27T09:53:59-07:00",
@@ -11201,6 +11117,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 254.1909466448351,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fa886633f69e0ee0a7db86ea7dc9773ceec03be9",
+          "message": "Keep logo beside text in --long/--full (v0.6.8) (#173)\n\n* Keep logo beside text in --long/--full (v0.6.8)\n\nThe side-by-side vs. stacked layout decision (and the text-column width) was\ncomputed from the widest of ALL info lines. In --long/--full a single very long\nline -- a 150+ char Wi-Fi line, or the Net/Battery lines -- inflated the text\ncolumn past the terminal width and forced the logo to stack ABOVE the text,\neven though those long lines sit well BELOW the logo.\n\nExtract a pure `plan_layout(info_widths, logo_height, logo_width, term_width,\nshow_logo)` that considers only the info lines that actually sit BESIDE the\nlogo (the first `logo_height` rows). Long lines below the logo render at column\n0 with the full terminal width and no longer affect placement.\n\nLogo-type-agnostic: logo_height/logo_width come from the active logo, so it\nworks identically for ASCII, Chafa (both rendered as text `Lines`) and the\ngraphical image protocols (Kitty/iTerm2/Sixel -- height_lines + fixed image\ncolumn).\n\nVerified in a pseudo-terminal: --full renders the logo beside the text at\n140 cols (previously stacked) and correctly stacks at 90 cols. 7 new\nplan_layout unit tests. retch-cli -> 0.6.8; retch-sysinfo unchanged (0.1.46).\n\nAssisted-By: Claude Opus 4.8\n\n* CI: build-job dry run uses --full --ascii-logo too\n\nThe `build` job's \"Run fetcher (dry run)\" step still ran `cargo run -- --long`\n(no logo). Make it `cargo run -- --full --ascii-logo`, matching the full-test\ndry run, so every CI dry run exercises all fields and the logo/layout path.\n\nAssisted-By: Claude Opus 4.8\n\n* Split Wi-Fi into two lines; grayscale Apple logo\n\nTwo display tweaks requested on top of the layout fix (same PR):\n\n- Wi-Fi: the iw path builds a single \"{adapter} [{iface}] - {SSID} (band/rate)\"\n  string that ran 150+ chars and wrapped into the logo. Split on the \" - \"\n  boundary via a pure `split_wifi_line` into a `Wi-Fi` line (adapter hardware)\n  and a `Wi-Fi Link` line (live connection). Fallback detectors have no \" - \"\n  and stay one line. `Wi-Fi Link` is aliased to the `wifi` field key in\n  should_show (like dns/memory). 3 unit tests.\n\n- macOS/Apple ASCII logo: replace the legacy rainbow colour bands\n  (green/yellow/red/magenta/blue) with a 256-colour grey (silver) ramp,\n  matching the modern monochrome Apple logo. Graphical macos.png untouched.\n\nretch-cli stays 0.6.8 (same PR); retch-sysinfo unchanged.\n\nAssisted-By: Claude Opus 4.8\n\n* Fix graphical logo landing mid-text in --long/--full\n\nThe side-by-side path for image protocols (Kitty/iTerm2/Sixel) printed ALL the\ninfo lines first, then did `\\x1b[{n}A` to move back up and draw the image to the\nright of the top rows. For tall output (--long/--full) the info block is taller\nthan the viewport, so by the time the text finished the screen had scrolled and\nthe cursor-up was clamped at the top of the viewport -- the image was drawn in\nthe MIDDLE of the text, overlapping it (reported on kitty).\n\nDraw the image FIRST instead: move to the top of the logo column, bracket the\nimage draw with save/restore (\\x1b7/\\x1b8) so it lands at the correct row before\nany text is printed or the screen scrolls, then print the info lines\ntop-to-bottom at column 0. The terminal scrolls naturally and carries the\ncell-anchored image with it. Shared `render_graphical_side_by_side` helper for\nall three protocols. Verified the escape choreography (right/save/image/restore/\nCR/text) at the byte level in a kitty pty.\n\nretch-cli stays 0.6.8 (same PR).\n\nAssisted-By: Claude Opus 4.8\n\n* docs(NOTES): record graphical logo placement fix (v0.6.8)\n\nAssisted-By: Claude Opus 4.8",
+          "timestamp": "2026-07-25T17:31:49-07:00",
+          "tree_id": "9b82d07a4ddf3e53b29bc8579d9a7acdcf12908e",
+          "url": "https://github.com/l1a/retch/commit/fa886633f69e0ee0a7db86ea7dc9773ceec03be9"
+        },
+        "date": 1785026740585,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 906298003.4,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1015.101811961537,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 47.31704283694465,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946757913288553,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 46.59671397885147,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7806.61950241673,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70764.95516911097,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4836.440911246269,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4922.642101908583,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1262487.5067813054,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 333.20828524598676,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 274.78333209307914,
             "unit": "ns"
           }
         ]
