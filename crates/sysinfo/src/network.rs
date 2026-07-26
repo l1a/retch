@@ -819,16 +819,48 @@ pub fn detect_domain_search() -> Vec<String> {
             }
         }
         if let Ok(content) = std::fs::read_to_string("/etc/resolv.conf") {
-            return parse_search_from_resolv_conf(&content);
+            return format_global_search_domains(&parse_search_from_resolv_conf(&content));
         }
     }
     #[cfg(target_os = "macos")]
     {
         if let Ok(content) = std::fs::read_to_string("/etc/resolv.conf") {
-            return parse_search_from_resolv_conf(&content);
+            return format_global_search_domains(&parse_search_from_resolv_conf(&content));
         }
     }
     Vec::new()
+}
+
+/// Scope label for search domains that carry no per-interface attribution.
+///
+/// `/etc/resolv.conf`'s `search` list is a single global list — it does not say which link
+/// each domain came from — so it is labelled honestly rather than attributed to an
+/// interface, which would be a fabrication on a multi-homed host.
+#[cfg(any(target_os = "linux", target_os = "macos", test))]
+const GLOBAL_SEARCH_SCOPE: &str = "global";
+
+/// Renders a scope-less (global) search-domain list in the same shape as the per-link
+/// resolvectl path: one entry of `"<scope>: a, b"`.
+///
+/// Without this the `Domain Search` field had no stable shape, and the difference was
+/// *source*-driven rather than platform-driven — the same OS flipped format depending on
+/// whether systemd-resolved was reachable. In CI, Ubuntu on a bare runner rendered
+/// `eth0: example.com` (resolvectl) while the very same Ubuntu inside a container rendered a
+/// bare `example.com` (this fallback), and Fedora — always containerised — looked
+/// permanently "different from Ubuntu" for no platform reason at all.
+///
+/// Two things were inconsistent, not just the prefix: the resolvectl path returns **one entry
+/// per interface** with domains joined by `", "`, whereas the raw fallback returned **one
+/// entry per domain**, and the display prints one line per entry — so a host with
+/// `search a b c` emitted three separate bare `Domain Search:` lines. Both are normalised
+/// here.
+#[cfg(any(target_os = "linux", target_os = "macos", test))]
+pub fn format_global_search_domains(domains: &[String]) -> Vec<String> {
+    if domains.is_empty() {
+        Vec::new()
+    } else {
+        vec![format!("{}: {}", GLOBAL_SEARCH_SCOPE, domains.join(", "))]
+    }
 }
 
 /// Parses the `domain` directive (or first `search` entry as fallback) from
@@ -1387,6 +1419,50 @@ mod tests {
             parse_resolvectl_search(sample),
             vec!["eth0: a.example.com, b.example.com"]
         );
+    }
+
+    // ── Domain Search: one shape regardless of source ─────────────────────────
+
+    #[test]
+    fn test_global_search_domains_match_per_link_shape() {
+        // The fallback must render like the resolvectl path — "<scope>: a, b" — so the field
+        // has one shape. Regression for the CI inconsistency where the same OS flipped format
+        // depending on whether systemd-resolved was reachable (bare runner vs. container).
+        let per_link = parse_resolvectl_search("Link 2 (eth0)\n  DNS Domain: a.example.com\n");
+        assert_eq!(per_link, vec!["eth0: a.example.com"]);
+
+        let global = format_global_search_domains(&["a.example.com".to_string()]);
+        assert_eq!(global, vec!["global: a.example.com"]);
+
+        // Same structural shape: exactly one entry, "<scope>: <domains>".
+        assert_eq!(per_link.len(), global.len());
+        for entry in per_link.iter().chain(global.iter()) {
+            let (scope, domains) = entry.split_once(": ").expect("entry must carry a scope");
+            assert!(!scope.is_empty() && !domains.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_global_search_domains_group_into_one_entry() {
+        // The raw resolv.conf parse yields one element per domain, and the display prints one
+        // line per element — so `search a b c` used to emit three bare `Domain Search:` lines
+        // while resolvectl emitted one per interface. Now it is a single grouped entry.
+        let parsed = parse_search_from_resolv_conf("search a.example.com b.example.com c.net\n");
+        assert_eq!(parsed.len(), 3); // parser stays faithful to the file
+        assert_eq!(
+            format_global_search_domains(&parsed),
+            vec!["global: a.example.com, b.example.com, c.net"]
+        );
+    }
+
+    #[test]
+    fn test_global_search_domains_empty_yields_no_line() {
+        // No search list -> no entry at all, so the field stays hidden (unchanged behaviour).
+        assert!(format_global_search_domains(&[]).is_empty());
+        assert!(format_global_search_domains(&parse_search_from_resolv_conf(
+            "nameserver 1.1.1.1\n"
+        ))
+        .is_empty());
     }
 
     #[test]

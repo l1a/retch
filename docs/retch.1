@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "July 2026" "retch 0.6.11" "System Information Fetcher"
+.TH "RETCH" "1" "July 2026" "retch 0.6.12" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -304,7 +304,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
-`\f[CR]domain\-search\fP`: Per\-interface DNS search domain lists (from `\f[CR]resolvectl status\fP` or `\f[CR]/etc/resolv\.conf\fP` `\f[CR]search\fP`)\. Full mode only\.
+`\f[CR]domain\-search\fP`: DNS search domain lists, one entry per scope, formatted as `\f[CR]scope: a, b\fP`\. The scope is the interface name when per\-interface data is available (from `\f[CR]resolvectl status\fP`), or `\f[CR]global\fP` when falling back to `\f[CR]/etc/resolv\.conf\fP`'s `\f[CR]search\fP` list, which carries no interface attribution\. Full mode only\.
 .El
 .Bl
 .IP \(bu 4
