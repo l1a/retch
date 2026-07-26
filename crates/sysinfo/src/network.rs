@@ -658,18 +658,34 @@ pub fn parse_resolv_conf(content: &str) -> Vec<String> {
 
 /// Returns the configured DNS domain name.
 ///
-/// On Linux/macOS, reads the `domain` directive from `/etc/resolv.conf` (takes
-/// precedence), falling back to the first entry of the `search` directive. On
-/// Windows, queries the primary DNS domain via `GetComputerNameExW`
-/// (`ComputerNameDnsDomain`). Returns `None` when no domain is configured (e.g.
-/// a workgroup machine) or the source is unavailable.
+/// On **Linux**, the domain of the link carrying the IP default route wins (see
+/// [`resolve_default_route_domain`]). `/etc/resolv.conf` is only a fallback there, because
+/// under systemd-resolved it is the stub file whose `search` list is the *merged* set of
+/// every link's domains — so its first entry is frequently a VPN's domain rather than the
+/// default route's. On **macOS**, `/etc/resolv.conf` is written by configd from the primary
+/// network service, so it is read directly. On **Windows**, queries the primary DNS domain
+/// via `GetComputerNameExW` (`ComputerNameDnsDomain`).
+///
+/// Returns `None` when no domain is configured (e.g. a workgroup machine, or a default-route
+/// link with no DNS domain of its own) or the source is unavailable.
 pub fn detect_domain() -> Option<String> {
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(target_os = "linux")]
     {
-        if let Ok(content) = std::fs::read_to_string("/etc/resolv.conf") {
-            return parse_domain_from_resolv_conf(&content);
+        // Ask systemd-resolved what the *default-route* link's domain is. When it manages
+        // that link its answer is authoritative — including "no domain" — so we must not
+        // fall through to resolv.conf's merged list, which is what leaks a VPN's domain.
+        if let (Some(iface), Some(status)) = (default_route_interface(), resolvectl_status()) {
+            if let DefaultRouteDomain::Managed(domain) =
+                resolve_default_route_domain(&parse_resolvectl_domains(status), &iface)
+            {
+                return domain;
+            }
         }
-        None
+        read_resolv_conf_domain()
+    }
+    #[cfg(target_os = "macos")]
+    {
+        read_resolv_conf_domain()
     }
     #[cfg(target_os = "windows")]
     {
@@ -679,6 +695,52 @@ pub fn detect_domain() -> Option<String> {
     {
         None
     }
+}
+
+/// Reads the `domain`/`search` fallback from `/etc/resolv.conf`.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn read_resolv_conf_domain() -> Option<String> {
+    std::fs::read_to_string("/etc/resolv.conf")
+        .ok()
+        .and_then(|content| parse_domain_from_resolv_conf(&content))
+}
+
+/// Returns the interface carrying the IP default route, from `/proc/net/route`.
+///
+/// Deliberately the *routing table*, not resolvectl's `Default Route:` field — that field is
+/// systemd-resolved's DNS-routing flag (may this link's servers answer arbitrary queries)
+/// and is commonly `yes` for a VPN link and the physical link simultaneously, so it cannot
+/// identify the default route.
+#[cfg(target_os = "linux")]
+fn default_route_interface() -> Option<String> {
+    std::fs::read_to_string("/proc/net/route")
+        .ok()
+        .and_then(|content| parse_proc_net_route(&content))
+}
+
+/// Cached output of `resolvectl status --no-pager`, or `None` if it is unavailable.
+#[cfg(target_os = "linux")]
+static RESOLVECTL_STATUS: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+
+/// Runs `resolvectl status --no-pager` at most once per process and caches the output.
+///
+/// Both the `domain` and `domain-search` fields need it, and they are collected
+/// sequentially; retch is a short-lived one-shot process, so a process-lifetime cache
+/// cannot go stale and saves a second ~5 ms spawn in `--full`.
+#[cfg(target_os = "linux")]
+fn resolvectl_status() -> Option<&'static str> {
+    RESOLVECTL_STATUS
+        .get_or_init(|| {
+            let output = std::process::Command::new("resolvectl")
+                .args(["status", "--no-pager"])
+                .output()
+                .ok()?;
+            if !output.status.success() {
+                return None;
+            }
+            Some(String::from_utf8_lossy(&output.stdout).into_owned())
+        })
+        .as_deref()
 }
 
 /// Windows: returns the host's primary DNS domain via `GetComputerNameExW`.
@@ -749,16 +811,11 @@ fn clean_domain(raw: &str) -> Option<String> {
 pub fn detect_domain_search() -> Vec<String> {
     #[cfg(target_os = "linux")]
     {
-        if let Ok(output) = std::process::Command::new("resolvectl")
-            .args(["status", "--no-pager"])
-            .output()
-        {
-            if output.status.success() {
-                let text = String::from_utf8_lossy(&output.stdout);
-                let result = parse_resolvectl_search(&text);
-                if !result.is_empty() {
-                    return result;
-                }
+        // Shares the one cached `resolvectl` spawn with `detect_domain`.
+        if let Some(status) = resolvectl_status() {
+            let result = parse_resolvectl_search(status);
+            if !result.is_empty() {
+                return result;
             }
         }
         if let Ok(content) = std::fs::read_to_string("/etc/resolv.conf") {
@@ -821,39 +878,169 @@ pub fn parse_search_from_resolv_conf(content: &str) -> Vec<String> {
     Vec::new()
 }
 
-/// Parses `resolvectl status --no-pager` output into per-interface search domain strings.
-///
-/// Skips routing-only domains (`~.`). Returns entries like `"wlan0: home.local"`.
+/// One link's DNS search domains, as reported by `resolvectl status`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[cfg(any(target_os = "linux", test))]
-pub fn parse_resolvectl_search(content: &str) -> Vec<String> {
-    let mut results = Vec::new();
-    let mut current_iface: Option<String> = None;
+pub struct LinkDomains {
+    /// Interface name, e.g. `wlp194s0`.
+    pub interface: String,
+    /// Search domains in report order, with routing-only (`~`-prefixed) entries removed.
+    /// Empty means systemd-resolved manages this link but it has no search domain.
+    pub search: Vec<String>,
+}
+
+/// DNS search domains from `resolvectl status`, split by scope.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[cfg(any(target_os = "linux", test))]
+pub struct ResolvectlDomains {
+    /// Domains from the `Global` section (e.g. `resolved.conf`'s `Domains=`), which belong
+    /// to no particular interface.
+    pub global: Vec<String>,
+    /// One entry per `Link N (iface)` section, in report order.
+    pub links: Vec<LinkDomains>,
+}
+
+/// Outcome of looking up the default-route link in [`ResolvectlDomains`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(any(target_os = "linux", test))]
+pub enum DefaultRouteDomain {
+    /// systemd-resolved manages the link, so its answer is authoritative. `None` means the
+    /// link genuinely has no domain — the caller must **not** fall back to the merged
+    /// `/etc/resolv.conf` search list, which would resurrect another link's (e.g. a VPN's)
+    /// domain.
+    Managed(Option<String>),
+    /// The link has no section in the resolvectl output, so systemd-resolved has no opinion
+    /// about it; the caller should fall back to `/etc/resolv.conf`.
+    Unmanaged,
+}
+
+/// Picks the domain to display for `interface` from parsed resolvectl output.
+///
+/// Prefers the link's own first search domain, then a `Global` domain (interface-independent,
+/// so it cannot be another link's). Never returns a *different* link's domain — that is the
+/// whole point: the default route's domain must win over a VPN's.
+#[cfg(any(target_os = "linux", test))]
+pub fn resolve_default_route_domain(
+    domains: &ResolvectlDomains,
+    interface: &str,
+) -> DefaultRouteDomain {
+    match domains.links.iter().find(|l| l.interface == interface) {
+        Some(link) => DefaultRouteDomain::Managed(
+            link.search
+                .first()
+                .or_else(|| domains.global.first())
+                .cloned(),
+        ),
+        None => DefaultRouteDomain::Unmanaged,
+    }
+}
+
+/// Parses `resolvectl status --no-pager` output into per-scope DNS search domains.
+///
+/// Handles the two shapes that tripped up the previous single-line parser:
+/// - **Wrapped values.** resolvectl right-aligns labels and continues long values on
+///   following indented, label-less lines; those continuations were silently dropped.
+/// - **Routing-only domains.** systemd prefixes a domain with `~` when it should only
+///   *route* queries to that link, never be appended as a search suffix. Every `~` entry is
+///   excluded (the old code special-cased only the exact catch-all `~.`).
+///
+/// Sections are recognised by content (`Global`, `Link N (iface)`) rather than by indentation,
+/// since resolvectl's exact column padding varies with the longest label present. A `Link`
+/// header always creates an entry, even with no domain line, so callers can distinguish
+/// "managed, no domain" from "not managed at all".
+#[cfg(any(target_os = "linux", test))]
+pub fn parse_resolvectl_domains(content: &str) -> ResolvectlDomains {
+    let mut out = ResolvectlDomains::default();
+    // `None` = the Global section, `Some(iface)` = that link's section.
+    let mut section: Option<String> = None;
+    // True while consuming the (possibly wrapped) value of a DNS domain field.
+    let mut in_domain_value = false;
 
     for line in content.lines() {
         let trimmed = line.trim();
-        // "Link N (ifname)" starts a new interface section
-        if trimmed.starts_with("Link ") {
-            if let (Some(start), Some(end)) = (trimmed.find('('), trimmed.find(')')) {
-                current_iface = Some(trimmed[start + 1..end].to_string());
+        if trimmed.is_empty() {
+            in_domain_value = false;
+            continue;
+        }
+
+        // "Link N (iface)" starts a link section. Checked before the continuation branch
+        // below, since a header carries no colon either.
+        if let Some(iface) = trimmed
+            .strip_prefix("Link ")
+            .and_then(|rest| rest.split_once('('))
+            .and_then(|(_, rest)| rest.split_once(')'))
+            .map(|(iface, _)| iface)
+        {
+            in_domain_value = false;
+            section = Some(iface.to_string());
+            // Record the link even if it never reports a domain.
+            if !out.links.iter().any(|l| l.interface == iface) {
+                out.links.push(LinkDomains {
+                    interface: iface.to_string(),
+                    search: Vec::new(),
+                });
             }
             continue;
         }
-        if let Some(ref iface) = current_iface {
-            let domains_str = trimmed
-                .strip_prefix("DNS Domain:")
-                .or_else(|| trimmed.strip_prefix("DNS Search Domains:"))
-                .map(|v| v.trim());
-            if let Some(domains) = domains_str {
-                // Skip routing-only catch-all domain
-                let filtered: Vec<&str> =
-                    domains.split_whitespace().filter(|d| *d != "~.").collect();
-                if !filtered.is_empty() {
-                    results.push(format!("{}: {}", iface, filtered.join(", ")));
-                }
-            }
+
+        if trimmed == "Global" {
+            in_domain_value = false;
+            section = None;
+            continue;
         }
+
+        if let Some(value) = trimmed
+            .strip_prefix("DNS Domain:")
+            .or_else(|| trimmed.strip_prefix("DNS Search Domains:"))
+        {
+            in_domain_value = true;
+            push_resolvectl_domains(&mut out, section.as_deref(), value);
+            continue;
+        }
+
+        // A wrapped continuation of the domain value carries no `label:` of its own, and
+        // domain names cannot contain ':' — so any colon means a new field has started.
+        if in_domain_value && !trimmed.contains(':') {
+            push_resolvectl_domains(&mut out, section.as_deref(), trimmed);
+            continue;
+        }
+        in_domain_value = false;
     }
-    results
+    out
+}
+
+/// Appends whitespace-separated domains from one resolvectl value fragment to `section`,
+/// dropping systemd routing-only (`~`-prefixed) entries.
+#[cfg(any(target_os = "linux", test))]
+fn push_resolvectl_domains(out: &mut ResolvectlDomains, section: Option<&str>, value: &str) {
+    let domains = value
+        .split_whitespace()
+        .filter(|d| !d.starts_with('~'))
+        .map(|d| d.to_string());
+    match section {
+        Some(iface) => match out.links.iter_mut().find(|l| l.interface == iface) {
+            Some(link) => link.search.extend(domains),
+            None => out.links.push(LinkDomains {
+                interface: iface.to_string(),
+                search: domains.collect(),
+            }),
+        },
+        None => out.global.extend(domains),
+    }
+}
+
+/// Parses `resolvectl status --no-pager` output into per-interface search domain strings.
+///
+/// Formats [`parse_resolvectl_domains`] as `"wlan0: home.local"` entries, one per link,
+/// skipping links with no search domain of their own.
+#[cfg(any(target_os = "linux", test))]
+pub fn parse_resolvectl_search(content: &str) -> Vec<String> {
+    parse_resolvectl_domains(content)
+        .links
+        .into_iter()
+        .filter(|link| !link.search.is_empty())
+        .map(|link| format!("{}: {}", link.interface, link.search.join(", ")))
+        .collect()
 }
 
 #[cfg(test)]
@@ -1029,5 +1216,193 @@ mod tests {
     fn test_parse_resolvectl_search_empty() {
         let sample = "Global\n  DNS Servers: 1.1.1.1\n";
         assert!(parse_resolvectl_search(sample).is_empty());
+    }
+
+    // ── domain selection: default route vs. VPN ───────────────────────────────
+
+    /// Verbatim `resolvectl status --no-pager` output from the reported machine: a NetBird
+    /// VPN (`wt0`, split tunnel) alongside the Wi-Fi default route (`wlp194s0`). Note that
+    /// **both** links report `Default Route: yes` — that is systemd-resolved's DNS-routing
+    /// flag, not the IP default route — and that `wt0`'s DNS Domain value wraps onto a
+    /// continuation line.
+    const RESOLVECTL_VPN_SAMPLE: &str = concat!(
+        "Global\n",
+        "         Protocols: LLMNR=resolve -mDNS -DNSOverTLS DNSSEC=no/unsupported\n",
+        "  resolv.conf mode: stub\n",
+        "\n",
+        "Link 2 (wlp194s0)\n",
+        "    Current Scopes: DNS LLMNR/IPv4 LLMNR/IPv6\n",
+        "         Protocols: +DefaultRoute LLMNR=resolve -mDNS -DNSOverTLS\n",
+        "                    DNSSEC=no/unsupported\n",
+        "Current DNS Server: 192.168.86.1\n",
+        "       DNS Servers: 192.168.86.1\n",
+        "        DNS Domain: lan\n",
+        "     Default Route: yes\n",
+        "\n",
+        "Link 3 (wt0)\n",
+        "    Current Scopes: DNS\n",
+        "         Protocols: +DefaultRoute LLMNR=resolve -mDNS -DNSOverTLS\n",
+        "                    DNSSEC=no/unsupported\n",
+        "Current DNS Server: 100.101.32.155\n",
+        "       DNS Servers: 100.101.32.155\n",
+        "        DNS Domain: netbird.cloud ~gammatile.com ~101.100.in-addr.arpa\n",
+        "                    ~f.f.0.0.3.2.b.5.b.c.8.5.7.f.d.f.ip6.arpa ~.\n",
+        "     Default Route: yes\n",
+    );
+
+    #[test]
+    fn test_domain_prefers_default_route_over_vpn() {
+        // The reported bug: resolv.conf's merged "search netbird.cloud lan" put the VPN
+        // first, so the Domain field showed netbird.cloud. Keyed on the default-route
+        // interface, the answer is the Wi-Fi link's own domain.
+        let parsed = parse_resolvectl_domains(RESOLVECTL_VPN_SAMPLE);
+        assert_eq!(
+            resolve_default_route_domain(&parsed, "wlp194s0"),
+            DefaultRouteDomain::Managed(Some("lan".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_domain_reports_vpn_when_vpn_is_the_default_route() {
+        // Full-tunnel case: if the VPN *is* the default route, its domain is correct.
+        let parsed = parse_resolvectl_domains(RESOLVECTL_VPN_SAMPLE);
+        assert_eq!(
+            resolve_default_route_domain(&parsed, "wt0"),
+            DefaultRouteDomain::Managed(Some("netbird.cloud".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_domain_routing_only_entries_are_not_domains() {
+        // Every `~`-prefixed entry is routing-only, never a search suffix — so a link whose
+        // only entries are `~`-prefixed has no domain (and must not yield "~gammatile.com").
+        let parsed = parse_resolvectl_domains(RESOLVECTL_VPN_SAMPLE);
+        let wt0 = parsed.links.iter().find(|l| l.interface == "wt0").unwrap();
+        assert_eq!(wt0.search, vec!["netbird.cloud"]);
+        assert!(wt0.search.iter().all(|d| !d.starts_with('~')));
+
+        let routing_only = "Link 5 (tun0)\n        DNS Domain: ~corp.example.com ~.\n";
+        let parsed = parse_resolvectl_domains(routing_only);
+        assert_eq!(
+            resolve_default_route_domain(&parsed, "tun0"),
+            DefaultRouteDomain::Managed(None)
+        );
+    }
+
+    #[test]
+    fn test_parse_resolvectl_domains_reads_wrapped_continuation_lines() {
+        // Regression: the old parser read only the first line of a wrapped value, silently
+        // dropping the rest. Here the continuation carries a real search domain.
+        let sample = concat!(
+            "Link 2 (eth0)\n",
+            "        DNS Domain: one.example.com two.example.com\n",
+            "                    three.example.com ~routing.example.com\n",
+            "     Default Route: yes\n",
+        );
+        let parsed = parse_resolvectl_domains(sample);
+        assert_eq!(
+            parsed.links[0].search,
+            vec!["one.example.com", "two.example.com", "three.example.com"]
+        );
+        // The following `label: value` line must end the value, not join it.
+        assert!(!parsed.links[0].search.iter().any(|d| d.contains("yes")));
+    }
+
+    #[test]
+    fn test_parse_resolvectl_domains_ignores_other_wrapped_fields() {
+        // `Protocols:` also wraps; its continuation must not be mistaken for a domain.
+        let sample = concat!(
+            "Link 2 (eth0)\n",
+            "         Protocols: +DefaultRoute LLMNR=resolve -mDNS -DNSOverTLS\n",
+            "                    DNSSEC=no/unsupported\n",
+            "        DNS Domain: real.example.com\n",
+        );
+        let parsed = parse_resolvectl_domains(sample);
+        assert_eq!(parsed.links[0].search, vec!["real.example.com"]);
+    }
+
+    #[test]
+    fn test_domain_unmanaged_link_falls_back() {
+        // A default-route interface systemd-resolved knows nothing about: the caller should
+        // fall back to /etc/resolv.conf rather than borrow another link's domain.
+        let parsed = parse_resolvectl_domains(RESOLVECTL_VPN_SAMPLE);
+        assert_eq!(
+            resolve_default_route_domain(&parsed, "ppp0"),
+            DefaultRouteDomain::Unmanaged
+        );
+    }
+
+    #[test]
+    fn test_domain_managed_without_domain_does_not_borrow_from_other_links() {
+        // wlp194s0 is managed but has no domain of its own; the VPN's domain must NOT be
+        // substituted (that is the bug). With no Global domain either, the answer is "none".
+        let sample = concat!(
+            "Link 2 (wlp194s0)\n",
+            "     Default Route: yes\n",
+            "Link 3 (wt0)\n",
+            "        DNS Domain: netbird.cloud\n",
+        );
+        let parsed = parse_resolvectl_domains(sample);
+        assert_eq!(
+            resolve_default_route_domain(&parsed, "wlp194s0"),
+            DefaultRouteDomain::Managed(None)
+        );
+    }
+
+    #[test]
+    fn test_domain_falls_back_to_global_but_not_to_another_link() {
+        // A Global domain (resolved.conf `Domains=`) belongs to no interface, so it is a
+        // legitimate answer when the default-route link has none of its own.
+        let sample = concat!(
+            "Global\n",
+            "        DNS Domain: corp.example.com\n",
+            "Link 2 (wlp194s0)\n",
+            "     Default Route: yes\n",
+            "Link 3 (wt0)\n",
+            "        DNS Domain: netbird.cloud\n",
+        );
+        let parsed = parse_resolvectl_domains(sample);
+        assert_eq!(parsed.global, vec!["corp.example.com"]);
+        assert_eq!(
+            resolve_default_route_domain(&parsed, "wlp194s0"),
+            DefaultRouteDomain::Managed(Some("corp.example.com".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_parse_resolvectl_domains_merges_both_domain_labels() {
+        // A link reporting both labels yields one merged entry, not two.
+        let sample = concat!(
+            "Link 2 (eth0)\n",
+            "        DNS Domain: a.example.com\n",
+            "DNS Search Domains: b.example.com\n",
+        );
+        let parsed = parse_resolvectl_domains(sample);
+        assert_eq!(parsed.links.len(), 1);
+        assert_eq!(
+            parsed.links[0].search,
+            vec!["a.example.com", "b.example.com"]
+        );
+        assert_eq!(
+            parse_resolvectl_search(sample),
+            vec!["eth0: a.example.com, b.example.com"]
+        );
+    }
+
+    #[test]
+    fn test_default_route_interface_selection_matches_routing_table() {
+        // The routing table is the source of truth for "default route" — not resolvectl's
+        // per-link `Default Route:` flag, which is `yes` for both links in the VPN sample.
+        // Real /proc/net/route from the reported machine: only wlp194s0 has dest+mask 0.
+        let proc_net_route = concat!(
+            "Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT\n",
+            "wlp194s0\t00000000\t0156A8C0\t0003\t0\t0\t100\t00000000\t0\t0\t0\n",
+            "wt0\t00006564\t00000000\t0001\t0\t0\t0\t0000FFFF\t0\t0\t0\n",
+            "wlp194s0\t0056A8C0\t00000000\t0001\t0\t0\t100\t00FFFFFF\t0\t0\t0\n",
+        );
+        assert_eq!(
+            parse_proc_net_route(proc_net_route),
+            Some("wlp194s0".to_string())
+        );
     }
 }

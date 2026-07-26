@@ -144,9 +144,11 @@ pub struct SystemInfo {
     pub wm: Option<String>,
     /// Configured DNS nameservers.
     pub dns: Vec<String>,
-    /// Configured DNS domain name (from `domain` or first `search` entry in resolv.conf).
+    /// Configured DNS domain name (Linux: the default-route interface's own domain; falls
+    /// back to `domain`/first `search` in resolv.conf. See [`crate::network::detect_domain`]).
     pub domain: Option<String>,
-    /// Per-interface DNS search domain lists (from resolvectl or resolv.conf `search`).
+    /// Per-interface DNS search domain lists (from resolvectl or resolv.conf `search`),
+    /// excluding systemd routing-only (`~`-prefixed) domains.
     pub domain_search: Vec<String>,
     /// Terminal dimensions as "COLSxROWS".
     pub terminal_size: Option<String>,

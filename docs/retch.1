@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "July 2026" "retch 0.6.10" "System Information Fetcher"
+.TH "RETCH" "1" "July 2026" "retch 0.6.11" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -300,7 +300,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
-`\f[CR]domain\fP`: Configured DNS domain name (from `\f[CR]domain\fP` or first `\f[CR]search\fP` entry in `\f[CR]/etc/resolv\.conf\fP`)\. Long mode and above\.
+`\f[CR]domain\fP`: Configured DNS domain name\. On Linux, the domain of the interface carrying the default route (via `\f[CR]resolvectl\fP`), so a split\-tunnel VPN's domain is not reported unless the VPN is the default route; falls back to the `\f[CR]domain\fP` or first `\f[CR]search\fP` entry in `\f[CR]/etc/resolv\.conf\fP`\. Long mode and above\.
 .El
 .Bl
 .IP \(bu 4

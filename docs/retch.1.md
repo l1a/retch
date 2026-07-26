@@ -134,7 +134,7 @@ You can generate a starting configuration with:
   - `public-ip`: Public IP address (queried over the network). Long mode and above.
   - `wifi`: Active Wi-Fi SSID, band frequency, channel, and link rates.
   - `dns`: Configured DNS nameservers (from `/etc/resolv.conf` on Linux/macOS).
-  - `domain`: Configured DNS domain name (from `domain` or first `search` entry in `/etc/resolv.conf`). Long mode and above.
+  - `domain`: Configured DNS domain name. On Linux, the domain of the interface carrying the default route (via `resolvectl`), so a split-tunnel VPN's domain is not reported unless the VPN is the default route; falls back to the `domain` or first `search` entry in `/etc/resolv.conf`. Long mode and above.
   - `domain-search`: Per-interface DNS search domain lists (from `resolvectl status` or `/etc/resolv.conf` `search`). Full mode only.
   - `bluetooth`: Bluetooth adapter details and connected device count/names.
   - `battery`: Battery capacity, vendor/model, time remaining, and health.
