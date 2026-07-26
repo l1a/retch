@@ -37,6 +37,14 @@ impl GpuInfo {
 }
 
 /// Refines AMD GPU names by mapping codenames to marketing names.
+///
+/// Fallback only: on Linux, [`lookup_amdgpu_ids`] is consulted first — it resolves the
+/// exact marketing name from the device *and revision*, which this table cannot (e.g.
+/// Strix Halo `1586` is an 8040S, 8050S, or 8060S depending on revision).
+///
+/// Matching is first-substring-wins, so more specific codenames MUST come before their
+/// prefixes: "Strix Halo" before "Strix" (a `1586` "Strix Halo [...]" pci.ids name once
+/// matched the "Strix" entry and was mislabeled as the Strix Point 880M/890M).
 pub fn improve_amd_gpu_name(name: &str) -> String {
     let codenames = [
         ("Phoenix1", "Radeon 780M"),
@@ -48,7 +56,9 @@ pub fn improve_amd_gpu_name(name: &str) -> String {
         ("Rembrandt", "Radeon 680M"),
         ("Raphael", "Radeon Graphics (Raphael)"),
         ("Mendocino", "Radeon 610M"),
+        ("Strix Halo", "Radeon 8050S / 8060S"),
         ("Strix", "Radeon 880M / 890M"),
+        ("Krackan", "Radeon 840M / 860M"),
     ];
 
     for (codename, marketing) in codenames {
@@ -58,6 +68,49 @@ pub fn improve_amd_gpu_name(name: &str) -> String {
     }
 
     name.to_string()
+}
+
+/// Looks up an AMD GPU's exact marketing name in libdrm's `amdgpu.ids` database content.
+///
+/// The database is keyed by *(device id, revision id)*, which is what disambiguates
+/// same-device variants that pci.ids lumps together (Strix Halo `1586` rev `C1` is the
+/// "AMD Radeon 8060S Graphics", rev `C2` the 8050S, rev `D5` the 8040S). This mirrors how
+/// fastfetch resolves AMD names on Linux.
+///
+/// Format (after `#` comments and a bare version line): `device_id,\trevision_id,\tname`.
+/// IDs are bare uppercase hex; sysfs-style `0x`-prefixed lowercase input is accepted.
+/// Malformed lines are skipped. The name is the remainder after the second comma, so
+/// commas in product names are safe.
+pub fn lookup_amdgpu_ids_in(content: &str, device_id: &str, revision_id: &str) -> Option<String> {
+    let device_id = device_id.trim().trim_start_matches("0x");
+    let revision_id = revision_id.trim().trim_start_matches("0x");
+
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let mut parts = line.splitn(3, ',');
+        let (Some(dev), Some(rev), Some(name)) = (parts.next(), parts.next(), parts.next()) else {
+            continue; // version line or malformed
+        };
+        if dev.trim().eq_ignore_ascii_case(device_id)
+            && rev.trim().eq_ignore_ascii_case(revision_id)
+        {
+            let name = name.trim();
+            if !name.is_empty() {
+                return Some(name.to_string());
+            }
+        }
+    }
+    None
+}
+
+/// Reads libdrm's `amdgpu.ids` and resolves the exact AMD marketing name, if present.
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn lookup_amdgpu_ids(device_id: &str, revision_id: &str) -> Option<String> {
+    let content = fs::read_to_string("/usr/share/libdrm/amdgpu.ids").ok()?;
+    lookup_amdgpu_ids_in(&content, device_id, revision_id)
 }
 
 /// Helper to lookup PCI device name in standard system pci.ids files.
@@ -295,23 +348,36 @@ pub fn detect_gpus() -> Vec<GpuInfo> {
                         continue;
                     }
 
-                    let mut gpu_name =
-                        lookup_pci_device(&vendor_id, &device_id).unwrap_or_else(|| {
-                            if vendor_id.contains("10de") {
-                                "NVIDIA GPU".to_string()
-                            } else if vendor_id.contains("1002") {
-                                "AMD GPU".to_string()
-                            } else if vendor_id.contains("8086") {
-                                "Intel GPU".to_string()
-                            } else {
-                                "Unknown GPU".to_string()
-                            }
-                        });
+                    // AMD: prefer libdrm's amdgpu.ids, keyed by device + revision — the
+                    // only source that separates same-device variants (8040S/8050S/8060S).
+                    // pci.ids + the codename table remain the fallback.
+                    let amdgpu_ids_name = if vendor_id.contains("1002") {
+                        fs::read_to_string(device_path.join("revision"))
+                            .ok()
+                            .and_then(|rev| lookup_amdgpu_ids(&device_id, rev.trim()))
+                    } else {
+                        None
+                    };
 
-                    // Refine AMD GPU names
-                    if vendor_id.contains("1002") {
-                        gpu_name = improve_amd_gpu_name(&gpu_name);
-                    }
+                    let mut gpu_name = amdgpu_ids_name.unwrap_or_else(|| {
+                        let mut name =
+                            lookup_pci_device(&vendor_id, &device_id).unwrap_or_else(|| {
+                                if vendor_id.contains("10de") {
+                                    "NVIDIA GPU".to_string()
+                                } else if vendor_id.contains("1002") {
+                                    "AMD GPU".to_string()
+                                } else if vendor_id.contains("8086") {
+                                    "Intel GPU".to_string()
+                                } else {
+                                    "Unknown GPU".to_string()
+                                }
+                            });
+                        // Refine AMD GPU names (codename table fallback)
+                        if vendor_id.contains("1002") {
+                            name = improve_amd_gpu_name(&name);
+                        }
+                        name
+                    });
 
                     // NVIDIA special case: try /proc for even better name
                     if vendor_id.contains("10de") {
@@ -407,6 +473,80 @@ mod tests {
         );
         assert_eq!(improve_amd_gpu_name("AMD Rembrandt"), "Radeon 680M");
         assert_eq!(improve_amd_gpu_name("Unknown GPU"), "Unknown GPU");
+    }
+
+    #[test]
+    fn test_improve_amd_gpu_name_strix_halo_before_strix() {
+        // Regression: "Strix Halo" (8050S/8060S) must not be swallowed by the "Strix"
+        // (Strix Point, 880M/890M) substring — first-substring-wins makes order load-bearing.
+        assert_eq!(
+            improve_amd_gpu_name(
+                "Strix Halo [Radeon Graphics / Radeon 8050S Graphics / Radeon 8060S Graphics]"
+            ),
+            "Radeon 8050S / 8060S"
+        );
+        assert_eq!(
+            improve_amd_gpu_name("Strix [Radeon 880M / 890M]"),
+            "Radeon 880M / 890M"
+        );
+        assert_eq!(
+            improve_amd_gpu_name("Krackan [Radeon 840M / 860M Graphics]"),
+            "Radeon 840M / 860M"
+        );
+    }
+
+    // Shape of /usr/share/libdrm/amdgpu.ids: comments, a bare version line, then
+    // "device_id,\trevision_id,\tname" rows (bare uppercase hex ids).
+    const AMDGPU_IDS_FIXTURE: &str = "\
+# List of AMDGPU IDs
+#
+# Syntax:
+# device_id,\trevision_id,\tproduct_name        <-- single tab after comma
+
+1.0.0
+1114,\tC2,\tAMD Radeon 860M Graphics
+1586,\tC1,\tAMD Radeon 8060S Graphics
+1586,\tC2,\tAMD Radeon 8050S Graphics
+1586,\tD5,\tAMD Radeon 8040S Graphics
+15DD,\tC3,\tAMD Radeon(TM) Vega 8 Graphics
+garbage line without commas
+731F,\tC1,\tAMD Radeon RX 5700 XT
+";
+
+    #[test]
+    fn test_lookup_amdgpu_ids_revision_disambiguates() {
+        // The same device id resolves to different products by revision — the reason this
+        // source is preferred over pci.ids (which lumps all 1586 variants together).
+        assert_eq!(
+            lookup_amdgpu_ids_in(AMDGPU_IDS_FIXTURE, "1586", "C1"),
+            Some("AMD Radeon 8060S Graphics".to_string())
+        );
+        assert_eq!(
+            lookup_amdgpu_ids_in(AMDGPU_IDS_FIXTURE, "1586", "C2"),
+            Some("AMD Radeon 8050S Graphics".to_string())
+        );
+        assert_eq!(
+            lookup_amdgpu_ids_in(AMDGPU_IDS_FIXTURE, "1586", "D5"),
+            Some("AMD Radeon 8040S Graphics".to_string())
+        );
+    }
+
+    #[test]
+    fn test_lookup_amdgpu_ids_accepts_sysfs_style_ids() {
+        // sysfs reports "0x1586" / "0xc1"; the database stores "1586" / "C1".
+        assert_eq!(
+            lookup_amdgpu_ids_in(AMDGPU_IDS_FIXTURE, "0x1586", "0xc1"),
+            Some("AMD Radeon 8060S Graphics".to_string())
+        );
+    }
+
+    #[test]
+    fn test_lookup_amdgpu_ids_no_match_and_junk_lines() {
+        // Unknown device or revision → None (caller falls back to pci.ids); comments,
+        // the version line, and malformed rows must not match or panic.
+        assert_eq!(lookup_amdgpu_ids_in(AMDGPU_IDS_FIXTURE, "9999", "C1"), None);
+        assert_eq!(lookup_amdgpu_ids_in(AMDGPU_IDS_FIXTURE, "1586", "FF"), None);
+        assert_eq!(lookup_amdgpu_ids_in("", "1586", "C1"), None);
     }
 
     #[test]

@@ -96,7 +96,27 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.9)
+## Current State (v0.6.10)
+- **v0.6.10 — correct AMD GPU marketing names via libdrm `amdgpu.ids` (Linux)** (bugfix).
+  User report: the Strix Halo box (arrakis, Ryzen AI MAX+ 395) showed `GPU: Radeon 880M /
+  890M` where fastfetch showed `AMD Radeon 8060S Graphics`. Two stacked defects in
+  `crates/sysinfo/src/gpu.rs`: (1) the pci.ids lookup already returned the correct
+  "Strix Halo [Radeon Graphics / Radeon 8050S/8060S Graphics]" name, but
+  `improve_amd_gpu_name`'s first-substring-wins codename table matched the `"Strix"` entry
+  (Strix *Point* = 880M/890M) before "Strix Halo" could be distinguished — wrong family;
+  (2) pci.ids can't disambiguate same-device variants at all (`1002:1586` is an 8040S,
+  8050S, or 8060S depending on PCI *revision*). Fix mirrors fastfetch: on Linux, AMD names
+  now resolve through **libdrm's `/usr/share/libdrm/amdgpu.ids` first**, keyed by
+  (device id, revision id) read from sysfs — pure, fixture-tested
+  `lookup_amdgpu_ids_in(content, dev, rev)` parser (accepts sysfs-style `0x`-prefixed
+  lowercase ids), thin I/O wrapper, graceful fallback to the existing pci.ids + codename
+  path when the file or entry is missing. The fallback table was also fixed: "Strix Halo"
+  → "Radeon 8050S / 8060S" inserted **before** "Strix" (ordering is load-bearing and now
+  regression-tested), and "Krackan" → "Radeon 840M / 860M" added. Non-AMD, macOS, and
+  Windows paths untouched. Verified live on arrakis: `GPU: AMD Radeon 8060S Graphics
+  (32 GB)`, matching fastfetch. 4 new unit tests (revision disambiguation, sysfs id
+  normalization, junk-line tolerance, table ordering). `retch-sysinfo` → `0.1.47` (library
+  behavior change); `retch-cli` → 0.6.10. Patch bump.
 - **v0.6.9 — graphical logo placement survives scrolling (prompt at the bottom of the
   screen)** (rendering fix). User report: under Rio, the graphical logo rendered *above*
   the text (indented at the logo column) instead of beside it. Root cause is **not
