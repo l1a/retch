@@ -75,7 +75,10 @@ jobs:
     - name: Run tests
       run: cargo test --workspace --verbose
     - name: Run fetcher (dry run)
-      run: cargo run -- --long
+      # --full exercises every field (incl. cosmetic/slow queries); --ascii-logo forces the
+      # ASCII logo to render even though CI's stdout is not a TTY, so this step also covers
+      # the logo + layout path. Matches the full-test dry run.
+      run: cargo run -- --full --ascii-logo
     - name: Print system_profiler SPDisplaysDataType (macOS)
       if: runner.os == 'macOS'
       run: system_profiler SPDisplaysDataType

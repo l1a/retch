@@ -40,6 +40,98 @@ fn should_show_logo(
     config_show_logo.unwrap_or(true) && stdout_is_tty // auto mode: default-on, but TTY-gated
 }
 
+/// Result of [`plan_layout`]: whether the logo sits beside the text, and the column the text
+/// is padded to (where the logo begins).
+struct LayoutPlan {
+    side_by_side: bool,
+    text_column_width: usize,
+}
+
+/// Decide side-by-side vs. stacked layout, and the text-column width, from the geometry of
+/// the info block and the currently-selected logo.
+///
+/// Only the info lines that actually sit **beside** the logo — the first `logo_height` rows —
+/// constrain the layout. In `--long`/`--full` the widest lines (Wi-Fi, Network, Battery) fall
+/// *below* the logo, where nothing overlaps them, so they must neither widen the text column
+/// nor force a stacked layout. Basing the decision on every line (the previous behaviour) let
+/// a single 150+ char Wi-Fi line push the logo above the text on any normal-width terminal.
+///
+/// This is logo-type-agnostic: `logo_height`/`logo_width` are supplied by the caller from the
+/// active logo, so it works identically for ASCII art, Chafa (both rendered as text lines),
+/// and the graphical image protocols (Kitty/iTerm2/Sixel, whose height is their pixel-derived
+/// row count and whose width is the fixed image column).
+///
+/// `info_widths` are the ANSI-stripped visible widths of the info lines, in render order.
+fn plan_layout(
+    info_widths: &[usize],
+    logo_height: usize,
+    logo_width: usize,
+    term_width: usize,
+    show_logo: bool,
+) -> LayoutPlan {
+    let beside_count = info_widths.len().min(logo_height);
+    let max_beside_width = info_widths[..beside_count]
+        .iter()
+        .copied()
+        .max()
+        .unwrap_or(0);
+    let text_column_width = std::cmp::max(max_beside_width + 4, 45);
+    let side_by_side =
+        show_logo && term_width >= 95 && term_width >= text_column_width + logo_width;
+    LayoutPlan {
+        side_by_side,
+        text_column_width,
+    }
+}
+
+/// Split the Wi-Fi detail string into `(hardware, connection)` for two-line display.
+///
+/// The Linux `iw` path builds `"{adapter model} [{iface}] - {SSID} ({band/rate})"` — hardware
+/// and connection joined by `" - "`. Splitting on the first `" - "` puts the adapter on one
+/// line ("Wi-Fi") and the live connection on a second ("Wi-Fi Link"), so neither is the
+/// 150+ char line that used to wrap and collide with the logo. The fallback detectors
+/// (nmcli/iwgetid/macOS/Windows) return only the connection with no `" - "`, so those render
+/// as a single line (`connection` is `None`).
+fn split_wifi_line(wifi: &str) -> (&str, Option<&str>) {
+    match wifi.split_once(" - ") {
+        Some((hardware, connection)) => (hardware, Some(connection)),
+        None => (wifi, None),
+    }
+}
+
+/// Render an image-protocol logo (Kitty/iTerm2/Sixel) beside the info text, scroll-safely.
+///
+/// The image is drawn **first**, at the top of the logo column, with the draw bracketed by
+/// save/restore (`\x1b7`/`\x1b8`) so it lands at the correct row *before* any text is printed
+/// or the screen scrolls. The info lines are then printed top-to-bottom at column 0, so the
+/// terminal scrolls naturally and carries the cell-anchored image with it.
+///
+/// This replaces the previous "print all text, then `\x1b[{n}A` back up and draw" approach,
+/// which broke for tall output (`--long`/`--full`): once the info block was taller than the
+/// viewport, the cursor-up was clamped at the top of the screen and the image was drawn in
+/// the *middle* of the text instead of beside its top rows.
+fn render_graphical_side_by_side(
+    text_column_width: usize,
+    info_lines: &[String],
+    logo_rows: usize,
+    draw: impl FnOnce(),
+) {
+    use std::io::Write;
+    // Move to the top of the logo column, save, draw the image, restore, return to column 0.
+    print!("\x1b[{}C\x1b7", text_column_width);
+    draw(); // emits the image escape (and may move the cursor / print a newline)
+    print!("\x1b8\r");
+    for line in info_lines {
+        println!("{}", line);
+    }
+    // If the image is taller than the text block, advance past its bottom edge so a following
+    // shell prompt doesn't overlap it.
+    for _ in info_lines.len()..logo_rows {
+        println!();
+    }
+    let _ = std::io::stdout().flush();
+}
+
 /// Renders the collected system information to the terminal.
 ///
 /// This function handles theme selection, logo rendering (including fallbacks
@@ -105,6 +197,8 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                         || (norm_label == "dns server" && norm_f == "dns")
                         // "memory" field key matches "Memory Usage" display label
                         || (norm_label == "memory usage" && norm_f == "memory")
+                        // "Wi-Fi Link" (the connection line) maps to the "wifi" field key
+                        || (norm_label == "wi fi link" && norm_f == "wifi")
                 })
             }
             None => true,
@@ -218,7 +312,13 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         }
     }
     if let Some(wifi) = &info.wifi {
-        print_line("Wi-Fi", wifi);
+        // Split the (often 150+ char) Wi-Fi string into a hardware line and a connection line
+        // so neither wraps and collides with the logo. See `split_wifi_line`.
+        let (hardware, connection) = split_wifi_line(wifi);
+        print_line("Wi-Fi", hardware);
+        if let Some(conn) = connection {
+            print_line("Wi-Fi Link", conn);
+        }
     }
     if let Some(bt) = &info.bluetooth {
         print_line("Bluetooth", bt);
@@ -525,25 +625,36 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         count
     };
 
-    let max_text_width = info_lines
-        .iter()
-        .map(|line| visible_len(line))
-        .max()
-        .unwrap_or(0);
-    let text_column_width = std::cmp::max(max_text_width + 4, 45);
+    let info_widths: Vec<usize> = info_lines.iter().map(|line| visible_len(line)).collect();
 
-    let max_logo_width = match &active_logo {
-        ActiveLogo::Lines(logo_lines) => logo_lines
-            .iter()
-            .map(|line| visible_len(line))
-            .max()
-            .unwrap_or(0),
-        ActiveLogo::Kitty(_, _) | ActiveLogo::Iterm2(_, _) | ActiveLogo::Sixel(_, _) => 40,
-        ActiveLogo::None => 0,
+    // Height (row count) and width of the active logo, whatever its kind. ASCII and Chafa are
+    // both `Lines`; the graphical protocols carry their pixel-derived row count and use the
+    // fixed image column width.
+    let (logo_height, max_logo_width) = match &active_logo {
+        ActiveLogo::Lines(logo_lines) => (
+            logo_lines.len(),
+            logo_lines
+                .iter()
+                .map(|line| visible_len(line))
+                .max()
+                .unwrap_or(0),
+        ),
+        ActiveLogo::Kitty(_, h) | ActiveLogo::Iterm2(_, h) | ActiveLogo::Sixel(_, h) => (*h, 40),
+        ActiveLogo::None => (0, 0),
     };
 
-    let side_by_side =
-        show_logo && term_width >= 95 && term_width >= (text_column_width + max_logo_width);
+    // Only the lines beside the logo constrain placement — a long Wi-Fi/Network line below it
+    // must not force a stacked layout. See `plan_layout`.
+    let LayoutPlan {
+        side_by_side,
+        text_column_width,
+    } = plan_layout(
+        &info_widths,
+        logo_height,
+        max_logo_width,
+        term_width,
+        show_logo,
+    );
 
     println!(); // leading newline
 
@@ -563,57 +674,20 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                     println!("{}{}{}", info_line, padding, logo_line);
                 }
             }
-            ActiveLogo::Kitty(bytes, height_lines) => {
-                for line in &info_lines {
-                    println!("{}", line);
-                }
-                let num_lines = info_lines.len();
-                print!("\x1b7"); // DEC save cursor
-                if num_lines > 0 {
-                    print!("\x1b[{}A", num_lines); // Move up
-                }
-                print!("\x1b[{}C", text_column_width); // Move right
-                logo::print_graphical_logo(&bytes);
-                print!("\x1b8"); // DEC restore cursor
-                                 // Advance past the logo's bottom edge if it extends below the text.
-                let overflow = height_lines.saturating_sub(num_lines);
-                if overflow > 0 {
-                    print!("\x1b[{}B", overflow);
-                }
+            ActiveLogo::Kitty(bytes, logo_rows) => {
+                render_graphical_side_by_side(text_column_width, &info_lines, logo_rows, || {
+                    logo::print_graphical_logo(&bytes)
+                });
             }
-            ActiveLogo::Iterm2(bytes, height_lines) => {
-                for line in &info_lines {
-                    println!("{}", line);
-                }
-                let num_lines = info_lines.len();
-                print!("\x1b7"); // DEC save cursor
-                if num_lines > 0 {
-                    print!("\x1b[{}A", num_lines); // Move up
-                }
-                print!("\x1b[{}C", text_column_width); // Move right
-                logo::print_iterm2_logo(&bytes);
-                print!("\x1b8"); // DEC restore cursor
-                let overflow = height_lines.saturating_sub(num_lines);
-                if overflow > 0 {
-                    print!("\x1b[{}B", overflow);
-                }
+            ActiveLogo::Iterm2(bytes, logo_rows) => {
+                render_graphical_side_by_side(text_column_width, &info_lines, logo_rows, || {
+                    logo::print_iterm2_logo(&bytes)
+                });
             }
-            ActiveLogo::Sixel(bytes, height_lines) => {
-                for line in &info_lines {
-                    println!("{}", line);
-                }
-                let num_lines = info_lines.len();
-                print!("\x1b7"); // DEC save cursor
-                if num_lines > 0 {
-                    print!("\x1b[{}A", num_lines); // Move up
-                }
-                print!("\x1b[{}C", text_column_width); // Move right
-                logo::print_sixel_logo(&bytes);
-                print!("\x1b8"); // DEC restore cursor
-                let overflow = height_lines.saturating_sub(num_lines);
-                if overflow > 0 {
-                    print!("\x1b[{}B", overflow);
-                }
+            ActiveLogo::Sixel(bytes, logo_rows) => {
+                render_graphical_side_by_side(text_column_width, &info_lines, logo_rows, || {
+                    logo::print_sixel_logo(&bytes)
+                });
             }
             ActiveLogo::None => {
                 for line in &info_lines {
@@ -808,6 +882,102 @@ mod tests {
         assert!(!should_show_logo(Some(false), false, false, true));
         // ...but an explicit --ascii-logo still forces it on (CLI overrides config default).
         assert!(should_show_logo(Some(false), false, true, false));
+    }
+
+    // ── plan_layout ───────────────────────────────────────────────────────────
+
+    // A ~20-row logo with the widest beside-logo line = 54 (e.g. the CPU line), then a very
+    // long Wi-Fi line (158) far below it — the real --full shape on this hardware.
+    fn realistic_full_widths() -> Vec<usize> {
+        let mut w = vec![40; 20]; // rows 0..20 sit beside the logo
+        w[13] = 54; // CPU line, still beside the logo
+        w.extend([158, 91, 79, 60, 45, 62]); // Wi-Fi/Net/Battery/etc., all BELOW the logo
+        w
+    }
+
+    #[test]
+    fn test_layout_long_line_below_logo_stays_side_by_side() {
+        // The 158-wide Wi-Fi line is below the 20-row logo, so it must NOT force a stack.
+        let p = plan_layout(&realistic_full_widths(), 20, 40, 120, true);
+        assert!(p.side_by_side);
+        // Text column is driven by the widest BESIDE-logo line (54), not the 158 below it.
+        assert_eq!(p.text_column_width, 58); // 54 + 4
+    }
+
+    #[test]
+    fn test_layout_old_behavior_would_have_stacked() {
+        // Sanity: the pre-fix rule (widest of ALL lines) would need 158+4+40 = 202 cols and
+        // stack at 120. Confirm the *new* rule does not, on the same inputs.
+        let widths = realistic_full_widths();
+        let old_text_col = std::cmp::max(widths.iter().copied().max().unwrap() + 4, 45);
+        assert!(120 < old_text_col + 40); // old rule: stacked
+        assert!(plan_layout(&widths, 20, 40, 120, true).side_by_side); // new rule: side-by-side
+    }
+
+    #[test]
+    fn test_layout_long_line_within_logo_forces_stack() {
+        // A 158-wide line among the first `logo_height` rows WOULD overlap the logo → stack.
+        let mut w = vec![40; 20];
+        w[5] = 158;
+        assert!(!plan_layout(&w, 20, 40, 120, true).side_by_side);
+    }
+
+    #[test]
+    fn test_layout_narrow_terminal_stacks() {
+        assert!(!plan_layout(&[40; 30], 20, 40, 94, true).side_by_side); // < 95 hard floor
+        assert!(!plan_layout(&[40; 30], 20, 40, 80, true).side_by_side);
+    }
+
+    #[test]
+    fn test_layout_show_logo_false_stacks() {
+        assert!(!plan_layout(&[40; 30], 20, 40, 200, false).side_by_side);
+    }
+
+    #[test]
+    fn test_layout_column_floor_and_graphical_width() {
+        // Tiny lines → text column floored at 45; graphical logo width (40) still applies.
+        let p = plan_layout(&[10; 25], 20, 40, 100, true);
+        assert!(p.side_by_side);
+        assert_eq!(p.text_column_width, 45); // max(10+4, 45)
+    }
+
+    #[test]
+    fn test_layout_logo_taller_than_text() {
+        // Fewer info lines than logo rows: all lines are beside the logo (no panic on slice).
+        let p = plan_layout(&[50, 30, 54], 20, 40, 120, true);
+        assert!(p.side_by_side);
+        assert_eq!(p.text_column_width, 58); // widest of the 3 (54) + 4
+    }
+
+    // ── split_wifi_line ───────────────────────────────────────────────────────
+
+    #[test]
+    fn test_split_wifi_hardware_and_connection() {
+        // The real `iw`-path shape: "{adapter} [{iface}] - {ssid} ({details})".
+        let s = "MEDIATEK Corp. MT7925 802.11be [Filogic 360] [wlp194s0] - myssid (5.0 GHz ch36 [↓866 ↑866])";
+        let (hw, conn) = split_wifi_line(s);
+        assert_eq!(
+            hw,
+            "MEDIATEK Corp. MT7925 802.11be [Filogic 360] [wlp194s0]"
+        );
+        assert_eq!(conn, Some("myssid (5.0 GHz ch36 [↓866 ↑866])"));
+    }
+
+    #[test]
+    fn test_split_wifi_splits_on_first_separator() {
+        // Only the first " - " (the hardware|connection boundary) splits; a " - " inside the
+        // SSID/details stays with the connection.
+        let (hw, conn) = split_wifi_line("Card X [wlan0] - Guest - 5G (5 GHz)");
+        assert_eq!(hw, "Card X [wlan0]");
+        assert_eq!(conn, Some("Guest - 5G (5 GHz)"));
+    }
+
+    #[test]
+    fn test_split_wifi_connection_only_fallback() {
+        // Fallback detectors (nmcli/iwgetid/macOS/Windows) have no " - " → single line.
+        let (hw, conn) = split_wifi_line("myssid (300 Mbps)");
+        assert_eq!(hw, "myssid (300 Mbps)");
+        assert_eq!(conn, None);
     }
 
     #[test]

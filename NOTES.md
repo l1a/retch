@@ -96,7 +96,43 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.7)
+## Current State (v0.6.8)
+- **v0.6.8 — logo sits beside the text in `--long`/`--full` again** (layout fix). The
+  side-by-side vs. stacked decision (and the text-column width) was computed from the widest
+  of *all* info lines, so one very long line — a 150+ char `Wi-Fi` line, or the `Net`/`Battery`
+  lines — inflated the text column past the terminal width and forced the logo to stack
+  *above* the text, even though those long lines sit well *below* the logo. Extracted a pure
+  `plan_layout(info_widths, logo_height, logo_width, term_width, show_logo)` that considers
+  **only the info lines that actually sit beside the logo** (the first `logo_height` rows);
+  long lines below the logo render at column 0 with the full terminal width and no longer
+  affect placement. Logo-type-agnostic: `logo_height`/`logo_width` come from the active logo,
+  so it works identically for ASCII, Chafa (both `Lines`) and the graphical image protocols
+  (Kitty/iTerm2/Sixel — `height_lines` + fixed image column). Verified in a pseudo-terminal:
+  `--full` renders the logo beside the text at 140 cols (previously stacked) and correctly
+  stacks at 90 cols. 7 new `plan_layout` unit tests. Also made CI consistent: the `build`
+  job's "Run fetcher (dry run)" step now uses `retch --full --ascii-logo` (was `--long`,
+  no logo), matching the `full-test` dry run — so both CI dry runs exercise every field and
+  the logo/layout path.
+  - **Wi-Fi split into two lines** (`src/display.rs`). The `iw` path builds a single
+    `"{adapter} [{iface}] - {SSID} ({band/rate})"` string that ran 150+ chars and wrapped into
+    the logo. New pure `split_wifi_line` splits on the `" - "` boundary → a **`Wi-Fi`** line
+    (adapter hardware) and a **`Wi-Fi Link`** line (live connection). Fallback detectors
+    (nmcli/iwgetid/macOS/Windows) have no `" - "` and render as a single `Wi-Fi` line.
+    `Wi-Fi Link` is aliased to the `wifi` field key in `should_show` (like `dns`/`memory`).
+    3 unit tests.
+  - **macOS/Apple logo is grayscale, not rainbow** (`src/logo.rs`). The ASCII Apple logo's
+    5 colour bands were the legacy rainbow (green/yellow/red/magenta/blue); replaced with a
+    256-colour grey (silver) ramp to match the modern monochrome Apple logo. (The graphical
+    `assets/logos/macos.png` is a separate asset — untouched here.)
+  - **Graphical (image) logo no longer lands mid-text** (`src/display.rs`). The side-by-side
+    path for Kitty/iTerm2/Sixel printed *all* info lines then `\x1b[{n}A`-ed back up to draw
+    the image beside the top rows — but for tall `--long`/`--full` output the block exceeds
+    the viewport, so after scrolling the cursor-up clamped at the top of the screen and the
+    image was drawn in the *middle* of the text (seen on kitty). Now the image is drawn
+    **first**, at the top of the logo column, bracketed by save/restore, then the text prints
+    top-to-bottom and scrolls naturally with the cell-anchored image. Shared
+    `render_graphical_side_by_side` helper; byte-level choreography verified in a kitty pty.
+  - `retch-cli` → 0.6.8; `retch-sysinfo` unchanged (`0.1.46`). Patch bump.
 - **v0.6.7 — CI `graphics-feature` job** (CI only; no runtime change). Adds a dedicated
   `graphics-feature` job to `rust.yml` that runs `cargo clippy --features graphics -- -D
   warnings` + `cargo build --features graphics` on one ubuntu runner (same non-tag triggers
