@@ -96,7 +96,45 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.11)
+## Current State (v0.6.12)
+- **v0.6.12 — `Domain Search` has one stable shape regardless of its source** (display
+  consistency fix, `crates/sysinfo/src/network.rs`). Found by comparing the CI
+  `--full --ascii-logo` dry-run across the build matrix: the field rendered
+  `eth0: <domain>` on Ubuntu but a bare `<domain>` on Fedora. The difference is **not**
+  platform-driven — the decisive evidence is that *the same OS flips format between two
+  jobs*: Ubuntu in the `build` matrix runs on a bare runner (`DNS Server: 127.0.0.53`,
+  systemd-resolved's stub) and takes the resolvectl path, while Ubuntu in `full-test` runs in
+  `container: ubuntu:latest` (`DNS Server: 127.0.0.11`, Docker's embedded DNS, no
+  systemd-resolved) and falls through to `/etc/resolv.conf`. Fedora is *always*
+  containerised, so it merely looked permanently "different from Ubuntu" for no platform
+  reason at all. Two things were inconsistent, not just the prefix: the resolvectl path
+  returns **one entry per interface** with domains joined by `", "`, whereas the raw fallback
+  returned **one entry per domain** — and `display.rs` prints one line per entry, so a host
+  with `search a b c` emitted three separate bare `Domain Search:` lines. Fix: new pure
+  `format_global_search_domains` renders the fallback in the same `"<scope>: a, b"` shape,
+  scoped `global` — labelled honestly rather than attributed to an interface, since
+  resolv.conf's `search` list carries no attribution and inventing one would be a fib on a
+  multi-homed host. `parse_search_from_resolv_conf` stays faithful to the file (still one
+  element per domain); the shape is imposed at the `detect_domain_search` layer. macOS routes
+  through the same formatter, so it is consistent too. The resolvectl path is byte-identical,
+  so bare-host rendering does not change. **Verified empirically in the exact CI
+  configuration** — the patched binary run under `podman` in `fedora:latest` (resolvectl
+  absent, confirmed) with three injected search domains prints one
+  `Domain Search: global: a.example.com, b.example.com, c.net`, while on the host it still
+  prints `wlp194s0: lan` / `wt0: netbird.cloud`. 3 new unit tests (shape parity between the
+  two paths, grouping into one entry, empty list yields no line).
+  - **Windows is deliberately NOT fixed here and is fully documented in §6a instead**: its
+    `Domain` reads `GetComputerNameExW(ComputerNameDnsDomain)` (the AD/primary suffix, empty
+    unless domain-joined) rather than the connection-specific suffix, so it means a different
+    thing than on Linux/macOS and printed nothing on CI runners that demonstrably *do* have a
+    DHCP suffix; and `detect_domain_search` has no Windows arm at all. Both need
+    `GetAdaptersAddresses` (+ registry `SearchList`), and **neither can be verified live
+    until there is a Windows box again** (arrakis was reinstalled to Fedora on 2026-07-22),
+    so they are queued into the Windows-parity series with root causes recorded. The §6a
+    entry also corrects the v0.6.0 note that wrongly justified the primary-suffix choice as
+    matching resolv.conf semantics. macOS's weaker-source issue is logged there too, flagged
+    as unconfirmed rather than a bug.
+  - `retch-sysinfo` → `0.1.49`; `retch-cli` → 0.6.12. Patch bump.
 - **v0.6.11 — `Domain` follows the default route, not a split-tunnel VPN (Linux)** (bugfix
   ×3, `crates/sysinfo/src/network.rs`). User report: `--long` showed
   `Domain: netbird.cloud` (a NetBird split-tunnel VPN on `wt0`) where the default route is
@@ -632,7 +670,9 @@ Adds over standard:
 Long plus everything slow, verbose, or cosmetic. Suitable for reporting, screenshots, or deep diagnostics. Users should expect multi-second runtimes.
 Adds over long:
 - `temp` (all sensors) — replaces the consolidated view with every sensor reading
-- `domain-search` — per-interface DNS search domain lists (from `resolvectl status` or equivalent)
+- `domain-search` — DNS search domain lists, one entry per scope, rendered `scope: a, b`. The
+  scope is the interface name when per-interface data exists (`resolvectl status`), or
+  `global` for the `/etc/resolv.conf` `search` fallback, which has no interface attribution
 - Cosmetic fields: `theme`, `icons`, `cursor` (font and terminal-font remain in `--long`)
 - `weather` — current conditions via Open-Meteo (~4s network timeout)
 - FUSE mounts — disk detection re-enables `statvfs` for `fuse.*` entries (skipped in all other modes to avoid 600ms+ hangs from cryfs/EncFS vaults)
@@ -734,6 +774,51 @@ Windows 11, Windows Terminal).
   to Windows Terminal.
 - **`chafa` mode doesn't work on Windows even when requested on the CLI** (CLI). Investigate
   PATH resolution, protocol-detection override, and Windows spawn/path handling.
+- **`Domain` measures a different concept on Windows than on Linux/macOS, and
+  `Domain Search` is unimplemented** (parity gap; **deferred from v0.6.12** because it cannot
+  be verified live — no Windows box since the 2026-07-22 arrakis reinstall to Fedora). Found
+  by comparing the CI `--full --ascii-logo` dry-run output across the whole matrix:
+  - **Evidence.** The Windows runners sit on the *same Azure network* as the Linux ones
+    (`DNS Server: 168.63.129.16`, Azure's resolver) and therefore do have a DHCP-supplied
+    `*.internal.cloudapp.net` connection suffix — the Linux runners all print it as their
+    `Domain`. Windows printed **nothing** for either `Domain` or `Domain Search`, on both
+    windows-x64 and windows-arm, in every run inspected (PRs #175/#176 and the v0.6.8 tag).
+  - **Root cause 1 — wrong Win32 source.** `detect_domain`'s Windows arm calls
+    `GetComputerNameExW(ComputerNameDnsDomain)`, which returns the **primary (AD) DNS
+    suffix** — empty unless the host is domain-joined or it is set by policy. Linux/macOS
+    report the *DNS search domain of the default route*. So the same field name means "Active
+    Directory domain membership" on Windows and "DNS search domain" everywhere else.
+    **This corrects the v0.6.0 release note below**, which justified the choice as "matching
+    the Linux/macOS `/etc/resolv.conf` DNS-domain semantics" — that reasoning is wrong. The
+    actual equivalent of resolv.conf's `domain`/`search` is the **connection-specific**
+    suffix, exposed per adapter as `IP_ADAPTER_ADDRESSES.DnsSuffix` by `GetAdaptersAddresses`.
+    Fix: read the `DnsSuffix` of the **default-route adapter**, mirroring what v0.6.11 now
+    does on Linux (which resolves the default-route interface and asks for *its* domain).
+    Note the existing Windows `detect_active_interface_and_local_ip` already identifies the
+    default-route adapter via the UDP-connect local-IP match, so that half is solved.
+    Keep the current deliberate behaviour of *not* reporting the NetBIOS `WORKGROUP` name.
+  - **Root cause 2 — no Windows arm at all.** `detect_domain_search` has only `#[cfg(linux)]`
+    and `#[cfg(macos)]` arms and returns an empty `Vec` on Windows, so `Domain Search` can
+    never appear there. Fix: per-adapter `DnsSuffix` values from `GetAdaptersAddresses` give
+    the same `iface: domain` shape the resolvectl path produces; the machine-wide list is in
+    the registry at `Tcpip\Parameters\SearchList` and maps to the `global:` scope introduced
+    in v0.6.12. (This was already loosely tracked as the "domain-search via
+    `GetAdaptersAddresses`" item in the Windows-parity series backlog; this entry supersedes
+    it with the root cause and the field-semantics problem.)
+  - **When picked up:** hand-written `extern "system"` FFI per house style (no binding crate),
+    `GetAdaptersAddresses` two-call size probe, `size_of`/`offset_of!` layout guards for
+    `IP_ADAPTER_ADDRESSES` per the #151 convention, pure unit-tested helpers for the
+    suffix→field formatting, and live verification against `ipconfig /all` +
+    `Get-DnsClient`/`Get-DnsClientGlobalSetting` on a real Windows host.
+- **macOS reads a weaker DNS source than it should** (latent; no demonstrated miss).
+  `detect_domain`/`detect_domain_search` read `/etc/resolv.conf`, which on macOS is a legacy
+  compatibility file maintained by configd that reflects only the *primary* service and is
+  documented as non-authoritative. The authoritative source is configd itself
+  (`scutil --dns`, or the SystemConfiguration framework that `macos_ffi.rs` already links).
+  The CI macOS runner printed no `Domain`/`Domain Search`, but its `DNS Server` is
+  `192.168.64.1` (a NAT'd VM network), so "genuinely no search domain configured" is equally
+  consistent with the evidence — this is *not* confirmed as a bug, only as a weak source.
+  Requires a Mac to distinguish; do not change it blind.
 
 **Deliberately not implemented on Windows** (no faithful native source): `load` (no
 load-average equivalent), `editor` (env-only `$VISUAL`/`$EDITOR`), conhost `terminal-font`
