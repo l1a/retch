@@ -18,6 +18,72 @@ def to_sri(hash_str):
     res = run_cmd(["nix", "hash", "to-sri", "--type", "sha256", hash_str.strip()])
     return res.stdout.strip()
 
+def substitute_package_nix(content, version, src_hash, cargo_hash):
+    """Return `package.nix` content with version/hash/cargoHash replaced.
+
+    Each pattern matches BOTH the `lib.fakeHash` placeholder and an already-filled
+    `"sha256-..."` literal, and both hash patterns are line-anchored so `hash` can never
+    match the tail of `cargoHash`.
+
+    This matters: the original version matched only `lib.fakeHash`, so once package.nix
+    had been filled in with real values every substitution silently became a no-op. The
+    temp build then still carried the *previous release's* hashes, failed on a source-hash
+    mismatch instead of the intended cargoHash mismatch, and the caller reported that stale
+    source hash as the new cargoHash — which is how v0.6.12 shipped a `cargoHash` equal to
+    v0.6.8's `hash`. A substitution that matches nothing is now a hard error rather than a
+    silent stale build.
+    """
+    hash_value = r'(?:lib\.fakeHash|"[^"]*")'
+    substitutions = (
+        ("version", r'(?m)^(\s*)version = ".*";', rf'\g<1>version = "{version}";'),
+        ("hash", rf'(?m)^(\s*)hash = {hash_value};', rf'\g<1>hash = "{src_hash}";'),
+        (
+            "cargoHash",
+            rf'(?m)^(\s*)cargoHash = {hash_value};',
+            rf'\g<1>cargoHash = "{cargo_hash}";',
+        ),
+    )
+    for label, pattern, replacement in substitutions:
+        content, count = re.subn(pattern, replacement, content)
+        if count == 0:
+            print(
+                f"Error: no '{label}' assignment found in packaging/nixpkgs/package.nix; "
+                "the substitution anchors are out of date.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    return content
+
+
+def extract_cargo_hash(stderr, dummy_sri):
+    """Extract the real cargo vendor hash from a nix-build hash-mismatch report.
+
+    Returns `None` when the output cannot be attributed with confidence, so the caller
+    fails loudly instead of guessing.
+
+    Only a mismatch reported against OUR dummy counts: `specified:` must name `dummy_sri`
+    and `got:` carries the real hash. The previous implementation fell back to "the first
+    sha256- literal in the output that isn't the dummy", which would happily return a hash
+    belonging to an *unrelated* mismatch — most damagingly a source-hash failure, whose
+    first hash is the stale `hash` value. That is precisely how v0.6.12 published a
+    cargoHash equal to v0.6.8's src hash. A wrong-but-well-formed hash is indistinguishable
+    from a right one downstream, so an unattributable output must be an error, not a guess.
+    """
+    m = re.search(
+        r'specified:\s+' + re.escape(dummy_sri) + r'\s*\n\s+got:\s+(sha256-\S+)', stderr
+    )
+    if m:
+        return m.group(1)
+
+    # Tolerate ordering/formatting drift in nix's message, but still require the dummy to
+    # appear (proving this is our cargoHash mismatch) alongside a distinct `got:` hash.
+    m = re.search(r'got:\s+(sha256-\S+)', stderr)
+    if m and dummy_sri in stderr and m.group(1) != dummy_sri:
+        return m.group(1)
+
+    return None
+
+
 def run_cmd(cmd, check=True):
     res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if check and res.returncode != 0:
@@ -86,12 +152,9 @@ def main():
         with open("packaging/nixpkgs/package.nix", "r") as f:
             content = f.read()
 
-        # Replace placeholders and version
-        content = re.sub(r'version = ".*";', f'version = "{version}";', content)
-        content = re.sub(r'hash = lib.fakeHash;', f'hash = "{src_hash_sri}";', content)
         # Use dummy valid SRI hash to trigger cargoHash mismatch
         dummy_sri = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-        content = re.sub(r'cargoHash = lib.fakeHash;', f'cargoHash = "{dummy_sri}";', content)
+        content = substitute_package_nix(content, version, src_hash_sri, dummy_sri)
 
         with open(temp_package, "w") as f:
             f.write(content)
@@ -100,24 +163,18 @@ def main():
         expr = f"with import <nixpkgs> {{}}; callPackage {temp_package} {{}}"
         res = run_cmd(["nix-build", "--no-out-link", "-E", expr], check=False)
 
-        # Parse stderr for the got: hash
         stderr = res.stderr
-        cargo_hash = None
-        
-        # Search for SRI hash mismatch pattern
-        m = re.search(r'specified:\s+sha256-A+.*\n\s+got:\s+(sha256-\S+)', stderr)
-        if m:
-            cargo_hash = m.group(1)
-        else:
-            # Fallback regex for standard sha256- SRI format
-            hashes = re.findall(r'sha256-[a-zA-Z0-9+/=]{44}', stderr)
-            for h in hashes:
-                if "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" not in h:
-                    cargo_hash = h
-                    break
+        cargo_hash = extract_cargo_hash(stderr, dummy_sri)
 
         if not cargo_hash:
             print("Error: Could not extract cargo vendor hash from nix-build output.", file=sys.stderr)
+            print(
+                "The build must fail with a cargoHash mismatch naming the dummy hash\n"
+                f"  {dummy_sri}\n"
+                "as 'specified:'. If it failed for another reason (e.g. a source-hash\n"
+                "mismatch), fix that first — do NOT copy a hash out of the output by hand.",
+                file=sys.stderr,
+            )
             print(f"Build Output:\n{stderr}", file=sys.stderr)
             sys.exit(1)
 
@@ -129,9 +186,12 @@ def main():
             with open("packaging/nixpkgs/package.nix", "r") as f:
                 orig_content = f.read()
 
-            new_content = re.sub(r'version = ".*";', f'version = "{version}";', orig_content)
-            new_content = re.sub(r'hash = lib.fakeHash;', f'hash = "{src_hash_sri}";', new_content)
-            new_content = re.sub(r'cargoHash = lib.fakeHash;', f'cargoHash = "{cargo_hash}";', new_content)
+            # Same anchors as the temp build — see substitute_package_nix. This branch had
+            # the identical `lib.fakeHash`-only bug, so a second local run silently left the
+            # previous release's hashes in place.
+            new_content = substitute_package_nix(
+                orig_content, version, src_hash_sri, cargo_hash
+            )
 
             with open("packaging/nixpkgs/package.nix", "w") as f:
                 f.write(new_content)

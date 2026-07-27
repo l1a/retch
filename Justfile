@@ -166,14 +166,64 @@ setup: install-hooks
 dev: setup fmt lint test build
     @echo "Development build complete."
 
-# Dry-run publish check for both crates (no upload)
+# Dry-run publish check for both crates (no upload).
+#
+# The retch-cli dry run can only succeed once the retch-sysinfo version it pins
+# (`retch-sysinfo = "=0.1.x"`) is actually on the crates.io index — a dry run never
+# uploads, so the pin is unresolvable until the real `just publish` has pushed sysinfo.
+# That is expected on every release and is NOT a failure, so this recipe checks the index
+# first and skips the cli leg with an explanation rather than dying on a confusing
+# "failed to select a version" error.
 publish-check:
-    cargo publish --dry-run --manifest-path crates/sysinfo/Cargo.toml
-    cargo publish --dry-run --manifest-path Cargo.toml
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SYSINFO_VER=$(grep -m1 '^version' crates/sysinfo/Cargo.toml | cut -d '"' -f2)
 
-# Publish both crates to crates.io (sysinfo first, then CLI)
+    # A CLI-only release leaves retch-sysinfo untouched, in which case its version is
+    # already on the index and any publish attempt is a no-op error.
+    if python3 scripts/crates_io_has_version.py retch-sysinfo "$SYSINFO_VER" >/dev/null 2>&1; then
+        echo "==> retch-sysinfo $SYSINFO_VER is already published — nothing to do for it"
+    else
+        echo "==> retch-sysinfo dry run"
+        cargo publish --dry-run --manifest-path crates/sysinfo/Cargo.toml
+    fi
+
+    PINNED=$(grep -oE 'retch-sysinfo = \{[^}]*version = "=?[0-9.]+"' Cargo.toml \
+             | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    if [ -z "$PINNED" ]; then
+        echo "Error: could not read the retch-sysinfo version pin from Cargo.toml" >&2
+        exit 1
+    fi
+
+    if python3 scripts/crates_io_has_version.py retch-sysinfo "$PINNED" >/dev/null 2>&1; then
+        echo "==> retch-cli dry run"
+        cargo publish --dry-run --manifest-path Cargo.toml
+    else
+        echo
+        echo "SKIPPED: retch-cli dry run."
+        echo "  retch-sysinfo $PINNED is not on crates.io yet, so the '=$PINNED' pin"
+        echo "  cannot resolve and the dry run would fail for that reason alone."
+        echo "  This is expected before a release. 'just publish' publishes sysinfo"
+        echo "  first, after which the cli leg resolves normally."
+    fi
+
+# Publish both crates to crates.io (sysinfo first, then CLI).
+#
+# retch-sysinfo is skipped when its current version is already on the index — a CLI-only
+# release (no library change) is the common case, and re-publishing an existing version is
+# an error rather than a no-op. cargo waits for the index after the sysinfo upload, so the
+# cli leg's `=0.1.x` pin resolves on the same run.
 publish:
-    cargo publish --manifest-path crates/sysinfo/Cargo.toml
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SYSINFO_VER=$(grep -m1 '^version' crates/sysinfo/Cargo.toml | cut -d '"' -f2)
+    if python3 scripts/crates_io_has_version.py retch-sysinfo "$SYSINFO_VER" >/dev/null 2>&1; then
+        echo "==> retch-sysinfo $SYSINFO_VER already published — skipping (CLI-only release)"
+    else
+        echo "==> publishing retch-sysinfo $SYSINFO_VER"
+        cargo publish --manifest-path crates/sysinfo/Cargo.toml
+    fi
+    echo "==> publishing retch-cli"
     cargo publish --manifest-path Cargo.toml
 
 # Automatically calculate and update Nixpkgs hashes in packaging/nixpkgs/package.nix (requires Nix)

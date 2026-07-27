@@ -96,7 +96,58 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.12)
+## Current State (v0.6.13)
+- **v0.6.13 — release-tooling fixes: `publish-check` false failure, and a silent
+  nixpkgs-hash corruption** (tooling/packaging only; no runtime change, `retch-sysinfo`
+  unchanged at `0.1.49`).
+  - **`just publish-check` no longer fails spuriously before a release.** The `retch-cli`
+    leg dry-runs against a `retch-sysinfo = "=0.1.x"` pin that cannot resolve until sysinfo
+    is actually on the crates.io index — and a dry run never uploads, so on *every* release
+    it died with a confusing `failed to select a version for the requirement`. It now reads
+    the pin from `Cargo.toml`, asks the sparse index via the new
+    `scripts/crates_io_has_version.py`, and either runs the cli dry run (pin resolvable) or
+    skips it with an explicit explanation. Genuine packaging errors still hard-fail. The
+    helper queries `index.crates.io` rather than the web API (no User-Agent requirement,
+    same source cargo reads) and distinguishes published / yanked / absent / unreachable.
+    The same run exposed a sibling of the bug: both `publish-check` and `publish` always
+    attempted **both** crates, but a CLI-only release (no library change — the common case
+    lately) leaves `retch-sysinfo` at an already-published version, where re-publishing is
+    an error, not a no-op. Both recipes now skip that crate when its current version is
+    already on the index and say so. This is what previous releases worked around by hand
+    (`cargo publish --manifest-path Cargo.toml` directly); `just publish` is now correct
+    for both release shapes.
+  - **`scripts/calculate_nix_hashes.py` was silently emitting a wrong `cargoHash`.** Its
+    substitutions matched only the literal `hash = lib.fakeHash;` / `cargoHash =
+    lib.fakeHash;`, so as soon as `package.nix` held real values (done in v0.6.9) every
+    substitution became a no-op. The temp build then still carried the *previous release's*
+    hashes, failed on a **source**-hash mismatch instead of the intended cargoHash
+    mismatch, and the parser's lenient fallback — "first `sha256-` literal that isn't the
+    dummy" — returned that stale source hash. **This is why the published v0.6.12 release
+    notes' `cargoHash` is byte-identical to v0.6.8's `hash`**; two real sha256 values cannot
+    collide, which is what exposed it. Two fixes: a shared `substitute_package_nix` whose
+    patterns match `lib.fakeHash` *or* a `"sha256-..."` literal, are line-anchored (so
+    `hash` can never match the tail of `cargoHash`), and **hard-error when a substitution
+    matches nothing** instead of building with stale values; and a pure
+    `extract_cargo_hash(stderr, dummy)` that only accepts a hash reported against our own
+    dummy, returning `None` (→ hard error) for any output it cannot attribute. The
+    local in-place branch had the identical `lib.fakeHash`-only bug and now shares the same
+    helper. Verified against the real `package.nix` in four states (concrete hashes,
+    `lib.fakeHash`, mixed, missing anchors) and the parser against four stderr shapes
+    including a replay of the exact v0.6.12 source-mismatch, which now returns `None`.
+  - **In-repo packaging reference copies refreshed to the released v0.6.12.**
+    `packaging/aur/PKGBUILD` → pkgver 0.6.12 + sha256
+    `1b8ed98857b958f955281b47292eb77a536c9ede316b21cd79bbdbc1506907b3`, diff-verified
+    identical to what was actually pushed to the AUR. `packaging/nixpkgs/package.nix` →
+    version 0.6.12 with the genuine src `hash` (computed by CI's `nix-prefetch-url`
+    independently of the bug above, so trustworthy), and **`cargoHash` deliberately reset to
+    `lib.fakeHash`** rather than carrying the corrupt released value — a plausible-but-wrong
+    hash is worse than an obvious placeholder, since it fails confusingly at build time
+    instead of telling you to recompute. Run `just nix-update` on a machine with Nix to fill
+    it in (Nix is unavailable on the current Fedora dev box). nixpkgs submission itself
+    remains deferred on the maintainer follower gate.
+  - No Rust source touched, so there is nothing for `cargo test` to cover; the Python
+    helpers were verified by direct execution against real inputs (see PR test plan).
+    `retch-cli` → 0.6.13. Patch bump.
 - **v0.6.12 — `Domain Search` has one stable shape regardless of its source** (display
   consistency fix, `crates/sysinfo/src/network.rs`). Found by comparing the CI
   `--full --ascii-logo` dry-run across the build matrix: the field rendered
