@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785123357850,
+  "lastUpdate": 1785123909041,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15192,70 +15192,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "770e0b0eabf6d60a1fecc1982117f738c3899fc0",
-          "message": "feature/add tldr (#123)\n\n* docs: add tldr page entry for retch\n\nAssisted-By: Gemini 3.5 Flash\n\n* chore: add tldr page to pre-pr checklist\n\nAssisted-By: Gemini 3.5 Flash\n\n* feat: add tldr-release automation script and recipes\n\nAssisted-By: Gemini 3.5 Flash\n\n* feat: add merge-pr recipe and reset_wip script\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-06-28T09:28:45-07:00",
-          "tree_id": "c1f8fdf58502f0ab22c57e17c25bcbd3feda49dd",
-          "url": "https://github.com/l1a/retch/commit/770e0b0eabf6d60a1fecc1982117f738c3899fc0"
-        },
-        "date": 1782666014211,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 128.19915496091053,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 4.911596622602281,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 128.3164295340586,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 93.8656098659116,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47089.715984832714,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 699.5914549484382,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 829.6905565100276,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2717572630,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "b8d3f6ea87cf396f449249595ed4d787aa2bb2fe",
           "message": "fix: ignore already deleted branch error in merge-pr recipe (#124)\n\nAssisted-By: Gemini 3.5 Flash",
           "timestamp": "2026-06-28T09:34:40-07:00",
@@ -18375,6 +18311,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1548375720,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3738fdb3ff66b18fc121092f4f086ea51ac0dc30",
+          "message": "Fix release tooling: publish-check and nix hashes (v0.6.13) (#178)\n\npublish-check failed on every release: the retch-cli dry run cannot\nresolve its '=0.1.x' retch-sysinfo pin until sysinfo is actually on the\nindex, and a dry run never uploads. It now checks the sparse index via\na new crates_io_has_version.py helper and skips that leg with an\nexplanation instead of dying on 'failed to select a version'. Both\npublish recipes also skip retch-sysinfo when its version is already\npublished, which is the normal state for a CLI-only release.\n\ncalculate_nix_hashes.py was silently emitting a wrong cargoHash. Its\nsubstitutions matched only 'lib.fakeHash', so once package.nix held\nreal values they became no-ops, the temp build kept the previous\nrelease's hashes, it failed on a source-hash mismatch rather than the\nintended cargoHash mismatch, and the lenient parser returned that stale\nsource hash. That is why the published v0.6.12 cargoHash equals\nv0.6.8's hash. Patterns now match a literal hash too, are line-anchored,\nand hard-error when they match nothing; the parser only accepts a hash\nreported against our own dummy.\n\nRefresh the in-repo packaging reference copies to the released v0.6.12.\npackage.nix keeps the genuine src hash but resets cargoHash to\nlib.fakeHash rather than carrying the corrupt value -- recompute with\n'just nix-update' on a machine with Nix.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-07-26T20:14:41-07:00",
+          "tree_id": "195de4a24b9c74a5d3bbc3288e0a4ce21ab48a89",
+          "url": "https://github.com/l1a/retch/commit/3738fdb3ff66b18fc121092f4f086ea51ac0dc30"
+        },
+        "date": 1785123906101,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 97.88015483750223,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.9419199452674993,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 103.81646333611488,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 74.56416514682768,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 39996.67501787091,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 487.76714969089306,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 703.1043720078692,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1486674090,
             "unit": "ns"
           }
         ]
