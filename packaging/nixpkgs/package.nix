@@ -8,16 +8,26 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "retch";
-  version = "0.6.8";
+  version = "0.6.12";
 
   src = fetchFromGitHub {
     owner = "l1a";
     repo = "retch";
     rev = "v${version}";
-    hash = "sha256-MDdKOYNkBIuO6iw0P7Z/1pps5QwpKDgugX/GhY/WQRw=";
+    # Computed by the release CI's nix-prefetch-url on the v0.6.12 tarball, independently
+    # of the substitution bug described below, so this value is trustworthy.
+    hash = "sha256-08nsxpti3GNFsK8zv2tQ+6iMQrgGBRnwzjG8nTOIM1g=";
   };
 
-  cargoHash = "sha256-LMf62gbjZVKqsUF9f3JaN4qqsd9vPinr55s2rZGgCEc=";
+  # Deliberately left as the placeholder: the v0.6.12 release notes' cargoHash is WRONG.
+  # calculate_nix_hashes.py only substituted `lib.fakeHash`, so once this file held literal
+  # hashes the temp build silently kept the previous release's values, failed on a
+  # source-hash mismatch instead of the intended cargoHash mismatch, and the old lenient
+  # parser reported that stale source hash as the cargoHash — which is why the published
+  # v0.6.12 cargoHash equals v0.6.8's `hash`. Both defects are fixed in that script now, but
+  # the correct value cannot be recomputed without Nix (unavailable on the current dev box).
+  # Run `just nix-update` on a machine with Nix to fill this in.
+  cargoHash = lib.fakeHash;
 
   nativeBuildInputs = [
     pkg-config
