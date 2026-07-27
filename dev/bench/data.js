@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785122134164,
+  "lastUpdate": 1785122528799,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3073,90 +3073,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Linux x64 Benchmarks": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "770e0b0eabf6d60a1fecc1982117f738c3899fc0",
-          "message": "feature/add tldr (#123)\n\n* docs: add tldr page entry for retch\n\nAssisted-By: Gemini 3.5 Flash\n\n* chore: add tldr page to pre-pr checklist\n\nAssisted-By: Gemini 3.5 Flash\n\n* feat: add tldr-release automation script and recipes\n\nAssisted-By: Gemini 3.5 Flash\n\n* feat: add merge-pr recipe and reset_wip script\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-06-28T09:28:45-07:00",
-          "tree_id": "c1f8fdf58502f0ab22c57e17c25bcbd3feda49dd",
-          "url": "https://github.com/l1a/retch/commit/770e0b0eabf6d60a1fecc1982117f738c3899fc0"
-        },
-        "date": 1782664592718,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 603749631.95,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2057.478439161267,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 58.0554265413562,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.830784928062168,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 58.379020337302755,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 18151.405565249966,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 186150.26552049918,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 12639.862987601995,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 12661.317546461596,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1602506.721860494,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 402.96169931029715,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 281.0747298864513,
-            "unit": "ns"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -7269,6 +7185,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 211.715987431943,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3738fdb3ff66b18fc121092f4f086ea51ac0dc30",
+          "message": "Fix release tooling: publish-check and nix hashes (v0.6.13) (#178)\n\npublish-check failed on every release: the retch-cli dry run cannot\nresolve its '=0.1.x' retch-sysinfo pin until sysinfo is actually on the\nindex, and a dry run never uploads. It now checks the sparse index via\na new crates_io_has_version.py helper and skips that leg with an\nexplanation instead of dying on 'failed to select a version'. Both\npublish recipes also skip retch-sysinfo when its version is already\npublished, which is the normal state for a CLI-only release.\n\ncalculate_nix_hashes.py was silently emitting a wrong cargoHash. Its\nsubstitutions matched only 'lib.fakeHash', so once package.nix held\nreal values they became no-ops, the temp build kept the previous\nrelease's hashes, it failed on a source-hash mismatch rather than the\nintended cargoHash mismatch, and the lenient parser returned that stale\nsource hash. That is why the published v0.6.12 cargoHash equals\nv0.6.8's hash. Patterns now match a literal hash too, are line-anchored,\nand hard-error when they match nothing; the parser only accepts a hash\nreported against our own dummy.\n\nRefresh the in-repo packaging reference copies to the released v0.6.12.\npackage.nix keeps the genuine src hash but resets cargoHash to\nlib.fakeHash rather than carrying the corrupt value -- recompute with\n'just nix-update' on a machine with Nix.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-07-26T20:14:41-07:00",
+          "tree_id": "195de4a24b9c74a5d3bbc3288e0a4ce21ab48a89",
+          "url": "https://github.com/l1a/retch/commit/3738fdb3ff66b18fc121092f4f086ea51ac0dc30"
+        },
+        "date": 1785122527472,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 998423215,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2149.4261472949097,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 58.09461986365087,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.803225648711525,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 57.90217213627731,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 18201.671124513054,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 188633.92064181136,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12840.865700171309,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 12932.731194540582,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1397404.421149382,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 374.0184479414416,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 281.1254569473734,
             "unit": "ns"
           }
         ]
