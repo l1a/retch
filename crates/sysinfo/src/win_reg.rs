@@ -98,6 +98,25 @@ pub fn get_reg_string(hkey: HKEY, subkey: &str, value: &str) -> Option<String> {
                 unsafe { std::slice::from_raw_parts(buf.as_ptr() as *const u16, buf.len() / 2) };
             let len = words.iter().position(|&x| x == 0).unwrap_or(words.len());
             String::from_utf16(&words[..len]).ok()
+        } else if ty == 7 {
+            // REG_MULTI_SZ
+            let words =
+                unsafe { std::slice::from_raw_parts(buf.as_ptr() as *const u16, buf.len() / 2) };
+            let strings: Vec<String> = words
+                .split(|&x| x == 0)
+                .filter_map(|w| {
+                    if w.is_empty() {
+                        None
+                    } else {
+                        String::from_utf16(w).ok()
+                    }
+                })
+                .collect();
+            if strings.is_empty() {
+                None
+            } else {
+                Some(strings.join(", "))
+            }
         } else {
             None
         }

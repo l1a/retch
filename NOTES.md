@@ -96,7 +96,9 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.13)
+## Current State (v0.6.14)
+- **v0.6.14 — Windows `Domain` & `Domain Search` parity fix** (cross-platform parity fix, `crates/sysinfo/src/network.rs`).
+  On Windows, `detect_domain` now resolves the connection-specific DNS suffix from `GetAdaptersAddresses` for the adapter carrying the default route, matching Linux/macOS semantics instead of reading the primary AD DNS suffix (`GetComputerNameExW`). `detect_domain_search` on Windows now enumerates per-adapter `DnsSuffix` values (`<FriendlyName>: <DnsSuffix>`) and the machine-wide `SearchList` registry key (`global: <domain1>, <domain2>`), achieving full cross-platform output parity. Layout assertion tests (`size_of` and `offset_of!`) added for `IpAdapterAddresses`. Tested live on arrakis (`Domain: lan`, `Domain Search: Wi-Fi: lan`). `retch-sysinfo` → `0.1.50`; `retch-cli` → `0.6.14`. Patch bump.
 - **v0.6.13 — release-tooling fixes: `publish-check` false failure, and a silent
   nixpkgs-hash corruption** (tooling/packaging only; no runtime change, `retch-sysinfo`
   unchanged at `0.1.49`).
@@ -809,8 +811,10 @@ Windows 11, Windows Terminal).
 - ~~**Camera lists scanners as cameras**~~ — fixed v0.6.1 (enumerate the
   `KSCATEGORY_VIDEO_CAMERA` interface, not the Image setup class; also drops the synthetic
   virtual camera).
-- ~~**Users = 0 with a user logged in**~~ — fixed v0.6.1 (`WTSEnumerateSessionsW` session
-  count; `Users` suppressed when the count is 0).
+- ~~**`Domain` & `Domain Search` on Windows**~~ — fixed v0.6.14 (uses
+  `GetAdaptersAddresses` connection-specific `DnsSuffix` for the default-route adapter, plus
+  registry `SearchList` and per-adapter suffixes for `Domain Search`, matching Linux/macOS
+  semantics).
 
 **Open**
 - **Bluetooth shows only 1 of 2 connected devices** (bug). `bluetooth.rs` Windows path uses
@@ -825,42 +829,6 @@ Windows 11, Windows Terminal).
   to Windows Terminal.
 - **`chafa` mode doesn't work on Windows even when requested on the CLI** (CLI). Investigate
   PATH resolution, protocol-detection override, and Windows spawn/path handling.
-- **`Domain` measures a different concept on Windows than on Linux/macOS, and
-  `Domain Search` is unimplemented** (parity gap; **deferred from v0.6.12** because it cannot
-  be verified live — no Windows box since the 2026-07-22 arrakis reinstall to Fedora). Found
-  by comparing the CI `--full --ascii-logo` dry-run output across the whole matrix:
-  - **Evidence.** The Windows runners sit on the *same Azure network* as the Linux ones
-    (`DNS Server: 168.63.129.16`, Azure's resolver) and therefore do have a DHCP-supplied
-    `*.internal.cloudapp.net` connection suffix — the Linux runners all print it as their
-    `Domain`. Windows printed **nothing** for either `Domain` or `Domain Search`, on both
-    windows-x64 and windows-arm, in every run inspected (PRs #175/#176 and the v0.6.8 tag).
-  - **Root cause 1 — wrong Win32 source.** `detect_domain`'s Windows arm calls
-    `GetComputerNameExW(ComputerNameDnsDomain)`, which returns the **primary (AD) DNS
-    suffix** — empty unless the host is domain-joined or it is set by policy. Linux/macOS
-    report the *DNS search domain of the default route*. So the same field name means "Active
-    Directory domain membership" on Windows and "DNS search domain" everywhere else.
-    **This corrects the v0.6.0 release note below**, which justified the choice as "matching
-    the Linux/macOS `/etc/resolv.conf` DNS-domain semantics" — that reasoning is wrong. The
-    actual equivalent of resolv.conf's `domain`/`search` is the **connection-specific**
-    suffix, exposed per adapter as `IP_ADAPTER_ADDRESSES.DnsSuffix` by `GetAdaptersAddresses`.
-    Fix: read the `DnsSuffix` of the **default-route adapter**, mirroring what v0.6.11 now
-    does on Linux (which resolves the default-route interface and asks for *its* domain).
-    Note the existing Windows `detect_active_interface_and_local_ip` already identifies the
-    default-route adapter via the UDP-connect local-IP match, so that half is solved.
-    Keep the current deliberate behaviour of *not* reporting the NetBIOS `WORKGROUP` name.
-  - **Root cause 2 — no Windows arm at all.** `detect_domain_search` has only `#[cfg(linux)]`
-    and `#[cfg(macos)]` arms and returns an empty `Vec` on Windows, so `Domain Search` can
-    never appear there. Fix: per-adapter `DnsSuffix` values from `GetAdaptersAddresses` give
-    the same `iface: domain` shape the resolvectl path produces; the machine-wide list is in
-    the registry at `Tcpip\Parameters\SearchList` and maps to the `global:` scope introduced
-    in v0.6.12. (This was already loosely tracked as the "domain-search via
-    `GetAdaptersAddresses`" item in the Windows-parity series backlog; this entry supersedes
-    it with the root cause and the field-semantics problem.)
-  - **When picked up:** hand-written `extern "system"` FFI per house style (no binding crate),
-    `GetAdaptersAddresses` two-call size probe, `size_of`/`offset_of!` layout guards for
-    `IP_ADAPTER_ADDRESSES` per the #151 convention, pure unit-tested helpers for the
-    suffix→field formatting, and live verification against `ipconfig /all` +
-    `Get-DnsClient`/`Get-DnsClientGlobalSetting` on a real Windows host.
 - **macOS reads a weaker DNS source than it should** (latent; no demonstrated miss).
   `detect_domain`/`detect_domain_search` read `/etc/resolv.conf`, which on macOS is a legacy
   compatibility file maintained by configd that reflects only the *primary* service and is
