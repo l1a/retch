@@ -917,7 +917,15 @@ fn get_windows_adapters_dns_info() -> Vec<WinAdapterDnsInfo> {
                 String::new()
             };
 
-            let dns_suffix = if !adapter.DnsSuffix.is_null() {
+            let adapter_name = if !adapter.AdapterName.is_null() {
+                std::ffi::CStr::from_ptr(adapter.AdapterName)
+                    .to_string_lossy()
+                    .into_owned()
+            } else {
+                String::new()
+            };
+
+            let mut dns_suffix = if !adapter.DnsSuffix.is_null() {
                 let mut len = 0;
                 while *adapter.DnsSuffix.add(len) != 0 {
                     len += 1;
@@ -927,6 +935,38 @@ fn get_windows_adapters_dns_info() -> Vec<WinAdapterDnsInfo> {
             } else {
                 String::new()
             };
+
+            if dns_suffix.trim().is_empty() && !adapter_name.is_empty() {
+                let subkey = format!(
+                    "SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces\\{}",
+                    adapter_name
+                );
+                if let Some(s) = crate::win_reg::get_reg_string(
+                    crate::win_reg::HKEY_LOCAL_MACHINE,
+                    &subkey,
+                    "SearchList",
+                ) {
+                    dns_suffix = s;
+                } else if let Some(s) = crate::win_reg::get_reg_string(
+                    crate::win_reg::HKEY_LOCAL_MACHINE,
+                    &subkey,
+                    "DhcpSearchList",
+                ) {
+                    dns_suffix = s;
+                } else if let Some(s) = crate::win_reg::get_reg_string(
+                    crate::win_reg::HKEY_LOCAL_MACHINE,
+                    &subkey,
+                    "Domain",
+                ) {
+                    dns_suffix = s;
+                } else if let Some(s) = crate::win_reg::get_reg_string(
+                    crate::win_reg::HKEY_LOCAL_MACHINE,
+                    &subkey,
+                    "DhcpDomain",
+                ) {
+                    dns_suffix = s;
+                }
+            }
 
             result.push(WinAdapterDnsInfo {
                 friendly_name,
