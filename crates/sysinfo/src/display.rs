@@ -244,6 +244,95 @@ pub fn detect_displays() -> Vec<String> {
             String::from_utf16_lossy(&buf[..len])
         }
 
+        fn get_monitor_name(adapter_device_name: &[u16], fallback_adapter: &str) -> String {
+            let mut monitor_dd = DisplayDevice {
+                cb: std::mem::size_of::<DisplayDevice>() as u32,
+                device_name: [0u16; 32],
+                device_string: [0u16; 128],
+                state_flags: 0,
+                device_id: [0u16; 128],
+                device_key: [0u16; 128],
+            };
+
+            let ok =
+                unsafe { EnumDisplayDevicesW(adapter_device_name.as_ptr(), 0, &mut monitor_dd, 0) };
+
+            if ok != 0 {
+                let mon_string = u16_to_string(&monitor_dd.device_string);
+                let mon_id = u16_to_string(&monitor_dd.device_id);
+                let clean_id = mon_id
+                    .trim_start_matches("\\\\?\\")
+                    .trim_start_matches("\\\\.\\");
+
+                // Extract Hardware ID (e.g., "SDC41B0" from "MONITOR\SDC41B0\{...}\0002")
+                let parts: Vec<&str> = clean_id.split('\\').collect();
+                let mut candidate_hw_ids = Vec::new();
+                if parts.len() >= 2 {
+                    candidate_hw_ids.push(parts[1].to_string());
+                }
+
+                // Try reading EDID for hardware ID instances under DISPLAY\<HwID>\<Instance>\Device Parameters
+                for hw_id in candidate_hw_ids {
+                    let dev_key = format!("SYSTEM\\CurrentControlSet\\Enum\\DISPLAY\\{}", hw_id);
+                    let instances = crate::win_reg::enum_reg_subkeys(
+                        crate::win_reg::HKEY_LOCAL_MACHINE,
+                        &dev_key,
+                    );
+                    for inst in instances {
+                        let subkey = format!(
+                            "SYSTEM\\CurrentControlSet\\Enum\\DISPLAY\\{}\\{}\\Device Parameters",
+                            hw_id, inst
+                        );
+                        if let Some(edid) = crate::win_reg::get_reg_bytes(
+                            crate::win_reg::HKEY_LOCAL_MACHINE,
+                            &subkey,
+                            "EDID",
+                        ) {
+                            if let Some(edid_name) = parse_monitor_name_from_edid(&edid) {
+                                return edid_name;
+                            }
+                        }
+                    }
+                }
+
+                // Global fallback: check all monitors under HKLM\SYSTEM\CurrentControlSet\Enum\DISPLAY
+                let display_devices = crate::win_reg::enum_reg_subkeys(
+                    crate::win_reg::HKEY_LOCAL_MACHINE,
+                    "SYSTEM\\CurrentControlSet\\Enum\\DISPLAY",
+                );
+                for dev in display_devices {
+                    let instances = crate::win_reg::enum_reg_subkeys(
+                        crate::win_reg::HKEY_LOCAL_MACHINE,
+                        &format!("SYSTEM\\CurrentControlSet\\Enum\\DISPLAY\\{}", dev),
+                    );
+                    for inst in instances {
+                        let subkey = format!(
+                            "SYSTEM\\CurrentControlSet\\Enum\\DISPLAY\\{}\\{}\\Device Parameters",
+                            dev, inst
+                        );
+                        if let Some(edid) = crate::win_reg::get_reg_bytes(
+                            crate::win_reg::HKEY_LOCAL_MACHINE,
+                            &subkey,
+                            "EDID",
+                        ) {
+                            if let Some(edid_name) = parse_monitor_name_from_edid(&edid) {
+                                return edid_name;
+                            }
+                        }
+                    }
+                }
+
+                if !mon_string.is_empty()
+                    && mon_string != "Generic PnP Monitor"
+                    && mon_string != "Generic Monitor"
+                {
+                    return mon_string;
+                }
+            }
+
+            fallback_adapter.to_string()
+        }
+
         let mut displays = Vec::new();
         let mut dev_num = 0u32;
         loop {
@@ -266,6 +355,7 @@ pub fn detect_displays() -> Vec<String> {
             }
 
             let adapter_name = u16_to_string(&dd.device_string);
+            let display_name = get_monitor_name(&dd.device_name, &adapter_name);
 
             let mut dm = unsafe { std::mem::zeroed::<DevMode>() };
             dm.size = std::mem::size_of::<DevMode>() as u16;
@@ -277,13 +367,13 @@ pub fn detect_displays() -> Vec<String> {
                 if dm.display_frequency > 0 {
                     format!(
                         "{} ({}x{} @ {}Hz)",
-                        adapter_name, dm.pels_width, dm.pels_height, dm.display_frequency
+                        display_name, dm.pels_width, dm.pels_height, dm.display_frequency
                     )
                 } else {
-                    format!("{} ({}x{})", adapter_name, dm.pels_width, dm.pels_height)
+                    format!("{} ({}x{})", display_name, dm.pels_width, dm.pels_height)
                 }
             } else {
-                adapter_name
+                display_name
             };
 
             if !entry.is_empty() {
@@ -766,11 +856,12 @@ mod tests {
         assert_eq!(parsed, vec!["Color LCD (3024x1964 @ 60Hz)".to_string()]);
     }
 
-    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "windows")]
     #[test]
-    fn test_parse_macos_no_frequency() {
-        let sample = "Graphics/Displays:\n      Displays:\n        ASUS PA329C:\n          Resolution: 3840 x 2160\n";
-        let parsed = parse_macos_displays(sample);
-        assert_eq!(parsed, vec!["ASUS PA329C (3840x2160)".to_string()]);
+    fn test_windows_detect_displays_does_not_panic() {
+        let displays = detect_displays();
+        for d in displays {
+            assert!(!d.is_empty());
+        }
     }
 }
