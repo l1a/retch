@@ -14,16 +14,51 @@
 //! - **macOS**: Parses `system_profiler SPDisplaysDataType` output.
 //! - **Windows**: Calls `EnumDisplayDevicesW` + `EnumDisplaySettingsW` via user32.dll FFI.
 
+/// Parse PNP Vendor ID from EDID bytes 8–9 and map to human-readable vendor name.
+#[allow(dead_code)]
+pub fn parse_monitor_vendor_from_edid(edid: &[u8]) -> Option<&'static str> {
+    if edid.len() < 10 {
+        return None;
+    }
+    let val = ((edid[8] as u16) << 8) | (edid[9] as u16);
+    let c1 = (((val >> 10) & 0x1F) as u8 + b'@') as char;
+    let c2 = (((val >> 5) & 0x1F) as u8 + b'@') as char;
+    let c3 = ((val & 0x1F) as u8 + b'@') as char;
+
+    let pnp_id = format!("{}{}{}", c1, c2, c3);
+    match pnp_id.as_str() {
+        "SDC" | "SEC" => Some("Samsung"),
+        "GSM" | "LGD" | "LPL" => Some("LG"),
+        "DEL" => Some("Dell"),
+        "AUS" | "ACI" => Some("ASUS"),
+        "BEN" => Some("BenQ"),
+        "AOC" => Some("AOC"),
+        "ACR" => Some("Acer"),
+        "LEN" => Some("Lenovo"),
+        "HPN" | "HPQ" => Some("HP"),
+        "MSI" => Some("MSI"),
+        "SNY" => Some("Sony"),
+        "GBT" => Some("Gigabyte"),
+        "VSC" => Some("ViewSonic"),
+        "APP" => Some("Apple"),
+        "NEC" => Some("NEC"),
+        "PHL" => Some("Philips"),
+        _ => None,
+    }
+}
+
 /// Parse the monitor's human-readable name from a raw EDID binary blob.
 ///
 /// Searches the four 18-byte descriptor blocks (at EDID offsets 54, 72, 90,
 /// and 108) for a Monitor Name Descriptor (tag `0xFC`) and returns the name
 /// string, or `None` if no such descriptor is found or the EDID is too short.
+/// Prepends vendor name if parsed from PNP ID and not already present.
 #[allow(dead_code)]
 pub fn parse_monitor_name_from_edid(edid: &[u8]) -> Option<String> {
     if edid.len() < 128 {
         return None;
     }
+    let vendor = parse_monitor_vendor_from_edid(edid);
     let offsets = [54, 72, 90, 108];
     for &offset in &offsets {
         if offset + 18 <= edid.len() {
@@ -33,6 +68,11 @@ pub fn parse_monitor_name_from_edid(edid: &[u8]) -> Option<String> {
                 let name = String::from_utf8_lossy(name_bytes);
                 let cleaned = name.trim().replace('\0', "").to_string();
                 if !cleaned.is_empty() {
+                    if let Some(v) = vendor {
+                        if !cleaned.to_lowercase().starts_with(&v.to_lowercase()) {
+                            return Some(format!("{} {}", v, cleaned));
+                        }
+                    }
                     return Some(cleaned);
                 }
             }
@@ -623,6 +663,44 @@ mod tests {
     }
 
     // ── parse_monitor_name_from_edid ──────────────────────────────────────────
+
+    #[test]
+    fn test_parse_monitor_vendor_from_edid() {
+        let mut edid = vec![0u8; 128];
+        // SDC (Samsung): 0x4C83
+        edid[8] = 0x4C;
+        edid[9] = 0x83;
+        assert_eq!(parse_monitor_vendor_from_edid(&edid), Some("Samsung"));
+
+        // GSM (LG): 0x1E6D
+        edid[8] = 0x1E;
+        edid[9] = 0x6D;
+        assert_eq!(parse_monitor_vendor_from_edid(&edid), Some("LG"));
+    }
+
+    #[test]
+    fn test_monitor_name_prepends_vendor() {
+        let mut edid = vec![0u8; 128];
+        edid[8] = 0x4C;
+        edid[9] = 0x83; // SDC -> Samsung
+        inject_monitor_name(&mut edid, b"ATNA33AA08-0");
+        assert_eq!(
+            parse_monitor_name_from_edid(&edid),
+            Some("Samsung ATNA33AA08-0".to_string())
+        );
+    }
+
+    #[test]
+    fn test_monitor_name_does_not_duplicate_vendor() {
+        let mut edid = vec![0u8; 128];
+        edid[8] = 0x1E;
+        edid[9] = 0x6D; // GSM -> LG
+        inject_monitor_name(&mut edid, b"LG HDR 4K");
+        assert_eq!(
+            parse_monitor_name_from_edid(&edid),
+            Some("LG HDR 4K".to_string())
+        );
+    }
 
     #[test]
     fn test_monitor_name_too_short_edid() {
