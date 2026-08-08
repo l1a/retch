@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786170597402,
+  "lastUpdate": 1786171213749,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15192,70 +15192,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "b8d3f6ea87cf396f449249595ed4d787aa2bb2fe",
-          "message": "fix: ignore already deleted branch error in merge-pr recipe (#124)\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-06-28T09:34:40-07:00",
-          "tree_id": "c9c370af106069b537c4019e66afc44f31927e26",
-          "url": "https://github.com/l1a/retch/commit/b8d3f6ea87cf396f449249595ed4d787aa2bb2fe"
-        },
-        "date": 1782666464784,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 123.2172238668021,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.347765118100128,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 122.94381596317373,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 93.99974541534115,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 43082.33157373372,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 579.8246169705898,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 839.1051023658835,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3355993410,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "d13f2fe0da7a898a1ebbd9c412284e5d02a0651e",
           "message": "chore/refactor docs (#125)\n\n* docs: refactor documentation structure\n\nAssisted-By: Gemini 3.5 Flash\n\n* docs: fix Current State header formatting\n\nAssisted-By: Gemini 3.5 Flash",
           "timestamp": "2026-06-28T09:54:34-07:00",
@@ -18375,6 +18311,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1486674090,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "29c90fa282c281f6c5a2b797544c5babf5e957ce",
+          "message": "fix(net): resolve Windows connection DNS domain and search list (#181)\n\n* fix(net): resolve Windows connection DNS domain\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(net): read Windows interface registry search list\n\nAssisted-By: Gemini 3.6 Flash",
+          "timestamp": "2026-08-07T23:10:01-07:00",
+          "tree_id": "1430e5590c797113f0e21a4cdab22e90bfe90ce4",
+          "url": "https://github.com/l1a/retch/commit/29c90fa282c281f6c5a2b797544c5babf5e957ce"
+        },
+        "date": 1786171210305,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 133.71058553949322,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.716807527355582,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 146.71881064068072,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 98.52404563317907,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42324.245571834734,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 743.20709281511,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 924.1332797864595,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2636115555,
             "unit": "ns"
           }
         ]
