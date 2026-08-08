@@ -743,49 +743,203 @@ fn resolvectl_status() -> Option<&'static str> {
         .as_deref()
 }
 
-/// Windows: returns the host's primary DNS domain via `GetComputerNameExW`.
+/// Structure holding DNS configuration per Windows adapter.
+#[cfg(any(target_os = "windows", test))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct WinAdapterDnsInfo {
+    friendly_name: String,
+    dns_suffix: String,
+    is_up: bool,
+    is_loopback: bool,
+}
+
+/// Resolves the default route's DNS domain on Windows.
 ///
-/// Uses the two-call size-probing convention: a first call with a null buffer
-/// reports the required length, the second fills the buffer. A workgroup
-/// (non-domain-joined) host reports an empty DNS domain, which
-/// [`clean_domain`] maps to `None`.
+/// Matches the default route interface against adapter friendly names and
+/// returns its connection-specific `dns_suffix`. If no interface suffix is set,
+/// falls back to the machine-wide `global_domain`.
+#[cfg(any(target_os = "windows", test))]
+fn resolve_windows_default_domain(
+    active_iface: Option<&str>,
+    adapters: &[WinAdapterDnsInfo],
+    global_domain: Option<&str>,
+) -> Option<String> {
+    if let Some(iface) = active_iface {
+        if let Some(adapter) = adapters
+            .iter()
+            .find(|a| a.friendly_name.eq_ignore_ascii_case(iface))
+        {
+            if let Some(suffix) = clean_domain(&adapter.dns_suffix) {
+                return Some(suffix);
+            }
+        }
+    }
+
+    if let Some(global) = global_domain.and_then(clean_domain) {
+        return Some(global);
+    }
+
+    None
+}
+
+/// Formats global and per-adapter search domain lists on Windows.
+#[cfg(any(target_os = "windows", test))]
+fn parse_windows_domain_search(
+    global_search_list: Option<&str>,
+    adapters: &[WinAdapterDnsInfo],
+) -> Vec<String> {
+    let mut results = Vec::new();
+
+    if let Some(raw) = global_search_list {
+        let global_domains: Vec<String> = raw
+            .split(&[',', ' '][..])
+            .filter_map(clean_domain)
+            .collect();
+        if !global_domains.is_empty() {
+            results.extend(format_global_search_domains(&global_domains));
+        }
+    }
+
+    for adapter in adapters {
+        if adapter.is_up && !adapter.is_loopback {
+            if let Some(suffix) = clean_domain(&adapter.dns_suffix) {
+                results.push(format!("{}: {}", adapter.friendly_name, suffix));
+            }
+        }
+    }
+
+    results
+}
+
+/// Windows: returns the active adapter's DNS domain via `GetAdaptersAddresses`.
 #[cfg(target_os = "windows")]
 fn detect_domain_windows() -> Option<String> {
+    let (_, active_iface) = detect_active_interface_and_local_ip();
+    let adapters = get_windows_adapters_dns_info();
+    let global_domain = crate::win_reg::get_reg_string(
+        crate::win_reg::HKEY_LOCAL_MACHINE,
+        "SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters",
+        "Domain",
+    );
+    resolve_windows_default_domain(active_iface.as_deref(), &adapters, global_domain.as_deref())
+}
+
+/// Queries `GetAdaptersAddresses` for per-adapter DNS suffix and status info.
+#[cfg(target_os = "windows")]
+fn get_windows_adapters_dns_info() -> Vec<WinAdapterDnsInfo> {
+    use std::ffi::OsString;
     use std::os::windows::ffi::OsStringExt;
+    use std::ptr;
 
-    // COMPUTER_NAME_FORMAT::ComputerNameDnsDomain
-    const COMPUTER_NAME_DNS_DOMAIN: i32 = 2;
-
-    // kernel32 is linked by default on the MSVC target.
-    extern "system" {
-        fn GetComputerNameExW(name_type: i32, lp_buffer: *mut u16, n_size: *mut u32) -> i32;
+    #[repr(C)]
+    #[allow(non_snake_case)]
+    struct IpAdapterAddresses {
+        Length: u32,
+        IfIndex: u32,
+        Next: *mut IpAdapterAddresses,
+        AdapterName: *const i8,
+        FirstUnicastAddress: *const std::ffi::c_void,
+        FirstAnycastAddress: *const std::ffi::c_void,
+        FirstMulticastAddress: *const std::ffi::c_void,
+        FirstDnsServerAddress: *const std::ffi::c_void,
+        DnsSuffix: *const u16,
+        Description: *const u16,
+        FriendlyName: *const u16,
+        PhysicalAddress: [u8; 8],
+        PhysicalAddressLength: u32,
+        Flags: u32,
+        Mtu: u32,
+        IfType: u32,
+        OperStatus: u32,
     }
 
-    // First call: null buffer + size 0 asks the OS for the required length
-    // (in wide chars, including the trailing NUL). It fails and sets `size`.
+    const AF_UNSPEC: u32 = 0;
+    const GAA_FLAGS: u32 = 0x0E;
+    const IF_TYPE_SOFTWARE_LOOPBACK: u32 = 24;
+    const IF_OPER_STATUS_UP: u32 = 1;
+
+    #[link(name = "iphlpapi")]
+    extern "system" {
+        fn GetAdaptersAddresses(
+            family: u32,
+            flags: u32,
+            reserved: *mut std::ffi::c_void,
+            adapter_addresses: *mut IpAdapterAddresses,
+            size_pointer: *mut u32,
+        ) -> u32;
+    }
+
     let mut size: u32 = 0;
-    // SAFETY: the null-buffer / zero-size form is the documented size probe;
-    // the OS only writes the required length back through `size`.
+    // SAFETY: Size probe call with null pointer.
     unsafe {
-        GetComputerNameExW(COMPUTER_NAME_DNS_DOMAIN, std::ptr::null_mut(), &mut size);
+        GetAdaptersAddresses(
+            AF_UNSPEC,
+            GAA_FLAGS,
+            ptr::null_mut(),
+            ptr::null_mut(),
+            &mut size,
+        );
     }
     if size == 0 {
-        return None;
+        return Vec::new();
     }
 
-    let mut buf = vec![0u16; size as usize];
-    // SAFETY: `buf` has `size` wide chars of capacity; `size` is passed by
-    // pointer so the OS reports the final length (excluding the NUL). The call
-    // writes at most `size` code units.
-    let ok = unsafe { GetComputerNameExW(COMPUTER_NAME_DNS_DOMAIN, buf.as_mut_ptr(), &mut size) };
-    if ok == 0 {
-        return None;
+    let mut buf = vec![0u8; size as usize];
+    // SAFETY: Buffer passed with capacity specified by `size`.
+    let ret = unsafe {
+        GetAdaptersAddresses(
+            AF_UNSPEC,
+            GAA_FLAGS,
+            ptr::null_mut(),
+            buf.as_mut_ptr() as *mut IpAdapterAddresses,
+            &mut size,
+        )
+    };
+    if ret != 0 {
+        return Vec::new();
     }
 
-    let s = std::ffi::OsString::from_wide(&buf[..size as usize])
-        .to_string_lossy()
-        .into_owned();
-    clean_domain(&s)
+    let mut result = Vec::new();
+    let mut curr = buf.as_ptr() as *const IpAdapterAddresses;
+
+    unsafe {
+        while !curr.is_null() {
+            let adapter = &*curr;
+
+            let friendly_name = if !adapter.FriendlyName.is_null() {
+                let mut len = 0;
+                while *adapter.FriendlyName.add(len) != 0 {
+                    len += 1;
+                }
+                let slice = std::slice::from_raw_parts(adapter.FriendlyName, len);
+                OsString::from_wide(slice).to_string_lossy().into_owned()
+            } else {
+                String::new()
+            };
+
+            let dns_suffix = if !adapter.DnsSuffix.is_null() {
+                let mut len = 0;
+                while *adapter.DnsSuffix.add(len) != 0 {
+                    len += 1;
+                }
+                let slice = std::slice::from_raw_parts(adapter.DnsSuffix, len);
+                OsString::from_wide(slice).to_string_lossy().into_owned()
+            } else {
+                String::new()
+            };
+
+            result.push(WinAdapterDnsInfo {
+                friendly_name,
+                dns_suffix,
+                is_up: adapter.OperStatus == IF_OPER_STATUS_UP,
+                is_loopback: adapter.IfType == IF_TYPE_SOFTWARE_LOOPBACK,
+            });
+
+            curr = adapter.Next;
+        }
+    }
+
+    result
 }
 
 /// Trims a raw domain string and maps the empty string to `None`.
@@ -808,6 +962,7 @@ fn clean_domain(raw: &str) -> Option<String> {
 /// DNS Domain / DNS Search Domains entries. Falls back to the global `search`
 /// list from `/etc/resolv.conf` when resolvectl is unavailable.
 /// On macOS, reads the global `search` list from `/etc/resolv.conf`.
+/// On Windows, enumerates adapters via `GetAdaptersAddresses` and registry `SearchList`.
 pub fn detect_domain_search() -> Vec<String> {
     #[cfg(target_os = "linux")]
     {
@@ -828,6 +983,19 @@ pub fn detect_domain_search() -> Vec<String> {
             return format_global_search_domains(&parse_search_from_resolv_conf(&content));
         }
     }
+    #[cfg(target_os = "windows")]
+    {
+        let adapters = get_windows_adapters_dns_info();
+        let global_search_list = crate::win_reg::get_reg_string(
+            crate::win_reg::HKEY_LOCAL_MACHINE,
+            "SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters",
+            "SearchList",
+        );
+        let results = parse_windows_domain_search(global_search_list.as_deref(), &adapters);
+        if !results.is_empty() {
+            return results;
+        }
+    }
     Vec::new()
 }
 
@@ -836,25 +1004,12 @@ pub fn detect_domain_search() -> Vec<String> {
 /// `/etc/resolv.conf`'s `search` list is a single global list — it does not say which link
 /// each domain came from — so it is labelled honestly rather than attributed to an
 /// interface, which would be a fabrication on a multi-homed host.
-#[cfg(any(target_os = "linux", target_os = "macos", test))]
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", test))]
 const GLOBAL_SEARCH_SCOPE: &str = "global";
 
 /// Renders a scope-less (global) search-domain list in the same shape as the per-link
 /// resolvectl path: one entry of `"<scope>: a, b"`.
-///
-/// Without this the `Domain Search` field had no stable shape, and the difference was
-/// *source*-driven rather than platform-driven — the same OS flipped format depending on
-/// whether systemd-resolved was reachable. In CI, Ubuntu on a bare runner rendered
-/// `eth0: example.com` (resolvectl) while the very same Ubuntu inside a container rendered a
-/// bare `example.com` (this fallback), and Fedora — always containerised — looked
-/// permanently "different from Ubuntu" for no platform reason at all.
-///
-/// Two things were inconsistent, not just the prefix: the resolvectl path returns **one entry
-/// per interface** with domains joined by `", "`, whereas the raw fallback returned **one
-/// entry per domain**, and the display prints one line per entry — so a host with
-/// `search a b c` emitted three separate bare `Domain Search:` lines. Both are normalised
-/// here.
-#[cfg(any(target_os = "linux", target_os = "macos", test))]
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", test))]
 pub fn format_global_search_domains(domains: &[String]) -> Vec<String> {
     if domains.is_empty() {
         Vec::new()
@@ -1480,5 +1635,134 @@ mod tests {
             parse_proc_net_route(proc_net_route),
             Some("wlp194s0".to_string())
         );
+    }
+
+    #[test]
+    fn test_resolve_windows_default_domain() {
+        let adapters = vec![
+            WinAdapterDnsInfo {
+                friendly_name: "Wi-Fi".to_string(),
+                dns_suffix: "lan.home".to_string(),
+                is_up: true,
+                is_loopback: false,
+            },
+            WinAdapterDnsInfo {
+                friendly_name: "Ethernet".to_string(),
+                dns_suffix: "corp.internal".to_string(),
+                is_up: true,
+                is_loopback: false,
+            },
+        ];
+
+        // Active interface match
+        assert_eq!(
+            resolve_windows_default_domain(Some("Wi-Fi"), &adapters, None),
+            Some("lan.home".to_string())
+        );
+
+        // Case-insensitive active interface match
+        assert_eq!(
+            resolve_windows_default_domain(Some("wi-fi"), &adapters, None),
+            Some("lan.home".to_string())
+        );
+
+        // Active interface has no suffix -> falls back to global domain
+        let adapters_no_suffix = vec![WinAdapterDnsInfo {
+            friendly_name: "Wi-Fi".to_string(),
+            dns_suffix: "".to_string(),
+            is_up: true,
+            is_loopback: false,
+        }];
+        assert_eq!(
+            resolve_windows_default_domain(
+                Some("Wi-Fi"),
+                &adapters_no_suffix,
+                Some("global.example.com")
+            ),
+            Some("global.example.com".to_string())
+        );
+
+        // Active interface unknown -> falls back to global domain
+        assert_eq!(
+            resolve_windows_default_domain(Some("Unknown"), &adapters, Some("global.example.com")),
+            Some("global.example.com".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_windows_domain_search() {
+        let adapters = vec![
+            WinAdapterDnsInfo {
+                friendly_name: "Wi-Fi".to_string(),
+                dns_suffix: "lan.home".to_string(),
+                is_up: true,
+                is_loopback: false,
+            },
+            WinAdapterDnsInfo {
+                friendly_name: "vEthernet".to_string(),
+                dns_suffix: "netbird.cloud".to_string(),
+                is_up: true,
+                is_loopback: false,
+            },
+            WinAdapterDnsInfo {
+                friendly_name: "Loopback Pseudo-Interface 1".to_string(),
+                dns_suffix: "ignore.me".to_string(),
+                is_up: true,
+                is_loopback: true,
+            },
+            WinAdapterDnsInfo {
+                friendly_name: "Disconnected".to_string(),
+                dns_suffix: "offline.local".to_string(),
+                is_up: false,
+                is_loopback: false,
+            },
+        ];
+
+        let result = parse_windows_domain_search(Some("search1.com, search2.com"), &adapters);
+        assert_eq!(
+            result,
+            vec![
+                "global: search1.com, search2.com",
+                "Wi-Fi: lan.home",
+                "vEthernet: netbird.cloud"
+            ]
+        );
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_ip_adapter_addresses_layout() {
+        use std::mem::{offset_of, size_of};
+
+        #[repr(C)]
+        #[allow(non_snake_case)]
+        struct IpAdapterAddresses {
+            Length: u32,
+            IfIndex: u32,
+            Next: *mut IpAdapterAddresses,
+            AdapterName: *const i8,
+            FirstUnicastAddress: *const std::ffi::c_void,
+            FirstAnycastAddress: *const std::ffi::c_void,
+            FirstMulticastAddress: *const std::ffi::c_void,
+            FirstDnsServerAddress: *const std::ffi::c_void,
+            DnsSuffix: *const u16,
+            Description: *const u16,
+            FriendlyName: *const u16,
+            PhysicalAddress: [u8; 8],
+            PhysicalAddressLength: u32,
+            Flags: u32,
+            Mtu: u32,
+            IfType: u32,
+            OperStatus: u32,
+        }
+
+        if cfg!(target_pointer_width = "64") {
+            assert_eq!(offset_of!(IpAdapterAddresses, Next), 8);
+            assert_eq!(offset_of!(IpAdapterAddresses, AdapterName), 16);
+            assert_eq!(offset_of!(IpAdapterAddresses, DnsSuffix), 56);
+            assert_eq!(offset_of!(IpAdapterAddresses, FriendlyName), 72);
+            assert_eq!(offset_of!(IpAdapterAddresses, OperStatus), 104);
+            assert_eq!(size_of::<IpAdapterAddresses>(), 112);
+        }
     }
 }
