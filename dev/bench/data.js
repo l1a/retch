@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786202478515,
+  "lastUpdate": 1786202993164,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18394,70 +18394,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "770e0b0eabf6d60a1fecc1982117f738c3899fc0",
-          "message": "feature/add tldr (#123)\n\n* docs: add tldr page entry for retch\n\nAssisted-By: Gemini 3.5 Flash\n\n* chore: add tldr page to pre-pr checklist\n\nAssisted-By: Gemini 3.5 Flash\n\n* feat: add tldr-release automation script and recipes\n\nAssisted-By: Gemini 3.5 Flash\n\n* feat: add merge-pr recipe and reset_wip script\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-06-28T09:28:45-07:00",
-          "tree_id": "c1f8fdf58502f0ab22c57e17c25bcbd3feda49dd",
-          "url": "https://github.com/l1a/retch/commit/770e0b0eabf6d60a1fecc1982117f738c3899fc0"
-        },
-        "date": 1782666562879,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 102.2494078442746,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.947836493660615,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 101.56279490882905,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 77.7170962821998,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45566.88569840917,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 502.2933060516442,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 741.2269199399027,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2230130450,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "b8d3f6ea87cf396f449249595ed4d787aa2bb2fe",
           "message": "fix: ignore already deleted branch error in merge-pr recipe (#124)\n\nAssisted-By: Gemini 3.5 Flash",
           "timestamp": "2026-06-28T09:34:40-07:00",
@@ -21577,6 +21513,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1943337875,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "464951f8ff41455093d91045e621a17b81124684",
+          "message": "fix(display): parse monitor vendor and panel model from EDID on Windows (#183)\n\n* fix(display): parse monitor EDID on Windows\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(display): extract monitor vendor and model on Windows\n\nAssisted-By: Gemini 3.6 Flash",
+          "timestamp": "2026-08-08T07:48:08-07:00",
+          "tree_id": "5029838743a7e4449bedecce22a3d07443557dd7",
+          "url": "https://github.com/l1a/retch/commit/464951f8ff41455093d91045e621a17b81124684"
+        },
+        "date": 1786202989871,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 176.85087225065746,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9497512604938327,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 99.76592231765302,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 82.15216022368223,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47279.58783723063,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 494.0126500674879,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 755.4518966851099,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1764564625,
             "unit": "ns"
           }
         ]
