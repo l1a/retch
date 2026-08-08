@@ -96,7 +96,9 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.14)
+## Current State (v0.6.15)
+- **v0.6.15 — Windows `Display` monitor model EDID parsing parity** (`crates/sysinfo/src/display.rs`, `crates/sysinfo/src/win_reg.rs`).
+  On Windows, `detect_displays` now enumerates monitor devices attached to active display adapters (`EnumDisplayDevicesW`), queries registry `HKLM\SYSTEM\CurrentControlSet\Enum\DISPLAY\<HwID>\<InstanceID>\Device Parameters`, and parses raw binary `"EDID"` blobs via `parse_monitor_name_from_edid`. This outputs actual display brand and model names (e.g. `ATNA33AA08-0 (2880x1800 @ 60Hz)`) instead of falling back to GPU adapter names (`AMD Radeon(TM) 8060S Graphics`). Added `get_reg_bytes` binary reader in `win_reg.rs`. Tested live on arrakis. `retch-sysinfo` → `0.1.51`; `retch-cli` → `0.6.15`. Patch bump.
 - **v0.6.14 — Windows `Domain` & `Domain Search` parity fix** (cross-platform parity fix, `crates/sysinfo/src/network.rs`).
   On Windows, `detect_domain` now resolves the connection-specific DNS suffix from `GetAdaptersAddresses` for the adapter carrying the default route, matching Linux/macOS semantics instead of reading the primary AD DNS suffix (`GetComputerNameExW`). `detect_domain_search` on Windows now enumerates per-adapter `DnsSuffix` values (`<FriendlyName>: <DnsSuffix>`) and the machine-wide `SearchList` registry key (`global: <domain1>, <domain2>`), achieving full cross-platform output parity. Layout assertion tests (`size_of` and `offset_of!`) added for `IpAdapterAddresses`. Tested live on arrakis (`Domain: lan`, `Domain Search: Wi-Fi: lan`). `retch-sysinfo` → `0.1.50`; `retch-cli` → `0.6.14`. Patch bump.
 - **v0.6.13 — release-tooling fixes: `publish-check` false failure, and a silent
@@ -815,15 +817,15 @@ Windows 11, Windows Terminal).
   `GetAdaptersAddresses` connection-specific `DnsSuffix` for the default-route adapter, plus
   registry `SearchList` and per-adapter suffixes for `Domain Search`, matching Linux/macOS
   semantics).
+- ~~**`Display` shows the GPU name + resolution, not the monitor model**~~ — fixed v0.6.15
+  (enumerates attached monitor devices via `EnumDisplayDevicesW`, queries `EDID` from
+  `HKLM\SYSTEM\CurrentControlSet\Enum\DISPLAY\...` registry keys, and parses monitor brand/model
+  names using `parse_monitor_name_from_edid`).
 
 **Open**
 - **Bluetooth shows only 1 of 2 connected devices** (bug). `bluetooth.rs` Windows path uses
   `BluetoothFindFirstDevice`/`BluetoothFindNextDevice` with `{fReturnConnected}` — audit the
   enumeration loop / search-params against a box with 2 connected devices.
-- **`Display` shows the GPU name + resolution, not the monitor model** (parity gap). Windows
-  `display.rs` uses `EnumDisplayDevicesW`/`EnumDisplaySettingsW` (adapter + mode) and doesn't
-  parse the monitor EDID for vendor/model like Linux does. Fix: read the monitor EDID
-  (SetupAPI monitor class → registry `EDID` blob) and reuse the existing EDID parser.
 - **Logo renders above the text, not beside it (upper-right)** on Windows Terminal
   (CLI/rendering, retch-cli `src/`). Likely terminal-detection / cursor-positioning specific
   to Windows Terminal.

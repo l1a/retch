@@ -125,6 +125,58 @@ pub fn get_reg_string(hkey: HKEY, subkey: &str, value: &str) -> Option<String> {
     }
 }
 
+pub fn get_reg_bytes(hkey: HKEY, subkey: &str, value: &str) -> Option<Vec<u8>> {
+    let subkey_w: Vec<u16> = OsStr::new(subkey).encode_wide().chain(Some(0)).collect();
+    let value_w: Vec<u16> = OsStr::new(value).encode_wide().chain(Some(0)).collect();
+    let mut hk: HKEY = ptr::null_mut();
+
+    let res = unsafe { RegOpenKeyExW(hkey, subkey_w.as_ptr(), 0, KEY_READ, &mut hk) };
+    if res != 0 {
+        return None;
+    }
+
+    let mut size: u32 = 0;
+    let mut ty: u32 = 0;
+    unsafe {
+        RegQueryValueExW(
+            hk,
+            value_w.as_ptr(),
+            ptr::null_mut(),
+            &mut ty,
+            ptr::null_mut(),
+            &mut size,
+        );
+    }
+
+    if size == 0 {
+        unsafe {
+            RegCloseKey(hk);
+        }
+        return None;
+    }
+
+    let mut buf = vec![0u8; size as usize];
+    let res = unsafe {
+        RegQueryValueExW(
+            hk,
+            value_w.as_ptr(),
+            ptr::null_mut(),
+            &mut ty,
+            buf.as_mut_ptr(),
+            &mut size,
+        )
+    };
+    unsafe {
+        RegCloseKey(hk);
+    }
+
+    if res == 0 {
+        Some(buf)
+    } else {
+        None
+    }
+}
+
 pub fn get_reg_u32(hkey: HKEY, subkey: &str, value: &str) -> Option<u32> {
     let subkey_w: Vec<u16> = OsStr::new(subkey).encode_wide().chain(Some(0)).collect();
     let value_w: Vec<u16> = OsStr::new(value).encode_wide().chain(Some(0)).collect();
