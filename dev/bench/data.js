@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786202993164,
+  "lastUpdate": 1786284836029,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3073,90 +3073,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Linux x64 Benchmarks": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "0bc5e587df1dee945e8b33182694531b28affdb9",
-          "message": "Merge pull request #126 from l1a/fix/tldr-auth-bypass\n\nfix: resolve gh auth and fork directory issues in tldr release script",
-          "timestamp": "2026-06-28T19:15:24-07:00",
-          "tree_id": "41349673c84e317f53711dc893f4ebf44ab425c3",
-          "url": "https://github.com/l1a/retch/commit/0bc5e587df1dee945e8b33182694531b28affdb9"
-        },
-        "date": 1782699752312,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 821117081.35,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 1689.2918367346574,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 49.476951818315605,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 3.8996806054297095,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 49.44998385997361,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 16030.977233942735,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 160858.35390292396,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 11234.041603758324,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 11352.859244939362,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1287823.2648789051,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 292.0275332933745,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 232.02319327030855,
-            "unit": "ns"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -7269,6 +7185,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 290.2070250840549,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "622cf3b843fc5f6286cad91442e7bd41af2fdf12",
+          "message": "Bump 4 deps and fix man page font-run strip (#184)\n\nConsolidates Dependabot #182 onto a gated branch so the release-hygiene\nsteps Dependabot skips (version bump, NOTES entry, man regen) are done.\n\nDependencies (cargo-dependencies group, lockfile-only — every spec is a\ncaret range, so Cargo.toml is untouched):\n  clap          4.6.4 -> 4.6.5  (clap_builder 4.6.2 -> 4.6.5)\n  toml          1.1.3 -> 1.1.4  (toml_parser  1.1.2 -> 1.1.3)\n  clap_complete 4.6.7 -> 4.6.8\n  base64        0.23.0 -> 0.23.1\n\nThe resulting Cargo.lock is byte-identical to what Dependabot generated.\n\nAlso fixes the `just man` font-collapsing sed, which has never worked on\nany platform. mandown emits redundant \\fB\\fB...\\fP\\fP runs and the recipe\ncarried `s/\\fB\\fB/\\fB/g` to strip them, but GNU sed reads \\f as the\nform-feed escape rather than backslash-then-f, so the pattern only ever\nmatched form feeds that groff output never contains. This is why\ndocs/retch.1 kept flip-flopping between machines: v0.6.2 concluded the\nstrip merely \"didn't take effect on Windows\", when in fact Linux was not\nstripping anything either — its mandown build just doesn't emit the\ndoubled runs. Matching the backslash as [\\] and carrying it out through a\ncapture group keeps any backslash escape off the replacement side.\n\nWith the fix, `just man` on Windows reproduces byte-for-byte the file a\nLinux `just man` produces, so the regen check in `just pr` no longer\ndepends on which machine last ran it. The regenerated page drops 21\ndoubled font runs and changes nothing else but the version footer.\n\nretch-sysinfo unchanged at 0.1.51; no Rust source touched.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-09T07:06:33-07:00",
+          "tree_id": "15f29415e43f3e3f4f04318b070cc8c16695ac9a",
+          "url": "https://github.com/l1a/retch/commit/622cf3b843fc5f6286cad91442e7bd41af2fdf12"
+        },
+        "date": 1786284834171,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 927428588.7,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2109.5940584566474,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 119.96003693474238,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.8285399480831535,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 58.01917897939262,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 18183.674000907653,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 189200.3015825371,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12793.039251592854,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 12912.155705081745,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1403108.9113880112,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 367.6000792651613,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 310.43200658969,
             "unit": "ns"
           }
         ]
