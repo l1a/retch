@@ -96,7 +96,39 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.15)
+## Current State (v0.6.16)
+- **v0.6.16 — dependency bumps (consolidated Dependabot #182) + the man-page font-run fix
+  that has been flip-flopping `docs/retch.1` between machines** (chore; no runtime behavior
+  change, `retch-sysinfo` unchanged at `0.1.51`).
+  - **4 Rust crates** (`cargo-dependencies` group, #182), all patch-level and lockfile-only —
+    every spec is a caret range, so `Cargo.toml` is untouched: `clap` 4.6.4→4.6.5 (pulls
+    `clap_builder` 4.6.2→4.6.5), `toml` 1.1.3→1.1.4 (pulls `toml_parser` 1.1.2→1.1.3),
+    `clap_complete` 4.6.7→4.6.8, `base64` 0.23.0→0.23.1. The resulting `Cargo.lock` was
+    diff-verified byte-identical to what Dependabot generated on #182. `base64` is
+    graphics-feature-only, so `just check`'s `--features graphics` clippy pass (v0.6.5) is the
+    leg that actually exercises it; the CI `graphics-feature` job (v0.6.7) covers the same
+    ground and was green on #182 before the consolidation.
+  - **The `just man` font-collapsing sed has never worked, on any platform** — root-caused
+    here, which closes the question v0.6.2 left open as "not reproducible without a Windows
+    box". `mandown` emits redundant `\fB\fB…\fP\fP` runs and the recipe carried
+    `sed -e 's/\\fB\\fB/\\fB/g' -e 's/\\fP\\fP/\\fP/g'` to strip them. **GNU sed reads `\\f`
+    as the form-feed escape, not backslash-then-`f`**, so the pattern only ever matched form
+    feeds — which groff output never contains — and the replacement would have *emitted* a
+    form feed had it matched. Confirmed against GNU sed 4.9 with a minimal fixture
+    (`\fB\fB\-h\fP\fP` in, unchanged out). So v0.6.2's conclusion that "Linux output is
+    canonical" was right about *which bytes to keep* but wrong about *why*: Linux was not
+    stripping anything either — its `mandown` build simply doesn't emit the doubled runs, so
+    the difference was never the `sed` "not taking effect on Windows", it was two mandown
+    builds and a strip that was dead code everywhere. Fixed by matching the backslash as
+    `[\]` and carrying it out through a capture group (`s/[\]fB\([\]fB\)/\1/g`), so no
+    backslash escape appears on the replacement side at all. **Verified byte-identical**: with
+    the fix, `just man` on Windows reproduces exactly the file a Linux `just man` produces, so
+    `just pr`'s regen check no longer flips depending on which machine last ran it. The
+    regenerated page drops 21 doubled font runs and changes nothing else but the version
+    footer (proved by normalising HEAD's page through the same collapse and diffing).
+  - No Rust source touched, so there is nothing for `cargo test` to cover; the Justfile fix is
+    verified by direct execution and byte-comparison (same approach as v0.6.13's Python
+    helpers). `retch-cli` → 0.6.16. Patch bump.
 - **v0.6.15 — Windows `Display` monitor model EDID parsing parity** (`crates/sysinfo/src/display.rs`, `crates/sysinfo/src/win_reg.rs`).
   On Windows, `detect_displays` now enumerates monitor devices attached to active display adapters (`EnumDisplayDevicesW`), queries registry `HKLM\SYSTEM\CurrentControlSet\Enum\DISPLAY\<HwID>\<InstanceID>\Device Parameters`, and parses raw binary `"EDID"` blobs via `parse_monitor_name_from_edid`. This outputs actual display brand and model names (e.g. `ATNA33AA08-0 (2880x1800 @ 60Hz)`) instead of falling back to GPU adapter names (`AMD Radeon(TM) 8060S Graphics`). Added `get_reg_bytes` binary reader in `win_reg.rs`. Tested live on arrakis. `retch-sysinfo` → `0.1.51`; `retch-cli` → `0.6.15`. Patch bump.
 - **v0.6.14 — Windows `Domain` & `Domain Search` parity fix** (cross-platform parity fix, `crates/sysinfo/src/network.rs`).
@@ -397,6 +429,13 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
     the Linux output is canonical. **Cross-machine caveat:** a future Windows `just man` may
     re-introduce the double-bold diff; the next Windows session should regenerate and expect
     the single-bold form (tracked in WIP.md).
+    - **RESOLVED in v0.6.16 — and the diagnosis above is wrong on the mechanism.** The
+      caveat came true (v0.6.15 was generated on Windows and committed a double-bold page),
+      and root-causing it showed the strip was never "not taking effect on Windows": the sed
+      is a no-op on *every* platform, because GNU sed reads `\\f` as a form feed. Linux's
+      page was single-bold only because its `mandown` build does not emit the doubled runs.
+      See the v0.6.16 entry; the recipe now strips correctly and both platforms produce
+      identical bytes.
   - Patch bump. `retch-sysinfo` → `0.1.46` (new `pub parse_xrandr_displays_with`).
 - **v0.6.1 — fix two Windows output bugs: `Camera` listing scanners, `Users` = 0**
   (Windows cross-platform-parity series, bugfix group):
