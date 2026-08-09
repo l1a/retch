@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786286409247,
+  "lastUpdate": 1786286968075,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18394,70 +18394,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "b8d3f6ea87cf396f449249595ed4d787aa2bb2fe",
-          "message": "fix: ignore already deleted branch error in merge-pr recipe (#124)\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-06-28T09:34:40-07:00",
-          "tree_id": "c9c370af106069b537c4019e66afc44f31927e26",
-          "url": "https://github.com/l1a/retch/commit/b8d3f6ea87cf396f449249595ed4d787aa2bb2fe"
-        },
-        "date": 1782667057387,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 102.59588467507115,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.948326162163317,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.14491798496907,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 77.87997704836376,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45064.670227163486,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 501.5847116994237,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 738.7368996819084,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2440200485,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "d13f2fe0da7a898a1ebbd9c412284e5d02a0651e",
           "message": "chore/refactor docs (#125)\n\n* docs: refactor documentation structure\n\nAssisted-By: Gemini 3.5 Flash\n\n* docs: fix Current State header formatting\n\nAssisted-By: Gemini 3.5 Flash",
           "timestamp": "2026-06-28T09:54:34-07:00",
@@ -21577,6 +21513,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1764564625,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "622cf3b843fc5f6286cad91442e7bd41af2fdf12",
+          "message": "Bump 4 deps and fix man page font-run strip (#184)\n\nConsolidates Dependabot #182 onto a gated branch so the release-hygiene\nsteps Dependabot skips (version bump, NOTES entry, man regen) are done.\n\nDependencies (cargo-dependencies group, lockfile-only — every spec is a\ncaret range, so Cargo.toml is untouched):\n  clap          4.6.4 -> 4.6.5  (clap_builder 4.6.2 -> 4.6.5)\n  toml          1.1.3 -> 1.1.4  (toml_parser  1.1.2 -> 1.1.3)\n  clap_complete 4.6.7 -> 4.6.8\n  base64        0.23.0 -> 0.23.1\n\nThe resulting Cargo.lock is byte-identical to what Dependabot generated.\n\nAlso fixes the `just man` font-collapsing sed, which has never worked on\nany platform. mandown emits redundant \\fB\\fB...\\fP\\fP runs and the recipe\ncarried `s/\\fB\\fB/\\fB/g` to strip them, but GNU sed reads \\f as the\nform-feed escape rather than backslash-then-f, so the pattern only ever\nmatched form feeds that groff output never contains. This is why\ndocs/retch.1 kept flip-flopping between machines: v0.6.2 concluded the\nstrip merely \"didn't take effect on Windows\", when in fact Linux was not\nstripping anything either — its mandown build just doesn't emit the\ndoubled runs. Matching the backslash as [\\] and carrying it out through a\ncapture group keeps any backslash escape off the replacement side.\n\nWith the fix, `just man` on Windows reproduces byte-for-byte the file a\nLinux `just man` produces, so the regen check in `just pr` no longer\ndepends on which machine last ran it. The regenerated page drops 21\ndoubled font runs and changes nothing else but the version footer.\n\nretch-sysinfo unchanged at 0.1.51; no Rust source touched.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-09T07:06:33-07:00",
+          "tree_id": "15f29415e43f3e3f4f04318b070cc8c16695ac9a",
+          "url": "https://github.com/l1a/retch/commit/622cf3b843fc5f6286cad91442e7bd41af2fdf12"
+        },
+        "date": 1786286964753,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 179.98561211855358,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948651640036006,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 101.04042254832609,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 82.90606608903099,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46542.9459701875,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 496.7132038471762,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 751.8543766534048,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2620748120,
             "unit": "ns"
           }
         ]
