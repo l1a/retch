@@ -63,11 +63,17 @@ install: install-man install-completions
 
 # Generate man page from Markdown using mandown.
 # The version is dynamically read from Cargo.toml and placed in the footer.
+# The two font-collapsing seds drop mandown's redundant `\fB\fB…\fP\fP` runs. They match the
+# backslash as `[\]` and carry it out through a capture group deliberately: the obvious
+# `s/\\fB\\fB/\\fB/g` is silently a no-op, because GNU sed reads `\\f` as the form-feed escape
+# rather than backslash-then-f, so it only ever matches form feeds groff output never contains
+# (and would emit one if it did). That no-op is why docs/retch.1 kept flip-flopping between
+# machines depending on which mandown build wrote it.
 man:
     @mkdir -p docs
     @VERSION=$(grep '^version' Cargo.toml | head -1 | cut -d '"' -f2); \
     DATE=$(date +"%B %Y"); \
-    mandown docs/retch.1.md RETCH 1 | sed -e 's/\\fB\\fB/\\fB/g' -e 's/\\fP\\fP/\\fP/g' -e "s/\\.TH \"RETCH\" 1/\\.TH \"RETCH\" \"1\" \"$DATE\" \"retch $VERSION\" \"System Information Fetcher\"/" > docs/retch.1
+    mandown docs/retch.1.md RETCH 1 | sed -e 's/[\]fB\([\]fB\)/\1/g' -e 's/[\]fP\([\]fP\)/\1/g' -e "s/\\.TH \"RETCH\" 1/\\.TH \"RETCH\" \"1\" \"$DATE\" \"retch $VERSION\" \"System Information Fetcher\"/" > docs/retch.1
 
 
 
