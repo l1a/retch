@@ -298,7 +298,7 @@ pub fn print_with_chafa(path: &std::path::Path) -> bool {
     cmd.arg("--format")
         .arg("symbols")
         .arg("--size")
-        .arg("40x20");
+        .arg("34x12");
 
     if chafa_supports_probe() {
         cmd.arg("--probe").arg("off");
@@ -328,7 +328,7 @@ pub fn get_chafa_logo_lines(path: &std::path::Path) -> Option<Vec<String>> {
     cmd.arg("--format")
         .arg("symbols")
         .arg("--size")
-        .arg("40x20");
+        .arg("34x12");
 
     if chafa_supports_probe() {
         cmd.arg("--probe").arg("off");

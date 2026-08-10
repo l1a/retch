@@ -61,7 +61,11 @@ pub fn detect_audio(sys: &sysinfo::System) -> Option<String> {
                 win_reg::get_reg_string(win_reg::HKEY_LOCAL_MACHINE, &subkey, "DriverDesc")
             {
                 let name = name.trim().to_string();
-                if !name.is_empty() && !devices.contains(&name) {
+                let lower = name.to_lowercase();
+                let is_synthetic = lower.starts_with("microsoft streaming")
+                    || lower.starts_with("microsoft trusted audio")
+                    || lower == "microsoft audio stack";
+                if !name.is_empty() && !is_synthetic && !devices.contains(&name) {
                     devices.push(name);
                 }
             }

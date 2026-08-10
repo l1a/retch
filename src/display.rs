@@ -75,12 +75,88 @@ fn plan_layout(
         .copied()
         .max()
         .unwrap_or(0);
-    let text_column_width = std::cmp::max(max_beside_width + 4, 45);
+    let text_column_width = if term_width >= 95 {
+        (term_width.saturating_sub(logo_width + 4))
+            .min(std::cmp::max(max_beside_width + 4, 45))
+            .clamp(45, 65)
+    } else {
+        std::cmp::max(max_beside_width + 4, 45)
+    };
     let side_by_side =
         show_logo && term_width >= 95 && term_width >= text_column_width + logo_width;
     LayoutPlan {
         side_by_side,
         text_column_width,
+    }
+}
+
+/// Helper to strip ANSI escape sequences and calculate visible string length.
+pub fn visible_len(s: &str) -> usize {
+    let mut count = 0;
+    let mut in_esc = false;
+    for c in s.chars() {
+        if c == '\x1b' {
+            in_esc = true;
+        } else if in_esc {
+            if c.is_ascii_alphabetic() {
+                in_esc = false;
+            }
+        } else {
+            count += 1;
+        }
+    }
+    count
+}
+
+/// Wrap a formatted info line (key: value) at word boundaries to fit within `max_width`.
+///
+/// Continuation lines are indented to align with the start of the value portion.
+pub fn wrap_info_line(line: &str, max_width: usize) -> Vec<String> {
+    let vis_len = visible_len(line);
+    if vis_len <= max_width || max_width < 20 {
+        return vec![line.to_string()];
+    }
+
+    let prefix_len = if let Some(idx) = line.find(':') {
+        let prefix_sub = &line[..=idx];
+        let extra_space = if line[idx + 1..].starts_with(' ') {
+            1
+        } else {
+            0
+        };
+        visible_len(prefix_sub) + extra_space
+    } else {
+        4
+    };
+
+    let indent = " ".repeat(prefix_len.min(max_width / 2));
+    let mut lines = Vec::new();
+    let mut current = String::new();
+    let mut current_vis = 0;
+
+    for word in line.split_whitespace() {
+        let word_vis = visible_len(word);
+        if current.is_empty() {
+            current.push_str(word);
+            current_vis = word_vis;
+        } else if current_vis + 1 + word_vis <= max_width {
+            current.push(' ');
+            current.push_str(word);
+            current_vis += 1 + word_vis;
+        } else {
+            lines.push(current);
+            current = format!("{}{}", indent, word);
+            current_vis = visible_len(&indent) + word_vis;
+        }
+    }
+    if !current.is_empty() {
+        lines.push(current);
+    }
+
+    if lines.is_empty() {
+        vec![line.to_string()]
+    } else {
+        lines
     }
 }
 
@@ -690,12 +766,21 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
 
     println!(); // leading newline
 
+    let formatted_info_lines: Vec<String> = if side_by_side && text_column_width > 15 {
+        info_lines
+            .iter()
+            .flat_map(|line| wrap_info_line(line, text_column_width.saturating_sub(2)))
+            .collect()
+    } else {
+        info_lines.clone()
+    };
+
     if side_by_side {
         match active_logo {
             ActiveLogo::Lines(logo_lines) => {
-                let max_lines = std::cmp::max(info_lines.len(), logo_lines.len());
+                let max_lines = std::cmp::max(formatted_info_lines.len(), logo_lines.len());
                 for i in 0..max_lines {
-                    let info_line = info_lines.get(i).cloned().unwrap_or_default();
+                    let info_line = formatted_info_lines.get(i).cloned().unwrap_or_default();
                     let logo_line = logo_lines.get(i).cloned().unwrap_or_default();
                     let vis_len = visible_len(&info_line);
                     let padding = if vis_len < text_column_width {
@@ -707,22 +792,31 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                 }
             }
             ActiveLogo::Kitty(bytes, logo_rows) => {
-                render_graphical_side_by_side(text_column_width, &info_lines, logo_rows, || {
-                    logo::print_graphical_logo(&bytes)
-                });
+                render_graphical_side_by_side(
+                    text_column_width,
+                    &formatted_info_lines,
+                    logo_rows,
+                    || logo::print_graphical_logo(&bytes),
+                );
             }
             ActiveLogo::Iterm2(bytes, logo_rows) => {
-                render_graphical_side_by_side(text_column_width, &info_lines, logo_rows, || {
-                    logo::print_iterm2_logo(&bytes)
-                });
+                render_graphical_side_by_side(
+                    text_column_width,
+                    &formatted_info_lines,
+                    logo_rows,
+                    || logo::print_iterm2_logo(&bytes),
+                );
             }
             ActiveLogo::Sixel(bytes, logo_rows) => {
-                render_graphical_side_by_side(text_column_width, &info_lines, logo_rows, || {
-                    logo::print_sixel_logo(&bytes)
-                });
+                render_graphical_side_by_side(
+                    text_column_width,
+                    &formatted_info_lines,
+                    logo_rows,
+                    || logo::print_sixel_logo(&bytes),
+                );
             }
             ActiveLogo::None => {
-                for line in &info_lines {
+                for line in &formatted_info_lines {
                     println!("{}", line);
                 }
             }
@@ -947,11 +1041,14 @@ mod tests {
     }
 
     #[test]
-    fn test_layout_long_line_within_logo_forces_stack() {
-        // A 158-wide line among the first `logo_height` rows WOULD overlap the logo → stack.
+    fn test_layout_long_line_within_logo_wraps_and_stays_side_by_side() {
+        // A 158-wide line among the first `logo_height` rows no longer breaks side-by-side layout
+        // because text_column_width is clamped and the line is wrapped.
         let mut w = vec![40; 20];
         w[5] = 158;
-        assert!(!plan_layout(&w, 20, 40, 120, true).side_by_side);
+        let p = plan_layout(&w, 20, 40, 120, true);
+        assert!(p.side_by_side);
+        assert_eq!(p.text_column_width, 65);
     }
 
     #[test]
@@ -1114,5 +1211,21 @@ mod tests {
         assert_eq!(format_uptime("31536000s"), "1y");
         assert_eq!(format_uptime("31626061s"), "1y 1d 1h 1m 1s");
         assert_eq!(format_uptime("0s"), "0s");
+    }
+
+    #[test]
+    fn test_wrap_info_line_short_line_unchanged() {
+        let line = "Audio: Windows Audio (USB Audio Device)";
+        let wrapped = wrap_info_line(line, 50);
+        assert_eq!(wrapped, vec![line.to_string()]);
+    }
+
+    #[test]
+    fn test_wrap_info_line_wraps_and_indents() {
+        let line = "Audio: Windows Audio (USB Audio Device, AMD High Definition Audio Device, AMD SoundWire Device)";
+        let wrapped = wrap_info_line(line, 45);
+        assert!(wrapped.len() > 1);
+        assert!(wrapped[0].starts_with("Audio: Windows Audio"));
+        assert!(wrapped[1].starts_with("       "));
     }
 }

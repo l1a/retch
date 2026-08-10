@@ -97,6 +97,8 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 ---
 
 ## Current State (v0.6.16)
+- **v0.6.16 — Graphic logo size reduction and controlled info line wrapping** (`src/display.rs`, `src/logo.rs`, `crates/sysinfo/src/audio.rs`).
+  Reduced Chafa logo height to `34x12` (matching standard 12-line ASCII logo heights). Filtered synthetic kernel streaming audio endpoints on Windows (`Microsoft Streaming ...`, `Microsoft Trusted Audio ...`) so `Audio:` reports real hardware devices. Updated `plan_layout` in `display.rs` to clamp `text_column_width` (max 65) and implemented `wrap_info_line` word-wrapping for info lines exceeding the text column width. Long lines wrap into indented continuation lines (aligned to the value column) rather than breaking side-by-side layout or overflowing the terminal edge.
 - **v0.6.16 — Cross-platform Justfile recipes on Windows** (`Justfile`, `scripts/install_completions.py`, `scripts/install_man.py`, `scripts/build_man.py`).
   Converted `man`, `install-man`, and `install-completions` recipes in `Justfile` to Python helper scripts, eliminating bash shebang escaping bugs (`No such file or directory` due to unescaped Windows backslashes in `justfile_directory()`), missing `.exe` extensions on Windows binary targets, and POSIX `install` utility dependencies. `just install`, `just install-man`, `just install-completions`, and `just man` now execute 100% natively on Windows PowerShell, CMD, and Unix shells without requiring `Git\usr\bin` on PATH. Also consolidated Dependabot #182 dependency bumps. `retch-sysinfo` → `0.1.52`; `retch-cli` → `0.6.16`. Patch bump.
   - **4 Rust crates** (`cargo-dependencies` group, #182), all patch-level and lockfile-only —
