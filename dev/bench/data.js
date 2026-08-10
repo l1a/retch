@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786398089739,
+  "lastUpdate": 1786398638562,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18394,70 +18394,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "0bc5e587df1dee945e8b33182694531b28affdb9",
-          "message": "Merge pull request #126 from l1a/fix/tldr-auth-bypass\n\nfix: resolve gh auth and fork directory issues in tldr release script",
-          "timestamp": "2026-06-28T19:15:24-07:00",
-          "tree_id": "41349673c84e317f53711dc893f4ebf44ab425c3",
-          "url": "https://github.com/l1a/retch/commit/0bc5e587df1dee945e8b33182694531b28affdb9"
-        },
-        "date": 1782701783444,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 102.75998154203228,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.947629827943371,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.23153018104645,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 77.6690975595371,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45641.23308584693,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 501.3525288736396,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 735.1792611503723,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2291337020,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "b61db1f0a08f4d023930e0231b61079b17d4dc75",
           "message": "Merge pull request #127 from l1a/fix/tldr-page-format\n\nfix: fix tldr page lint errors",
           "timestamp": "2026-06-28T19:35:48-07:00",
@@ -21577,6 +21513,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2449318685,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "521364f30839992fda65499538a01a44bc4f11bb",
+          "message": "fix(display): constrain graphic logo height, normalize audio, and wrap lines to terminal width (#186)\n\n* fix(display): reduce logo height and wrap long info lines\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(display): constrain graphic logo height and wrap below-logo lines to full terminal width\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(sysinfo): normalize and deduplicate Windows audio device names\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(sysinfo): evaluate soundwire before streaming filter in normalize_win_audio_device\n\nAssisted-By: Gemini 3.6 Flash",
+          "timestamp": "2026-08-10T14:10:09-07:00",
+          "tree_id": "8526b53eccb25ed2a964d63d08a63e698c00c32f",
+          "url": "https://github.com/l1a/retch/commit/521364f30839992fda65499538a01a44bc4f11bb"
+        },
+        "date": 1786398634783,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 180.48188838663447,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947670137197315,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 102.15641421033199,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.4873022684442,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46382.3133229299,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 497.60990985302334,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 741.4006505838095,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2040453695,
             "unit": "ns"
           }
         ]
