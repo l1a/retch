@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786393926990,
+  "lastUpdate": 1786394335770,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7288,90 +7288,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "b61db1f0a08f4d023930e0231b61079b17d4dc75",
-          "message": "Merge pull request #127 from l1a/fix/tldr-page-format\n\nfix: fix tldr page lint errors",
-          "timestamp": "2026-06-28T19:35:48-07:00",
-          "tree_id": "80701731a659a4af0387474cc7517b7f36d10c32",
-          "url": "https://github.com/l1a/retch/commit/b61db1f0a08f4d023930e0231b61079b17d4dc75"
-        },
-        "date": 1782701421570,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 811758860.2,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 979.3962009976005,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 56.7510503271479,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9468732787620944,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 56.21368670504921,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7772.38669078847,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 70403.53120856345,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4772.454330725524,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4858.730535271286,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1203604.132637081,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 350.719225750135,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 270.15946638834697,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "1094ac231ae3237ed49464785b01c00c96026b20",
           "message": "feat: add TerminalSize, DNS, WM fields; fix Shell detection (v0.3.29) (#128)\n\n* feat: add TerminalSize, DNS, WM fields; fix Shell detection\n\n- TerminalSize: ioctl(TIOCGWINSZ) on Linux/macOS, $COLUMNS/$LINES fallback\n- DNS: parse /etc/resolv.conf nameserver lines; PowerShell on Windows\n- WM: scan /proc for compositor/WM process names; suppressed in output\n  when identical to Desktop field (case-insensitive)\n- Shell: walk process tree first to find running shell; fall back to\n  $SHELL (login shell) only when scan yields nothing\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: improve Desktop detection when XDG env vars are absent\n\nAdd XDG_SESSION_DESKTOP and GDMSESSION as fallbacks, normalize\nDE names to canonical casing, and probe /proc as a last resort\n(e.g. gnome-shell â†’ GNOME) for terminals that don't inherit the\nfull session environment.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: add non-Linux stub for detect_desktop_from_proc\n\nSatisfies clippy::unnecessary_lazy_evaluations (Rust 1.96+):\nreplace inline cfg closure with .or_else(detect_desktop_from_proc)\nand add a #[cfg(not(target_os = \"linux\"))] stub returning None.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: suppress logo when stdout is not a tty\n\nUse std::io::IsTerminal::is_terminal() instead of terminal_size()\nto detect piped output. terminal_size() returns Some() when a pager\nlike bat allocates a PTY, causing the logo to print as raw escape\nsequences.\n\nAssisted-By: Claude Sonnet 4.6\n\n* docs+tests: update for v0.3.29 PR changes\n\n- docs/retch.1.md + retch.1: note logo tty-suppression in LOGOS section\n- README.md: add auto-suppressed-when-piped bullet to Logo Rendering Modes\n- NOTES.md: bump Current State to v0.3.29; add Desktop fix, logo tty\n  suppression, and logo cursor placement to release entry; remove DNS,\n  WM, TerminalSize from feature gap list\n- tests/cli_tests.rs: add tests for --fields dns/wm/terminal-size and\n  piped output containing no graphical logo escape sequences\n- fetch.rs: add unit tests for normalize_desktop_name,\n  detect_desktop_from_proc, and title-case/whitespace edge cases\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-29T12:30:38-07:00",
@@ -11471,6 +11387,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 290.39936029327635,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "30f2bc0d85fda967af17b3472e2784627296f331",
+          "message": "fix(justfile): make install and man recipes portable (#185)\n\nAssisted-By: Gemini 3.6 Flash",
+          "timestamp": "2026-08-10T13:24:44-07:00",
+          "tree_id": "0ebf13827d71fe02fbbdd12b0eb83ccbacbc2ab8",
+          "url": "https://github.com/l1a/retch/commit/30f2bc0d85fda967af17b3472e2784627296f331"
+        },
+        "date": 1786394334217,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 845291471.5,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1020.8702947664548,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 105.97926604028899,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9467783102028906,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 47.240530144414244,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7844.456329773413,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71558.03069962286,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4826.885922605635,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4975.023303434229,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1068827.1370557607,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 361.3741678444915,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 285.0958770712586,
             "unit": "ns"
           }
         ]
