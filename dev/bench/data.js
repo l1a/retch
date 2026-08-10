@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786395444198,
+  "lastUpdate": 1786395992697,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18394,70 +18394,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "d13f2fe0da7a898a1ebbd9c412284e5d02a0651e",
-          "message": "chore/refactor docs (#125)\n\n* docs: refactor documentation structure\n\nAssisted-By: Gemini 3.5 Flash\n\n* docs: fix Current State header formatting\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-06-28T09:54:34-07:00",
-          "tree_id": "aaa002e02169e3c871a1373946d09700c6002e90",
-          "url": "https://github.com/l1a/retch/commit/d13f2fe0da7a898a1ebbd9c412284e5d02a0651e"
-        },
-        "date": 1782668160200,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 102.84639944610085,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.947695783797084,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.31268142834323,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 77.9307802716177,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45856.11600439601,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 501.4699484056067,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 733.3284790324685,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2270097465,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "0bc5e587df1dee945e8b33182694531b28affdb9",
           "message": "Merge pull request #126 from l1a/fix/tldr-auth-bypass\n\nfix: resolve gh auth and fork directory issues in tldr release script",
           "timestamp": "2026-06-28T19:15:24-07:00",
@@ -21577,6 +21513,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2620748120,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "30f2bc0d85fda967af17b3472e2784627296f331",
+          "message": "fix(justfile): make install and man recipes portable (#185)\n\nAssisted-By: Gemini 3.6 Flash",
+          "timestamp": "2026-08-10T13:24:44-07:00",
+          "tree_id": "0ebf13827d71fe02fbbdd12b0eb83ccbacbc2ab8",
+          "url": "https://github.com/l1a/retch/commit/30f2bc0d85fda967af17b3472e2784627296f331"
+        },
+        "date": 1786395989448,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 178.28849241152517,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9479128471771228,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 98.64858170586919,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 82.594537456887,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47332.34581624769,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 493.6745606746399,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 754.8703240191269,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2449318685,
             "unit": "ns"
           }
         ]
