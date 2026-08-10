@@ -298,7 +298,7 @@ pub fn print_with_chafa(path: &std::path::Path) -> bool {
     cmd.arg("--format")
         .arg("symbols")
         .arg("--size")
-        .arg("40x20");
+        .arg("28x10");
 
     if chafa_supports_probe() {
         cmd.arg("--probe").arg("off");
@@ -328,7 +328,7 @@ pub fn get_chafa_logo_lines(path: &std::path::Path) -> Option<Vec<String>> {
     cmd.arg("--format")
         .arg("symbols")
         .arg("--size")
-        .arg("40x20");
+        .arg("28x10");
 
     if chafa_supports_probe() {
         cmd.arg("--probe").arg("off");
@@ -437,7 +437,7 @@ pub fn print_iterm2_logo(image_data: &[u8]) {
     use base64::Engine;
     let encoded = base64::engine::general_purpose::STANDARD.encode(image_data);
     print!(
-        "\x1b]1337;File=inline=1;preserveAspectRatio=1:{}\x07",
+        "\x1b]1337;File=inline=1;height=10;preserveAspectRatio=1:{}\x07",
         encoded
     );
     println!(); // iTerm2 typically needs a newline after the logo
@@ -471,7 +471,10 @@ pub fn print_graphical_logo(image_data: &[u8]) {
     let encoded = base64::engine::general_purpose::STANDARD.encode(image_data);
 
     if width > 0 && height > 0 {
-        println!("\x1b_Gf=100,s={},v={},a=T;{}\x1b\\", width, height, encoded);
+        println!(
+            "\x1b_Gf=100,s={},v={},c=26,r=10,a=T;{}\x1b\\",
+            width, height, encoded
+        );
     } else {
         println!("\x1b_Gf=100,a=T;{}", encoded);
     }
@@ -481,7 +484,8 @@ pub fn print_graphical_logo(image_data: &[u8]) {
 #[cfg(feature = "graphics")]
 pub fn print_sixel_logo(image_data: &[u8]) {
     if let Ok(img) = image::load_from_memory(image_data) {
-        let rgba = img.to_rgba8();
+        let resized = img.resize(240, 200, image::imageops::FilterType::Triangle);
+        let rgba = resized.to_rgba8();
         let (width, height) = rgba.dimensions();
         print_sixel_rgba(rgba.as_raw(), width, height);
     }
