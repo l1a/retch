@@ -140,7 +140,6 @@ pub fn normalize_win_audio_device(name: &str) -> Option<String> {
     let lower = name.to_lowercase();
     if lower.is_empty()
         || lower.starts_with("microsoft ")
-        || lower.contains("streaming")
         || lower.contains("trusted audio")
         || lower.contains("a2dp")
         || lower.contains("render audio")
@@ -165,6 +164,9 @@ pub fn normalize_win_audio_device(name: &str) -> Option<String> {
     }
     if lower.contains("intel") {
         return Some("Intel Smart Sound Technology".to_string());
+    }
+    if lower.contains("streaming") {
+        return None;
     }
     Some(name.to_string())
 }
