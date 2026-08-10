@@ -97,9 +97,8 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 ---
 
 ## Current State (v0.6.16)
-- **v0.6.16 — dependency bumps (consolidated Dependabot #182) + the man-page font-run fix
-  that has been flip-flopping `docs/retch.1` between machines** (chore; no runtime behavior
-  change, `retch-sysinfo` unchanged at `0.1.51`).
+- **v0.6.16 — Cross-platform Justfile recipes on Windows** (`Justfile`, `scripts/install_completions.py`, `scripts/install_man.py`, `scripts/build_man.py`).
+  Converted `man`, `install-man`, and `install-completions` recipes in `Justfile` to Python helper scripts, eliminating bash shebang escaping bugs (`No such file or directory` due to unescaped Windows backslashes in `justfile_directory()`), missing `.exe` extensions on Windows binary targets, and POSIX `install` utility dependencies. `just install`, `just install-man`, `just install-completions`, and `just man` now execute 100% natively on Windows PowerShell, CMD, and Unix shells without requiring `Git\usr\bin` on PATH. Also consolidated Dependabot #182 dependency bumps. `retch-sysinfo` → `0.1.52`; `retch-cli` → `0.6.16`. Patch bump.
   - **4 Rust crates** (`cargo-dependencies` group, #182), all patch-level and lockfile-only —
     every spec is a caret range, so `Cargo.toml` is untouched: `clap` 4.6.4→4.6.5 (pulls
     `clap_builder` 4.6.2→4.6.5), `toml` 1.1.3→1.1.4 (pulls `toml_parser` 1.1.2→1.1.3),

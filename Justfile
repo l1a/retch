@@ -8,13 +8,6 @@
 # losing quoting via textual {{ARGS}} interpolation (see open-pr).
 set positional-arguments := true
 
-BASH_COMP  := `echo "${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions"`
-ZSH_COMP   := `echo "${XDG_DATA_HOME:-$HOME/.local/share}/zsh/site-functions"`
-FISH_COMP  := `echo "${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions"`
-ELVISH_COMP := `echo "${XDG_CONFIG_HOME:-$HOME/.config}/elvish/lib"`
-NU_COMP    := `echo "${XDG_CONFIG_HOME:-$HOME/.config}/nushell/autoload"`
-PS_COMP    := `echo "${XDG_CONFIG_HOME:-$HOME/.config}/powershell"`
-
 # Default recipe
 default:
     @just --list
@@ -61,60 +54,34 @@ audit:
 install: install-man install-completions
     cargo install --path .
 
-# Generate man page from Markdown using mandown.
-# The version is dynamically read from Cargo.toml and placed in the footer.
-# The two font-collapsing seds drop mandown's redundant `\fB\fB…\fP\fP` runs. They match the
-# backslash as `[\]` and carry it out through a capture group deliberately: the obvious
-# `s/\\fB\\fB/\\fB/g` is silently a no-op, because GNU sed reads `\\f` as the form-feed escape
-# rather than backslash-then-f, so it only ever matches form feeds groff output never contains
-# (and would emit one if it did). That no-op is why docs/retch.1 kept flip-flopping between
-# machines depending on which mandown build wrote it.
+# Generate man page from Markdown using mandown (requires: mandown)
 man:
-    @mkdir -p docs
-    @VERSION=$(grep '^version' Cargo.toml | head -1 | cut -d '"' -f2); \
-    DATE=$(date +"%B %Y"); \
-    mandown docs/retch.1.md RETCH 1 | sed -e 's/[\]fB\([\]fB\)/\1/g' -e 's/[\]fP\([\]fP\)/\1/g' -e "s/\\.TH \"RETCH\" 1/\\.TH \"RETCH\" \"1\" \"$DATE\" \"retch $VERSION\" \"System Information Fetcher\"/" > docs/retch.1
-
-
+    @python3 scripts/build_man.py 2>/dev/null || python scripts/build_man.py
 
 # Install man page to XDG user location (~/.local/share/man)
 install-man: man
-    @mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}/man/man1"
-    install -m 644 docs/retch.1 "${XDG_DATA_HOME:-$HOME/.local/share}/man/man1/retch.1"
-    @echo "Man page installed to ${XDG_DATA_HOME:-$HOME/.local/share}/man/man1/"
+    @python3 scripts/install_man.py 2>/dev/null || python scripts/install_man.py
 
 # Install shell completions for all supported shells to XDG user locations
 install-completions: build
-    #!/usr/bin/env bash
-    set -euo pipefail
-    mkdir -p "{{BASH_COMP}}" "{{ZSH_COMP}}" "{{FISH_COMP}}" "{{ELVISH_COMP}}" "{{NU_COMP}}" "{{PS_COMP}}"
-    BIN="{{justfile_directory()}}/target/debug/retch"
-    "$BIN" --completions bash        > "{{BASH_COMP}}/retch"
-    "$BIN" --completions zsh         > "{{ZSH_COMP}}/_retch"
-    "$BIN" --completions fish        > "{{FISH_COMP}}/retch.fish"
-    "$BIN" --completions elvish      > "{{ELVISH_COMP}}/retch.elv"
-    "$BIN" --completions nushell     > "{{NU_COMP}}/50retch-completions.nu"
-    "$BIN" --completions power-shell > "{{PS_COMP}}/retch.ps1"
-    echo "Installed completions for retch"
-    echo ""
-    echo "Notes:"
-    echo "  bash       source {{BASH_COMP}}/retch  (or restart shell)"
-    echo "  zsh        auto-loaded from {{ZSH_COMP}}"
-    echo "  fish       auto-loaded from {{FISH_COMP}}"
-    echo "  elvish     add to rc.elv:  eval (slurp < {{ELVISH_COMP}}/retch.elv)"
-    echo "  nushell    auto-loaded from {{NU_COMP}}"
-    echo "  powershell add to \$PROFILE:  . {{PS_COMP}}/retch.ps1"
+    @python3 scripts/install_completions.py 2>/dev/null || python scripts/install_completions.py
 
 # Convert all SVGs to PNGs (used for embedded logos)
 logos:
-    @echo "Converting SVGs to PNGs..."
-    cd assets/logos && \
-    for svg in *.svg; do \
-        png="${svg%.svg}.png"; \
-        convert -background none -resize 384x384 "$svg" "$png" 2>/dev/null || true; \
-        echo "  $svg -> $png"; \
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Converting SVGs to PNGs..."
+    CONVERT_CMD="convert"
+    if command -v magick >/dev/null 2>&1; then
+        CONVERT_CMD="magick convert"
+    fi
+    cd assets/logos
+    for svg in *.svg; do
+        png="${svg%.svg}.png"
+        $CONVERT_CMD -background none -resize 384x384 "$svg" "$png" 2>/dev/null || true
+        echo "  $svg -> $png"
     done
-    @echo "Logo conversion complete."
+    echo "Logo conversion complete."
 
 # OS-appropriate path to the built release binary for hyperfine. hyperfine's
 # default shell is cmd.exe on Windows — which needs backslashes and the .exe
@@ -134,25 +101,27 @@ bench-cli:
 
 # Compare retch against fastfetch and neofetch (requires: hyperfine)
 bench-compare:
-    @python3 scripts/install_hyperfine.py 2>/dev/null || python scripts/install_hyperfine.py
+    #!/usr/bin/env bash
+    set -euo pipefail
+    python3 scripts/install_hyperfine.py 2>/dev/null || python scripts/install_hyperfine.py
     cargo build --release
-    @echo "=== Comparing Standard/Default ==="
-    @if command -v fastfetch > /dev/null; then \
-        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}}' 'fastfetch'; \
-    else \
-        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}}'; \
+    echo "=== Comparing Standard/Default ==="
+    if command -v fastfetch > /dev/null; then
+        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}}' 'fastfetch'
+    else
+        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}}'
     fi
-    @echo "=== Comparing Short ==="
-    @if command -v fastfetch > /dev/null; then \
-        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --short' 'fastfetch -c none'; \
-    else \
-        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --short'; \
+    echo "=== Comparing Short ==="
+    if command -v fastfetch > /dev/null; then
+        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --short' 'fastfetch -c none'
+    else
+        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --short'
     fi
-    @echo "=== Comparing Long ==="
-    @if command -v fastfetch > /dev/null; then \
-        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --long' 'fastfetch -c all'; \
-    else \
-        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --long'; \
+    echo "=== Comparing Long ==="
+    if command -v fastfetch > /dev/null; then
+        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --long' 'fastfetch -c all'
+    else
+        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --long'
     fi
 
 # Upload local benchmark results to the gh-pages dashboard (requires: hyperfine, gh)
