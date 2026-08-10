@@ -60,13 +60,10 @@ pub fn detect_audio(sys: &sysinfo::System) -> Option<String> {
             if let Some(name) =
                 win_reg::get_reg_string(win_reg::HKEY_LOCAL_MACHINE, &subkey, "DriverDesc")
             {
-                let name = name.trim().to_string();
-                let lower = name.to_lowercase();
-                let is_synthetic = lower.starts_with("microsoft streaming")
-                    || lower.starts_with("microsoft trusted audio")
-                    || lower == "microsoft audio stack";
-                if !name.is_empty() && !is_synthetic && !devices.contains(&name) {
-                    devices.push(name);
+                if let Some(clean_name) = normalize_win_audio_device(name.trim()) {
+                    if !devices.contains(&clean_name) {
+                        devices.push(clean_name);
+                    }
                 }
             }
         }
@@ -137,6 +134,41 @@ pub fn parse_asound_cards(content: &str, asound_dir: &str) -> Vec<String> {
     devices
 }
 
+/// Filter out synthetic software proxy audio drivers and normalize root hardware controller names on Windows.
+#[allow(dead_code)]
+pub fn normalize_win_audio_device(name: &str) -> Option<String> {
+    let lower = name.to_lowercase();
+    if lower.is_empty()
+        || lower.starts_with("microsoft ")
+        || lower.contains("streaming")
+        || lower.contains("trusted audio")
+        || lower.contains("a2dp")
+        || lower.contains("render audio")
+        || lower.contains("capture audio")
+        || lower.contains("uaj ")
+        || lower.contains("speaker device")
+        || lower.contains("microphone device")
+    {
+        return None;
+    }
+    if lower.contains("soundwire") {
+        return Some("AMD SoundWire Audio".to_string());
+    }
+    if lower.contains("amd high definition audio") || lower == "amd audio device" {
+        return Some("AMD High Definition Audio".to_string());
+    }
+    if lower.contains("realtek") {
+        return Some("Realtek High Definition Audio".to_string());
+    }
+    if lower.contains("nvidia") {
+        return Some("NVIDIA High Definition Audio".to_string());
+    }
+    if lower.contains("intel") {
+        return Some("Intel Smart Sound Technology".to_string());
+    }
+    Some(name.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -152,6 +184,34 @@ mod tests {
                 "HDA NVIDIA HDMI".to_string(),
                 "sof-hda-dsp".to_string()
             ]
+        );
+    }
+
+    #[test]
+    fn test_normalize_win_audio_device_filters_synthetic_and_normalizes() {
+        assert_eq!(
+            normalize_win_audio_device("Microsoft Streaming Service Proxy"),
+            None
+        );
+        assert_eq!(
+            normalize_win_audio_device("Microsoft Bluetooth A2dp Source"),
+            None
+        );
+        assert_eq!(
+            normalize_win_audio_device("AMD SoundWire Audio Streaming Speaker Device"),
+            None
+        );
+        assert_eq!(
+            normalize_win_audio_device("AMD SoundWire Audio Streaming Device"),
+            Some("AMD SoundWire Audio".to_string())
+        );
+        assert_eq!(
+            normalize_win_audio_device("USB Audio Device"),
+            Some("USB Audio Device".to_string())
+        );
+        assert_eq!(
+            normalize_win_audio_device("AMD High Definition Audio Device"),
+            Some("AMD High Definition Audio".to_string())
         );
     }
 }
