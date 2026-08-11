@@ -96,7 +96,9 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.16)
+## Current State (v0.6.17)
+- **v0.6.17 — Disabled Claude Code Review on GitHub Actions CI** (`.github/workflows/claude-code-review.yml`).
+  Disabled the `pull_request` trigger and set `if: false` on the `claude-review` job in `claude-code-review.yml`. `retch-cli` → `0.6.17`. Patch bump.
 - **v0.6.16 — Graphic logo size reduction and controlled info line wrapping** (`src/display.rs`, `src/logo.rs`, `crates/sysinfo/src/audio.rs`).
   Reduced Chafa logo height to `34x12` (matching standard 12-line ASCII logo heights). Filtered synthetic kernel streaming audio endpoints on Windows (`Microsoft Streaming ...`, `Microsoft Trusted Audio ...`) so `Audio:` reports real hardware devices. Updated `plan_layout` in `display.rs` to clamp `text_column_width` (max 65) and implemented `wrap_info_line` word-wrapping for info lines exceeding the text column width. Long lines wrap into indented continuation lines (aligned to the value column) rather than breaking side-by-side layout or overflowing the terminal edge.
 - **v0.6.16 — Cross-platform Justfile recipes on Windows** (`Justfile`, `scripts/install_completions.py`, `scripts/install_man.py`, `scripts/build_man.py`).
