@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786461930615,
+  "lastUpdate": 1786462325329,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7342,90 +7342,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "1b9007d1bcbf3a54c8f1878c3836ba63ca92df8a",
-          "message": "fix: advance cursor past graphical logo bottom edge (#129)\n\nWhen the info field list is shorter than the logo height, the shell\nprompt was drawn on top of the logo. Fix by computing the logo's\nheight in terminal rows (image px height / cell px height via\nTIOCGWINSZ, with 20px fallback) and emitting CSI B after restoring\nthe cursor to push past the logo's bottom edge.\n\nAdds libc as a unix-only direct dep for TIOCGWINSZ.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-29T13:00:36-07:00",
-          "tree_id": "f9622416d510a495b2af1a31b6b9c7e6b12f477e",
-          "url": "https://github.com/l1a/retch/commit/1b9007d1bcbf3a54c8f1878c3836ba63ca92df8a"
-        },
-        "date": 1782764105976,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 850786680.7,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 992.3848901962435,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.05982395269111,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9464254238003336,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.07082435915229,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7741.301942248096,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 70680.27657372502,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4727.524989585114,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4834.60457501664,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1277305.302259552,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 358.763250897084,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 255.13662215372375,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "400f31e6f99e05724137adc0e67d046233010752",
           "message": "feat: switch weather backend to Open-Meteo (v0.3.30) (#130)\n\n* feat: switch weather to Open-Meteo + ipinfo.io\n\nReplace wttr.in (World Weather Online backend) with:\n- Open-Meteo for temperature/WMO weather code (geocoding API + forecast API)\n- ipinfo.io for IP-based auto-location fallback\n\nAdds `weather_unit` config/CLI option (\"fahrenheit\"/\"celsius\").\nWMO weather codes are mapped to emojis.\n\nAssisted-By: Claude Sonnet 4.6\n\n* docs+test: improve weather.rs coverage and docs\n\n- Doc comments on detect_weather, curl_get, wmo_to_emoji, WeatherUnit variants\n- Expand wmo_to_emoji test to cover all major WMO code ranges + fallback\n- Add parse_coords edge cases: spaces around comma, out-of-range lat/lon\n- Add geolocate_ip display-name tests (US, non-US, no-city) without network\n\nAssisted-By: Claude Sonnet 4.6\n\n* chore: bump to v0.3.30, update docs and man page\n\nVersion: 0.3.29 â†’ 0.3.30 / retch-sysinfo 0.1.29 â†’ 0.1.30\nNOTES.md: Current State header + v0.3.30 release log entry\nREADME.md: fix weather config comment, add weather_unit key\ndocs/retch.1: regenerated\n\nAssisted-By: Claude Sonnet 4.6\n\n* docs: add weather-location to tldr page\n\nAssisted-By: Claude Sonnet 4.6\n\n* docs: note tldr upstream submission on hold\n\nUpstream tldr-pages submission denied pending community traction.\nKeep docs/retch.md and just tldr-release workflow maintained but\ndo not submit upstream until further notice.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: add --weather-unit CLI flag\n\nWas wired through config but never added to the Cli struct.\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-29T13:54:42-07:00",
@@ -11525,6 +11441,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 269.980134029327,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1177d194785c63e2058a99f5cffa5ef33577d9cb",
+          "message": "ci: disable Claude Code Review workflow (#187)\n\nThe claude-review job no longer runs on pull requests: the\n`pull_request` trigger is replaced with `workflow_dispatch` and the\njob carries `if: false`, so it is off by default but can still be\ninvoked manually if wanted.\n\nBumps retch-cli 0.6.16 -> 0.6.17 (patch), refreshes Cargo.lock,\nregenerates docs/retch.1 for the new version footer, and updates the\nNOTES.md Current State header and release log.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-11T08:18:19-07:00",
+          "tree_id": "5edf46dce11e5ab7293d0a0411af8f9341a70b2b",
+          "url": "https://github.com/l1a/retch/commit/1177d194785c63e2058a99f5cffa5ef33577d9cb"
+        },
+        "date": 1786462323729,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 837949163.3,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1015.7333836800523,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 109.85294180040049,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9467052988494875,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 48.45832612057557,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7840.628019077029,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70918.19111598526,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4780.273191298988,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4877.242494576725,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1079675.5933245225,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 345.039394851086,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 263.2872091790121,
             "unit": "ns"
           }
         ]
