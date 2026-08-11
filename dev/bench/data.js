@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786463423026,
+  "lastUpdate": 1786463994021,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18448,70 +18448,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "b61db1f0a08f4d023930e0231b61079b17d4dc75",
-          "message": "Merge pull request #127 from l1a/fix/tldr-page-format\n\nfix: fix tldr page lint errors",
-          "timestamp": "2026-06-28T19:35:48-07:00",
-          "tree_id": "80701731a659a4af0387474cc7517b7f36d10c32",
-          "url": "https://github.com/l1a/retch/commit/b61db1f0a08f4d023930e0231b61079b17d4dc75"
-        },
-        "date": 1782703037160,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 102.64139073843867,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9472711964550653,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.39350791404408,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.04610677776233,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46350.930037911676,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 504.4158042215331,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 750.372836572767,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2384108495,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "1094ac231ae3237ed49464785b01c00c96026b20",
           "message": "feat: add TerminalSize, DNS, WM fields; fix Shell detection (v0.3.29) (#128)\n\n* feat: add TerminalSize, DNS, WM fields; fix Shell detection\n\n- TerminalSize: ioctl(TIOCGWINSZ) on Linux/macOS, $COLUMNS/$LINES fallback\n- DNS: parse /etc/resolv.conf nameserver lines; PowerShell on Windows\n- WM: scan /proc for compositor/WM process names; suppressed in output\n  when identical to Desktop field (case-insensitive)\n- Shell: walk process tree first to find running shell; fall back to\n  $SHELL (login shell) only when scan yields nothing\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: improve Desktop detection when XDG env vars are absent\n\nAdd XDG_SESSION_DESKTOP and GDMSESSION as fallbacks, normalize\nDE names to canonical casing, and probe /proc as a last resort\n(e.g. gnome-shell â†’ GNOME) for terminals that don't inherit the\nfull session environment.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: add non-Linux stub for detect_desktop_from_proc\n\nSatisfies clippy::unnecessary_lazy_evaluations (Rust 1.96+):\nreplace inline cfg closure with .or_else(detect_desktop_from_proc)\nand add a #[cfg(not(target_os = \"linux\"))] stub returning None.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: suppress logo when stdout is not a tty\n\nUse std::io::IsTerminal::is_terminal() instead of terminal_size()\nto detect piped output. terminal_size() returns Some() when a pager\nlike bat allocates a PTY, causing the logo to print as raw escape\nsequences.\n\nAssisted-By: Claude Sonnet 4.6\n\n* docs+tests: update for v0.3.29 PR changes\n\n- docs/retch.1.md + retch.1: note logo tty-suppression in LOGOS section\n- README.md: add auto-suppressed-when-piped bullet to Logo Rendering Modes\n- NOTES.md: bump Current State to v0.3.29; add Desktop fix, logo tty\n  suppression, and logo cursor placement to release entry; remove DNS,\n  WM, TerminalSize from feature gap list\n- tests/cli_tests.rs: add tests for --fields dns/wm/terminal-size and\n  piped output containing no graphical logo escape sequences\n- fetch.rs: add unit tests for normalize_desktop_name,\n  detect_desktop_from_proc, and title-case/whitespace edge cases\n\nAssisted-By: Claude Sonnet 4.6",
           "timestamp": "2026-06-29T12:30:38-07:00",
@@ -21631,6 +21567,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2040453695,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1177d194785c63e2058a99f5cffa5ef33577d9cb",
+          "message": "ci: disable Claude Code Review workflow (#187)\n\nThe claude-review job no longer runs on pull requests: the\n`pull_request` trigger is replaced with `workflow_dispatch` and the\njob carries `if: false`, so it is off by default but can still be\ninvoked manually if wanted.\n\nBumps retch-cli 0.6.16 -> 0.6.17 (patch), refreshes Cargo.lock,\nregenerates docs/retch.1 for the new version footer, and updates the\nNOTES.md Current State header and release log.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-11T08:18:19-07:00",
+          "tree_id": "5edf46dce11e5ab7293d0a0411af8f9341a70b2b",
+          "url": "https://github.com/l1a/retch/commit/1177d194785c63e2058a99f5cffa5ef33577d9cb"
+        },
+        "date": 1786463990244,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 181.3855455990951,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948044542483151,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 105.50389035274486,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.3422854250223,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46471.919254129556,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 497.84295882348414,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 738.0833764443303,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1854522285,
             "unit": "ns"
           }
         ]
