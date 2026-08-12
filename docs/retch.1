@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "August 2026" "retch 0.6.17" "System Information Fetcher"
+.TH "RETCH" "1" "August 2026" "retch 0.6.18" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -440,6 +440,37 @@ Logos are automatically suppressed when stdout is not a terminal (e\.g\. when pi
 .RE
 .PP
 Use `\f[CR]\-\-ascii\-only\fP` to force text\-only output\. Use `\f[CR]\-\-no\-logo\fP` to suppress the logo unconditionally\.
+
+.SH "PRIVILEGES"
+.PP
+Running \fBretch\fP under \fBsudo\fP(8) exchanges one set of fields for another rather than
+simply adding to them, because sudo's default `\f[CR]env_reset\fP` clears most of the environment\.
+.PP
+Available only as root:
+.RS
+.Bl
+.IP \(bu 4
+`\f[CR]phys\-mem\fP` \-\- the per\-DIMM breakdown reads the DMI tables (`\f[CR]/sys/firmware/dmi/tables/DMI\fP`, mode 0400)\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]btrfs\fP` \-\- the snapshot count requires `\f[CR]btrfs subvolume list \-s\fP`\. It is omitted, never shown as zero, when it cannot be read\.
+.El
+.RE
+.PP
+Available only as the logged\-in user:
+.RS
+.Bl
+.IP \(bu 4
+`\f[CR]editor\fP` \-\- read from `\f[CR]$VISUAL\fP` / `\f[CR]$EDITOR\fP`\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]desktop\fP`, `\f[CR]wm\fP` \-\- read from `\f[CR]XDG_CURRENT_DESKTOP\fP`, `\f[CR]XDG_SESSION_DESKTOP\fP` and `\f[CR]GDMSESSION\fP`\.
+.El
+.RE
+.PP
+All other fields are identical either way\.
 
 .SH "EXIT STATUS"
 .PP

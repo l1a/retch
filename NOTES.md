@@ -96,7 +96,68 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.17)
+## Current State (v0.6.18)
+- **v0.6.18 — `Packages` without root, Rio detection under `sudo`, and aspect-correct logo
+  scaling** (`crates/sysinfo/src/packages.rs`, `src/logo.rs`, `src/display.rs`). Three
+  user-reported defects, all found by diffing a `sudo retch --full` run against a plain one
+  on corrino (i7-1360P, Fedora 44, Rio).
+  - **`Packages` appeared only under `sudo`** (bugfix). `detect_packages` opened
+    `/var/lib/rpm/rpmdb.sqlite` with `rusqlite::Connection::open`, i.e. **read-write**. The
+    rpmdb is `root:root 0644` inside a root-owned directory, so SQLite cannot create the
+    journal sidecars it wants and **every query** fails with `attempt to write a readonly
+    database` — note *query*, not `open()`, which is why the existing `eprintln!` (guarding
+    only the open) never fired and the field vanished with no diagnostic at all. Plain
+    `mode=ro` does not help for the same reason; it still needs to touch the directory. Fixed
+    with `open_with_flags(rpm_db_uri(path), SQLITE_OPEN_READ_ONLY | SQLITE_OPEN_URI |
+    SQLITE_OPEN_NO_MUTEX)` over a `file:…?immutable=1` URI, which lets SQLite skip locking and
+    sidecars entirely. Verified end to end: `2509` as an unprivileged user, byte-identical to
+    what the `sudo` run reported. The query error is now surfaced rather than swallowed, so
+    the next failure in this path says why. Pure `rpm_db_uri` helper, 2 unit tests.
+  - **Rio lost graphics support under `sudo`** (bugfix). `supports_kitty`/`supports_iterm2`/
+    `supports_sixel` identified Rio **only** by `TERM_PROGRAM`, which is not in sudo's default
+    `env_keep`, so `sudo retch` silently fell all the way through to Chafa while the same
+    command as the user used the Kitty protocol. New `is_rio_terminal()` also accepts
+    `TERM=rio`/`xterm-rio` — `TERM` *is* preserved by sudo — and all three checks route through
+    it. 3 unit tests, including a negative case pinning that `rioja` is not matched.
+    - **Test-isolation defect fixed in the same change, same class as #155/v0.6.2:**
+      `test_supports_iterm2_heuristics` guarded only `TERM_PROGRAM`, so once `supports_iterm2`
+      began reading `TERM` the *host's* value leaked in and its negative assertions failed on a
+      Rio box while passing on CI and everywhere else. It now guards and clears `TERM` too.
+  - **The Kitty logo was stretched ~3× vertically** (bugfix). `print_graphical_logo` emitted a
+    hardcoded `c=26,r=10`, and Kitty **forces** an image into the `c`×`r` rectangle — it does
+    not preserve aspect ratio when both are given. Five of the assets are wide horizontal
+    lockups (`fedora.png` is 384×108, i.e. 3.56:1; also arch/nixos/ubuntu/tux), so they were
+    squashed into a roughly 1:1 cell box. Compounding it, `display.rs` separately assumed a
+    fixed **40**-column width for layout while `graphical_logo_height_lines` derived the row
+    count a third way — three inconsistent answers for one footprint. Fixed with a single pure
+    `fit_logo_cells(img_w, img_h, cell_w, cell_h, max_cols, max_rows) -> LogoFit` that fits the
+    image in the cell box preserving aspect (in pixels, so non-square cells are handled), now
+    used by **all three** protocol emitters *and* by `plan_layout`. iTerm2 additionally passes
+    an explicit cell `width` alongside `preserveAspectRatio=1`; Sixel resizes to the same box
+    rather than a fixed 240×200. 6 unit tests.
+    - **Computing `c` and `r` correctly is not sufficient — Kitty must be given only *one* of
+      them.** Cells are indivisible, so the rounded rectangle is never exactly the image's
+      aspect, and Kitty scales each axis independently to fill whatever rectangle it is given.
+      Measured in a PTY with real pixel dimensions (169×47 cells, 22×51 px): passing both
+      correct values still left a **9%** vertical stretch. `LogoFit::width_limited` records
+      which dimension the image touches first and `kitty_placement_spec` emits just that one
+      (`c=45` for Fedora), letting Kitty derive the other — **0.0% aspect error**, verified the
+      same way. The layout's `div_ceil` reservation (6 rows for a 5.46-row draw) still covers
+      it, which is the safe direction.
+  - **Chafa logo box widened 28→45 columns** (`LOGO_MAX_COLS`), height cap unchanged at 10
+    (`LOGO_MAX_ROWS`). Chafa fits *within* the box preserving aspect, so a narrow box caps a
+    wide image's height long before the row cap does: at 28 columns the Fedora logo collapsed
+    to **4 rows** of symbols and was unreadable; at 45 it renders **7**. Both chafa call sites
+    now share `chafa_size_arg()`. **The side-by-side threshold is unaffected** — the text column floors
+    at 45 and 45 + 45 = 90 ≤ 95, so a full-width logo still sits beside the text at the 95-col
+    cutoff; pinned by a new `plan_layout` test at both 95 and 169 columns.
+  - Assets deliberately **not** changed: cropping the wide lockups to their square icon halves
+    would render larger still, but it is a content decision and was declined in favour of the
+    layout-only fix.
+  - New §6b documents the privilege-dependent fields in both directions (root-only
+    `phys-mem`/btrfs snapshots; user-only `editor`/`desktop`/`wm`), mirrored in `README.md`
+    and a new `PRIVILEGES` section in `docs/retch.1.md`.
+  - `retch-sysinfo` → `0.1.53` (library behaviour change); `retch-cli` → `0.6.18`. Patch bump.
 - **v0.6.17 — Disabled Claude Code Review on GitHub Actions CI** (`.github/workflows/claude-code-review.yml`).
   Disabled the `pull_request` trigger and set `if: false` on the `claude-review` job in `claude-code-review.yml`. `retch-cli` → `0.6.17`. Patch bump.
 - **v0.6.16 — Graphic logo size reduction and controlled info line wrapping** (`src/display.rs`, `src/logo.rs`, `crates/sysinfo/src/audio.rs`).
@@ -886,6 +947,38 @@ Windows 11, Windows Terminal).
 **Deliberately not implemented on Windows** (no faithful native source): `load` (no
 load-average equivalent), `editor` (env-only `$VISUAL`/`$EDITOR`), conhost `terminal-font`
 (only Windows Terminal has a parseable config).
+
+---
+
+## 6b. Privilege-dependent fields (Linux) — what `sudo retch` changes, both directions
+
+Running retch under `sudo` does not simply add fields: it adds some and **removes others**,
+because `sudo`'s default `env_reset` strips most of the environment. Diffing a `sudo --full`
+run against a plain one is therefore not a fair before/after, and the differences below are
+expected behaviour, not bugs. (`Packages` used to be on this list and no longer is — see the
+v0.6.18 entry.)
+
+**Only available as root**
+- **`phys-mem`** — reads `/sys/firmware/dmi/tables/DMI`, mode `0400 root`, via `dmidecode`.
+  There is no unprivileged source for per-DIMM type/capacity/speed on Linux, so the field is
+  omitted rather than guessed. (Windows reads SMBIOS natively and needs no elevation.)
+- **`btrfs` snapshot count** — `btrfs subvolume list -s` requires root. Deliberately
+  **omitted rather than shown as `0`** when it cannot be read, so "couldn't check" is never
+  mistaken for "no snapshots"; the label/subvolume/space part of the field still renders.
+
+**Only available as the logged-in user** (lost under `sudo`, since `env_reset` drops them)
+- **`editor`** — `$VISUAL` / `$EDITOR`.
+- **`desktop`**, **`wm`** — `XDG_CURRENT_DESKTOP` / `XDG_SESSION_DESKTOP` / `GDMSESSION`.
+- **Logo protocol selection** — `TERM_PROGRAM` is not in sudo's `env_keep`. This used to
+  silently downgrade Rio from the Kitty graphics protocol to Chafa; since v0.6.18 the Rio
+  check also consults `TERM` (`xterm-rio`), which sudo *does* preserve. Any other terminal
+  identified solely by `TERM_PROGRAM` still degrades under sudo by design — it is a heuristic
+  over an environment sudo is entitled to clear.
+
+**Rule of thumb for this class of bug:** if a field is missing only for the unprivileged user,
+check whether the underlying source is genuinely root-only before adding an elevation note —
+`Packages` looked exactly like a permissions limit for a long time and was in fact a fixable
+SQLite open-mode defect.
 
 ---
 

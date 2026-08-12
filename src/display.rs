@@ -58,8 +58,9 @@ struct LayoutPlan {
 ///
 /// This is logo-type-agnostic: `logo_height`/`logo_width` are supplied by the caller from the
 /// active logo, so it works identically for ASCII art, Chafa (both rendered as text lines),
-/// and the graphical image protocols (Kitty/iTerm2/Sixel, whose height is their pixel-derived
-/// row count and whose width is the fixed image column).
+/// and the graphical image protocols (Kitty/iTerm2/Sixel, whose cell footprint comes from
+/// [`logo::fit_logo_cells`] — the *same* call the emitters use to size the image, so the
+/// reserved area and the drawn area cannot disagree).
 ///
 /// `info_widths` are the ANSI-stripped visible widths of the info lines, in render order.
 fn plan_layout(
@@ -632,9 +633,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     // Setup logo representation
     enum ActiveLogo {
         Lines(Vec<String>),
-        Kitty(Vec<u8>, usize), // bytes, height_lines
-        Iterm2(Vec<u8>, usize),
-        Sixel(Vec<u8>, usize),
+        Kitty(Vec<u8>, usize, usize), // bytes, cols, rows
+        Iterm2(Vec<u8>, usize, usize),
+        Sixel(Vec<u8>, usize, usize),
         None,
     }
 
@@ -689,14 +690,14 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             if !resolved && logo::supports_kitty() {
                 if let Some(path) = &user_logo {
                     if let Ok(bytes) = std::fs::read(path) {
-                        let h = graphical_logo_height_lines(&bytes);
-                        active_logo = ActiveLogo::Kitty(bytes, h);
+                        let (cols, rows) = graphical_logo_cells(&bytes);
+                        active_logo = ActiveLogo::Kitty(bytes, cols, rows);
                         resolved = true;
                     }
                 } else if let Some(distro) = &distro_hint {
                     if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
-                        let h = graphical_logo_height_lines(bytes);
-                        active_logo = ActiveLogo::Kitty(bytes.to_vec(), h);
+                        let (cols, rows) = graphical_logo_cells(bytes);
+                        active_logo = ActiveLogo::Kitty(bytes.to_vec(), cols, rows);
                         resolved = true;
                     }
                 }
@@ -707,14 +708,14 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             if !resolved && logo::supports_iterm2() {
                 if let Some(path) = &user_logo {
                     if let Ok(bytes) = std::fs::read(path) {
-                        let h = graphical_logo_height_lines(&bytes);
-                        active_logo = ActiveLogo::Iterm2(bytes, h);
+                        let (cols, rows) = graphical_logo_cells(&bytes);
+                        active_logo = ActiveLogo::Iterm2(bytes, cols, rows);
                         resolved = true;
                     }
                 } else if let Some(distro) = &distro_hint {
                     if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
-                        let h = graphical_logo_height_lines(bytes);
-                        active_logo = ActiveLogo::Iterm2(bytes.to_vec(), h);
+                        let (cols, rows) = graphical_logo_cells(bytes);
+                        active_logo = ActiveLogo::Iterm2(bytes.to_vec(), cols, rows);
                         resolved = true;
                     }
                 }
@@ -725,14 +726,14 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             if !resolved && logo::supports_sixel() {
                 if let Some(path) = &user_logo {
                     if let Ok(bytes) = std::fs::read(path) {
-                        let h = graphical_logo_height_lines(&bytes);
-                        active_logo = ActiveLogo::Sixel(bytes, h);
+                        let (cols, rows) = graphical_logo_cells(&bytes);
+                        active_logo = ActiveLogo::Sixel(bytes, cols, rows);
                         resolved = true;
                     }
                 } else if let Some(distro) = &distro_hint {
                     if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
-                        let h = graphical_logo_height_lines(bytes);
-                        active_logo = ActiveLogo::Sixel(bytes.to_vec(), h);
+                        let (cols, rows) = graphical_logo_cells(bytes);
+                        active_logo = ActiveLogo::Sixel(bytes.to_vec(), cols, rows);
                         resolved = true;
                     }
                 }
@@ -801,7 +802,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                 .max()
                 .unwrap_or(0),
         ),
-        ActiveLogo::Kitty(_, h) | ActiveLogo::Iterm2(_, h) | ActiveLogo::Sixel(_, h) => (*h, 40),
+        ActiveLogo::Kitty(_, cols, rows)
+        | ActiveLogo::Iterm2(_, cols, rows)
+        | ActiveLogo::Sixel(_, cols, rows) => (*rows, *cols),
         ActiveLogo::None => (0, 0),
     };
 
@@ -851,7 +854,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                     println!("{}{}{}", info_line, padding, logo_line);
                 }
             }
-            ActiveLogo::Kitty(bytes, logo_rows) => {
+            ActiveLogo::Kitty(bytes, _, logo_rows) => {
                 render_graphical_side_by_side(
                     text_column_width,
                     &formatted_info_lines,
@@ -859,7 +862,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                     || logo::print_graphical_logo(&bytes),
                 );
             }
-            ActiveLogo::Iterm2(bytes, logo_rows) => {
+            ActiveLogo::Iterm2(bytes, _, logo_rows) => {
                 render_graphical_side_by_side(
                     text_column_width,
                     &formatted_info_lines,
@@ -867,7 +870,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                     || logo::print_iterm2_logo(&bytes),
                 );
             }
-            ActiveLogo::Sixel(bytes, logo_rows) => {
+            ActiveLogo::Sixel(bytes, _, logo_rows) => {
                 render_graphical_side_by_side(
                     text_column_width,
                     &formatted_info_lines,
@@ -890,15 +893,15 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                 }
                 println!();
             }
-            ActiveLogo::Kitty(bytes, _) => {
+            ActiveLogo::Kitty(bytes, _, _) => {
                 logo::print_graphical_logo(&bytes);
                 println!();
             }
-            ActiveLogo::Iterm2(bytes, _) => {
+            ActiveLogo::Iterm2(bytes, _, _) => {
                 logo::print_iterm2_logo(&bytes);
                 println!();
             }
-            ActiveLogo::Sixel(bytes, _) => {
+            ActiveLogo::Sixel(bytes, _, _) => {
                 logo::print_sixel_logo(&bytes);
                 println!();
             }
@@ -1008,32 +1011,21 @@ fn format_uptime(uptime: &str) -> String {
     parts.join(" ")
 }
 
-/// Returns the height in terminal rows a graphical logo image will occupy.
+/// Returns the `(columns, rows)` a graphical logo image will occupy on this terminal.
 ///
-/// Uses TIOCGWINSZ pixel dimensions on Unix to get the real cell height.
-/// Falls back to 20px per cell when the terminal doesn't report pixel dims.
+/// Delegates to [`logo::logo_cells_for`], which is also what the Kitty/iTerm2/Sixel emitters
+/// use to size the image itself — so the footprint reserved by [`plan_layout`] and the
+/// footprint actually drawn are the same numbers by construction. They used to be computed
+/// independently (rows here from the pixel height, width hardcoded to 40, and the Kitty
+/// escape hardcoding a third answer), which is how the logo ended up stretched *and*
+/// mis-positioned.
 #[cfg(feature = "graphics")]
-fn graphical_logo_height_lines(bytes: &[u8]) -> usize {
-    let img_h = image::load_from_memory(bytes)
-        .map(|img| img.height() as usize)
-        .unwrap_or(200);
-    let cell_h = terminal_cell_height_px();
-    let rows = img_h.div_ceil(cell_h);
-    rows.min(10)
-}
-
-/// Returns the terminal cell height in pixels via TIOCGWINSZ, or 20 as fallback.
-fn terminal_cell_height_px() -> usize {
-    #[cfg(unix)]
-    {
-        use std::mem::MaybeUninit;
-        let mut ws: libc::winsize = unsafe { MaybeUninit::zeroed().assume_init() };
-        let ret = unsafe { libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ, &mut ws) };
-        if ret == 0 && ws.ws_row > 0 && ws.ws_ypixel > 0 {
-            return ws.ws_ypixel as usize / ws.ws_row as usize;
-        }
-    }
-    20
+fn graphical_logo_cells(bytes: &[u8]) -> (usize, usize) {
+    let (img_w, img_h) = image::load_from_memory(bytes)
+        .map(|img| (img.width(), img.height()))
+        .unwrap_or((0, 0));
+    let fit = logo::logo_cells_for(img_w, img_h);
+    (fit.cols, fit.rows)
 }
 
 #[cfg(test)]
@@ -1129,6 +1121,24 @@ mod tests {
         let p = plan_layout(&[10; 25], 20, 40, 100, true);
         assert!(p.side_by_side);
         assert_eq!(p.text_column_width, 45); // max(10+4, 45)
+    }
+
+    #[test]
+    fn test_layout_widened_logo_box_still_fits_at_the_side_by_side_threshold() {
+        // The logo cell box grew from 28 to `logo::LOGO_MAX_COLS` (45) so wide-aspect logos get
+        // enough rows to stay legible. That must not cost the side-by-side layout at the 95-col
+        // threshold: the text column floors at 45, and 45 + 45 = 90 <= 95.
+        let p = plan_layout(&[10; 25], 10, logo::LOGO_MAX_COLS, 95, true);
+        assert!(
+            p.side_by_side,
+            "a full-width logo must still sit beside the text at 95 columns"
+        );
+        assert!(p.text_column_width + logo::LOGO_MAX_COLS <= 95);
+
+        // And a wide terminal is unaffected — the text column still reaches its 65 cap.
+        let wide = plan_layout(&[120; 25], 10, logo::LOGO_MAX_COLS, 169, true);
+        assert!(wide.side_by_side);
+        assert_eq!(wide.text_column_width, 65);
     }
 
     #[test]

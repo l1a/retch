@@ -6,6 +6,21 @@
 //! Supports Pacman (Arch), Dpkg (Debian), XBPS (Void), RPM (Fedora/RHEL) on Linux,
 //! Homebrew (Formulae and Casks) and MacPorts on macOS, and Scoop/Chocolatey on Windows.
 
+/// Builds the SQLite URI used to read the RPM database without write access.
+///
+/// `/var/lib/rpm/rpmdb.sqlite` is owned by root (mode 0644) inside a root-owned directory,
+/// so an unprivileged process cannot create the journal sidecar files SQLite wants — and
+/// SQLite reports that as `attempt to write a readonly database` on the **query**, not on
+/// `open()`. Plain `mode=ro` is not enough for the same reason: it still needs to touch the
+/// directory. `immutable=1` promises SQLite the file will not change while it is open, which
+/// lets it skip locking and sidecars entirely, so the count succeeds as a normal user.
+///
+/// This is why `Packages` previously appeared only under `sudo`.
+#[cfg(any(not(any(target_os = "macos", target_os = "windows")), test))]
+fn rpm_db_uri(path: &str) -> String {
+    format!("file:{path}?immutable=1")
+}
+
 pub(crate) fn detect_packages() -> Option<usize> {
     #[cfg(target_os = "macos")]
     {
@@ -105,22 +120,55 @@ pub(crate) fn detect_packages() -> Option<usize> {
 
         let rpm_db = "/var/lib/rpm/rpmdb.sqlite";
         if std::path::Path::new(rpm_db).exists() {
-            match rusqlite::Connection::open(rpm_db) {
+            use rusqlite::OpenFlags;
+            let flags = OpenFlags::SQLITE_OPEN_READ_ONLY
+                | OpenFlags::SQLITE_OPEN_URI
+                | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+            match rusqlite::Connection::open_with_flags(rpm_db_uri(rpm_db), flags) {
                 Ok(conn) => {
-                    if let Ok(count) = conn.query_row("SELECT COUNT(*) FROM Packages", [], |row| {
+                    match conn.query_row("SELECT COUNT(*) FROM Packages", [], |row| {
                         row.get::<_, i64>(0)
                     }) {
-                        if count > 0 {
-                            return Some(count as usize);
+                        Ok(count) if count > 0 => return Some(count as usize),
+                        Ok(_) => {}
+                        // Surfaced rather than swallowed: the read-only-database failure this
+                        // URI exists to prevent used to land here and vanish silently, so the
+                        // field simply disappeared with no clue why.
+                        Err(e) => {
+                            eprintln!("warning: failed to query RPM database at {rpm_db}: {e}");
                         }
                     }
                 }
                 Err(e) => {
-                    eprintln!("warning: failed to open RPM database at {}: {}", rpm_db, e);
+                    eprintln!("warning: failed to open RPM database at {rpm_db}: {e}");
                 }
             }
         }
 
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rpm_db_uri_requests_immutable() {
+        // `immutable=1` is the load-bearing part: without it an unprivileged read of the
+        // root-owned rpmdb fails with "attempt to write a readonly database".
+        assert_eq!(
+            rpm_db_uri("/var/lib/rpm/rpmdb.sqlite"),
+            "file:/var/lib/rpm/rpmdb.sqlite?immutable=1"
+        );
+    }
+
+    #[test]
+    fn test_rpm_db_uri_is_a_file_uri() {
+        // The `file:` scheme is what makes SQLITE_OPEN_URI parse the query string at all;
+        // a bare path would silently ignore `immutable=1`.
+        let uri = rpm_db_uri("/tmp/some.sqlite");
+        assert!(uri.starts_with("file:"));
+        assert!(uri.contains("?immutable=1"));
     }
 }

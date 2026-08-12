@@ -149,6 +149,19 @@ Show help:
 retch --help
 ```
 
+### Running under `sudo`
+
+`sudo retch` is not simply "retch with more fields" — it trades one set for another, because
+`sudo`'s default `env_reset` clears most of the environment:
+
+| | Field |
+|---|---|
+| **Root only** | `phys-mem` (reads the DMI tables, mode `0400 root`); the snapshot count in `btrfs` (`btrfs subvolume list -s`) |
+| **User only** | `editor` (`$VISUAL`/`$EDITOR`), `desktop` and `wm` (`XDG_CURRENT_DESKTOP` and friends) |
+
+Everything else is identical either way, so run retch normally unless you specifically want
+the DIMM breakdown or btrfs snapshot counts.
+
 ## Shell Completions
 
 Generate completion scripts for your shell:
@@ -235,6 +248,8 @@ separator_color = "bright_black"
 
 # Ordered list of system information fields to display
 # Note: "phys-mem" requires root (sudo) on Linux to read DMI memory tables. On Windows, reads the SMBIOS table natively (no PowerShell).
+# Note: "btrfs" snapshot counts require root on Linux; the count is omitted (not shown as 0) when it can't be read.
+# Note: "editor", "desktop" and "wm" read environment variables, so they are absent under `sudo` (env_reset).
 # Note: "phys-disk" on Windows uses native storage IOCTLs (no PowerShell, no admin).
 # Note: "weather" requires network access; shown in full mode only by default.
 # Note: "domain-search" queries resolvectl; shown in full mode only by default.

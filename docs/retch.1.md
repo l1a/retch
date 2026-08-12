@@ -187,6 +187,23 @@ retch supports both ASCII and graphical logos.
 
 Use `--ascii-only` to force text-only output. Use `--no-logo` to suppress the logo unconditionally.
 
+# PRIVILEGES
+
+Running **retch** under **sudo**(8) exchanges one set of fields for another rather than
+simply adding to them, because sudo's default `env_reset` clears most of the environment.
+
+Available only as root:
+
+- `phys-mem` — the per-DIMM breakdown reads the DMI tables (`/sys/firmware/dmi/tables/DMI`, mode 0400).
+- `btrfs` — the snapshot count requires `btrfs subvolume list -s`. It is omitted, never shown as zero, when it cannot be read.
+
+Available only as the logged-in user:
+
+- `editor` — read from `$VISUAL` / `$EDITOR`.
+- `desktop`, `wm` — read from `XDG_CURRENT_DESKTOP`, `XDG_SESSION_DESKTOP` and `GDMSESSION`.
+
+All other fields are identical either way.
+
 # EXIT STATUS
 
 **retch** exits with status 0 on success, and non-zero on error.
