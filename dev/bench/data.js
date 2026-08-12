@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786500415104,
+  "lastUpdate": 1786500851918,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -11647,80 +11647,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "dbfa98155bcaa5b4a0415343af370f5580c7bc69",
-          "message": "Merge pull request #131 from l1a/feat/output-mode-strata\n\nfeat: add --full mode, restructure output strata (v0.3.31)",
-          "timestamp": "2026-06-29T15:47:51-07:00",
-          "tree_id": "387cdab8aa181c79bc2a9d112600cd183d385188",
-          "url": "https://github.com/l1a/retch/commit/dbfa98155bcaa5b4a0415343af370f5580c7bc69"
-        },
-        "date": 1782774573402,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1140667954.2,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 440.01340443850705,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 67.46794059964621,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.181207253469882,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 81.4747506606943,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 5000.098274808847,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1124.09694557814,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 444.32372873160864,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 102291.7065753724,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 464.5907869081486,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -15335,6 +15261,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 350.60965715830565,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9d27af8746fe0e349822f3272031e94e03589b50",
+          "message": "chore: bump 3 deps (consolidated Dependabot #188) (#190)\n\nRolls Dependabot #188 onto a gated branch so the release hygiene it\nbypasses — version bump, NOTES entry, man regen — is actually done,\nfollowing the #167/v0.6.3 and #184/v0.6.16 pattern.\n\nAll patch-level and lockfile-only; every spec is a caret range, so both\nCargo.toml manifests are untouched:\n\n  clap           4.6.5 -> 4.6.6  (pulls clap_builder 4.6.5 -> 4.6.6)\n  clap_complete  4.6.8 -> 4.6.9\n  rusqlite       0.40.1 -> 0.40.2 (pulls libsqlite3-sys 0.38.1 -> 0.38.2)\n\nThe lockfile was diff-verified byte-identical to Dependabot's before the\nversion bump, so this carries exactly the change its green CI validated;\nafterwards the only divergence is retch-cli's own version line.\n\nrusqlite warranted a live check rather than just a green suite: it is a\ndirect dependency of retch-sysinfo and the crate v0.6.18's Packages fix\nhad just started using differently, and libsqlite3-sys bundles SQLite\nitself, so a bump changes the engine that has to honour `immutable=1`.\nThe rpm_db_uri unit tests only assert string construction and could not\ncatch a behavioural change there. Verified live as an unprivileged user:\nPackages: 2509, unchanged.\n\nretch-cli -> 0.6.19; retch-sysinfo unchanged at 0.1.53 (no source\nchange, only its transitive lockfile deps moved).\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-11T18:52:53-07:00",
+          "tree_id": "0f8eb7815bf12c631f95919caaeb1e89e3549096",
+          "url": "https://github.com/l1a/retch/commit/9d27af8746fe0e349822f3272031e94e03589b50"
+        },
+        "date": 1786500849752,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1182897862.35,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 558.867362000005,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 163.41178215825005,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.1515455651953337,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 75.95156307228558,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5418.715335187409,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1282.9028545327133,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 556.2497043709939,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 96049.93602151397,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 415.29372422988524,
             "unit": "ns"
           }
         ]
