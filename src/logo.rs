@@ -215,6 +215,23 @@ pub fn get_distro_logo_lines(distro: Option<&str>) -> Vec<String> {
         .collect()
 }
 
+/// Returns true when the running terminal is Rio.
+///
+/// Checks `TERM` as well as `TERM_PROGRAM`. `TERM_PROGRAM` alone is not sufficient: it is not
+/// in sudo's default `env_keep` list, so `sudo retch` lost Rio's graphics support entirely and
+/// silently fell all the way back to Chafa. `TERM` **is** preserved by sudo (`xterm-rio` here),
+/// and the same gap affects any launcher that starts retch with a trimmed environment.
+fn is_rio_terminal() -> bool {
+    if let Ok(term) = std::env::var("TERM") {
+        if term == "rio" || term.starts_with("xterm-rio") {
+            return true;
+        }
+    }
+    std::env::var("TERM_PROGRAM")
+        .map(|t| t == "rio")
+        .unwrap_or(false)
+}
+
 /// Checks if the terminal supports the Kitty inline image protocol.
 pub fn supports_kitty() -> bool {
     std::env::var("TERM")
@@ -223,19 +240,17 @@ pub fn supports_kitty() -> bool {
         || std::env::var("TERMINAL_EMULATOR")
             .map(|t| t == "iterm-kitty" || t == "iTerm.app")
             .unwrap_or(false)
-        || std::env::var("TERM_PROGRAM")
-            .map(|t| t == "rio")
-            .unwrap_or(false)
+        || is_rio_terminal()
 }
 
 /// Checks if the terminal supports the iTerm2 inline image protocol.
 pub fn supports_iterm2() -> bool {
     if let Ok(prog) = std::env::var("TERM_PROGRAM") {
-        if prog == "iTerm.app" || prog == "WezTerm" || prog == "rio" {
+        if prog == "iTerm.app" || prog == "WezTerm" {
             return true;
         }
     }
-    false
+    is_rio_terminal()
 }
 
 /// Checks if the terminal supports Sixel graphics (heuristic based on environment).
@@ -248,7 +263,7 @@ pub fn supports_sixel() -> bool {
     }
 
     if let Ok(prog) = std::env::var("TERM_PROGRAM") {
-        if prog == "WezTerm" || prog == "iTerm.app" || prog == "rio" {
+        if prog == "WezTerm" || prog == "iTerm.app" {
             return true;
         }
     }
@@ -257,7 +272,142 @@ pub fn supports_sixel() -> bool {
         return true;
     }
 
-    false
+    is_rio_terminal()
+}
+
+/// Maximum width, in terminal columns, that a rendered logo may occupy.
+///
+/// Widened from 28 so that wide-aspect assets (the horizontal lockups — `fedora.png` is
+/// 384×108, i.e. 3.56:1 — plus arch/nixos/ubuntu/tux) get enough rows to stay legible: a
+/// logo is fitted *inside* this box preserving aspect, so a narrow box caps a wide image's
+/// height long before [`LOGO_MAX_ROWS`] does. At 28 columns the Fedora logo collapsed to 4
+/// rows of Chafa symbols and was unreadable.
+pub const LOGO_MAX_COLS: usize = 45;
+
+/// Maximum height, in terminal rows, that a rendered logo may occupy.
+pub const LOGO_MAX_ROWS: usize = 10;
+
+/// Fits an image into a cell box **preserving its aspect ratio**, returning a [`LogoFit`].
+///
+/// Both the image and the box are converted to pixels (via the terminal's cell dimensions)
+/// so the terminal's non-square cells are accounted for — a 2:1 image in 1:2 cells is 4
+/// columns per row, not 2. The result is the smallest cell rectangle that contains the
+/// scaled image, clamped to `1..=max`.
+///
+/// This is the single source of truth for a graphical logo's footprint: the same values feed
+/// the protocol escape (so the terminal does not stretch the image) and `plan_layout` (so the
+/// text column is placed against the logo's real width). Previously the Kitty path hardcoded
+/// `c=26,r=10` — which *forces* the image into that rectangle, ignoring aspect entirely, so
+/// the 3.56:1 Fedora logo was squashed into a roughly 1:1 box and rendered ~3× too tall —
+/// while the layout separately assumed a fixed 40-column width.
+pub fn fit_logo_cells(
+    img_w: u32,
+    img_h: u32,
+    cell_w: usize,
+    cell_h: usize,
+    max_cols: usize,
+    max_rows: usize,
+) -> LogoFit {
+    let (max_cols, max_rows) = (max_cols.max(1), max_rows.max(1));
+
+    // Degenerate inputs: fall back to the full box rather than dividing by zero.
+    if img_w == 0 || img_h == 0 || cell_w == 0 || cell_h == 0 {
+        return LogoFit {
+            cols: max_cols,
+            rows: max_rows,
+            width_limited: true,
+        };
+    }
+
+    let (img_w, img_h) = (u64::from(img_w), u64::from(img_h));
+    let box_w = (max_cols * cell_w) as u64;
+    let box_h = (max_rows * cell_h) as u64;
+
+    // Compare box_w/img_w against box_h/img_h without floating point: whichever ratio is
+    // smaller is the limiting dimension.
+    let width_limited = box_w * img_h <= box_h * img_w;
+    let (disp_w, disp_h) = if width_limited {
+        (box_w, box_w * img_h / img_w) // wide image: touches the sides first
+    } else {
+        (box_h * img_w / img_h, box_h) // tall image: touches top and bottom first
+    };
+
+    LogoFit {
+        // `div_ceil` so the reservation is never *smaller* than what gets drawn: an extra
+        // blank row or column is harmless, an overlapping one corrupts the layout.
+        cols: (disp_w as usize).div_ceil(cell_w).clamp(1, max_cols),
+        rows: (disp_h as usize).div_ceil(cell_h).clamp(1, max_rows),
+        width_limited,
+    }
+}
+
+/// The cell footprint of a logo, plus which dimension of the box it touches first.
+///
+/// `width_limited` matters only to the Kitty emitter — see [`kitty_placement_spec`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LogoFit {
+    /// Width in terminal columns.
+    pub cols: usize,
+    /// Height in terminal rows.
+    pub rows: usize,
+    /// True when the image reaches the box's width before its height (a wide image).
+    pub width_limited: bool,
+}
+
+/// Builds the Kitty graphics-protocol placement keys (`c=` / `r=`) for a fitted logo.
+///
+/// Deliberately emits **only the limiting dimension**. Kitty derives the other from the
+/// image's real aspect ratio, whereas specifying both makes it scale each axis independently
+/// to fill the rectangle exactly — and because cells are indivisible, the rounded rectangle is
+/// never quite the image's aspect, so passing both leaves a residual stretch even when the
+/// numbers are computed correctly (measured at 9% for the Fedora logo). Passing one leaves
+/// none.
+///
+/// The reservation [`plan_layout`](crate::display) makes is `div_ceil`-rounded and therefore
+/// always covers what Kitty then draws.
+pub fn kitty_placement_spec(fit: LogoFit) -> String {
+    if fit.width_limited {
+        format!("c={}", fit.cols)
+    } else {
+        format!("r={}", fit.rows)
+    }
+}
+
+/// Returns the terminal cell size in pixels as `(width, height)` via `TIOCGWINSZ`.
+///
+/// Falls back to a 10×20 cell — the conventional default — when the terminal does not report
+/// pixel dimensions (tmux, many terminals, and any non-TTY stdout).
+pub fn terminal_cell_size_px() -> (usize, usize) {
+    #[cfg(unix)]
+    {
+        use std::mem::MaybeUninit;
+        let mut ws: libc::winsize = unsafe { MaybeUninit::zeroed().assume_init() };
+        // SAFETY: `ws` is a live, zeroed `winsize` and TIOCGWINSZ writes exactly that type.
+        let ret = unsafe { libc::ioctl(libc::STDOUT_FILENO, libc::TIOCGWINSZ, &mut ws) };
+        if ret == 0 && ws.ws_row > 0 && ws.ws_col > 0 && ws.ws_xpixel > 0 && ws.ws_ypixel > 0 {
+            return (
+                ws.ws_xpixel as usize / ws.ws_col as usize,
+                ws.ws_ypixel as usize / ws.ws_row as usize,
+            );
+        }
+    }
+    (10, 20)
+}
+
+/// Returns the cell footprint an image will occupy on the current terminal.
+///
+/// Thin wrapper pairing [`terminal_cell_size_px`] with the pure [`fit_logo_cells`].
+pub fn logo_cells_for(img_w: u32, img_h: u32) -> LogoFit {
+    let (cell_w, cell_h) = terminal_cell_size_px();
+    fit_logo_cells(img_w, img_h, cell_w, cell_h, LOGO_MAX_COLS, LOGO_MAX_ROWS)
+}
+
+/// The `--size WxH` argument passed to `chafa`, derived from the shared logo cell box.
+///
+/// Chafa fits the image *inside* this box preserving aspect ratio, so this is a maximum in
+/// both dimensions rather than a target — a wide logo comes back short, a tall one narrow.
+pub fn chafa_size_arg() -> String {
+    format!("{LOGO_MAX_COLS}x{LOGO_MAX_ROWS}")
 }
 
 static CHAFA_SUPPORTS_PROBE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
@@ -298,7 +448,7 @@ pub fn print_with_chafa(path: &std::path::Path) -> bool {
     cmd.arg("--format")
         .arg("symbols")
         .arg("--size")
-        .arg("28x10");
+        .arg(chafa_size_arg());
 
     if chafa_supports_probe() {
         cmd.arg("--probe").arg("off");
@@ -328,7 +478,7 @@ pub fn get_chafa_logo_lines(path: &std::path::Path) -> Option<Vec<String>> {
     cmd.arg("--format")
         .arg("symbols")
         .arg("--size")
-        .arg("28x10");
+        .arg(chafa_size_arg());
 
     if chafa_supports_probe() {
         cmd.arg("--probe").arg("off");
@@ -435,11 +585,28 @@ pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool, chaf
 #[cfg(feature = "graphics")]
 pub fn print_iterm2_logo(image_data: &[u8]) {
     use base64::Engine;
+
+    let (width, height) = image::load_from_memory(image_data)
+        .map(|img| (img.width(), img.height()))
+        .unwrap_or((0, 0));
+
     let encoded = base64::engine::general_purpose::STANDARD.encode(image_data);
-    print!(
-        "\x1b]1337;File=inline=1;height=10;preserveAspectRatio=1:{}\x07",
-        encoded
-    );
+
+    // `width`/`height` are in character cells here; `preserveAspectRatio=1` makes them a
+    // bounding box rather than a target, so the image is never distorted. Passing both (not
+    // just `height`) keeps the drawn footprint inside the width `plan_layout` reserved.
+    if width > 0 && height > 0 {
+        let fit = logo_cells_for(width, height);
+        print!(
+            "\x1b]1337;File=inline=1;width={};height={};preserveAspectRatio=1:{}\x07",
+            fit.cols, fit.rows, encoded
+        );
+    } else {
+        print!(
+            "\x1b]1337;File=inline=1;height={};preserveAspectRatio=1:{}\x07",
+            LOGO_MAX_ROWS, encoded
+        );
+    }
     println!(); // iTerm2 typically needs a newline after the logo
 }
 
@@ -471,9 +638,14 @@ pub fn print_graphical_logo(image_data: &[u8]) {
     let encoded = base64::engine::general_purpose::STANDARD.encode(image_data);
 
     if width > 0 && height > 0 {
+        // Kitty *forces* the image into whatever placement rectangle it is given, so the
+        // spec carries only the limiting dimension and lets Kitty derive the other from the
+        // image's aspect ratio. The old hardcoded `c=26,r=10` is what squashed the 3.56:1
+        // Fedora logo into a roughly 1:1 box.
+        let spec = kitty_placement_spec(logo_cells_for(width, height));
         println!(
-            "\x1b_Gf=100,s={},v={},c=26,r=10,a=T;{}\x1b\\",
-            width, height, encoded
+            "\x1b_Gf=100,s={},v={},{},a=T;{}\x1b\\",
+            width, height, spec, encoded
         );
     } else {
         println!("\x1b_Gf=100,a=T;{}", encoded);
@@ -484,7 +656,16 @@ pub fn print_graphical_logo(image_data: &[u8]) {
 #[cfg(feature = "graphics")]
 pub fn print_sixel_logo(image_data: &[u8]) {
     if let Ok(img) = image::load_from_memory(image_data) {
-        let resized = img.resize(240, 200, image::imageops::FilterType::Triangle);
+        // Size the sixel to the same cell box the layout reserved, in pixels. `resize` already
+        // preserves aspect ratio (it fits within the box), so this only ever shrinks the image
+        // to the footprint `plan_layout` was told about.
+        let fit = logo_cells_for(img.width(), img.height());
+        let (cell_w, cell_h) = terminal_cell_size_px();
+        let resized = img.resize(
+            (fit.cols * cell_w) as u32,
+            (fit.rows * cell_h) as u32,
+            image::imageops::FilterType::Triangle,
+        );
         let rgba = resized.to_rgba8();
         let (width, height) = rgba.dimensions();
         print_sixel_rgba(rgba.as_raw(), width, height);
@@ -649,7 +830,11 @@ mod tests {
 
     #[test]
     fn test_supports_iterm2_heuristics() {
-        let _guard = EnvGuard::new(&["TERM_PROGRAM"]);
+        // TERM must be guarded and cleared as well as TERM_PROGRAM: `supports_iterm2` consults
+        // it via `is_rio_terminal`, so without this the *host's* TERM leaks in and the negative
+        // assertions below fail on a Rio box while passing everywhere else.
+        let _guard = EnvGuard::new(&["TERM", "TERM_PROGRAM"]);
+        std::env::remove_var("TERM");
 
         // Test TERM_PROGRAM=iTerm.app
         std::env::set_var("TERM_PROGRAM", "iTerm.app");
@@ -800,5 +985,115 @@ mod tests {
         let garuda = get_ascii_logo(Some("garuda"));
         assert!(!garuda.is_empty());
         assert!(garuda.iter().any(|line| line.contains("888:8898898")));
+    }
+
+    // ── Rio detection (TERM as well as TERM_PROGRAM) ──────────────────────────
+
+    #[test]
+    fn test_rio_detected_from_term_when_term_program_is_absent() {
+        // The sudo case: `env_reset` keeps TERM but drops TERM_PROGRAM, which used to cost
+        // Rio all graphics support and fall through to Chafa.
+        let _guard = EnvGuard::new(&["TERM", "TERMINAL_EMULATOR", "TERM_PROGRAM"]);
+        std::env::remove_var("TERM_PROGRAM");
+        std::env::remove_var("TERMINAL_EMULATOR");
+        std::env::set_var("TERM", "xterm-rio");
+
+        assert!(is_rio_terminal());
+        assert!(supports_kitty());
+        assert!(supports_iterm2());
+        assert!(supports_sixel());
+    }
+
+    #[test]
+    fn test_rio_still_detected_from_term_program() {
+        // The pre-existing path must keep working when TERM says nothing useful.
+        let _guard = EnvGuard::new(&["TERM", "TERMINAL_EMULATOR", "TERM_PROGRAM"]);
+        std::env::remove_var("TERMINAL_EMULATOR");
+        std::env::set_var("TERM", "xterm-256color");
+        std::env::set_var("TERM_PROGRAM", "rio");
+
+        assert!(is_rio_terminal());
+        assert!(supports_kitty());
+    }
+
+    #[test]
+    fn test_non_rio_term_is_not_matched() {
+        // Guard against a loose substring match: these must not be taken for Rio.
+        let _guard = EnvGuard::new(&["TERM", "TERMINAL_EMULATOR", "TERM_PROGRAM"]);
+        std::env::remove_var("TERM_PROGRAM");
+        std::env::remove_var("TERMINAL_EMULATOR");
+        for term in ["xterm-256color", "screen", "linux", "rioja"] {
+            std::env::set_var("TERM", term);
+            assert!(!is_rio_terminal(), "{term} should not be detected as Rio");
+        }
+    }
+
+    // ── fit_logo_cells ────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_fit_logo_cells_preserves_aspect_for_wide_image() {
+        // fedora.png is 384x108 (3.56:1). In 10x20px cells a 45x10 box is 450x200px, so the
+        // image is width-limited: 450px wide -> 450*108/384 = 126px tall -> 7 rows.
+        // The old hardcoded c=26,r=10 forced it into 260x200px, a ~3x vertical stretch.
+        let fit = fit_logo_cells(384, 108, 10, 20, 45, 10);
+        assert_eq!(fit.cols, 45);
+        assert_eq!(fit.rows, 7);
+        assert!(fit.width_limited);
+        // A wide image is pinned by width, so Kitty is told the width and derives the height.
+        assert_eq!(kitty_placement_spec(fit), "c=45");
+    }
+
+    #[test]
+    fn test_fit_logo_cells_preserves_aspect_for_tall_image() {
+        // debian.png is 291x384 (0.76:1) — height-limited, so it must not claim the full width.
+        let fit = fit_logo_cells(291, 384, 10, 20, 45, 10);
+        assert_eq!(fit.rows, 10);
+        assert!(
+            fit.cols < 45,
+            "tall image should not fill the width, got {}",
+            fit.cols
+        );
+        assert!(!fit.width_limited);
+        assert_eq!(kitty_placement_spec(fit), "r=10");
+    }
+
+    #[test]
+    fn test_fit_logo_cells_accounts_for_non_square_cells() {
+        // A square image in 1:2 cells must come back twice as wide as it is tall, otherwise
+        // it renders visibly squashed. Same image, square cells, stays square.
+        let fit = fit_logo_cells(256, 256, 10, 20, 45, 10);
+        assert_eq!((fit.cols, fit.rows), (20, 10));
+        let sq = fit_logo_cells(256, 256, 10, 10, 45, 10);
+        assert_eq!((sq.cols, sq.rows), (10, 10));
+    }
+
+    #[test]
+    fn test_fit_logo_cells_never_exceeds_the_box() {
+        // Whatever the aspect, the result must fit the budget plan_layout was given.
+        for (w, h) in [(384, 108), (291, 384), (256, 256), (4000, 3), (3, 4000)] {
+            let fit = fit_logo_cells(w, h, 10, 20, 45, 10);
+            assert!((1..=45).contains(&fit.cols), "{w}x{h} -> {} cols", fit.cols);
+            assert!((1..=10).contains(&fit.rows), "{w}x{h} -> {} rows", fit.rows);
+        }
+    }
+
+    #[test]
+    fn test_fit_logo_cells_handles_degenerate_input() {
+        // Unreadable image dimensions or a terminal reporting zero-size cells must not panic
+        // or divide by zero.
+        for fit in [
+            fit_logo_cells(0, 0, 10, 20, 45, 10),
+            fit_logo_cells(384, 108, 0, 20, 45, 10),
+            fit_logo_cells(384, 108, 10, 0, 45, 10),
+        ] {
+            assert_eq!((fit.cols, fit.rows), (45, 10));
+        }
+    }
+
+    #[test]
+    fn test_chafa_size_arg_matches_the_shared_box() {
+        // Chafa and the graphical protocols must budget the same footprint.
+        assert_eq!(chafa_size_arg(), format!("{LOGO_MAX_COLS}x{LOGO_MAX_ROWS}"));
+        assert_eq!(chafa_size_arg(), "45x10");
     }
 }
