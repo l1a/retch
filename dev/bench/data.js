@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786500013779,
+  "lastUpdate": 1786500415104,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7445,90 +7445,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "dbfa98155bcaa5b4a0415343af370f5580c7bc69",
-          "message": "Merge pull request #131 from l1a/feat/output-mode-strata\n\nfeat: add --full mode, restructure output strata (v0.3.31)",
-          "timestamp": "2026-06-29T15:47:51-07:00",
-          "tree_id": "387cdab8aa181c79bc2a9d112600cd183d385188",
-          "url": "https://github.com/l1a/retch/commit/dbfa98155bcaa5b4a0415343af370f5580c7bc69"
-        },
-        "date": 1782774124489,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 905618704.55,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 974.7034842874916,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 48.02471635244482,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946565884975487,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.99585376979937,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7724.380233445462,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 70437.97500655249,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4723.609905282734,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4801.500851876671,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1222981.1251408004,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 345.9747655702774,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 269.2367513517805,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -11633,6 +11549,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 285.6494663055088,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9d27af8746fe0e349822f3272031e94e03589b50",
+          "message": "chore: bump 3 deps (consolidated Dependabot #188) (#190)\n\nRolls Dependabot #188 onto a gated branch so the release hygiene it\nbypasses — version bump, NOTES entry, man regen — is actually done,\nfollowing the #167/v0.6.3 and #184/v0.6.16 pattern.\n\nAll patch-level and lockfile-only; every spec is a caret range, so both\nCargo.toml manifests are untouched:\n\n  clap           4.6.5 -> 4.6.6  (pulls clap_builder 4.6.5 -> 4.6.6)\n  clap_complete  4.6.8 -> 4.6.9\n  rusqlite       0.40.1 -> 0.40.2 (pulls libsqlite3-sys 0.38.1 -> 0.38.2)\n\nThe lockfile was diff-verified byte-identical to Dependabot's before the\nversion bump, so this carries exactly the change its green CI validated;\nafterwards the only divergence is retch-cli's own version line.\n\nrusqlite warranted a live check rather than just a green suite: it is a\ndirect dependency of retch-sysinfo and the crate v0.6.18's Packages fix\nhad just started using differently, and libsqlite3-sys bundles SQLite\nitself, so a bump changes the engine that has to honour `immutable=1`.\nThe rpm_db_uri unit tests only assert string construction and could not\ncatch a behavioural change there. Verified live as an unprivileged user:\nPackages: 2509, unchanged.\n\nretch-cli -> 0.6.19; retch-sysinfo unchanged at 0.1.53 (no source\nchange, only its transitive lockfile deps moved).\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-11T18:52:53-07:00",
+          "tree_id": "0f8eb7815bf12c631f95919caaeb1e89e3549096",
+          "url": "https://github.com/l1a/retch/commit/9d27af8746fe0e349822f3272031e94e03589b50"
+        },
+        "date": 1786500413465,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 802876761.95,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1009.0730126574856,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 107.76742704111086,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9466584315522977,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 53.01148643676578,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7884.2618986165135,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71742.60842114822,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4842.785679671009,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4918.930247191823,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1064421.976081432,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 350.4216208811667,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 270.90382890258695,
             "unit": "ns"
           }
         ]
