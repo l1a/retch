@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786496770082,
+  "lastUpdate": 1786497153359,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -11598,80 +11598,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "400f31e6f99e05724137adc0e67d046233010752",
-          "message": "feat: switch weather backend to Open-Meteo (v0.3.30) (#130)\n\n* feat: switch weather to Open-Meteo + ipinfo.io\n\nReplace wttr.in (World Weather Online backend) with:\n- Open-Meteo for temperature/WMO weather code (geocoding API + forecast API)\n- ipinfo.io for IP-based auto-location fallback\n\nAdds `weather_unit` config/CLI option (\"fahrenheit\"/\"celsius\").\nWMO weather codes are mapped to emojis.\n\nAssisted-By: Claude Sonnet 4.6\n\n* docs+test: improve weather.rs coverage and docs\n\n- Doc comments on detect_weather, curl_get, wmo_to_emoji, WeatherUnit variants\n- Expand wmo_to_emoji test to cover all major WMO code ranges + fallback\n- Add parse_coords edge cases: spaces around comma, out-of-range lat/lon\n- Add geolocate_ip display-name tests (US, non-US, no-city) without network\n\nAssisted-By: Claude Sonnet 4.6\n\n* chore: bump to v0.3.30, update docs and man page\n\nVersion: 0.3.29 â†’ 0.3.30 / retch-sysinfo 0.1.29 â†’ 0.1.30\nNOTES.md: Current State header + v0.3.30 release log entry\nREADME.md: fix weather config comment, add weather_unit key\ndocs/retch.1: regenerated\n\nAssisted-By: Claude Sonnet 4.6\n\n* docs: add weather-location to tldr page\n\nAssisted-By: Claude Sonnet 4.6\n\n* docs: note tldr upstream submission on hold\n\nUpstream tldr-pages submission denied pending community traction.\nKeep docs/retch.md and just tldr-release workflow maintained but\ndo not submit upstream until further notice.\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: add --weather-unit CLI flag\n\nWas wired through config but never added to the Cli struct.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-29T13:54:42-07:00",
-          "tree_id": "2f9c12cc5e33db065dd02eb01cd157c8227985d1",
-          "url": "https://github.com/l1a/retch/commit/400f31e6f99e05724137adc0e67d046233010752"
-        },
-        "date": 1782767711478,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 947643622.8,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 375.95952140220226,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 60.34856204907294,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.6744534556314103,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 66.93358205128564,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 4185.91656690022,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 972.821536242782,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 397.1041237068242,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 71861.88473929084,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 383.4388511544067,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "dbfa98155bcaa5b4a0415343af370f5580c7bc69",
           "message": "Merge pull request #131 from l1a/feat/output-mode-strata\n\nfeat: add --full mode, restructure output strata (v0.3.31)",
           "timestamp": "2026-06-29T15:47:51-07:00",
@@ -15281,6 +15207,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 489.3486493568174,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1d0dc367f9ad44e2a04cc045891998fa9d9b1aae",
+          "message": "fix: unprivileged Packages, sudo Rio, logo aspect (#189)\n\nThree defects found by diffing `sudo retch --full` against a plain run.\n\nPackages appeared only under sudo. The RPM SQLite database was opened\nread-write; it is root-owned inside a root-owned directory, so SQLite\ncould not create its journal sidecars and every *query* failed with\n\"attempt to write a readonly database\" — not the open(), which is why\nthe existing warning never fired and the field vanished silently. Now\nopened read-only over a `file:...?immutable=1` URI, and the query error\nis reported instead of swallowed.\n\nRio lost all graphics support under sudo: it was identified only by\nTERM_PROGRAM, which env_reset drops. `is_rio_terminal` now also accepts\nTERM=rio/xterm-rio, which sudo preserves.\n\nThe Kitty logo was stretched ~3x vertically. `c=26,r=10` was hardcoded\nand Kitty forces an image into that rectangle, while display.rs assumed\na fixed 40-column width and derived the row count a third way. A single\npure `fit_logo_cells` now feeds all three protocol emitters and\nplan_layout. Passing both correct values still left a 9% stretch from\ncell quantisation, so the Kitty spec carries only the limiting dimension\nand lets Kitty derive the other — measured 0.0% aspect error in a PTY.\n\nThe chafa box widens 28 -> 45 columns (row cap unchanged at 10) so wide\nlockup assets stay legible: the Fedora logo goes from 4 rows to 7. The\nside-by-side threshold is unaffected (45 + 45 <= 95), pinned by a test.\n\nAlso fixes a test-isolation defect the change exposed: once\nsupports_iterm2 read TERM, the host's TERM leaked into a test that\nguarded only TERM_PROGRAM, failing on a Rio box and passing on CI.\n\nDocuments the privilege trade-off in both directions (root-only\nphys-mem and btrfs snapshot counts; user-only editor/desktop/wm) in a\nnew NOTES section, README, and a man-page PRIVILEGES section.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-11T17:52:19-07:00",
+          "tree_id": "9996d32ff3728e9292ad474ad37e12907763f637",
+          "url": "https://github.com/l1a/retch/commit/1d0dc367f9ad44e2a04cc045891998fa9d9b1aae"
+        },
+        "date": 1786497150338,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 910868170.75,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 417.7428513426963,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 131.4716419925765,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.8186735280112891,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 65.46295974921475,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5031.003016410074,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1037.2390512175348,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 393.32767145434144,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 87685.10487554627,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 350.60965715830565,
             "unit": "ns"
           }
         ]
