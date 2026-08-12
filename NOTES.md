@@ -96,7 +96,28 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.18)
+## Current State (v0.6.19)
+- **v0.6.19 — dependency bumps (consolidated Dependabot #188)** (chore; no runtime behavior
+  change). Rolls Dependabot's PR onto a gated branch so the release hygiene it bypasses —
+  version bump, NOTES entry, man regen — is actually done, following the #167/v0.6.3 and
+  #184/v0.6.16 pattern.
+  - **3 direct crates + 2 transitive** (`cargo-dependencies` group, #188), all patch-level and
+    **lockfile-only** — every spec is a caret range, so both `Cargo.toml` manifests are
+    untouched: `clap` 4.6.5→4.6.6 (pulls `clap_builder` 4.6.5→4.6.6), `clap_complete`
+    4.6.8→4.6.9, `rusqlite` 0.40.1→0.40.2 (pulls `libsqlite3-sys` 0.38.1→0.38.2). The
+    resulting `Cargo.lock` was **diff-verified byte-identical** to what Dependabot generated on
+    #188, so this carries exactly the change its green CI validated.
+  - **`rusqlite` warranted a live check, not just a green suite.** It is a *direct* dependency
+    of `retch-sysinfo` and the crate v0.6.18's `Packages` fix had just started using
+    differently (`open_with_flags` + `SQLITE_OPEN_READ_ONLY | SQLITE_OPEN_URI |
+    SQLITE_OPEN_NO_MUTEX` over a `file:…?immutable=1` URI). `libsqlite3-sys` also bundles
+    SQLite itself, so a bump changes the engine that has to honour `immutable=1` — and the
+    `rpm_db_uri` unit tests only assert string construction, so they could not catch a
+    behavioural change there. Verified live as an unprivileged user: `Packages: 2509`,
+    unchanged. **Any future `rusqlite`/`libsqlite3-sys` bump deserves the same one-command
+    check** — `retch --fields packages` without sudo.
+  - `retch-cli` → 0.6.19; `retch-sysinfo` unchanged at `0.1.53` (no source change — only its
+    transitive lockfile deps moved, same call as v0.6.3). Patch bump.
 - **v0.6.18 — `Packages` without root, Rio detection under `sudo`, and aspect-correct logo
   scaling** (`crates/sysinfo/src/packages.rs`, `src/logo.rs`, `src/display.rs`). Three
   user-reported defects, all found by diffing a `sudo retch --full` run against a plain one
