@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786580352447,
+  "lastUpdate": 1786580774359,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7445,90 +7445,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "9f54423ddcf00725127f8a6939746d86d36aa426",
-          "message": "chore: ignore memory/ directory\n\nAssisted-By: claude-sonnet-4-6",
-          "timestamp": "2026-06-29T15:56:30-07:00",
-          "tree_id": "77f45ad8edfdbec0879df29d0d4e640cbfc2c21c",
-          "url": "https://github.com/l1a/retch/commit/9f54423ddcf00725127f8a6939746d86d36aa426"
-        },
-        "date": 1782774645757,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 914614267.8,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 971.3501963356587,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.895073590125506,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946759184768442,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.943596057807866,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7766.3460641362135,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 70432.6709750387,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4721.9064412401585,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4807.590705773264,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1220656.123305726,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 345.3974489451918,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 264.338597377798,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -11633,6 +11549,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 270.90382890258695,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fbd76828105384492815f283cc8351f68368cb56",
+          "message": "Fix nushell completion path; adopt shared helpers (#191)\n\ninstall_completions.py wrote nushell completions to\n$XDG_CONFIG_HOME/nushell/autoload. On Windows\n$nu.user-autoload-dirs is exactly %APPDATA%\\nushell\\autoload and\nnushell never reads the XDG path, so the helper wrote a real file\nsomewhere nothing consults, printed the path, and delivered nothing.\n\nTwo more defects in the same helper: it logged a generation failure\nto stderr, continued, and then printed \"Installed completions for\nretch:\" unconditionally -- success reported over work not done; and\nnothing checked whether zsh would ever load the file (it reads only\ndirectories on fpath, and site-functions is not on it by default).\nIt now checks, via an INTERACTIVE zsh, since a non-interactive one\nreports the built-in default.\n\nThis repo's MECHANISM was right and is now the standard. v0.6.16\nmoved these recipes to Python so they run natively on Windows\nwithout Git's usr\\bin; rusticprofile first proposed replacing them\nwith sh recipes because it held the correctness fixes, which would\nhave regressed that work in the name of consistency. Each repo had\nsolved half the problem.\n\ninstall_completions.py and install_man.py are now vendored\nbyte-identically across retch, rusticprofile and etr, with\ntemplates/justfile-common.just as the Justfile block reference.\nstandard-check runs their self-tests -- not a text diff, since\nseparate repos cannot diff each other's files and a diff would pass\non a repo that never adopted the standard -- and check depends on it.\n\nAlso adds install-tag VERSION, which installs a released tag with\nbinary, completions (from the INSTALLED binary) and man page (from\nthe tag) so the three cannot disagree.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-12T17:11:38-07:00",
+          "tree_id": "52f09d8ff2178e92d32e22dc2177be6643ec678b",
+          "url": "https://github.com/l1a/retch/commit/fbd76828105384492815f283cc8351f68368cb56"
+        },
+        "date": 1786580772757,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 997512798.95,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1007.9046242953889,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 107.9292353661862,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9465959641620456,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 53.10777767850031,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7801.888930485409,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71862.95979140457,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4833.974292800873,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4893.320334149974,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1062916.462333363,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 350.65171000412585,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 292.17984087159635,
             "unit": "ns"
           }
         ]
