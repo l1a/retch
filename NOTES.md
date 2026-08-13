@@ -96,7 +96,34 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.20)
+## Current State (v0.6.21)
+- **v0.6.21 — two gates that could not be satisfied from the situation they failed in**
+  (tooling only; no runtime change, `retch-sysinfo` unchanged at `0.1.53`). Both were hit by hand
+  while landing v0.6.20, and both are fixes `rusticprofile` already had.
+  - **`just pr` ended in a bare `read`, so nothing but a human at a terminal could answer it.** A
+    script, CI job or agent either blocked on a stdin that would never answer or died without
+    saying why — and that failure reads as *the gate refusing the change*, not as a question
+    nobody could hear. It now takes its answer from `PR_CONFIRM`, from an interactive stdin, or
+    from piped input under a ten-second bound, and the failure message **names `PR_CONFIRM`**.
+    It is not a bypass: all four paths still require an explicit `y`, so this widens *who can
+    answer*, not *what counts as an answer* — and the checklist must still be answered after
+    each item is actually checked.
+  - **`just open-pr` did not push, so on a never-pushed branch it printed "Gate passed" and then
+    failed.** `gh pr create` had no remote branch to open from. The observable result was a
+    command that announced the gate passing and then exited non-zero, which reads as the gate
+    rejecting work it had just approved. It now pushes **only when there is no upstream** —
+    pushing unconditionally would silently publish existing commits on a branch that already has
+    one, a different and more surprising act. `pre-push` still runs `just check`, so this cannot
+    publish a branch the gate would refuse; the push is inside the gate, not around it.
+  - **Both were verified on this PR itself**, which is the only honest test for the second one:
+    the branch had no upstream when `open-pr` ran, and that condition cannot be reproduced after
+    the fact.
+  - *Why these existed at all:* they are `rusticprofile`'s `0.0.21` and `0.2.12`, which retch
+    never received — the same cross-repo staleness that left the nushell completion path wrong
+    here for months and that v0.6.20's `standard-check` now guards for the install family. The
+    `pr`/`open-pr` triad is **not** yet covered by that standard; `templates/justfile-common.just`
+    records it as out of scope, because these recipes legitimately differ per repo.
+  - `retch-cli` → 0.6.21. Patch bump.
 - **v0.6.20 — nushell completions went where Windows nushell never looks; the install helpers
   become a checked cross-repo standard** (tooling only; no runtime behavior change,
   `retch-sysinfo` unchanged at `0.1.53`).
