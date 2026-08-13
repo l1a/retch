@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786581185736,
+  "lastUpdate": 1786581861052,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15349,70 +15349,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "9f54423ddcf00725127f8a6939746d86d36aa426",
-          "message": "chore: ignore memory/ directory\n\nAssisted-By: claude-sonnet-4-6",
-          "timestamp": "2026-06-29T15:56:30-07:00",
-          "tree_id": "77f45ad8edfdbec0879df29d0d4e640cbfc2c21c",
-          "url": "https://github.com/l1a/retch/commit/9f54423ddcf00725127f8a6939746d86d36aa426"
-        },
-        "date": 1782775766927,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 124.47795548224656,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.31996830140735,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 123.81405080133717,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 95.89234846899635,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 41880.493411980715,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 625.6682875274502,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 839.6538086844819,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3706800220,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -18537,6 +18473,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3168153935,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fbd76828105384492815f283cc8351f68368cb56",
+          "message": "Fix nushell completion path; adopt shared helpers (#191)\n\ninstall_completions.py wrote nushell completions to\n$XDG_CONFIG_HOME/nushell/autoload. On Windows\n$nu.user-autoload-dirs is exactly %APPDATA%\\nushell\\autoload and\nnushell never reads the XDG path, so the helper wrote a real file\nsomewhere nothing consults, printed the path, and delivered nothing.\n\nTwo more defects in the same helper: it logged a generation failure\nto stderr, continued, and then printed \"Installed completions for\nretch:\" unconditionally -- success reported over work not done; and\nnothing checked whether zsh would ever load the file (it reads only\ndirectories on fpath, and site-functions is not on it by default).\nIt now checks, via an INTERACTIVE zsh, since a non-interactive one\nreports the built-in default.\n\nThis repo's MECHANISM was right and is now the standard. v0.6.16\nmoved these recipes to Python so they run natively on Windows\nwithout Git's usr\\bin; rusticprofile first proposed replacing them\nwith sh recipes because it held the correctness fixes, which would\nhave regressed that work in the name of consistency. Each repo had\nsolved half the problem.\n\ninstall_completions.py and install_man.py are now vendored\nbyte-identically across retch, rusticprofile and etr, with\ntemplates/justfile-common.just as the Justfile block reference.\nstandard-check runs their self-tests -- not a text diff, since\nseparate repos cannot diff each other's files and a diff would pass\non a repo that never adopted the standard -- and check depends on it.\n\nAlso adds install-tag VERSION, which installs a released tag with\nbinary, completions (from the INSTALLED binary) and man page (from\nthe tag) so the three cannot disagree.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-12T17:11:38-07:00",
+          "tree_id": "52f09d8ff2178e92d32e22dc2177be6643ec678b",
+          "url": "https://github.com/l1a/retch/commit/fbd76828105384492815f283cc8351f68368cb56"
+        },
+        "date": 1786581857084,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 218.74624484387587,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.362273839682817,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 115.13530950212393,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 97.51865345689995,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42431.48907601673,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 604.0690252313206,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 844.4121881649102,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3264037250,
             "unit": "ns"
           }
         ]
