@@ -17,7 +17,7 @@ MAN_PAGES := "docs/retch.1"
 # vendored helpers, bump their versions, and propagate to the sibling repos in their own PRs.
 # `just standard-check` runs the helpers' self-tests and `just check` depends on it, so a
 # violation fails the build rather than being discovered years later.
-# >>> COMMON (template v2)
+# >>> COMMON (template v3)
 # The interpreter is resolved ONCE per line, and a missing one is a hard error. The
 # `python3 … 2>/dev/null || python …` idiom is deliberately NOT used: it retries on ANY
 # failure, so a real error inside the script gets re-run and reported as if the
@@ -88,6 +88,8 @@ standard-check:
     [ "{{PY}}" != "PYTHON-NOT-FOUND" ] || { echo "error: no python3/python on PATH" >&2; exit 1; }
     "{{PY}}" scripts/install_completions.py --self-test
     "{{PY}}" scripts/install_man.py --self-test
+    "{{PY}}" scripts/gate_conformance.py --self-test
+    "{{PY}}" scripts/gate_conformance.py "{{justfile()}}"
 # <<< COMMON
 
 # ===== PROJECT-SPECIFIC — everything below is this repo's own =====
@@ -297,6 +299,43 @@ merge-pr:
         echo "Error: You are already on main."
         exit 1
     fi
+    # Refuse to merge over a failing check.
+    #
+    # `gh pr merge` happily merges a red PR when the repository has no branch protection, and
+    # "wait for the checks to settle" is not "wait for them to pass". rusticprofile added this
+    # after PR #19 went in with a leg red; retch never had it, so every merge here has been
+    # ungated -- safe only because whoever merged happened to look first.
+    echo "Checking CI on this branch..."
+    STATES=$(gh pr view --json statusCheckRollup         --jq '[.statusCheckRollup[]? | select(.conclusion != "SKIPPED") | .conclusion]' 2>/dev/null || echo '[]')
+
+    # NO checks at all is not "green", and the arm below cannot tell the difference: an empty
+    # rollup matches neither "" nor FAILURE, so without this the recipe prints "CI is green."
+    # and merges a commit CI has never seen. That is not hypothetical -- it happened in
+    # rusticprofile on 2026-08-06, when GitHub stopped creating runs for pushed commits.
+    #
+    # Compared as a string rather than piped through `jq -e length`: `gh --jq` is gh's BUILT-IN
+    # jq, but an external `jq` is not on a default Windows PATH, and a gate that silently
+    # degrades where its dependency is missing is the thing being fixed, not a way to fix it.
+    if [ "$(printf '%s' "$STATES" | tr -d '[:space:]')" = "[]" ]; then
+        echo "Error: no checks have reported for this commit at all."
+        echo "       That is not the same as passing. GitHub sometimes fails to create a run;"
+        echo "       force one with: gh workflow run rust.yml --ref $BRANCH"
+        exit 1
+    fi
+
+    if echo "$STATES" | grep -q '""'; then
+        echo "Error: checks are still running. Wait for them, or merge deliberately with gh."
+        exit 1
+    fi
+
+    if echo "$STATES" | grep -qE 'FAILURE|TIMED_OUT|CANCELLED|ACTION_REQUIRED'; then
+        echo "Error: CI is not green on this branch:"
+        gh pr view --json statusCheckRollup             --jq '.statusCheckRollup[]? | select(.conclusion != "SKIPPED" and .conclusion != "SUCCESS") | "  \(.conclusion)  \(.name)"'
+        echo "Fix it, or merge deliberately with gh if you have a reason."
+        exit 1
+    fi
+    echo "CI is green."
+
     echo "Merging PR for branch $BRANCH..."
     gh pr merge --squash --delete-branch
     echo "Switching to main and pulling..."

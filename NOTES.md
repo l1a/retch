@@ -96,7 +96,37 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.22)
+## Current State (v0.6.23)
+- **v0.6.23 — `just merge-pr` had no CI gate, and now the triad is checked** (tooling only; no
+  runtime change, `retch-sysinfo` unchanged at `0.1.53`).
+  - **`merge-pr` went straight from the branch check to `gh pr merge --squash --delete-branch`.**
+    No inspection of the status rollup, in any form. `gh pr merge` will happily merge a red PR when
+    the repository has no branch protection, and "wait for the checks to settle" is not "wait for
+    them to pass". **Every merge in this repo has been ungated** — safe only because whoever merged
+    happened to look at CI first.
+  - `rusticprofile` added this gate in its `v0.1.5` after a PR went in with a leg red, and extended
+    it in `0.2.1` after an **empty** rollup passed vacuously — printing "CI is green." over a commit
+    CI had never seen, which happened for real when GitHub stopped creating runs for pushed commits.
+    Neither fix reached here. Same cross-repo staleness as the nushell completion path, this time on
+    the recipe that performs the irreversible act.
+  - Three refusals now: a failing check, an **empty** rollup (`nothing ran` is not `everything
+    passed`), and checks still running rather than racing them. The empty-rollup state is compared
+    as a **string** rather than through `jq -e length`, because `gh --jq` is gh's built-in jq while
+    an external `jq` is not on a default Windows PATH — and a gate that silently degrades where its
+    dependency is missing is the thing being fixed, not a way to fix it.
+  - **`scripts/gate_conformance.py` (template v3) is vendored, and `standard-check` runs it**, so
+    the guards cannot quietly disappear again. It asserts nine of them across `pr`, `open-pr` and
+    `merge-pr`, with **comments stripped first** — a comment explaining a guard must not satisfy the
+    check for a recipe that lost it.
+  - **It is structural, not behavioural**, and says so: it proves a guard is present, not that it
+    works. The install helpers are pure functions their self-test can call; these recipes run the
+    suite, push branches and merge PRs, so executing them from `check` would be slow and
+    destructive.
+  - **Verified by running it, safely:** on a branch with no PR the rollup is empty, so `merge-pr`
+    refuses and exits *before* reaching `gh pr merge` — which tests the gate without merging
+    anything. The jq expression was also checked by asking gh's own jq to parse it rather than
+    reasoning about backslash layers.
+  - `retch-cli` → 0.6.23. Patch bump.
 - **v0.6.22 — the manual Claude review was available and inert** (CI configuration only; one line
   removed, no runtime change, `retch-sysinfo` unchanged at `0.1.53`).
   - `v0.6.17` disabled automatic review by commenting out the `pull_request` trigger **and**
