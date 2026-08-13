@@ -6,6 +6,92 @@
 
 # Required for shebang recipes to receive *ARGS as real argv ($@) instead of
 # losing quoting via textual {{ARGS}} interpolation (see open-pr).
+# ===== PROJECT — the only part of the install family this repo owns =====
+#
+# The COMMON block below is written against these so it can be byte-identical across repos
+# that ship different binaries. `etr` sets BINS to two names; this repo has one.
+BINS      := "retch"
+MAN_PAGES := "docs/retch.1"
+
+# Do NOT edit inside the markers below. Edit templates/justfile-common.just and the two
+# vendored helpers, bump their versions, and propagate to the sibling repos in their own PRs.
+# `just standard-check` runs the helpers' self-tests and `just check` depends on it, so a
+# violation fails the build rather than being discovered years later.
+# >>> COMMON (template v2)
+# The interpreter is resolved ONCE per line, and a missing one is a hard error. The
+# `python3 … 2>/dev/null || python …` idiom is deliberately NOT used: it retries on ANY
+# failure, so a real error inside the script gets re-run and reported as if the
+# interpreter were the problem.
+PY := `command -v python3 || command -v python || echo PYTHON-NOT-FOUND`
+
+# Install from this checkout: binary, man page(s) and completions.
+#
+# The dependencies are the point. `cargo install` alone replaces the binary and leaves the
+# man page and completions at whatever version last ran their recipe — measured on a host
+# whose page was ELEVEN releases stale with nothing reporting it.
+install: install-man install-completions
+    cargo install --path .
+
+# Install a RELEASED tag: binary, man page(s) and completions, all three FROM THAT TAG.
+#
+# **It deliberately does NOT depend on `install-man`/`install-completions`**, because those
+# work from the checkout. Reusing them would pair a tag's binary with the worktree's man
+# page and completions — on a checkout one release ahead, a v0.2.22 binary with a v0.2.23
+# page. Mismatched artefacts that each look fine is the failure class this standard exists
+# to remove, so the three sources are made to agree: binary from the tag, completions from
+# THE INSTALLED BINARY (`--from-path`), man page from the tag (`--from-tag`).
+#
+# Never `--path`: on a Syncthing-shared checkout that builds from a directory other
+# machines write into. Takes a bare version and normalises a leading `v`.
+install-tag VERSION:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    V="{{VERSION}}"; V="${V#v}"
+    [ -n "$V" ] || { echo "error: install-tag needs a version, e.g. just install-tag 0.2.22" >&2; exit 1; }
+    git rev-parse -q --verify "refs/tags/v${V}" >/dev/null || {
+        echo "error: tag v${V} is not in this clone. Run: git fetch --tags" >&2; exit 1; }
+    REPO=$(git config --get remote.origin.url)
+    echo "Installing from tag v${V} of ${REPO}"
+    cargo install --git "$REPO" --tag "v${V}" --locked --force
+    # POST-CONDITION: cargo prints a replacement line, but only a version query proves which
+    # binary is on PATH now.
+    for b in {{BINS}}; do
+        command -v "$b" >/dev/null 2>&1 || { echo "error: $b is not on PATH after install" >&2; exit 1; }
+        echo "  $b -> $("$b" --version)"
+    done
+    "{{PY}}" scripts/install_man.py {{MAN_PAGES}} --from-tag "v${V}"
+    "{{PY}}" scripts/install_completions.py {{BINS}} --from-path
+
+# Install the man page(s) to the XDG man directory.
+install-man: man
+    @"{{PY}}" scripts/install_man.py {{MAN_PAGES}}
+
+# Generate and install shell completions for every binary.
+#
+# Python rather than a just recipe, which is retch's finding and the more portable
+# mechanism: no `sh`, no `cygpath`, no coreutils, nothing from Git's `usr\bin` on Windows.
+# A `bash` shebang recipe cannot run on Windows without `cygpath` at all, and even a plain
+# `sh` recipe still needs an `sh` on PATH.
+install-completions: build
+    @"{{PY}}" scripts/install_completions.py {{BINS}}
+
+# Prove the vendored helpers still behave the way the standard requires.
+#
+# **This runs the helpers' own self-tests rather than diffing text**, and that is the whole
+# point: three separate repositories cannot diff each other's files, but each can prove its
+# copy still behaves correctly — which is the property that was actually violated when two
+# repos quietly shipped the pre-fix nushell path for months. A text diff would also have
+# passed happily on a repo that had never adopted the standard at all.
+standard-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [ "{{PY}}" != "PYTHON-NOT-FOUND" ] || { echo "error: no python3/python on PATH" >&2; exit 1; }
+    "{{PY}}" scripts/install_completions.py --self-test
+    "{{PY}}" scripts/install_man.py --self-test
+# <<< COMMON
+
+# ===== PROJECT-SPECIFIC — everything below is this repo's own =====
+
 set positional-arguments := true
 
 # Default recipe
@@ -37,7 +123,7 @@ lint:
     cargo clippy --workspace -- -D warnings
 
 # Run strict checks (formatting and linting) as done in CI
-check:
+check: standard-check
     cargo fmt -- --check
     cargo clippy --workspace -- -D warnings
     # Also lint the optional `graphics` feature (base64/image/icy_sixel in src/logo.rs),
@@ -50,21 +136,9 @@ audit:
     @command -v cargo-audit >/dev/null || cargo install cargo-audit
     cargo audit
 
-# Install the binary, man page, and shell completions
-install: install-man install-completions
-    cargo install --path .
-
 # Generate man page from Markdown using mandown (requires: mandown)
 man:
     @python3 scripts/build_man.py 2>/dev/null || python scripts/build_man.py
-
-# Install man page to XDG user location (~/.local/share/man)
-install-man: man
-    @python3 scripts/install_man.py 2>/dev/null || python scripts/install_man.py
-
-# Install shell completions for all supported shells to XDG user locations
-install-completions: build
-    @python3 scripts/install_completions.py 2>/dev/null || python scripts/install_completions.py
 
 # Convert all SVGs to PNGs (used for embedded logos)
 logos:
