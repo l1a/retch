@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786595192377,
+  "lastUpdate": 1786595831207,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7440,90 +7440,6 @@ window.BENCHMARK_DATA = {
       {
         "commit": {
           "author": {
-            "email": "49699333+dependabot[bot]@users.noreply.github.com",
-            "name": "dependabot[bot]",
-            "username": "dependabot[bot]"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "c732fa42bbf646eaedff5b0000c0f3a94793f64f",
-          "message": "deps(deps): bump the cargo-dependencies group across 1 directory with 2 updates (#132)\n\nBumps the cargo-dependencies group with 2 updates in the / directory: [clap_complete](https://github.com/clap-rs/clap) and [anyhow](https://github.com/dtolnay/anyhow).\n\n\nUpdates `clap_complete` from 4.6.5 to 4.6.7\n- [Release notes](https://github.com/clap-rs/clap/releases)\n- [Changelog](https://github.com/clap-rs/clap/blob/master/CHANGELOG.md)\n- [Commits](https://github.com/clap-rs/clap/compare/clap_complete-v4.6.5...clap_complete-v4.6.7)\n\nUpdates `anyhow` from 1.0.102 to 1.0.103\n- [Release notes](https://github.com/dtolnay/anyhow/releases)\n- [Commits](https://github.com/dtolnay/anyhow/compare/1.0.102...1.0.103)\n\n---\nupdated-dependencies:\n- dependency-name: anyhow\n  dependency-version: 1.0.103\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: cargo-dependencies\n- dependency-name: clap_complete\n  dependency-version: 4.6.6\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: cargo-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
-          "timestamp": "2026-07-01T12:45:11-07:00",
-          "tree_id": "f6c62954a19f2b176352837922b1b5d311baa1e8",
-          "url": "https://github.com/l1a/retch/commit/c732fa42bbf646eaedff5b0000c0f3a94793f64f"
-        },
-        "date": 1782935948815,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 894989369.75,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 966.4621446985186,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 46.281676739817556,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9463866415698776,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 46.17294055607145,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7729.115561098649,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 71322.66490679297,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4758.7551102152665,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4832.643716994004,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1211602.4741953074,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 341.19543050328474,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 267.90440577557285,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -11633,6 +11549,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 276.5450522041592,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "25a63eba863ae9cb9fb41eafa2ad6a65e9c42b8a",
+          "message": "Gate merge-pr on CI; bring the triad under standard-check (#194)\n\n* Gate merge-pr on CI; check the triad\n\nmerge-pr went straight from the branch check to gh pr merge --squash\n--delete-branch, with no inspection of the status rollup. gh pr merge\nhappily merges a red PR when there is no branch protection, so every\nmerge in this repo has been ungated -- safe only because whoever merged\nhappened to look first.\n\nrusticprofile added this in v0.1.5 after a PR went in with a leg red,\nand extended it in 0.2.1 after an EMPTY rollup passed vacuously.\nNeither reached here.\n\nThree refusals now: a failing check, an empty rollup, and checks still\nrunning. The empty state is compared as a string rather than via jq -e\nlength, because an external jq is not on a default Windows PATH and a\ngate that degrades where its dependency is missing is the thing being\nfixed.\n\ngate_conformance.py (template v3) is vendored and run by\nstandard-check, so the guards cannot vanish again. It is structural,\nnot behavioural, and says so.\n\nVerified safely: on a branch with no PR the rollup is empty, so\nmerge-pr refuses before reaching gh pr merge.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-12T21:18:47-07:00",
+          "tree_id": "09cf28f2dd68d69de2931ed6e287f3ca4b42fd13",
+          "url": "https://github.com/l1a/retch/commit/25a63eba863ae9cb9fb41eafa2ad6a65e9c42b8a"
+        },
+        "date": 1786595829945,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 722727469,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1015.7052614926224,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 107.79516630897197,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.94671163975639,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 53.06407677174768,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7854.185377403519,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71534.85109595128,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4811.818695357251,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4911.227248918067,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1054349.5650604027,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 351.5395037530974,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 278.2426212708662,
             "unit": "ns"
           }
         ]
