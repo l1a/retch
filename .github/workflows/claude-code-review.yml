@@ -7,7 +7,21 @@ on:
 
 jobs:
   claude-review:
-    if: false
+    # NOTE: there is deliberately no `if: false` here.
+    #
+    # Until v0.6.22 this job carried one, on top of the commented-out `pull_request` trigger
+    # above. The trigger alone already stops automatic review on every PR -- which was the
+    # whole point -- so the guard added nothing there, and its only remaining effect was to
+    # neuter the manual path: `gh workflow run claude-code-review.yml` started a run, skipped
+    # this job, and reported SUCCESS having reviewed nothing.
+    #
+    # A green run that did nothing is the exact failure this repo's tooling exists to refuse,
+    # and it is the one the sibling repo recorded twice about this very action (a review job
+    # going green without reviewing). "Dispatch is available but silently inert" is worse than
+    # either honest alternative -- working, or absent.
+    #
+    # To review a PR on demand:
+    #     gh workflow run claude-code-review.yml --ref <branch>
     # Optional: Filter by PR author
     # if: |
     #   github.event.pull_request.user.login == 'external-contributor' ||
