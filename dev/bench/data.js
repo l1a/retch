@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786594632299,
+  "lastUpdate": 1786595181100,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18551,70 +18551,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "9f54423ddcf00725127f8a6939746d86d36aa426",
-          "message": "chore: ignore memory/ directory\n\nAssisted-By: claude-sonnet-4-6",
-          "timestamp": "2026-06-29T15:56:30-07:00",
-          "tree_id": "77f45ad8edfdbec0879df29d0d4e640cbfc2c21c",
-          "url": "https://github.com/l1a/retch/commit/9f54423ddcf00725127f8a6939746d86d36aa426"
-        },
-        "date": 1782776380952,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 104.53344379635253,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.948217222222436,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 105.3417008265715,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 79.7721726420975,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45667.37230546599,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 500.11003972439084,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 754.7489637862167,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3567373075,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -21739,6 +21675,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2996746880,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e5b9b5941c53dc4bcdc12aac4b5549e7d0ddf5f6",
+          "message": "Let the manual Claude review actually run (#193)\n\n* Let the manual Claude review actually run\n\nv0.6.17 disabled automatic review by commenting out the pull_request\ntrigger AND setting if: false on the job. The trigger alone already did\nthat, so the guard added nothing -- but it also applied to\nworkflow_dispatch, which was kept. So gh workflow run started a run,\nskipped the job, and reported SUCCESS having reviewed nothing.\n\nA green run that did nothing is the failure this repo's tooling exists\nto refuse, and the one rusticprofile recorded twice about this action.\nDispatch available but silently inert is worse than working or absent.\n\nAutomatic review stays OFF -- only the job guard is removed; the\npull_request trigger is still commented immediately above it.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-12T20:45:42-07:00",
+          "tree_id": "a129dbfd95e55ff45255a019bb60311bdfcf5738",
+          "url": "https://github.com/l1a/retch/commit/e5b9b5941c53dc4bcdc12aac4b5549e7d0ddf5f6"
+        },
+        "date": 1786595177214,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 178.35713141489336,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947798848977942,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 96.9539729448284,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.93094062801478,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47223.860366859124,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 488.3173522608,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 757.3713384287,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2048605605,
             "unit": "ns"
           }
         ]
