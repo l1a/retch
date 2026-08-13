@@ -382,8 +382,32 @@ pr:
     echo "  [ ] GitHub wiki cloned and updated (Configuration-and-Theming.md, Workspace-Architecture.md)"
     echo "  [ ] Upstream tldr page updated / docs/retch.md synced (if CLI flags changed)"
     echo ""
-    echo -n "All manual items confirmed? [y/N] "
-    read -r CONFIRM
+    # A bare `read` makes this gate unanswerable by anything that is not a human at a
+    # terminal: a script, CI job or agent either blocks on a stdin that will never answer or
+    # dies without saying why -- and that failure reads as the gate refusing the change rather
+    # than asking a question nobody could hear. Three sources of an answer, in order:
+    #
+    #   1. PR_CONFIRM in the environment -- the explicit answer for a non-interactive caller.
+    #      It is NOT a bypass: setting it is the same act of confirmation as typing y, just
+    #      recorded where a script can supply it. Answer it AFTER checking each item.
+    #   2. An interactive stdin -- a human, prompted exactly as before.
+    #   3. Neither, so read whatever was piped in, bounded by a timeout. `echo y | just pr`
+    #      keeps working, and a stdin that never answers costs ten seconds rather than hanging.
+    #
+    # The failure names PR_CONFIRM, because a gate that cannot be satisfied from the context it
+    # failed in is a wall rather than a gate.
+    if [ -n "${PR_CONFIRM:-}" ]; then
+        CONFIRM="$PR_CONFIRM"
+        echo "All manual items confirmed? [y/N] $CONFIRM   (answered by PR_CONFIRM)"
+    elif [ -t 0 ]; then
+        echo -n "All manual items confirmed? [y/N] "
+        read -r CONFIRM
+    else
+        echo -n "All manual items confirmed? [y/N] "
+        read -r -t 10 CONFIRM || CONFIRM=""
+        echo "$CONFIRM"
+        [ -n "$CONFIRM" ] || { echo -e "${RED}Aborted.${NC} No terminal to confirm the checklist on, and nothing on stdin. Re-run with PR_CONFIRM=y once each item above is actually checked."; exit 1; }
+    fi
     [ "$CONFIRM" = "y" ] || [ "$CONFIRM" = "Y" ] \
         || { echo -e "${RED}Aborted.${NC} Complete the checklist first."; exit 1; }
 
@@ -395,6 +419,22 @@ open-pr *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
     just pr
+
+    # Push the branch if it has no upstream yet. Without this, on a never-pushed branch
+    # `gh pr create` has no remote branch to open a PR from and fails non-interactively --
+    # AFTER the gate has printed "Gate passed", which reads as the gate refusing a change it
+    # had just approved.
+    #
+    # Deliberately ONLY when there is no upstream. Pushing unconditionally would make this
+    # recipe silently publish existing commits on a branch that already has one -- a different
+    # and more surprising act than "put this branch where gh can see it".
+    if ! git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' >/dev/null 2>&1; then
+        BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+        [ "$BRANCH" != HEAD ] || { echo "detached HEAD -- check out a branch first" >&2; exit 1; }
+        echo "no upstream for $BRANCH -- pushing it so gh has a remote branch to open from"
+        # pre-push runs `just check`, so this cannot publish a branch the gate would refuse.
+        git push -u origin "$BRANCH"
+    fi
     gh pr create "$@"
 
 # Generate a flamegraph for execution profiling (requires perf on Linux or dtrace on macOS)
