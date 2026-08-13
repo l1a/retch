@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786580774359,
+  "lastUpdate": 1786581185736,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -11647,80 +11647,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "9f54423ddcf00725127f8a6939746d86d36aa426",
-          "message": "chore: ignore memory/ directory\n\nAssisted-By: claude-sonnet-4-6",
-          "timestamp": "2026-06-29T15:56:30-07:00",
-          "tree_id": "77f45ad8edfdbec0879df29d0d4e640cbfc2c21c",
-          "url": "https://github.com/l1a/retch/commit/9f54423ddcf00725127f8a6939746d86d36aa426"
-        },
-        "date": 1782775066862,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1093782756.35,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 399.2918006295466,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 81.98973729027097,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.2740294398230705,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 72.39530657847385,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 6804.479617372177,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1683.0061456790577,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 482.4987296927835,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 113525.55297938905,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 396.26778377907925,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -15335,6 +15261,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 415.29372422988524,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fbd76828105384492815f283cc8351f68368cb56",
+          "message": "Fix nushell completion path; adopt shared helpers (#191)\n\ninstall_completions.py wrote nushell completions to\n$XDG_CONFIG_HOME/nushell/autoload. On Windows\n$nu.user-autoload-dirs is exactly %APPDATA%\\nushell\\autoload and\nnushell never reads the XDG path, so the helper wrote a real file\nsomewhere nothing consults, printed the path, and delivered nothing.\n\nTwo more defects in the same helper: it logged a generation failure\nto stderr, continued, and then printed \"Installed completions for\nretch:\" unconditionally -- success reported over work not done; and\nnothing checked whether zsh would ever load the file (it reads only\ndirectories on fpath, and site-functions is not on it by default).\nIt now checks, via an INTERACTIVE zsh, since a non-interactive one\nreports the built-in default.\n\nThis repo's MECHANISM was right and is now the standard. v0.6.16\nmoved these recipes to Python so they run natively on Windows\nwithout Git's usr\\bin; rusticprofile first proposed replacing them\nwith sh recipes because it held the correctness fixes, which would\nhave regressed that work in the name of consistency. Each repo had\nsolved half the problem.\n\ninstall_completions.py and install_man.py are now vendored\nbyte-identically across retch, rusticprofile and etr, with\ntemplates/justfile-common.just as the Justfile block reference.\nstandard-check runs their self-tests -- not a text diff, since\nseparate repos cannot diff each other's files and a diff would pass\non a repo that never adopted the standard -- and check depends on it.\n\nAlso adds install-tag VERSION, which installs a released tag with\nbinary, completions (from the INSTALLED binary) and man page (from\nthe tag) so the three cannot disagree.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-12T17:11:38-07:00",
+          "tree_id": "52f09d8ff2178e92d32e22dc2177be6643ec678b",
+          "url": "https://github.com/l1a/retch/commit/fbd76828105384492815f283cc8351f68368cb56"
+        },
+        "date": 1786581183204,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1047203360.45,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 468.85663438852873,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 146.2988750875451,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.7340624765939725,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 68.65999215840121,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4893.055632373771,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1101.4597954080266,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 434.8531247412196,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 73946.78036906457,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 385.533122681689,
             "unit": "ns"
           }
         ]
