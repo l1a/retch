@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786596226508,
+  "lastUpdate": 1786596867649,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15344,70 +15344,6 @@ window.BENCHMARK_DATA = {
       {
         "commit": {
           "author": {
-            "email": "49699333+dependabot[bot]@users.noreply.github.com",
-            "name": "dependabot[bot]",
-            "username": "dependabot[bot]"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "c732fa42bbf646eaedff5b0000c0f3a94793f64f",
-          "message": "deps(deps): bump the cargo-dependencies group across 1 directory with 2 updates (#132)\n\nBumps the cargo-dependencies group with 2 updates in the / directory: [clap_complete](https://github.com/clap-rs/clap) and [anyhow](https://github.com/dtolnay/anyhow).\n\n\nUpdates `clap_complete` from 4.6.5 to 4.6.7\n- [Release notes](https://github.com/clap-rs/clap/releases)\n- [Changelog](https://github.com/clap-rs/clap/blob/master/CHANGELOG.md)\n- [Commits](https://github.com/clap-rs/clap/compare/clap_complete-v4.6.5...clap_complete-v4.6.7)\n\nUpdates `anyhow` from 1.0.102 to 1.0.103\n- [Release notes](https://github.com/dtolnay/anyhow/releases)\n- [Commits](https://github.com/dtolnay/anyhow/compare/1.0.102...1.0.103)\n\n---\nupdated-dependencies:\n- dependency-name: anyhow\n  dependency-version: 1.0.103\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: cargo-dependencies\n- dependency-name: clap_complete\n  dependency-version: 4.6.6\n  dependency-type: direct:production\n  update-type: version-update:semver-patch\n  dependency-group: cargo-dependencies\n...\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
-          "timestamp": "2026-07-01T12:45:11-07:00",
-          "tree_id": "f6c62954a19f2b176352837922b1b5d311baa1e8",
-          "url": "https://github.com/l1a/retch/commit/c732fa42bbf646eaedff5b0000c0f3a94793f64f"
-        },
-        "date": 1782937073035,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 129.8901162113187,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 4.9247111430289365,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 129.58462323944468,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 92.5819884282003,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 42796.62184054007,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 562.4590636231352,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 817.7718602544851,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3987285920,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -18537,6 +18473,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2078161525,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "25a63eba863ae9cb9fb41eafa2ad6a65e9c42b8a",
+          "message": "Gate merge-pr on CI; bring the triad under standard-check (#194)\n\n* Gate merge-pr on CI; check the triad\n\nmerge-pr went straight from the branch check to gh pr merge --squash\n--delete-branch, with no inspection of the status rollup. gh pr merge\nhappily merges a red PR when there is no branch protection, so every\nmerge in this repo has been ungated -- safe only because whoever merged\nhappened to look first.\n\nrusticprofile added this in v0.1.5 after a PR went in with a leg red,\nand extended it in 0.2.1 after an EMPTY rollup passed vacuously.\nNeither reached here.\n\nThree refusals now: a failing check, an empty rollup, and checks still\nrunning. The empty state is compared as a string rather than via jq -e\nlength, because an external jq is not on a default Windows PATH and a\ngate that degrades where its dependency is missing is the thing being\nfixed.\n\ngate_conformance.py (template v3) is vendored and run by\nstandard-check, so the guards cannot vanish again. It is structural,\nnot behavioural, and says so.\n\nVerified safely: on a branch with no PR the rollup is empty, so\nmerge-pr refuses before reaching gh pr merge.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-12T21:18:47-07:00",
+          "tree_id": "09cf28f2dd68d69de2931ed6e287f3ca4b42fd13",
+          "url": "https://github.com/l1a/retch/commit/25a63eba863ae9cb9fb41eafa2ad6a65e9c42b8a"
+        },
+        "date": 1786596863637,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 226.538980419437,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.394215300538855,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 119.77216085916943,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 110.4103526638763,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 48397.5540875657,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 609.9875980283866,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 834.6100308363606,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3083114285,
             "unit": "ns"
           }
         ]
