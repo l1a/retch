@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786593187406,
+  "lastUpdate": 1786593392606,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15354,70 +15354,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "4bb9a9902ef41bd93902dc96ef9f1cc5468f1f9c",
-          "message": "chore: merge AGENTS.md with etr, document just pr gate (#133)\n\n* chore: merge AGENTS.md with etr, document just pr gate\n\nRestructure AGENTS.md into a Portable Core (kept in sync with etr's\nAGENTS.md) plus project-specific rules. Add NOTES.md read/update\ndiscipline and Core Developer Guidelines adopted from etr, and\ndocument exactly what the existing just pr gate automates.\n\nAssisted-By: Claude Sonnet 5\n\n* feat: add CLAUDE.md, require reading ~/AGENTS.md\n\nretch had no CLAUDE.md pointing agents at AGENTS.md; add one\n(relative link), matching the fixed version now in etr. Also add a\nGlobal Mandates item to the Portable Core requiring agents to read\n~/AGENTS.md before starting work, so cross-repo mandates aren't\nsilently skipped when only the repo AGENTS.md is consulted.\n\nAssisted-By: Claude Sonnet 5",
-          "timestamp": "2026-07-01T11:59:32-07:00",
-          "tree_id": "1a29b12394fae5b30b5d0d83a768c294938169ae",
-          "url": "https://github.com/l1a/retch/commit/4bb9a9902ef41bd93902dc96ef9f1cc5468f1f9c"
-        },
-        "date": 1782934323754,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 125.19082035718682,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.351418855526951,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 123.87490181290619,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 94.20448642886805,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 41717.41284923746,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 559.5439700610762,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 796.4832466985977,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3657632505,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "e6605afd7d4f8dbce3f984541177ffaffb57901b",
           "message": "fix: allow dependabot PRs to trigger claude-code-review (#134)\n\nclaude-code-action@v1 refuses to run for non-human actors by default,\nso every Dependabot PR (e.g. #132) hard-failed the claude-review\ncheck in ~10s before doing any actual review. Add\nallowed_bots: 'dependabot[bot]' scoped narrowly to Dependabot.\n\nAssisted-By: Claude Sonnet 5",
           "timestamp": "2026-07-01T12:19:47-07:00",
@@ -18537,6 +18473,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3264037250,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c1b99674ea9eded99c6558e78098409ebe6a78ac",
+          "message": "Make the pre-PR gate answerable; open-pr now pushes (#192)\n\n* Make the pre-PR gate answerable; open-pr now pushes\n\njust pr ended in a bare read, so only a human at a terminal could\nanswer it -- a script or agent blocked on a stdin that would never\nanswer, or died without saying why, and that reads as the gate refusing\nthe change. It now accepts PR_CONFIRM, an interactive stdin, or piped\ninput under a timeout, and names PR_CONFIRM when it cannot be answered.\nNot a bypass: every path still requires an explicit y.\n\njust open-pr did not push, so on a never-pushed branch it printed\n\"Gate passed\" and then failed because gh pr create had no remote\nbranch to open from. It now pushes only when there is no upstream --\npushing unconditionally would silently publish existing commits on a\nbranch that already has one. pre-push still runs just check, so the\npush is inside the gate rather than around it.\n\nBoth are rusticprofile's 0.0.21 and 0.2.12, which retch never received.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-12T20:24:18-07:00",
+          "tree_id": "7307c8c54022ab27b0b3e8ecfeab8995613e25ea",
+          "url": "https://github.com/l1a/retch/commit/c1b99674ea9eded99c6558e78098409ebe6a78ac"
+        },
+        "date": 1786593388568,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 213.12054756649985,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.406597559715065,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 121.90139885143076,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 98.84650348741597,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 43245.54229089133,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 679.6572549295431,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 839.965926381348,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2909613905,
             "unit": "ns"
           }
         ]
