@@ -96,7 +96,29 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.21)
+## Current State (v0.6.22)
+- **v0.6.22 — the manual Claude review was available and inert** (CI configuration only; one line
+  removed, no runtime change, `retch-sysinfo` unchanged at `0.1.53`).
+  - `v0.6.17` disabled automatic review by commenting out the `pull_request` trigger **and**
+    setting `if: false` on the `claude-review` job. The trigger alone already achieved the goal, so
+    the guard added nothing there — but it also applied to `workflow_dispatch`, which was kept. The
+    result: `gh workflow run claude-code-review.yml` started a run, **skipped the job, and reported
+    success having reviewed nothing.**
+  - **A green run that did nothing is the exact failure this repo's tooling exists to refuse**, and
+    it is the one `rusticprofile` recorded twice about this very action — `0.0.11` and `0.0.14`, both
+    about a review job going green *without reviewing*, and the reason its workflow now writes its
+    outcome to the step summary. "Dispatch is available but silently inert" is worse than either
+    honest alternative: working, or absent.
+  - **Nobody had been bitten**, which is why it survived: the dispatch had never been used. Every
+    run of that workflow in its history is a `pull_request` event predating `v0.6.17`.
+  - **Automatic review stays off.** Only the job guard is removed; the `pull_request` trigger
+    remains commented immediately above it, so restoring per-PR review is still uncommenting two
+    lines. The diff is one line deleted and a comment explaining why there is deliberately no guard
+    there — because the next person to "tidy up" this file needs to know the omission is the point.
+  - Brings retch in line with `rusticprofile` and `etr`, where the dispatch genuinely runs. Found
+    while auditing the three repos' workflows against each other, which is the same cross-repo
+    comparison that surfaced the nushell completion path.
+  - `retch-cli` → 0.6.22. Patch bump.
 - **v0.6.21 — two gates that could not be satisfied from the situation they failed in**
   (tooling only; no runtime change, `retch-sysinfo` unchanged at `0.1.53`). Both were hit by hand
   while landing v0.6.20, and both are fixes `rusticprofile` already had.
