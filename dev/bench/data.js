@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786592747074,
+  "lastUpdate": 1786593187406,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3235,90 +3235,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Linux x64 Benchmarks": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "e6605afd7d4f8dbce3f984541177ffaffb57901b",
-          "message": "fix: allow dependabot PRs to trigger claude-code-review (#134)\n\nclaude-code-action@v1 refuses to run for non-human actors by default,\nso every Dependabot PR (e.g. #132) hard-failed the claude-review\ncheck in ~10s before doing any actual review. Add\nallowed_bots: 'dependabot[bot]' scoped narrowly to Dependabot.\n\nAssisted-By: Claude Sonnet 5",
-          "timestamp": "2026-07-01T12:19:47-07:00",
-          "tree_id": "a345de40f93e702accd3928257b0d831789bd7c1",
-          "url": "https://github.com/l1a/retch/commit/e6605afd7d4f8dbce3f984541177ffaffb57901b"
-        },
-        "date": 1782934039295,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 908580024.3,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 1170.7997399614596,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 52.49754563674168,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 6.435522027307893,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 52.10507287884335,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 8862.301544315515,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 83351.33400830967,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 56714.81275842657,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 56284.51890646509,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 2236577.878957037,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 474.3035842830841,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 310.36779174278206,
-            "unit": "ns"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -7431,6 +7347,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 264.75690033645907,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e5b9b5941c53dc4bcdc12aac4b5549e7d0ddf5f6",
+          "message": "Let the manual Claude review actually run (#193)\n\n* Let the manual Claude review actually run\n\nv0.6.17 disabled automatic review by commenting out the pull_request\ntrigger AND setting if: false on the job. The trigger alone already did\nthat, so the guard added nothing -- but it also applied to\nworkflow_dispatch, which was kept. So gh workflow run started a run,\nskipped the job, and reported SUCCESS having reviewed nothing.\n\nA green run that did nothing is the failure this repo's tooling exists\nto refuse, and the one rusticprofile recorded twice about this action.\nDispatch available but silently inert is worse than working or absent.\n\nAutomatic review stays OFF -- only the job guard is removed; the\npull_request trigger is still commented immediately above it.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-12T20:45:42-07:00",
+          "tree_id": "a129dbfd95e55ff45255a019bb60311bdfcf5738",
+          "url": "https://github.com/l1a/retch/commit/e5b9b5941c53dc4bcdc12aac4b5549e7d0ddf5f6"
+        },
+        "date": 1786593185183,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 917094157.25,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 886.6489821139821,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 88.7488263278797,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 6.239368727130374,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 50.62503976185153,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7533.64805579747,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 72312.94706870694,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 48196.81972282771,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 48916.03667002529,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1348979.272942002,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 317.77799159225253,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 222.70155019412908,
             "unit": "ns"
           }
         ]
