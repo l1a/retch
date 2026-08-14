@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786730260038,
+  "lastUpdate": 1786730691797,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -11760,80 +11760,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "efde1f0505b401f804ea9e26c4968d6f1499ca8d",
-          "message": "chore: untap aws/tap in macOS benchmark CI (cosmetic) (#136)\n\nThe macOS benchmark job surfaces \"aws/tap is not trusted\" Homebrew\nwarnings as Actions annotations on every run, caused by a\npre-installed tap on the GitHub-hosted macos-latest runner image\nthat's unrelated to installing fastfetch/hyperfine. Nothing was\nfailing â€” this just declutters the Actions summary.\n\nAssisted-By: Claude Sonnet 5",
-          "timestamp": "2026-07-01T14:36:18-07:00",
-          "tree_id": "e1067f42e582559f8bd96b6325d3d25a663aece1",
-          "url": "https://github.com/l1a/retch/commit/efde1f0505b401f804ea9e26c4968d6f1499ca8d"
-        },
-        "date": 1782942966751,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 985712681.25,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 338.61706626426974,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 59.559885490955594,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.664046538345329,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 59.17245106114948,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 4118.722946307275,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 994.2558822884018,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 387.7573365565112,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 63273.62626921127,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 326.4219484459703,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "15176a3f82579e79a3b29d95a33a28f18bfc2bf9",
           "message": "feat: add btrfs and zpool storage fields (#137)\n\nAdds `btrfs` (label, subvolume, and used/allocated space per mount point,\nwith best-effort snapshot count) and `zpool` (ZFS pool allocation and\nhealth) fields, both gated behind --long and above. Closes the two\nStorage & Filesystems items in NOTES.md's fastfetch feature-gap list.\n\nAssisted-By: Claude Sonnet 5",
           "timestamp": "2026-07-01T15:30:08-07:00",
@@ -15443,6 +15369,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 361.6257196757857,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0fb38978e0182c24717fea4d8b4a80047b15d233",
+          "message": "Make packaging/aur the source, not a stale copy (#196)\n\npackaging/aur/PKGBUILD was a reference copy that nothing rendered, published or\nchecked. It reached eleven releases of lag (0.6.12 in-repo against 0.6.23\npublished), and because the copy was inert the live AUR PKGBUILD kept two\nman-page defects long after they were fixed here — Arch installs got a page\nfooted $DATE / retch $pkgver the whole time.\n\npackaging/aur is now the source. aur-bump renders it from a released tag,\naur-publish pushes exactly those files, and .SRCINFO is tracked and generated\nby a real makepkg --printsrcinfo in a container (no host here runs Arch).\nCarried over from rusticprofile: write to a temp file and move it into place so\na failure cannot truncate the committed file, check the output content rather\nthan the exit code, and mount :z never :Z.\n\nscripts/aur_check.py is the anti-drift guard and just check depends on it. It\ncompares the pair field-by-field including the expanded source URL, so it\ncatches a pair that agrees on the version and disagrees on the checksum — the\nshape that breaks on the user's machine and nowhere else. Pure Python, so it\nruns on Windows; parses rather than sourcing the PKGBUILD, and raises rather\nthan expanding unknown variables to empty.\n\nVerified end to end: the generated .SRCINFO came out byte-identical to the one\nhand-written and pushed to the AUR earlier today, and AUR_CONFIRM=n\njust aur-publish exercised every preflight check without publishing.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-14T10:43:28-07:00",
+          "tree_id": "0dcac6b08b8ab4bb34654fbcf6096f083db1f748",
+          "url": "https://github.com/l1a/retch/commit/0fb38978e0182c24717fea4d8b4a80047b15d233"
+        },
+        "date": 1786730689697,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1713934208.2,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 503.7749489468953,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 147.52560239007363,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.873727155270824,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 68.73103941901714,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5642.27409466839,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1213.3969101115558,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 494.809198992619,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 80209.43614441858,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 385.5222409289169,
             "unit": "ns"
           }
         ]
