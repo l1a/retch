@@ -22,6 +22,8 @@ retch is under active development with a working core, rich system information o
   - **Motherboard & BIOS**: Parses motherboard manufacturer/model and BIOS version/vendor details.
   - **Camera/Webcam**: Queries connected webcam and camera device names.
   - **Gamepad/Controller**: Enumerates wired and wireless game controllers (Xbox, PlayStation, DualShock, DualSense, Nintendo Joy-Con, etc.).
+  - **Keyboard & Mouse** (Linux): Lists connected keyboards and pointing devices from `/proc/bus/input/devices`, de-duplicated by name. Classification is exclusive and conservative: a peripheral paired through a Logitech Unifying/Bolt receiver is presented by the kernel with a *merged* capability set that is identical for a keyboard and a mouse (same handlers, same `rel`/`key` bitmaps, same udev tags, same HID report descriptor), so retch resolves those via the HID++ driver's battery model name and otherwise lists the device in **neither** field rather than asserting the wrong one.
+  - **TPM**: Reports the Trusted Platform Module specification version (`2.0`, `1.2`) from `/sys/class/tpm` (Linux).
   - **Audio Devices**: Detects active audio servers (PipeWire, PulseAudio, ALSA on Linux; CoreAudio on macOS; Windows Audio on Windows).
   - **Disks & Temp**: Measures active disk mounts (hiding loopback/temporary volumes) and temperature sensors.
   - **Physical Memory (`phys-mem`)**: Per-DIMM type, capacity, and speed via `dmidecode` (Linux, requires root), `system_profiler` (macOS), or `Win32_PhysicalMemory` (Windows). On Linux, shows the module's actual running speed alongside its rated speed when they differ (e.g. `4800 MT/s (rated 6000 MT/s)`, as when XMP/EXPO isn't enabled).
@@ -256,7 +258,8 @@ separator_color = "bright_black"
 fields = [
     "os", "kernel", "host", "domain", "domain-search", "chassis", "init", "locale",
     "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage", "gpu",
-    "motherboard", "bios", "bootmgr", "display", "brightness", "audio", "camera", "gamepad",
+    "motherboard", "bios", "bootmgr", "tpm", "display", "brightness", "audio", "camera", "gamepad",
+    "keyboard", "mouse",
     "memory", "phys-mem", "swap", "uptime", "procs", "load",
     "disk", "phys-disk", "btrfs", "zpool", "temp",
     "net", "public-ip", "wifi", "dns", "bluetooth", "battery", "power-adapter",

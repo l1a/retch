@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "August 2026" "retch 0.6.23" "System Information Fetcher"
+.TH "RETCH" "1" "August 2026" "retch 0.7.0" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -220,6 +220,10 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .El
 .Bl
 .IP \(bu 4
+`\f[CR]tpm\fP`: Trusted Platform Module specification version (`\f[CR]2\.0\fP`, `\f[CR]1\.2\fP`), read from `\f[CR]/sys/class/tpm\fP`\. Omitted when no TPM is present or its version cannot be read\. Linux only\. Long mode and above\.
+.El
+.Bl
+.IP \(bu 4
 `\f[CR]display\fP`: Connected monitor displays with refresh rates and resolution\.
 .El
 .Bl
@@ -237,6 +241,14 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .Bl
 .IP \(bu 4
 `\f[CR]gamepad\fP`: Connected gamepad/controller names\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]keyboard\fP`: Connected keyboard names, from `\f[CR]/proc/bus/input/devices\fP`\. A device is listed only when its class is unambiguous: peripherals paired through a Logitech Unifying/Bolt receiver are presented by the kernel with a merged capability set that is byte\-identical for a keyboard and a mouse, so those are resolved via the HID++ driver's battery model name and, failing that, listed in neither `\f[CR]keyboard\fP` nor `\f[CR]mouse\fP` rather than guessed into the wrong one\. Linux only\. Long mode and above\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]mouse\fP`: Connected pointing devices \-\- mice, touchpads, and tablets \-\- from `\f[CR]/proc/bus/input/devices\fP`, de\-duplicated by name\. Subject to the same ambiguity rule as `\f[CR]keyboard\fP`\. Linux only\. Long mode and above\.
 .El
 .Bl
 .IP \(bu 4

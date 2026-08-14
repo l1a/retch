@@ -114,11 +114,14 @@ You can generate a starting configuration with:
   - `motherboard`: Motherboard manufacturer and model.
   - `bios`: BIOS vendor and version.
   - `bootmgr`: Second-stage bootloader (GRUB, systemd-boot, etc.).
+  - `tpm`: Trusted Platform Module specification version (`2.0`, `1.2`), read from `/sys/class/tpm`. Omitted when no TPM is present or its version cannot be read. Linux only. Long mode and above.
   - `display`: Connected monitor displays with refresh rates and resolution.
   - `brightness`: Current backlight brightness as a percentage (from `/sys/class/backlight`). Linux only. Long mode and above.
   - `audio`: Audio card controller and active sound servers (PipeWire, PulseAudio, ALSA, CoreAudio, Windows Audio).
   - `camera`: Connected camera/webcam names.
   - `gamepad`: Connected gamepad/controller names.
+  - `keyboard`: Connected keyboard names, from `/proc/bus/input/devices`. A device is listed only when its class is unambiguous: peripherals paired through a Logitech Unifying/Bolt receiver are presented by the kernel with a merged capability set that is byte-identical for a keyboard and a mouse, so those are resolved via the HID++ driver's battery model name and, failing that, listed in neither `keyboard` nor `mouse` rather than guessed into the wrong one. Linux only. Long mode and above.
+  - `mouse`: Connected pointing devices — mice, touchpads, and tablets — from `/proc/bus/input/devices`, de-duplicated by name. Subject to the same ambiguity rule as `keyboard`. Linux only. Long mode and above.
   - `memory`: System RAM usage and capacity.
   - `phys-mem`: Physical RAM slot details — type (DDR5, LPDDR5, etc.), speed, and per-slot capacity. On Linux, shows the module's actual running speed alongside its rated speed when they differ (e.g. `4800 MT/s (rated 6000 MT/s)`, as when XMP/EXPO isn't enabled), parsed from dmidecode's "Configured Memory Speed". Requires root (`sudo`) to read DMI memory tables via `dmidecode`. On Windows, uses `Win32_PhysicalMemory` via PowerShell.
   - `swap`: System SWAP usage and capacity.
