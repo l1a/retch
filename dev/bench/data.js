@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786727926253,
+  "lastUpdate": 1786728511396,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18600,70 +18600,6 @@ window.BENCHMARK_DATA = {
       {
         "commit": {
           "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "e6605afd7d4f8dbce3f984541177ffaffb57901b",
-          "message": "fix: allow dependabot PRs to trigger claude-code-review (#134)\n\nclaude-code-action@v1 refuses to run for non-human actors by default,\nso every Dependabot PR (e.g. #132) hard-failed the claude-review\ncheck in ~10s before doing any actual review. Add\nallowed_bots: 'dependabot[bot]' scoped narrowly to Dependabot.\n\nAssisted-By: Claude Sonnet 5",
-          "timestamp": "2026-07-01T12:19:47-07:00",
-          "tree_id": "a345de40f93e702accd3928257b0d831789bd7c1",
-          "url": "https://github.com/l1a/retch/commit/e6605afd7d4f8dbce3f984541177ffaffb57901b"
-        },
-        "date": 1782936175403,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 101.54429217303017,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9488352285332193,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 101.45889589241366,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 77.46450722623152,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45885.51031571087,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 505.1245244666751,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 757.5461803327279,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3783938650,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
             "email": "49699333+dependabot[bot]@users.noreply.github.com",
             "name": "dependabot[bot]",
             "username": "dependabot[bot]"
@@ -21793,6 +21729,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1435672365,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "120ed8e2e0fe45a624212a8204ae34b082b8c360",
+          "message": "Add keyboard, mouse and tpm fields (#195)\n\n* Add keyboard, mouse and tpm fields\n\nThree NOTES.md section 6 fastfetch-gap fields, all --long and above,\nLinux-only, in the v0.5.0 shape: thin /proc and sysfs readers over pure\nhelpers that unit-test without touching host hardware.\n\nInput classification is exclusive and declines to guess. On a Logitech\nUnifying/Bolt receiver no kernel-visible signal separates a keyboard from\na mouse: handlers, capabilities/rel (0x1943 on both), the alphabet key\nblock, INPUT_PROP, udev ID_INPUT_* (POINTINGSTICK on both), USB HID\nbInterfaceProtocol and the HID report descriptor itself are all identical\nfor an MX Keys and an MX Master 3. fastfetch 2.66 gets this wrong in both\ndirections on that hardware. Ambiguous devices are resolved via the HID++\ndriver's battery model_name and, failing that, reported in neither field\nrather than asserted into the wrong one.\n\ntpm reads tpm_version_major and maps it to the published spec names\n(1 -> 1.2, 2 -> 2.0), returning None for anything unrecognised.\n\nAlso refresh packaging/aur/PKGBUILD, stranded at 0.6.12 for eleven\nreleases while the AUR moved to 0.6.23, and drop its man-page\nregeneration: the font-strip sed never matched on any platform (GNU sed\nreads \\\\f as a form feed) and $DATE/$pkgver were literal inside double\nquotes, so the installed footer read \"retch $pkgver\". The committed\ndocs/retch.1 ships in the tarball with the correct footer, so package()\ninstalls it directly and the mandown makedepend is gone.\n\nStrata golden counts move Long 49->52, Full 55->58. 11 new unit tests.\nVerified live on corrino (Fedora 44, i7-1360P).\n\nAssisted-By: Claude Opus 5\n\n* Close two holes in the aur CI job\n\nThe job rewrote source= and sha256sums= to build from local sources, so the\ndeclared checksum was never checked by anything — a stale one (as this\nPKGBUILD carried for eleven releases) stayed green and would only fail for\nsomeone installing from the AUR. Verify it against the real tag tarball\nbefore that patching, refusing a committed SKIP and skipping cleanly when the\ntag is not published yet.\n\nNothing inspected the packaged man page either, which is where both defects\nthis branch fixes actually showed. Assert the built package's .TH line carries\nno literal $ and a real retch <version> footer, and that no doubled font runs\nsurvive.\n\nAlso stop pre-installing mandown, so makedepends is load-bearing: makepkg -s\ninstalls what the PKGBUILD declares and nothing else.\n\nAssisted-By: Claude Opus 5\n\n* Fix the man-page check failing on a correct package\n\nThe new verification step used `bsdtar -tf \"$pkg\" | grep -qx …` under\n`set -o pipefail`. grep -q exits on its first match, bsdtar takes SIGPIPE and\nexits 141, and pipefail turns that into a failed pipeline — so the step\nreported the man page missing exactly when it was present, and CI went red on\na package that was correct. head -1 and grep -m1 carry the same hazard.\n\nMaterialise the listing and the page to files and grep those; select the\npackage with find -print -quit. Verified against a good package and against\npurpose-built broken ones (missing page, literal $ footer, doubled font runs).\n\nAssisted-By: Claude Opus 5\n\n* Match the gzipped man page makepkg actually ships\n\nmakepkg's zipman option is on by default, so the packaged path is\nusr/share/man/man1/retch.1.gz. The verification step looked for retch.1 and\nreported it missing — the check wrong again, the package correct again.\n\nMatch retch.1 with an optional .gz/.zst/.xz/.bz2 suffix and decompress before\ninspecting. Tested against gzipped, uncompressed, and gzipped-but-broken\npackages.\n\nThe diagnostic added in the previous commit is what made this cheap: printing\nthe real usr/share listing on failure named retch.1.gz directly in the CI log.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-14T09:49:12-07:00",
+          "tree_id": "274aff11102cf1108fb49cbe2f4d8beedda7b477",
+          "url": "https://github.com/l1a/retch/commit/120ed8e2e0fe45a624212a8204ae34b082b8c360"
+        },
+        "date": 1786728506254,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 181.1000409058924,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9558136256730108,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 98.38216050825166,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.34008410484556,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46734.587662465245,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 497.93314820999285,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 749.650839144773,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2195085910,
             "unit": "ns"
           }
         ]
