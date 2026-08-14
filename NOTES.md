@@ -187,6 +187,20 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
       in-development version while `pkgver` tracks the last release, so coupling them would fail
       for a reason unrelated to packaging. Each assertion was checked against both the current
       page and the historical broken forms.
+      - **The first version of that step was itself a check that failed for the wrong reason**,
+        and it went red on CI while the package was perfectly correct. `bsdtar -tf "$pkg" |
+        grep -qx …` under `set -o pipefail`: `grep -q` exits on its first match, `bsdtar` takes
+        SIGPIPE and exits **141**, and pipefail turns that into a failed pipeline — so the step
+        reported "package does not contain the man page" **precisely when it did**. Reproduced
+        in one line locally (`tar -tzf x | grep -qx <present-entry>` → 141 with pipefail, 0
+        without). `head -1` and `grep -m1` are the same hazard, so all three are gone: the step
+        now materialises the listing and the page to files and greps *those*, and selects the
+        package with `find -print -quit` rather than `ls | grep -v | head`. Both steps also pin
+        `shell: bash` rather than relying on Arch's `/bin/sh` being bash. Exactly the family
+        `~/AGENTS.md` §10/§11 records — an oracle answering a different question from the one
+        asked — and a reminder that a *new* check earns trust by being watched fail for the
+        right reason, which these now have been (missing page, literal `$` footer, doubled font
+        runs, each confirmed against a purpose-built broken package).
     - **`mandown` is no longer pre-installed in the container**, so `makedepends` is now
       load-bearing: `makepkg -s` installs what the PKGBUILD declares and nothing else, and a
       future `build()` that calls mandown without declaring it will fail instead of silently

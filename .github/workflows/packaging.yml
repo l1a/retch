@@ -56,6 +56,7 @@ jobs:
       # wrong sha256 in the reference PKGBUILD would sail through CI and only fail for someone
       # actually installing from the AUR.
       - name: Verify declared source checksum
+        shell: bash
         run: |
           set -euo pipefail
           cd packaging/aur
@@ -122,18 +123,35 @@ jobs:
       # Both are fixed by installing the committed docs/retch.1 rather than regenerating it.
       # Nothing else inspects the packaged man page, so without this the defects could return.
       - name: Verify packaged man page
+        shell: bash
         run: |
           set -euo pipefail
           cd packaging/aur
-          pkg=$(ls -1 retch-*.pkg.tar.* | grep -v -- '-debug-' | head -1)
+
+          # NOTE: every inspection below reads a materialised FILE, never `producer | grep -q`.
+          # Under `set -o pipefail` that idiom is a check that fails for the wrong reason:
+          # `grep -q` (and `head -1`, and `grep -m1`) exit on the first match, the producer
+          # takes SIGPIPE and exits 141, and pipefail turns the whole pipeline nonzero — so the
+          # check reports "not found" precisely WHEN IT MATCHES. The first version of this step
+          # did exactly that and failed CI while the package was perfectly correct.
+          pkg=$(find . -maxdepth 1 -name 'retch-*.pkg.tar.*' ! -name '*-debug-*' -print -quit)
+          if [ -z "$pkg" ]; then
+            echo "::error::no built package found in packaging/aur"
+            ls -1
+            exit 1
+          fi
           echo "inspecting $pkg"
 
-          if ! bsdtar -tf "$pkg" | grep -qx 'usr/share/man/man1/retch.1'; then
+          bsdtar -tf "$pkg" > pkg-listing.txt
+          if ! grep -qx 'usr/share/man/man1/retch.1' pkg-listing.txt; then
             echo "::error::package does not contain usr/share/man/man1/retch.1"
+            echo "--- what it did install under usr/share:"
+            grep -E '^usr/share' pkg-listing.txt || echo "(nothing)"
             exit 1
           fi
 
-          th=$(bsdtar -xOf "$pkg" usr/share/man/man1/retch.1 | grep -m1 '^\.TH')
+          bsdtar -xOf "$pkg" usr/share/man/man1/retch.1 > packaged-retch.1
+          th=$(grep -m1 '^\.TH' packaged-retch.1)
           echo "TH line: $th"
 
           # Defect 1: an unexpanded shell variable in the footer.
@@ -148,15 +166,19 @@ jobs:
           # $pkgver: this job builds from the local tree, whose committed page carries the
           # in-development version while pkgver tracks the last release. Coupling them here
           # would fail for a reason that has nothing to do with the packaging.
-          echo "$th" | grep -q '"retch [0-9][0-9.]*"' || {
-            echo "::error::.TH line does not carry a 'retch <version>' footer"
-            exit 1
-          }
+          case "$th" in
+            *'"retch '[0-9]*) : ;;
+            *)
+              echo "::error::.TH line does not carry a 'retch <version>' footer"
+              exit 1
+              ;;
+          esac
 
           # Defect 2: doubled font escapes the dead sed claimed to strip.
-          if bsdtar -xOf "$pkg" usr/share/man/man1/retch.1 | grep -q '\\fB\\fB\|\\fP\\fP'; then
+          if grep -q '\\fB\\fB\|\\fP\\fP' packaged-retch.1; then
             echo "::error::packaged man page contains doubled font escapes (\\fB\\fB / \\fP\\fP)"
             exit 1
           fi
 
+          rm -f pkg-listing.txt packaged-retch.1
           echo "packaged man page OK"
