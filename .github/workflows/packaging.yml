@@ -143,14 +143,28 @@ jobs:
           echo "inspecting $pkg"
 
           bsdtar -tf "$pkg" > pkg-listing.txt
-          if ! grep -qx 'usr/share/man/man1/retch.1' pkg-listing.txt; then
-            echo "::error::package does not contain usr/share/man/man1/retch.1"
+
+          # makepkg's `zipman` option is ON by default, so the packaged page is
+          # `retch.1.gz`, not `retch.1` — match either, and any other compressor a
+          # makepkg.conf might select, rather than assuming one name.
+          man_entry=$(grep -m1 -E '^usr/share/man/man1/retch\.1(\.gz|\.zst|\.xz|\.bz2)?$' pkg-listing.txt || true)
+          if [ -z "$man_entry" ]; then
+            echo "::error::package contains no usr/share/man/man1/retch.1"
             echo "--- what it did install under usr/share:"
             grep -E '^usr/share' pkg-listing.txt || echo "(nothing)"
             exit 1
           fi
+          echo "man page entry: $man_entry"
 
-          bsdtar -xOf "$pkg" usr/share/man/man1/retch.1 > packaged-retch.1
+          bsdtar -xOf "$pkg" "$man_entry" > packaged-man.raw
+          case "$man_entry" in
+            *.gz)  gzip -dc  < packaged-man.raw > packaged-retch.1 ;;
+            *.zst) zstd -dc  < packaged-man.raw > packaged-retch.1 ;;
+            *.xz)  xz -dc    < packaged-man.raw > packaged-retch.1 ;;
+            *.bz2) bzip2 -dc < packaged-man.raw > packaged-retch.1 ;;
+            *)     cp packaged-man.raw packaged-retch.1 ;;
+          esac
+
           th=$(grep -m1 '^\.TH' packaged-retch.1)
           echo "TH line: $th"
 
@@ -180,5 +194,5 @@ jobs:
             exit 1
           fi
 
-          rm -f pkg-listing.txt packaged-retch.1
+          rm -f pkg-listing.txt packaged-retch.1 packaged-man.raw
           echo "packaged man page OK"

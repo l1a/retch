@@ -201,6 +201,17 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
         asked — and a reminder that a *new* check earns trust by being watched fail for the
         right reason, which these now have been (missing page, literal `$` footer, doubled font
         runs, each confirmed against a purpose-built broken package).
+      - **It then failed a second time, on a different wrong assumption: `makepkg` gzips man
+        pages.** `zipman` is on by default, so the packaged path is `usr/share/man/man1/
+        retch.1.gz`, and an assertion looking for `retch.1` reports it missing. The step now
+        matches `retch.1` with an optional `.gz`/`.zst`/`.xz`/`.bz2` suffix and decompresses
+        before inspecting, tested against gzipped, uncompressed, and gzipped-but-broken
+        fixtures. **Both failures were the check being wrong while the package was correct** —
+        worth recording because that is the expensive direction: a checker that cries wolf gets
+        deleted, and the defect it guards then returns unnoticed. What made the second one cheap
+        was the diagnostic added after the first: printing the actual `usr/share` listing on
+        failure named the cause (`retch.1.gz`) in the log with no local reproduction needed.
+        **Any new assertion about a built artefact should print what it actually saw.**
     - **`mandown` is no longer pre-installed in the container**, so `makedepends` is now
       load-bearing: `makepkg -s` installs what the PKGBUILD declares and nothing else, and a
       future `build()` that calls mandown without declaring it will fail instead of silently
