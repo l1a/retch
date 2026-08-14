@@ -156,11 +156,42 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
     read `$DATE` / `retch $pkgver`. The committed `docs/retch.1` ships in the tarball already
     carrying the right footer (verified in the 0.6.23 tarball: `.TH "RETCH" "1" "August 2026"
     "retch 0.6.23"`), so `package()` installs it directly and the `mandown` makedepend is gone.
-    **Not verifiable with `makepkg`** — no Arch host in the fleet (corrino, irulan and arrakis
-    all lack it); checked with `bash -n` plus confirming every path `package()` installs exists
-    in the tarball. The in-repo copy remains a *reference* copy: the AUR repo is the source of
-    truth, and nothing in this repo renders or publishes it, which is the underlying problem an
-    `aur-publish` recipe (etr and rusticprofile both have one) would fix.
+    **CI does verify it with `makepkg`** — `packaging.yml`'s `aur` job runs the full
+    prepare/build/check/package cycle in `archlinux:latest` and reported `Finished making:
+    retch 0.6.23-1` on this change. No Arch host exists in the fleet (corrino, irulan and
+    arrakis all lack `makepkg`), so locally it was only `bash -n` plus confirming every path
+    `package()` installs exists in the tarball. The in-repo copy remains a *reference* copy: the
+    AUR repo is the source of truth, and nothing in this repo renders or publishes it, which is
+    the underlying problem an `aur-publish` recipe (etr and rusticprofile both have one) would
+    fix.
+  - **The `aur` CI job had two holes that let exactly these defects survive, both now closed.**
+    Found by reading the job rather than trusting that a green check meant the packaging was
+    checked — the same "what did this actually verify?" question that produced the empty-rollup
+    fix in v0.6.23.
+    - **The declared `sha256sums` was never checked by anything.** The job rewrites `source=`
+      to a local tarball and `sha256sums=` to `SKIP` (so it can build a tag that does not exist
+      yet), which is reasonable for the *build* but meant a stale or wrong checksum in the
+      reference PKGBUILD — precisely the state it sat in for eleven releases — sailed through
+      green and would only fail for someone installing from the AUR. A new **Verify declared
+      source checksum** step runs *before* that patching, sources the PKGBUILD, downloads the
+      real tag tarball and compares. It refuses a committed `SKIP`, and when the tag is not
+      published yet (a branch that has bumped past the last release) it emits a notice and
+      passes rather than going red for a legitimate state. Verified locally in all three
+      directions: matching checksum passes, a corrupted one fails, an unpublished tag skips.
+    - **Nothing inspected the packaged man page**, which is where both fixed defects actually
+      showed. A new **Verify packaged man page** step extracts `usr/share/man/man1/retch.1` from
+      the built package and asserts it exists, that its `.TH` line contains no literal `$` (the
+      `\$DATE`/`\$pkgver` bug), that it carries a real `retch <version>` footer, and that no
+      doubled `\fB\fB`/`\fP\fP` runs survive (the dead-sed bug). Deliberately **not** asserted
+      against `$pkgver`: this job builds from the local tree, whose committed page carries the
+      in-development version while `pkgver` tracks the last release, so coupling them would fail
+      for a reason unrelated to packaging. Each assertion was checked against both the current
+      page and the historical broken forms.
+    - **`mandown` is no longer pre-installed in the container**, so `makedepends` is now
+      load-bearing: `makepkg -s` installs what the PKGBUILD declares and nothing else, and a
+      future `build()` that calls mandown without declaring it will fail instead of silently
+      working. `cargo` is still pre-installed, so that one makedepend remains masked — a smaller
+      instance of the same class, left alone deliberately rather than overlooked.
   - `retch-sysinfo` → `0.1.54` (new public `input` module); `retch-cli` → `0.7.0`. Minor bump
     (new user-visible fields).
 - **v0.6.23 — `just merge-pr` had no CI gate, and now the triad is checked** (tooling only; no
