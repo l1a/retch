@@ -128,6 +128,10 @@ const FIELDS: &[FieldDef] = &[
         min_mode: Mode::Long,
     },
     FieldDef {
+        key: "tpm",
+        min_mode: Mode::Long,
+    },
+    FieldDef {
         key: "display",
         min_mode: Mode::Standard,
     },
@@ -146,6 +150,14 @@ const FIELDS: &[FieldDef] = &[
     FieldDef {
         key: "gamepad",
         min_mode: Mode::Full,
+    },
+    FieldDef {
+        key: "keyboard",
+        min_mode: Mode::Long,
+    },
+    FieldDef {
+        key: "mouse",
+        min_mode: Mode::Long,
     },
     // --- Memory / storage ---
     FieldDef {
@@ -374,8 +386,8 @@ mod tests {
         // A change here should be deliberate and accompany a docs/NOTES update.
         assert_eq!(fields_for(Mode::Short).len(), 8, "short field count");
         assert_eq!(fields_for(Mode::Standard).len(), 19, "standard field count");
-        assert_eq!(fields_for(Mode::Long).len(), 49, "long field count");
-        assert_eq!(fields_for(Mode::Full).len(), 55, "full field count");
+        assert_eq!(fields_for(Mode::Long).len(), 52, "long field count");
+        assert_eq!(fields_for(Mode::Full).len(), 58, "full field count");
     }
 
     #[test]
@@ -405,6 +417,13 @@ mod tests {
         assert!(long.contains("login-manager"));
         assert!(long.contains("brightness"));
         assert!(long.contains("power-adapter"));
+        assert!(long.contains("keyboard"));
+        assert!(long.contains("mouse"));
+        assert!(long.contains("tpm"));
+        // The input/TPM trio is diagnostic, not part of the daily-use overview.
+        assert!(!standard.contains("keyboard"), "keyboard is long+");
+        assert!(!standard.contains("mouse"), "mouse is long+");
+        assert!(!standard.contains("tpm"), "tpm is long+");
         // New Long fields must not leak into standard.
         assert!(
             !standard.contains("brightness"),

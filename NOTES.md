@@ -96,7 +96,129 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.6.23)
+## Current State (v0.7.0)
+- **v0.7.0 — `keyboard`, `mouse` and `tpm`; and the input classification that cannot be done
+  from capabilities alone** (`crates/sysinfo/src/input.rs` (new), `crates/sysinfo/src/fetch.rs`,
+  `src/fields.rs`, `src/display.rs`, `packaging/aur/PKGBUILD`). Three §6 fastfetch-gap fields,
+  all `--long`+, Linux-only, in the v0.5.0 shape: a thin `/proc`+sysfs reader over pure helpers
+  that unit-test without touching host hardware.
+  - **The finding that shaped the design: on a Logitech Unifying/Bolt receiver, no
+    kernel-visible signal distinguishes a keyboard from a mouse.** Measured on corrino against
+    an MX Keys and an MX Master 3 paired to one receiver — `/proc/bus/input/devices` handlers
+    (both `sysrq kbd leds mouseN eventN`), `capabilities/rel` (**both `0x1943`**),
+    `capabilities/key` (both carry the full alphabet block), `INPUT_PROP`, udev's `ID_INPUT_*`
+    (**both tagged `POINTINGSTICK`**), USB HID `bInterfaceProtocol` (both `00`), and the HID
+    **report descriptor** itself (both open `05 01 09 06 a1 01` — "Usage: Keyboard") are
+    identical. The receiver synthesizes one merged descriptor per paired device. Every one of
+    those six sources was checked before concluding it; the report descriptor in particular
+    looks authoritative and is not.
+  - **fastfetch 2.66 gets this wrong on that hardware in both directions** — it lists the MX
+    Master 3 and the MX Vertical as *keyboards*, the MX Keys as a *mouse*, and duplicates the
+    MX Vertical in both lists (9 "mice" including the keyboard, both Wacom endpoints and a
+    phantom PS/2 node). So this gap is **not** closed by copying fastfetch's approach.
+  - **Classification is therefore exclusive, and declines to guess.** A device is a keyboard
+    (`kbd` handler **and** the full alphabetic key block), a mouse (`mouseN` handler), or
+    neither. A device claiming *both* is a merged endpoint: it is resolved via the HID++
+    driver's battery `model_name` (`"MX Keys Wireless Keyboard"` / `"Wireless Mouse MX Master
+    3"` — the only place on the system the truth survives) and, when that is absent too,
+    reported in **neither** field. Same principle as the v0.6.1 `Users: 0` suppression:
+    under-reporting beats asserting something false. Live on corrino: Keyboard = `AT Translated
+    Set 2 keyboard`, `Logitech MX Keys`; Mouse = PS/2, VEN_06CB mouse + touchpad, both Wacom
+    endpoints, `Logitech MX Master 3`; the two paired-but-idle MX Verticals expose no battery
+    node and are correctly omitted.
+  - **The `kbd` handler is not a keyboard signal on its own** and this is why the alphabet-block
+    test exists: on that machine the power button, sleep button, both `Video Bus` nodes, the PC
+    speaker, two DP audio nodes, Dell WMI hotkeys and a webcam's consumer-control endpoint all
+    register `kbd`. Only the alphabetic key block separates text entry from a few hotkeys.
+  - **`parse_bitmap` reverses the words, and that is load-bearing**: the kernel prints capability
+    bitmaps most-significant word first, so the *last* word holds bits 0–63. Getting it backwards
+    inverts every capability test silently, so it is a separate function with its own test.
+  - `tpm` reads `tpm_version_major` from `/sys/class/tpm/*`; the pure `format_tpm_version` maps
+    it to the published spec names (`1` → `1.2`, `2` → `2.0` — a lookup, not `major.0`) and
+    returns `None` for anything unrecognised rather than inventing a version. Verified live:
+    `TPM: 2.0`, matching fastfetch.
+  - Collection is sequential (one file read, plus a small sysfs lookup only for ambiguous
+    devices), not in the concurrent scope — matching `init`/`chassis`/`brightness`. Measured on
+    corrino: `--long` 451 ms against the 448 ms recorded at v0.6.18, i.e. no measurable cost.
+  - Strata golden counts updated Long 49→52, Full 55→58. 11 new unit tests (7 in `input`,
+    1 for `format_tpm_version`, plus bitmap/bit-indexing coverage), keyed on a verbatim
+    `/proc/bus/input/devices` fixture and an **injected** model-name resolver — the
+    `parse_xrandr_displays_with` pattern from v0.6.2, so no test depends on what is plugged into
+    the machine running it.
+  - **`packaging/aur/PKGBUILD` refreshed and its two long-standing man-page defects fixed.**
+    It had been stranded at `pkgver=0.6.12` for eleven releases while the AUR itself moved to
+    0.6.23 — an in-repo copy that looked authoritative and was not. Now `pkgver=0.6.23` with
+    sha256 `bf51f58b…`, computed here from the real release tarball and matching the value the
+    AUR push recorded. The `mandown | sed` man-page regeneration is **removed** rather than
+    repaired: (1) its `s/\\fB\\fB/\\fB/g` strip never matched on any platform (GNU sed reads
+    `\\f` as a form feed — the same dead code the Justfile carried until v0.6.16), and (2)
+    `\$DATE`/`\$pkgver` are literal inside bash double quotes, so the installed page's footer
+    read `$DATE` / `retch $pkgver`. The committed `docs/retch.1` ships in the tarball already
+    carrying the right footer (verified in the 0.6.23 tarball: `.TH "RETCH" "1" "August 2026"
+    "retch 0.6.23"`), so `package()` installs it directly and the `mandown` makedepend is gone.
+    **CI does verify it with `makepkg`** — `packaging.yml`'s `aur` job runs the full
+    prepare/build/check/package cycle in `archlinux:latest` and reported `Finished making:
+    retch 0.6.23-1` on this change. No Arch host exists in the fleet (corrino, irulan and
+    arrakis all lack `makepkg`), so locally it was only `bash -n` plus confirming every path
+    `package()` installs exists in the tarball. The in-repo copy remains a *reference* copy: the
+    AUR repo is the source of truth, and nothing in this repo renders or publishes it, which is
+    the underlying problem an `aur-publish` recipe (etr and rusticprofile both have one) would
+    fix.
+  - **The `aur` CI job had two holes that let exactly these defects survive, both now closed.**
+    Found by reading the job rather than trusting that a green check meant the packaging was
+    checked — the same "what did this actually verify?" question that produced the empty-rollup
+    fix in v0.6.23.
+    - **The declared `sha256sums` was never checked by anything.** The job rewrites `source=`
+      to a local tarball and `sha256sums=` to `SKIP` (so it can build a tag that does not exist
+      yet), which is reasonable for the *build* but meant a stale or wrong checksum in the
+      reference PKGBUILD — precisely the state it sat in for eleven releases — sailed through
+      green and would only fail for someone installing from the AUR. A new **Verify declared
+      source checksum** step runs *before* that patching, sources the PKGBUILD, downloads the
+      real tag tarball and compares. It refuses a committed `SKIP`, and when the tag is not
+      published yet (a branch that has bumped past the last release) it emits a notice and
+      passes rather than going red for a legitimate state. Verified locally in all three
+      directions: matching checksum passes, a corrupted one fails, an unpublished tag skips.
+    - **Nothing inspected the packaged man page**, which is where both fixed defects actually
+      showed. A new **Verify packaged man page** step extracts `usr/share/man/man1/retch.1` from
+      the built package and asserts it exists, that its `.TH` line contains no literal `$` (the
+      `\$DATE`/`\$pkgver` bug), that it carries a real `retch <version>` footer, and that no
+      doubled `\fB\fB`/`\fP\fP` runs survive (the dead-sed bug). Deliberately **not** asserted
+      against `$pkgver`: this job builds from the local tree, whose committed page carries the
+      in-development version while `pkgver` tracks the last release, so coupling them would fail
+      for a reason unrelated to packaging. Each assertion was checked against both the current
+      page and the historical broken forms.
+      - **The first version of that step was itself a check that failed for the wrong reason**,
+        and it went red on CI while the package was perfectly correct. `bsdtar -tf "$pkg" |
+        grep -qx …` under `set -o pipefail`: `grep -q` exits on its first match, `bsdtar` takes
+        SIGPIPE and exits **141**, and pipefail turns that into a failed pipeline — so the step
+        reported "package does not contain the man page" **precisely when it did**. Reproduced
+        in one line locally (`tar -tzf x | grep -qx <present-entry>` → 141 with pipefail, 0
+        without). `head -1` and `grep -m1` are the same hazard, so all three are gone: the step
+        now materialises the listing and the page to files and greps *those*, and selects the
+        package with `find -print -quit` rather than `ls | grep -v | head`. Both steps also pin
+        `shell: bash` rather than relying on Arch's `/bin/sh` being bash. Exactly the family
+        `~/AGENTS.md` §10/§11 records — an oracle answering a different question from the one
+        asked — and a reminder that a *new* check earns trust by being watched fail for the
+        right reason, which these now have been (missing page, literal `$` footer, doubled font
+        runs, each confirmed against a purpose-built broken package).
+      - **It then failed a second time, on a different wrong assumption: `makepkg` gzips man
+        pages.** `zipman` is on by default, so the packaged path is `usr/share/man/man1/
+        retch.1.gz`, and an assertion looking for `retch.1` reports it missing. The step now
+        matches `retch.1` with an optional `.gz`/`.zst`/`.xz`/`.bz2` suffix and decompresses
+        before inspecting, tested against gzipped, uncompressed, and gzipped-but-broken
+        fixtures. **Both failures were the check being wrong while the package was correct** —
+        worth recording because that is the expensive direction: a checker that cries wolf gets
+        deleted, and the defect it guards then returns unnoticed. What made the second one cheap
+        was the diagnostic added after the first: printing the actual `usr/share` listing on
+        failure named the cause (`retch.1.gz`) in the log with no local reproduction needed.
+        **Any new assertion about a built artefact should print what it actually saw.**
+    - **`mandown` is no longer pre-installed in the container**, so `makedepends` is now
+      load-bearing: `makepkg -s` installs what the PKGBUILD declares and nothing else, and a
+      future `build()` that calls mandown without declaring it will fail instead of silently
+      working. `cargo` is still pre-installed, so that one makedepend remains masked — a smaller
+      instance of the same class, left alone deliberately rather than overlooked.
+  - `retch-sysinfo` → `0.1.54` (new public `input` module); `retch-cli` → `0.7.0`. Minor bump
+    (new user-visible fields).
 - **v0.6.23 — `just merge-pr` had no CI gate, and now the triad is checked** (tooling only; no
   runtime change, `retch-sysinfo` unchanged at `0.1.53`).
   - **`merge-pr` went straight from the branch check to `gh pr merge --squash --delete-branch`.**
@@ -978,6 +1100,7 @@ Adds over standard:
   default route; falls back to `/etc/resolv.conf`'s `domain`/first `search` entry
 - `public-ip`, `wifi`, `bluetooth`, `battery`, `power-adapter`, `shell`, `editor`, `terminal`, `terminal-size`, `desktop`, `wm`, `login-manager`, `brightness`, `dns`, `users`, `packages`, `locale`, `init`, `chassis`, `bootmgr`
 - `brightness` (Linux), `power-adapter` (Linux), `login-manager` (Linux) — new v0.5.0 fastfetch-gap fields
+- `keyboard` (Linux), `mouse` (Linux), `tpm` (Linux) — new v0.7.0 fastfetch-gap fields
 
 ### `--full`
 Long plus everything slow, verbose, or cosmetic. Suitable for reporting, screenshots, or deep diagnostics. Users should expect multi-second runtimes.
@@ -1033,10 +1156,16 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 ### Hardware
 - ~~**Brightness**: Monitor brightness level~~ — added in v0.5.0 (`brightness` field, Linux; `/sys/class/backlight`)
-- **Keyboard**: Connected keyboards
-- **Mouse**: Connected mice
+- ~~**Keyboard**: Connected keyboards~~ — added in v0.7.0 (`keyboard` field, Linux;
+  `/proc/bus/input/devices`). Devices whose class the kernel cannot express — merged HID++
+  receiver endpoints — are deliberately listed in neither `keyboard` nor `mouse`; see the
+  v0.7.0 release entry for the evidence
+- ~~**Mouse**: Connected mice~~ — added in v0.7.0 (`mouse` field, Linux; same source, covers
+  mice, touchpads and tablets, de-duplicated by name)
 - ~~**PowerAdapter**: Charger name and wattage~~ — added in v0.5.0 (`power-adapter` field, Linux; `/sys/class/power_supply` `Mains`. Name + connection state; wattage not yet reported)
-- **TPM**: Trusted Platform Module device info
+- ~~**TPM**: Trusted Platform Module device info~~ — added in v0.7.0 (`tpm` field, Linux;
+  `/sys/class/tpm` `tpm_version_major`. Specification version only — `2.0`/`1.2` — not the
+  manufacturer or PCR state)
 
 ### GPU / Graphics
 - **OpenCL / OpenGL / Vulkan**: Highest supported API versions

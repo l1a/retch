@@ -448,6 +448,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if let Some(bootmgr) = &info.bootmgr {
         print_line("Bootmgr", bootmgr);
     }
+    if let Some(tpm) = &info.tpm {
+        print_line("TPM", tpm);
+    }
     if should_show("GPU") {
         for gpu in &info.gpu {
             print_line("GPU", gpu);
@@ -472,6 +475,16 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if should_show("Gamepad") {
         for gp in &info.gamepad {
             print_line("Gamepad", gp);
+        }
+    }
+    if should_show("Keyboard") {
+        for kb in &info.keyboard {
+            print_line("Keyboard", kb);
+        }
+    }
+    if should_show("Mouse") {
+        for m in &info.mouse {
+            print_line("Mouse", m);
         }
     }
     if let Some(wifi) = &info.wifi {

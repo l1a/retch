@@ -42,9 +42,55 @@ jobs:
     steps:
       - name: Install system dependencies
         run: |
-          pacman -Syu --noconfirm git base-devel cargo mandown sudo
+          # mandown is deliberately NOT installed: the PKGBUILD no longer regenerates the man
+          # page (it installs the committed docs/retch.1), so mandown is not in makedepends
+          # either. Pre-installing it here would mask a future build() that calls it without
+          # declaring it — `makepkg -s` installs what makedepends asks for, and nothing else.
+          # `cargo` is still pre-installed, so that one makedepend remains masked.
+          pacman -Syu --noconfirm git base-devel cargo curl sudo
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      # Runs BEFORE the build step, which rewrites source= and sha256sums= to build from local
+      # sources. Without this, the declared checksum is never checked by anything: a stale or
+      # wrong sha256 in the reference PKGBUILD would sail through CI and only fail for someone
+      # actually installing from the AUR.
+      - name: Verify declared source checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd packaging/aur
+          # A PKGBUILD is a bash script of assignments; sourcing defines the functions without
+          # running them.
+          # shellcheck disable=SC1091
+          source ./PKGBUILD
+          url_field="${source[0]#*::}"
+          declared="${sha256sums[0]}"
+          echo "pkgver:   $pkgver"
+          echo "url:      $url_field"
+          echo "declared: $declared"
+
+          if [ "$declared" = "SKIP" ]; then
+            echo "::error::sha256sums is SKIP in the committed PKGBUILD; it must carry a real checksum"
+            exit 1
+          fi
+
+          # The reference copy tracks the last RELEASED version, so its tag normally exists. On
+          # a branch that has bumped it ahead of the last release it will not yet — that is a
+          # legitimate state, not a failure, so skip rather than go red.
+          if ! curl -fsSL --retry 3 -o upstream.tar.gz "$url_field"; then
+            echo "::notice::tag not published yet ($url_field) — checksum not verifiable at this commit"
+            exit 0
+          fi
+
+          actual=$(sha256sum upstream.tar.gz | cut -d' ' -f1)
+          echo "actual:   $actual"
+          if [ "$actual" != "$declared" ]; then
+            echo "::error::sha256 mismatch for $url_field — declared $declared, actual $actual"
+            exit 1
+          fi
+          echo "checksum OK"
+          rm -f upstream.tar.gz
 
       - name: Build AUR PKGBUILD
         run: |
@@ -67,3 +113,86 @@ jobs:
           
           # Run makepkg (unsetting any runner-inherited cargo linker configs)
           sudo -u builduser env -u CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER makepkg -s --noconfirm
+
+      # Regression test for two real defects that shipped in this PKGBUILD for months, both
+      # silent — the package built fine and the installed page was wrong:
+      #   1. `\$DATE` / `\$pkgver` are LITERAL inside a bash double-quoted string, so the .TH
+      #      footer read `$DATE` / `retch $pkgver` instead of the date and version.
+      #   2. the `s/\\fB\\fB/\\fB/g` font-strip never matched on any platform (GNU sed reads
+      #      `\\f` as a form feed), so it was dead code pretending to clean the output.
+      # Both are fixed by installing the committed docs/retch.1 rather than regenerating it.
+      # Nothing else inspects the packaged man page, so without this the defects could return.
+      - name: Verify packaged man page
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd packaging/aur
+
+          # NOTE: every inspection below reads a materialised FILE, never `producer | grep -q`.
+          # Under `set -o pipefail` that idiom is a check that fails for the wrong reason:
+          # `grep -q` (and `head -1`, and `grep -m1`) exit on the first match, the producer
+          # takes SIGPIPE and exits 141, and pipefail turns the whole pipeline nonzero — so the
+          # check reports "not found" precisely WHEN IT MATCHES. The first version of this step
+          # did exactly that and failed CI while the package was perfectly correct.
+          pkg=$(find . -maxdepth 1 -name 'retch-*.pkg.tar.*' ! -name '*-debug-*' -print -quit)
+          if [ -z "$pkg" ]; then
+            echo "::error::no built package found in packaging/aur"
+            ls -1
+            exit 1
+          fi
+          echo "inspecting $pkg"
+
+          bsdtar -tf "$pkg" > pkg-listing.txt
+
+          # makepkg's `zipman` option is ON by default, so the packaged page is
+          # `retch.1.gz`, not `retch.1` — match either, and any other compressor a
+          # makepkg.conf might select, rather than assuming one name.
+          man_entry=$(grep -m1 -E '^usr/share/man/man1/retch\.1(\.gz|\.zst|\.xz|\.bz2)?$' pkg-listing.txt || true)
+          if [ -z "$man_entry" ]; then
+            echo "::error::package contains no usr/share/man/man1/retch.1"
+            echo "--- what it did install under usr/share:"
+            grep -E '^usr/share' pkg-listing.txt || echo "(nothing)"
+            exit 1
+          fi
+          echo "man page entry: $man_entry"
+
+          bsdtar -xOf "$pkg" "$man_entry" > packaged-man.raw
+          case "$man_entry" in
+            *.gz)  gzip -dc  < packaged-man.raw > packaged-retch.1 ;;
+            *.zst) zstd -dc  < packaged-man.raw > packaged-retch.1 ;;
+            *.xz)  xz -dc    < packaged-man.raw > packaged-retch.1 ;;
+            *.bz2) bzip2 -dc < packaged-man.raw > packaged-retch.1 ;;
+            *)     cp packaged-man.raw packaged-retch.1 ;;
+          esac
+
+          th=$(grep -m1 '^\.TH' packaged-retch.1)
+          echo "TH line: $th"
+
+          # Defect 1: an unexpanded shell variable in the footer.
+          case "$th" in
+            *'$'*)
+              echo "::error::.TH line contains a literal \$ — unexpanded variable in the footer"
+              exit 1
+              ;;
+          esac
+
+          # The footer must name the program and a real date. Deliberately NOT asserted against
+          # $pkgver: this job builds from the local tree, whose committed page carries the
+          # in-development version while pkgver tracks the last release. Coupling them here
+          # would fail for a reason that has nothing to do with the packaging.
+          case "$th" in
+            *'"retch '[0-9]*) : ;;
+            *)
+              echo "::error::.TH line does not carry a 'retch <version>' footer"
+              exit 1
+              ;;
+          esac
+
+          # Defect 2: doubled font escapes the dead sed claimed to strip.
+          if grep -q '\\fB\\fB\|\\fP\\fP' packaged-retch.1; then
+            echo "::error::packaged man page contains doubled font escapes (\\fB\\fB / \\fP\\fP)"
+            exit 1
+          fi
+
+          rm -f pkg-listing.txt packaged-retch.1 packaged-man.raw
+          echo "packaged man page OK"

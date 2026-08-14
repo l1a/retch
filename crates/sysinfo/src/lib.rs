@@ -19,6 +19,7 @@
 //! - [`display`] — Display detection and EDID parsing.
 //! - [`gamepad`] — Gamepad and joystick controller detection.
 //! - [`gpu`] — GPU detection and PCI ID lookup.
+//! - [`input`] — Keyboard and pointing-device detection.
 //! - [`disk`] — Physical disk model, size, and type detection.
 //! - [`memory`] — Physical memory (RAM) slot detection.
 //! - [`motherboard`] — Motherboard / system model detection.
@@ -42,6 +43,7 @@ pub mod display;
 pub mod fetch;
 pub mod gamepad;
 pub mod gpu;
+pub mod input;
 pub mod memory;
 pub mod motherboard;
 pub mod network;

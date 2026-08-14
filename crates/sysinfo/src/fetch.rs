@@ -162,6 +162,13 @@ pub struct SystemInfo {
     pub brightness: Option<String>,
     /// AC power adapter name and connection state. Linux only.
     pub power_adapter: Option<String>,
+    /// Connected keyboards. Linux only; see [`crate::input`] for why a device can be
+    /// deliberately absent from both this and [`Self::mouse`].
+    pub keyboard: Vec<String>,
+    /// Connected pointing devices (mice, touchpads, tablets). Linux only.
+    pub mouse: Vec<String>,
+    /// TPM specification version (e.g. "2.0"). Linux only.
+    pub tpm: Option<String>,
 }
 
 impl SystemInfo {
@@ -742,6 +749,32 @@ impl SystemInfo {
             None
         };
 
+        // Keyboards and mice come from one file read, so they are collected together and then
+        // split rather than parsing `/proc/bus/input/devices` twice.
+        let (keyboard, mouse) = if should_collect("keyboard") || should_collect("mouse") {
+            let (kbds, mice) = crate::input::detect_input_devices();
+            (
+                if should_collect("keyboard") {
+                    kbds
+                } else {
+                    Vec::new()
+                },
+                if should_collect("mouse") {
+                    mice
+                } else {
+                    Vec::new()
+                },
+            )
+        } else {
+            (Vec::new(), Vec::new())
+        };
+
+        let tpm = if should_collect("tpm") {
+            detect_tpm()
+        } else {
+            None
+        };
+
         let editor = if should_collect("editor") {
             std::env::var("VISUAL")
                 .ok()
@@ -876,6 +909,9 @@ impl SystemInfo {
             login_manager,
             brightness,
             power_adapter,
+            keyboard,
+            mouse,
+            tpm,
         })
     }
 }
@@ -1598,6 +1634,58 @@ fn format_power_adapter(name: &str, online: &str) -> String {
     format!("{} ({})", name, state)
 }
 
+/// Detects the Trusted Platform Module's specification version (e.g. "2.0").
+///
+/// Linux only. Reads `tpm_version_major` from the first `/sys/class/tpm/*` device and formats
+/// via [`format_tpm_version`]. A machine with no TPM has no such class directory and returns
+/// `None`, so the field does not render. The version is deliberately *not* guessed from the
+/// device's mere presence: a TPM whose version cannot be read is reported as absent rather
+/// than as a version that was never confirmed.
+fn detect_tpm() -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        use std::path::Path;
+        let dir = Path::new("/sys/class/tpm");
+        if !dir.exists() {
+            return None;
+        }
+        let mut devices: Vec<std::path::PathBuf> = std::fs::read_dir(dir)
+            .ok()?
+            .flatten()
+            .map(|e| e.path())
+            .collect();
+        // `tpm0` before `tpm1`, so a multi-TPM machine reports a stable one run to run.
+        devices.sort();
+        for dev in devices {
+            if let Ok(major) = std::fs::read_to_string(dev.join("tpm_version_major")) {
+                if let Some(v) = format_tpm_version(major.trim()) {
+                    return Some(v);
+                }
+            }
+        }
+        None
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        None
+    }
+}
+
+/// Pure helper: maps sysfs `tpm_version_major` to a TPM specification version string.
+///
+/// The kernel exposes only the major number, but the published specification names are "1.2"
+/// and "2.0" — not "1.0"/"2.0" — so the minor part is a lookup, not arithmetic. An
+/// unrecognised or unparseable major yields `None` rather than an invented version. Split out
+/// from [`detect_tpm`] so it is unit-testable without a real TPM.
+#[cfg(target_os = "linux")]
+fn format_tpm_version(major: &str) -> Option<String> {
+    match major.trim() {
+        "1" => Some("1.2".to_string()),
+        "2" => Some("2.0".to_string()),
+        _ => None,
+    }
+}
+
 /// Windows CPU-usage sampling via `GetSystemTimes` (kernel32, default-linked).
 ///
 /// Replaces the per-run 200 ms sleep sysinfo needs for a usage delta: two samples are
@@ -1715,6 +1803,20 @@ mod tests {
         assert_eq!(format_power_adapter("ADP1", "0"), "ADP1 (not connected)");
         // Missing/garbage online flag degrades to "unknown" rather than panicking.
         assert_eq!(format_power_adapter("AC", ""), "AC (unknown)");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_format_tpm_version() {
+        // The spec names are 1.2 and 2.0, so the minor part is a lookup, not "major.0".
+        assert_eq!(format_tpm_version("2").as_deref(), Some("2.0"));
+        assert_eq!(format_tpm_version("1").as_deref(), Some("1.2"));
+        // sysfs reads carry a trailing newline.
+        assert_eq!(format_tpm_version("2\n").as_deref(), Some("2.0"));
+        // An unrecognised or unreadable major is reported as absent, never invented.
+        assert_eq!(format_tpm_version("3"), None);
+        assert_eq!(format_tpm_version(""), None);
+        assert_eq!(format_tpm_version("garbage"), None);
     }
 
     #[cfg(target_os = "windows")]
