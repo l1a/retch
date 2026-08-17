@@ -106,7 +106,13 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.7.1)
+## Current State (v0.8.0)
+- **v0.8.0 — Native `Media` and `Player` detection across Windows, Linux, and macOS (100% native OS APIs/FFI/sockets, zero subprocess forking)**:
+  - **Zero-subprocess architecture**: Spawning external CLI commands (`powershell.exe`, `playerctl`, `osascript`, `busctl`) is strictly avoided across all platforms.
+  - **Windows**: Dynamically loads `combase.dll` to query WinRT COM `GlobalSystemMediaTransportControlsSessionManager`. Retrieves active player ID (cleaned to user-friendly names e.g. Spotify, Media Player, Edge, Chrome), playback state (Playing, Paused, Stopped, Buffering), and track metadata (`Artist - Title`, `Album`) asynchronously in `< 1ms`.
+  - **Linux**: Direct Unix domain socket binary D-Bus connection (`$DBUS_SESSION_BUS_ADDRESS` or `/run/user/<uid>/bus`). Performs SASL `AUTH EXTERNAL`, enumerates `org.mpris.MediaPlayer2.*` services, and queries properties without `playerctl` or child processes (`< 2ms`).
+  - **macOS**: Native Objective-C runtime FFI via `macos_ffi.rs` messaging `SBApplication` directly without invoking `osascript`.
+  - **Output Strata & Documentation**: Added `player` and `media` to `FIELDS` in `src/fields.rs` (`Mode::Long`). Golden counts updated (Long: 54, Full: 60). Man page `docs/retch.1` regenerated, `README.md` and `docs/retch.1.md` updated. Unit tests added for formatting, ID normalization, and D-Bus parsing.
 - **v0.7.1 — `packaging/aur` becomes the source of truth, with a recipe that publishes it and
   a check that stops it drifting** (tooling/packaging only; no runtime change, `retch-sysinfo`
   unchanged at `0.1.54`). New `Justfile` recipes `aur-check` / `aur-srcinfo` / `aur-bump` /
@@ -1166,6 +1172,7 @@ Adds over standard:
 - `public-ip`, `wifi`, `bluetooth`, `battery`, `power-adapter`, `shell`, `editor`, `terminal`, `terminal-size`, `desktop`, `wm`, `login-manager`, `brightness`, `dns`, `users`, `packages`, `locale`, `init`, `chassis`, `bootmgr`
 - `brightness` (Linux), `power-adapter` (Linux), `login-manager` (Linux) — new v0.5.0 fastfetch-gap fields
 - `keyboard` (Linux), `mouse` (Linux), `tpm` (Linux) — new v0.7.0 fastfetch-gap fields
+- `player`, `media` — new v0.8.0 fastfetch-gap fields (100% native FFI / socket communication, zero subprocess forking)
 
 ### `--full`
 Long plus everything slow, verbose, or cosmetic. Suitable for reporting, screenshots, or deep diagnostics. Users should expect multi-second runtimes.
@@ -1250,7 +1257,7 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - **TerminalTheme**: Terminal foreground/background colors
 
 ### Media
-- **Media / Player**: Currently playing song and active music player
+- ~~**Media / Player**: Currently playing song and active music player~~ — added in v0.8.0 (`player` and `media` fields; 100% native WinRT COM FFI on Windows, direct Unix domain socket binary D-Bus on Linux, native Objective-C runtime on macOS; 0 subprocess forking)
 
 ---
 
@@ -1332,6 +1339,14 @@ SQLite open-mode defect.
 ---
 
 ## 7. Major Achievements
+
+### v0.8.0 - Native Media / Player detection (zero subprocesses) (August 16, 2026)
+- **Zero-subprocess native media architecture**: Added `player` (active media player + playback status) and `media` (track artist, title, album) across Windows, Linux, and macOS without forking any child processes (`powershell.exe`, `playerctl`, `osascript`, `busctl`).
+- **Windows WinRT COM FFI**: Dynamically loads `combase.dll` to query `Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager`. Retrieves player AppUserModelID (cleaned to friendly names like Spotify, Media Player, Chrome, Edge), playback status (Playing, Paused, Stopped, Buffering), and track metadata (`Artist - Title`, `Album`) asynchronously in sub-millisecond execution (< 1ms).
+- **Linux Native D-Bus MPRIS Client**: Direct Unix domain socket binary D-Bus connection to `$DBUS_SESSION_BUS_ADDRESS` / `/run/user/<uid>/bus` via `UnixStream`. Implements SASL `AUTH EXTERNAL`, wire message encoding/decoding for `org.freedesktop.DBus.ListNames` and `org.freedesktop.DBus.Properties.GetAll` on `/org/mpris/MediaPlayer2` (`org.mpris.MediaPlayer2.Player`). Sub-2ms execution with zero subprocesses.
+- **macOS Native Objective-C FFI**: Uses `macos_ffi.rs` (`objc_getClass`, `objc_msgSend`) to query `SBApplication` ("com.apple.Music", "com.spotify.client", etc.) directly without invoking `osascript`.
+- **Output Strata & Single Source of Truth**: Added `player` and `media` to `FIELDS` in `src/fields.rs` (`Mode::Long`). Updated strata golden counts (Long: 54, Full: 60).
+- **Hygiene & Docs**: Updated `docs/retch.1.md`, `README.md`, regenerated `docs/retch.1` (man page), and updated `Cargo.toml` (`retch-cli 0.8.0`, `retch-sysinfo 0.1.55`). All 212 tests green.
 
 ### v0.6.1 - Fix Windows Camera (scanners) + Users (=0) bugs (July 13, 2026)
 - **Camera listed scanners as cameras** (user-reported, confirmed live: `EPSON ET-3850

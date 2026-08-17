@@ -624,6 +624,12 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if let Some(lm) = &info.login_manager {
         print_line("Login Manager", lm);
     }
+    if let Some(player) = &info.player {
+        print_line("Player", player);
+    }
+    if let Some(media) = &info.media {
+        print_line("Media", media);
+    }
     if let Some(ui_theme) = &info.ui_theme {
         print_line("Theme", ui_theme);
     }

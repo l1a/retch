@@ -266,6 +266,15 @@ const FIELDS: &[FieldDef] = &[
         key: "login-manager",
         min_mode: Mode::Long,
     },
+    // --- Media ---
+    FieldDef {
+        key: "player",
+        min_mode: Mode::Long,
+    },
+    FieldDef {
+        key: "media",
+        min_mode: Mode::Long,
+    },
     // --- Cosmetic / slow (Full-only unless noted) ---
     FieldDef {
         key: "theme",
@@ -386,8 +395,8 @@ mod tests {
         // A change here should be deliberate and accompany a docs/NOTES update.
         assert_eq!(fields_for(Mode::Short).len(), 8, "short field count");
         assert_eq!(fields_for(Mode::Standard).len(), 19, "standard field count");
-        assert_eq!(fields_for(Mode::Long).len(), 52, "long field count");
-        assert_eq!(fields_for(Mode::Full).len(), 58, "full field count");
+        assert_eq!(fields_for(Mode::Long).len(), 54, "long field count");
+        assert_eq!(fields_for(Mode::Full).len(), 60, "full field count");
     }
 
     #[test]
@@ -420,10 +429,14 @@ mod tests {
         assert!(long.contains("keyboard"));
         assert!(long.contains("mouse"));
         assert!(long.contains("tpm"));
-        // The input/TPM trio is diagnostic, not part of the daily-use overview.
+        assert!(long.contains("player"));
+        assert!(long.contains("media"));
+        // The input/TPM/media trio is diagnostic, not part of the daily-use overview.
         assert!(!standard.contains("keyboard"), "keyboard is long+");
         assert!(!standard.contains("mouse"), "mouse is long+");
         assert!(!standard.contains("tpm"), "tpm is long+");
+        assert!(!standard.contains("player"), "player is long+");
+        assert!(!standard.contains("media"), "media is long+");
         // New Long fields must not leak into standard.
         assert!(
             !standard.contains("brightness"),

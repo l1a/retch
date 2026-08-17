@@ -150,6 +150,8 @@ You can generate a starting configuration with:
   - `desktop`: Desktop environment name (e.g. GNOME, KDE Plasma, XFCE).
   - `wm`: Window manager name (e.g. Mutter, KWin, Sway). Hidden when identical to Desktop.
   - `login-manager`: Active display/login manager (GDM, SDDM, LightDM, greetd, …), resolved from the `display-manager.service` systemd unit. Linux only. Long mode and above.
+  - `player`: Active media player name and playback status (e.g. Spotify (Playing), VLC media player). Long mode and above.
+  - `media`: Currently playing song/track title and artist. Long mode and above.
   - `theme`: UI Theme settings.
   - `icons`: UI icon pack.
   - `cursor`: UI mouse cursor settings.
