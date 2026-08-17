@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786935353936,
+  "lastUpdate": 1786935566907,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18772,70 +18772,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "0157907ad80e3ce0a3b2a1d30b8bd93aa1d92aee",
-          "message": "docs: add Development-Setup.md to wiki checklist (#135)\n\n* docs: add Development-Setup.md to wiki checklist\n\nIt was omitted from AGENTS.md Â§4.8 when the checklist was first\nwritten, even though it documents just recipes and was directly\naffected by the just pr/just merge-pr additions. Also caught up the\nwiki itself (done directly, outside this PR, since wiki edits aren't\ngated by review): documented just pr/merge-pr and fixed a stale\npandoc reference (Justfile/flake use mandown).\n\nAssisted-By: Claude Sonnet 5\n\n* docs: add Development-Setup.md to NOTES.md wiki list too\n\nSame gap as AGENTS.md \\u00a74.8, duplicated in NOTES.md \\u00a73's own\nwiki checklist.\n\nAssisted-By: Claude Sonnet 5",
-          "timestamp": "2026-07-01T13:51:17-07:00",
-          "tree_id": "48e3a31d893308fa4ca9065b2e39f8936f7d87f6",
-          "url": "https://github.com/l1a/retch/commit/0157907ad80e3ce0a3b2a1d30b8bd93aa1d92aee"
-        },
-        "date": 1782941669327,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 103.4386491307999,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9478651144154995,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 104.29523994909343,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 79.20327427801159,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45858.07715213292,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 499.1589324618778,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 747.0260009001657,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3653422785,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "efde1f0505b401f804ea9e26c4968d6f1499ca8d",
           "message": "chore: untap aws/tap in macOS benchmark CI (cosmetic) (#136)\n\nThe macOS benchmark job surfaces \"aws/tap is not trusted\" Homebrew\nwarnings as Actions annotations on every run, caused by a\npre-installed tap on the GitHub-hosted macos-latest runner image\nthat's unrelated to installing fastfetch/hyperfine. Nothing was\nfailing â€” this just declutters the Actions summary.\n\nAssisted-By: Claude Sonnet 5",
           "timestamp": "2026-07-01T14:36:18-07:00",
@@ -21955,6 +21891,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3253555905,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9b8bcc71daafe3d38abb8ba9085195eef680d68f",
+          "message": "Native Media and Player Detection (#197)\n\n* Add native media and player detection fields\n\nImplement 100% native FFI / direct socket media and player detection with zero subprocess forks across Windows (WinRT COM GlobalSystemMediaTransportControlsSessionManager via combase.dll), Linux (direct Unix domain socket D-Bus MPRIS client), and macOS (Objective-C runtime SBApplication FFI).\n\nAdds 'player' and 'media' to FIELDS registry (Mode::Long, available in --long and --full). Strata golden counts Long 52 -> 54, Full 58 -> 60. Regenerated man page, updated README.md, docs/retch.1.md, NOTES.md, WIP.md, and GitHub wiki.\n\nAssisted-By: Gemini 2.5 Flash\n\n* Fix Rust 1.97 Clippy lints in media.rs\n\nAssisted-By: Antigravity",
+          "timestamp": "2026-08-16T19:19:02-07:00",
+          "tree_id": "5f6c7da98e5d1a0862003b59cc74c4130d097866",
+          "url": "https://github.com/l1a/retch/commit/9b8bcc71daafe3d38abb8ba9085195eef680d68f"
+        },
+        "date": 1786935563525,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 179.0638797603917,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.956193042597625,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 98.67536913126996,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 82.49084923580385,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47167.49465506444,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 489.78692483445604,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 731.3465385988499,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1946138320,
             "unit": "ns"
           }
         ]
