@@ -6,6 +6,9 @@ authors = ["Ken Tobias"]
 description = "System information gathering library for retch"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/l1a/retch"
+readme = "README.md"
+keywords = ["system", "sysinfo", "hardware", "fetch"]
+categories = ["os", "hardware-support"]
 
 [dependencies]
 sysinfo = { version = "0.39", features = ["component"] }
