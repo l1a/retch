@@ -10,6 +10,8 @@
 //!   `Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager`.
 //! - **macOS**: Native Objective-C runtime FFI via `macos_ffi.rs` querying running media apps.
 
+#![allow(clippy::manual_is_multiple_of)]
+
 /// Information about the active media player and currently playing track.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct MediaInfo {
@@ -603,11 +605,12 @@ pub mod linux_dbus {
             encode_header_field(&mut header_fields, 8, b'g', sig.as_bytes());
         }
 
-        let mut msg = Vec::new();
-        msg.push(b'l'); // Little-endian
-        msg.push(1); // Method call
-        msg.push(0); // Flags
-        msg.push(1); // Protocol version
+        let mut msg = vec![
+            b'l', // Little-endian
+            1,    // Method call
+            0,    // Flags
+            1,    // Protocol version
+        ];
         msg.extend_from_slice(&(body.len() as u32).to_le_bytes());
         msg.extend_from_slice(&serial.to_le_bytes());
         msg.extend_from_slice(&(header_fields.len() as u32).to_le_bytes());
