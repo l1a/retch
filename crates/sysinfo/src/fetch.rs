@@ -169,6 +169,10 @@ pub struct SystemInfo {
     pub mouse: Vec<String>,
     /// TPM specification version (e.g. "2.0"). Linux only.
     pub tpm: Option<String>,
+    /// Currently playing media track (e.g. "Artist - Title").
+    pub media: Option<String>,
+    /// Active media player (e.g. "Spotify (Playing)").
+    pub player: Option<String>,
 }
 
 impl SystemInfo {
@@ -409,6 +413,7 @@ impl SystemInfo {
             weather,
             btrfs,
             zpool,
+            (media, player),
         ) = std::thread::scope(|s| {
             let gpu_handle = if should_collect("gpu") {
                 Some(s.spawn(|| {
@@ -513,6 +518,11 @@ impl SystemInfo {
             } else {
                 None
             };
+            let media_handle = if should_collect("media") || should_collect("player") {
+                Some(s.spawn(crate::media::detect_media))
+            } else {
+                None
+            };
 
             (
                 gpu_handle
@@ -551,6 +561,9 @@ impl SystemInfo {
                 zpool_handle
                     .map(|h| h.join().unwrap_or_default())
                     .unwrap_or_default(),
+                media_handle
+                    .map(|h| h.join().unwrap_or((None, None)))
+                    .unwrap_or((None, None)),
             )
         });
 
@@ -912,6 +925,8 @@ impl SystemInfo {
             keyboard,
             mouse,
             tpm,
+            media,
+            player,
         })
     }
 }

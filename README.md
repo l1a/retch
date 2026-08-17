@@ -264,6 +264,7 @@ fields = [
     "disk", "phys-disk", "btrfs", "zpool", "temp",
     "net", "public-ip", "wifi", "dns", "bluetooth", "battery", "power-adapter",
     "shell", "editor", "terminal", "terminal-font", "terminal-size", "desktop", "wm", "login-manager",
+    "player", "media",
     "theme", "icons", "cursor", "font", "users", "packages", "weather"
 ]
 ```

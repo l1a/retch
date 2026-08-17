@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "August 2026" "retch 0.7.1" "System Information Fetcher"
+.TH "RETCH" "1" "August 2026" "retch 0.8.0" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -361,6 +361,14 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .Bl
 .IP \(bu 4
 `\f[CR]login\-manager\fP`: Active display/login manager (GDM, SDDM, LightDM, greetd, \.\.\.), resolved from the `\f[CR]display\-manager\.service\fP` systemd unit\. Linux only\. Long mode and above\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]player\fP`: Active media player name and playback status (e\.g\. Spotify (Playing), VLC media player)\. Long mode and above\.
+.El
+.Bl
+.IP \(bu 4
+`\f[CR]media\fP`: Currently playing song/track title and artist\. Long mode and above\.
 .El
 .Bl
 .IP \(bu 4
