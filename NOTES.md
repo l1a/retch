@@ -106,7 +106,19 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.8.0)
+## Current State (v0.8.1)
+- **v0.8.1 — dependency bumps (consolidated Dependabot #199)** (chore; no runtime behavior
+  change). Rolls Dependabot's PR onto a gated branch so the release hygiene it bypasses —
+  version bump, NOTES entry, man regen — is actually done, following the #167/v0.6.3,
+  #184/v0.6.16, and #188/v0.6.19 pattern.
+  - **2 direct crates + 5 transitive** (`cargo-dependencies` group, #199), all patch-level and
+    **lockfile-only** — every spec is a caret range, so both `Cargo.toml` manifests are
+    untouched: `clap_complete_nushell` 4.6.1→4.6.2, `icy_sixel` 0.5.0→0.5.1 (pulls
+    `quantette` 0.5.1→0.6.0, `rand` 0.10.2, `rand_core` 0.10.1, `rand_xoshiro` 0.7.0→0.8.1,
+    `safe_arch` 0.9.3→1.2.0, `wide` 0.8.3→1.6.1). The resulting `Cargo.lock` was
+    **diff-verified byte-identical** to what Dependabot generated on #199.
+  - `retch-cli` → 0.8.1; `retch-sysinfo` unchanged at `0.1.55` (no source change — only its
+    transitive lockfile deps moved). Patch bump.
 - **v0.8.0 — Native `Media` and `Player` detection across Windows, Linux, and macOS (100% native OS APIs/FFI/sockets, zero subprocess forking)**:
   - **Zero-subprocess architecture**: Spawning external CLI commands (`powershell.exe`, `playerctl`, `osascript`, `busctl`) is strictly avoided across all platforms.
   - **Windows**: Dynamically loads `combase.dll` to query WinRT COM `GlobalSystemMediaTransportControlsSessionManager`. Retrieves active player ID (cleaned to user-friendly names e.g. Spotify, Media Player, Edge, Chrome), playback state (Playing, Paused, Stopped, Buffering), and track metadata (`Artist - Title`, `Album`) asynchronously in `< 1ms`.
