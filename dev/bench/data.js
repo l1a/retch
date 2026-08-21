@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787352049914,
+  "lastUpdate": 1787352526954,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7666,90 +7666,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "e0687d49ba4020e78a8b09d6320347f2757c5ffd",
-          "message": "Consolidate field list into single registry (#139)\n\nReplace four hand-duplicated field-list copies (main.rs collection\nallow-lists + config template, display.rs display allow-lists,\nconfig.rs DEFAULT_FIELDS_BLOCK) with one FIELDS table in src/fields.rs.\nmain.rs and display.rs derive per-strata allow-lists from\nfields_for(mode); both config-generation paths emit the fields block\nfrom config_fields_block().\n\nFixes pre-existing doc drift the consolidation exposed (man page was\nmissing cpu-cache/cpu-usage/public-ip and spelled terminal_font;\nREADME missing gamepad/public-ip) and adds guardrail tests that fail\nCI if any registry key is undocumented or missing from generated\nconfig. Strata sets are byte-for-byte unchanged; pure internal refactor.\n\nResolves the field-wiring de-duplication tech debt (NOTES.md Â§5).\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-10T09:45:06-07:00",
-          "tree_id": "74f40f025e3cda412809c914329171c301a7e106",
-          "url": "https://github.com/l1a/retch/commit/e0687d49ba4020e78a8b09d6320347f2757c5ffd"
-        },
-        "date": 1783702769923,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1030796708.65,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 991.6084675493814,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.729479904071084,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9469135647821867,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.54776811754044,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7848.639923057895,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 71224.81259729821,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4811.866914535419,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4874.156239183751,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1215438.5660559712,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 337.14358901882326,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 282.5890139233291,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "7a3b029a318196f57111112492235841e6692d8c",
           "message": "Reword WIP resetâ†’update, rename wip script (#141)\n\nWIP.md is an ongoing rolling log, not reset per-PR. Align the docs and\ntooling with that: AGENTS.md Â§5 and the just merge-pr recipe now say\n\"update\" instead of \"reset\", and scripts/reset_wip.py is renamed to\nscripts/update_wip.py (git mv; behavior unchanged â€” it still only\nrewrites the Active-Branch and latest-commit lines).\n\nAlso folds in the NOTES.md Â§5 \"real hardware benchmark section\" backlog\nitem. Docs/tooling only; no Rust source touched.\n\nVersion bumped 0.3.40 â†’ 0.3.41 (patch); man page + Cargo.lock regenerated.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-10T18:14:33-07:00",
@@ -11849,6 +11765,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 275.13230132533965,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e42fb854db13c202146dc739849f67429547ebf9",
+          "message": "deps: bump dependencies (consolidate #199) (#200)\n\nConsolidate Dependabot PR #199:\n- clap_complete_nushell 4.6.1 -> 4.6.2\n- icy_sixel 0.5.0 -> 0.5.1\n- Cargo.lock transitive dependency updates\n- Bump retch-cli to 0.8.1 and regenerate man page\n\nAssisted-By: Gemini 3.7 Flash",
+          "timestamp": "2026-08-21T15:33:39-07:00",
+          "tree_id": "f4dea1009382aed406875e53dbf14115c540f5df",
+          "url": "https://github.com/l1a/retch/commit/e42fb854db13c202146dc739849f67429547ebf9"
+        },
+        "date": 1787352525510,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 823809281.3,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 969.7362863558008,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 111.79271880571034,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946691806082886,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 52.252188739558605,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7818.095962426621,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70429.90154127247,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4778.5372011314685,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4877.391668139681,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1066784.2116893257,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 353.71070247079314,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 264.22390900424864,
             "unit": "ns"
           }
         ]
