@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787409808150,
+  "lastUpdate": 1787410185563,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7774,90 +7774,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "fa00d4325e62ef3a7ad84c9158c1328d53f6f6a2",
-          "message": "Fix update_wip.py stale-pointer regex + UTF-8 (#142)\n\nThe post-merge WIP updater matched an obsolete \"**Latest commit on\nmain**:\" line that no longer exists, so the substitution silently\nno-op'd and left \"**main HEAD**:\" stale after every `just merge-pr`\n(seen live after #141). Retarget the regex to \"**main HEAD**:\", rewrite\nin the current format (`<hash>` â€” <subject> â€” **v<version>**) with the\nversion read from Cargo.toml, using a function replacement so metachars\nin the subject are literal.\n\nSince the fix now writes the commit subject into WIP.md, and this repo's\nsubjects contain \"â†’\"/em-dashes, pin UTF-8 on read_text/write_text,\nsubprocess decoding, and stdout â€” otherwise cp1252 (the default Windows\nconsole/locale where merge-pr runs) crashes the script. Verified\nend-to-end against a subject containing \"â†’\".\n\nAlso gitignore __pycache__/*.pyc.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-10T18:31:45-07:00",
-          "tree_id": "2db4346561186354ab7202a4b36fa637426c79f1",
-          "url": "https://github.com/l1a/retch/commit/fa00d4325e62ef3a7ad84c9158c1328d53f6f6a2"
-        },
-        "date": 1783734374192,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1219741372.45,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 1008.0852095403355,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.56926383213533,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9469645469625965,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.37767400368315,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7950.449312969485,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 71776.73413796164,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4880.261566744561,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4965.797002451786,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1218653.2104666657,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 350.34359233620376,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 280.4910992911331,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "9f639d38da27f892e183f9fa1e0f77d57cdfdcad",
           "message": "update_wip.py: bound subs with count=1 (#143)\n\nFollow-up to #142. The retargeted `**main HEAD**:` regex had no count,\nso it rewrote every line containing the header string â€” and WIP.md's\nopen-task prose mentions it verbatim, so the #142 merge clobbered those\ntask lines. Pass count=1 to both re.sub calls (Active-Branch and\nmain-HEAD) so only the first top-of-file header occurrence is rewritten.\nVerified end-to-end against a sample with the header in both a header\nline and later prose.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-10T20:05:40-07:00",
@@ -11957,6 +11873,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 276.0515743552179,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0a334e8187c77658e8eeb0bf56462e23810fbc20",
+          "message": "Fix default recipe in Justfile to list recipes (#202)\n\nMove default recipe before COMMON block so running bare `just`\nlists available recipes instead of executing `install`.\n\nAssisted-By: Gemini 3.5 Flash",
+          "timestamp": "2026-08-22T07:36:24-07:00",
+          "tree_id": "2e46c9a115cdbc9da04af1c8945edc382c917046",
+          "url": "https://github.com/l1a/retch/commit/0a334e8187c77658e8eeb0bf56462e23810fbc20"
+        },
+        "date": 1787410184045,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 829547999.1,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 962.8341479227474,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 110.03849326508569,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9465947396581282,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 46.907755806318235,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7806.472304931044,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70779.41535178077,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4811.231162435752,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4913.149544207414,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1054324.796399577,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 345.2843126482748,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 276.00164373171697,
             "unit": "ns"
           }
         ]
