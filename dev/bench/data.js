@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787410541633,
+  "lastUpdate": 1787411100871,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15678,70 +15678,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "fa00d4325e62ef3a7ad84c9158c1328d53f6f6a2",
-          "message": "Fix update_wip.py stale-pointer regex + UTF-8 (#142)\n\nThe post-merge WIP updater matched an obsolete \"**Latest commit on\nmain**:\" line that no longer exists, so the substitution silently\nno-op'd and left \"**main HEAD**:\" stale after every `just merge-pr`\n(seen live after #141). Retarget the regex to \"**main HEAD**:\", rewrite\nin the current format (`<hash>` â€” <subject> â€” **v<version>**) with the\nversion read from Cargo.toml, using a function replacement so metachars\nin the subject are literal.\n\nSince the fix now writes the commit subject into WIP.md, and this repo's\nsubjects contain \"â†’\"/em-dashes, pin UTF-8 on read_text/write_text,\nsubprocess decoding, and stdout â€” otherwise cp1252 (the default Windows\nconsole/locale where merge-pr runs) crashes the script. Verified\nend-to-end against a subject containing \"â†’\".\n\nAlso gitignore __pycache__/*.pyc.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-10T18:31:45-07:00",
-          "tree_id": "2db4346561186354ab7202a4b36fa637426c79f1",
-          "url": "https://github.com/l1a/retch/commit/fa00d4325e62ef3a7ad84c9158c1328d53f6f6a2"
-        },
-        "date": 1783735435312,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 129.77423379690293,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 6.512539824094139,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 134.49184534559203,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 96.84704852032203,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 41893.99905596172,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 640.5307900028286,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 800.1283478028093,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3845610830,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "9f639d38da27f892e183f9fa1e0f77d57cdfdcad",
           "message": "update_wip.py: bound subs with count=1 (#143)\n\nFollow-up to #142. The retargeted `**main HEAD**:` regex had no count,\nso it rewrote every line containing the header string â€” and WIP.md's\nopen-task prose mentions it verbatim, so the #142 merge clobbered those\ntask lines. Pass count=1 to both re.sub calls (Active-Branch and\nmain-HEAD) so only the first top-of-file header occurrence is rewritten.\nVerified end-to-end against a sample with the header in both a header\nline and later prose.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-10T20:05:40-07:00",
@@ -18861,6 +18797,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2497507690,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0a334e8187c77658e8eeb0bf56462e23810fbc20",
+          "message": "Fix default recipe in Justfile to list recipes (#202)\n\nMove default recipe before COMMON block so running bare `just`\nlists available recipes instead of executing `install`.\n\nAssisted-By: Gemini 3.5 Flash",
+          "timestamp": "2026-08-22T07:36:24-07:00",
+          "tree_id": "2e46c9a115cdbc9da04af1c8945edc382c917046",
+          "url": "https://github.com/l1a/retch/commit/0a334e8187c77658e8eeb0bf56462e23810fbc20"
+        },
+        "date": 1787411097889,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 177.4768418765637,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.830859933331658,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 92.71990956599919,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 79.5375828752001,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 33048.40226208557,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 441.4798086601316,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 643.7995079278132,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1657531840,
             "unit": "ns"
           }
         ]
