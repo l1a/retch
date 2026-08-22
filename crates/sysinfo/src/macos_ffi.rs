@@ -858,7 +858,7 @@ pub fn get_macos_wallpaper() -> Option<String> {
             return None;
         }
         let wp_sel = sel_registerName(CString::new("desktopImageURLForScreen:").unwrap().as_ptr());
-        let url = objc_msgSend(ws, wp_sel, screen);
+        let url = objc_msgSend_id_id(ws, wp_sel, screen);
         if url.is_null() {
             return None;
         }
@@ -891,6 +891,8 @@ extern "C" {
 
 #[allow(clashing_extern_declarations)]
 extern "C" {
+    #[link_name = "objc_msgSend"]
+    fn objc_msgSend_id_id(self_: *mut c_void, op: *mut c_void, arg: *mut c_void) -> *mut c_void;
     #[link_name = "objc_msgSend"]
     fn objc_msgSend_f64(self_: *mut c_void, op: *mut c_void) -> f64;
 }
