@@ -106,7 +106,9 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.0)
+## Current State (v0.9.1)
+- **v0.9.1 — Fix `just` default recipe position in `Justfile`**:
+  - Moved `default: @just --list` before the vendored `COMMON (template v3)` block so that running bare `just` correctly lists available recipes instead of executing `install` (which was previously the first defined recipe in the file). Removed the unreachable duplicate `default:` recipe from the bottom section.
 - **v0.9.0 — Desktop & UI Detection Probes: `WMTheme`, `Wallpaper`, `TerminalTheme` (zero subprocess forking)**:
   - **Zero-subprocess architecture**: 100% direct filesystem config parsing on Linux, native Win32 registry FFI on Windows, and Cocoa/AppKit FFI on macOS without spawning `gsettings`, `dconf`, `defaults`, `powershell.exe`, or `reg.exe`.
   - **WM Theme (`wm-theme`)**: Detects window decoration/frame theme across Linux (KWin `kwinrc`, Xfwm4 `xfwm4.xml`, Openbox `rc.xml`, Fluxbox `init`, IceWM `theme`, Mutter/Marco/GTK `settings.ini`), macOS (Aqua), and Windows (`HKCU\Software\Microsoft\Windows\CurrentVersion\Themes`).
