@@ -173,6 +173,12 @@ pub struct SystemInfo {
     pub media: Option<String>,
     /// Active media player (e.g. "Spotify (Playing)").
     pub player: Option<String>,
+    /// Active window manager theme / decoration style.
+    pub wm_theme: Option<String>,
+    /// Active desktop background wallpaper file path or URI.
+    pub wallpaper: Option<String>,
+    /// Terminal emulator color scheme / theme name.
+    pub terminal_theme: Option<String>,
 }
 
 impl SystemInfo {
@@ -860,6 +866,30 @@ impl SystemInfo {
             0
         };
 
+        let wm_theme = if should_collect("wm-theme")
+            || should_collect("wm theme")
+            || should_collect("wm_theme")
+        {
+            crate::theme::detect_wm_theme(wm.as_deref(), desktop.as_deref())
+        } else {
+            None
+        };
+
+        let wallpaper = if should_collect("wallpaper") {
+            crate::theme::detect_wallpaper(desktop.as_deref(), wm.as_deref())
+        } else {
+            None
+        };
+
+        let terminal_theme = if should_collect("terminal-theme")
+            || should_collect("terminal theme")
+            || should_collect("terminal_theme")
+        {
+            crate::terminal::detect_terminal_theme(terminal.as_deref())
+        } else {
+            None
+        };
+
         Ok(Self {
             os,
             kernel,
@@ -927,6 +957,9 @@ impl SystemInfo {
             tpm,
             media,
             player,
+            wm_theme,
+            wallpaper,
+            terminal_theme,
         })
     }
 }

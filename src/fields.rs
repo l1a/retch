@@ -277,6 +277,18 @@ const FIELDS: &[FieldDef] = &[
     },
     // --- Cosmetic / slow (Full-only unless noted) ---
     FieldDef {
+        key: "wm-theme",
+        min_mode: Mode::Full,
+    },
+    FieldDef {
+        key: "wallpaper",
+        min_mode: Mode::Full,
+    },
+    FieldDef {
+        key: "terminal-theme",
+        min_mode: Mode::Full,
+    },
+    FieldDef {
         key: "theme",
         min_mode: Mode::Full,
     },
@@ -396,7 +408,7 @@ mod tests {
         assert_eq!(fields_for(Mode::Short).len(), 8, "short field count");
         assert_eq!(fields_for(Mode::Standard).len(), 19, "standard field count");
         assert_eq!(fields_for(Mode::Long).len(), 54, "long field count");
-        assert_eq!(fields_for(Mode::Full).len(), 60, "full field count");
+        assert_eq!(fields_for(Mode::Full).len(), 63, "full field count");
     }
 
     #[test]
@@ -444,10 +456,19 @@ mod tests {
         );
         assert!(!long.contains("weather"), "weather is full-only");
         assert!(!long.contains("gamepad"), "gamepad is full-only");
+        assert!(!long.contains("wm-theme"), "wm-theme is full-only");
+        assert!(!long.contains("wallpaper"), "wallpaper is full-only");
+        assert!(
+            !long.contains("terminal-theme"),
+            "terminal-theme is full-only"
+        );
 
         let full: HashSet<_> = fields_for(Mode::Full).into_iter().collect();
         assert!(full.contains("weather"));
         assert!(full.contains("domain-search"));
+        assert!(full.contains("wm-theme"));
+        assert!(full.contains("wallpaper"));
+        assert!(full.contains("terminal-theme"));
     }
 
     #[test]

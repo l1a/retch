@@ -152,6 +152,9 @@ You can generate a starting configuration with:
   - `login-manager`: Active display/login manager (GDM, SDDM, LightDM, greetd, …), resolved from the `display-manager.service` systemd unit. Linux only. Long mode and above.
   - `player`: Active media player name and playback status (e.g. Spotify (Playing), VLC media player). Long mode and above.
   - `media`: Currently playing song/track title and artist. Long mode and above.
+  - `wm-theme`: Window manager frame / decoration theme (e.g. Breeze, Adwaita, Yaru, Greybird, Aqua, Aero). Full mode only by default.
+  - `wallpaper`: Current desktop background wallpaper file path or URI. Full mode only by default.
+  - `terminal-theme`: Terminal emulator color scheme or palette name (Kitty, Alacritty, WezTerm, Foot, Windows Terminal, Konsole, Ptyxis, iTerm2, Apple Terminal). Full mode only by default.
   - `theme`: UI Theme settings.
   - `icons`: UI icon pack.
   - `cursor`: UI mouse cursor settings.

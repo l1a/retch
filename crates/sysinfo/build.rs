@@ -8,5 +8,6 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=CoreAudio");
         println!("cargo:rustc-link-lib=framework=CoreGraphics");
         println!("cargo:rustc-link-lib=framework=CoreWLAN");
+        println!("cargo:rustc-link-lib=framework=AppKit");
     }
 }

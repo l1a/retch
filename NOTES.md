@@ -106,7 +106,13 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.8.1)
+## Current State (v0.9.0)
+- **v0.9.0 — Desktop & UI Detection Probes: `WMTheme`, `Wallpaper`, `TerminalTheme` (zero subprocess forking)**:
+  - **Zero-subprocess architecture**: 100% direct filesystem config parsing on Linux, native Win32 registry FFI on Windows, and Cocoa/AppKit FFI on macOS without spawning `gsettings`, `dconf`, `defaults`, `powershell.exe`, or `reg.exe`.
+  - **WM Theme (`wm-theme`)**: Detects window decoration/frame theme across Linux (KWin `kwinrc`, Xfwm4 `xfwm4.xml`, Openbox `rc.xml`, Fluxbox `init`, IceWM `theme`, Mutter/Marco/GTK `settings.ini`), macOS (Aqua), and Windows (`HKCU\Software\Microsoft\Windows\CurrentVersion\Themes`).
+  - **Wallpaper (`wallpaper`)**: Detects current background image path across Linux (GNOME/Cinnamon/Budgie/MATE config, KDE Plasma `desktop-appletsrc`, XFCE `xfce4-desktop.xml`, Hyprpaper `hyprpaper.conf`, Sway `config`, Feh `.fehbg`, Nitrogen `bg-saved.cfg`), macOS (`NSWorkspace` AppKit FFI), and Windows (`HKCU\Control Panel\Desktop\WallPaper`).
+  - **Terminal Theme (`terminal-theme`)**: Detects active color scheme / palette name or background/foreground hex codes across Kitty, Alacritty, WezTerm, Foot, Windows Terminal (`settings.json`), Konsole (`konsolerc`), Ptyxis, iTerm2, and Apple Terminal.
+  - **Output Strata & Documentation**: Added `wm-theme`, `wallpaper`, and `terminal-theme` to `FIELDS` in `src/fields.rs` (`Mode::Full`). Golden strata counts updated (Full: 60 → 63). Man page `docs/retch.1` regenerated, `README.md` and `docs/retch.1.md` updated. Unit tests added for all pure parsers and path normalization. `retch-cli` → 0.9.0; `retch-sysinfo` → 0.1.56.
 - **v0.8.1 — dependency bumps (consolidated Dependabot #199)** (chore; no runtime behavior
   change). Rolls Dependabot's PR onto a gated branch so the release hygiene it bypasses —
   version bump, NOTES entry, man regen — is actually done, following the #167/v0.6.3,
@@ -1263,10 +1269,10 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - **NetIO**: Network I/O throughput
 
 ### Desktop Environment & UI
-- **WMTheme**: Window manager theme
+- ~~**WMTheme**: Window manager theme~~ — added in v0.9.0 (`wm-theme` field; KWin, Xfwm4, Openbox, Fluxbox, IceWM, GTK/Mutter, Aqua, Windows themes)
 - ~~**LM**: Login manager (GDM, SDDM, etc.)~~ — added in v0.5.0 (`login-manager` field, Linux; `display-manager.service` systemd unit)
-- **Wallpaper**: Current wallpaper file path
-- **TerminalTheme**: Terminal foreground/background colors
+- ~~**Wallpaper**: Current wallpaper file path~~ — added in v0.9.0 (`wallpaper` field; GNOME/Cinnamon/Budgie/MATE, KDE Plasma, XFCE, Hyprland, Sway, Feh, Nitrogen, macOS AppKit FFI, Windows registry FFI)
+- ~~**TerminalTheme**: Terminal foreground/background colors and themes~~ — added in v0.9.0 (`terminal-theme` field; Kitty, Alacritty, WezTerm, Foot, Windows Terminal, Konsole, Ptyxis, iTerm2, Apple Terminal)
 
 ### Media
 - ~~**Media / Player**: Currently playing song and active music player~~ — added in v0.8.0 (`player` and `media` fields; 100% native WinRT COM FFI on Windows, direct Unix domain socket binary D-Bus on Linux, native Objective-C runtime on macOS; 0 subprocess forking)
