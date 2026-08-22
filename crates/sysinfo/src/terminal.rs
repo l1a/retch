@@ -455,7 +455,7 @@ pub(crate) fn detect_terminal_font(terminal: Option<&str>) -> Option<String> {
     None
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_kitty_theme(
     content: &str,
     kitty_dir: Option<&std::path::Path>,
@@ -516,7 +516,7 @@ pub(crate) fn parse_kitty_theme(
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_alacritty_theme(content: &str) -> Option<String> {
     let mut bg = None;
     let mut fg = None;
@@ -601,7 +601,7 @@ pub(crate) fn parse_alacritty_theme(content: &str) -> Option<String> {
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_wezterm_theme(content: &str) -> Option<String> {
     for line in content.lines() {
         let line = line.trim();
@@ -621,7 +621,7 @@ pub(crate) fn parse_wezterm_theme(content: &str) -> Option<String> {
     None
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_foot_theme(content: &str) -> Option<String> {
     let mut bg = None;
     let mut fg = None;
@@ -679,7 +679,7 @@ pub(crate) fn parse_windows_terminal_theme(settings_json: &str) -> Option<String
     None
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_konsole_theme(profile_content: &str) -> Option<String> {
     for line in profile_content.lines() {
         let line = line.trim();

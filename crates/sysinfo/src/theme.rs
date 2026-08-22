@@ -304,7 +304,7 @@ pub(crate) fn detect_ui_theme_and_fonts() -> (
     (theme, None, None, Some("Segoe UI".to_string()))
 }
 
-#[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos", test))]
+#[allow(dead_code)]
 pub(crate) fn decode_percent_encoded(s: &str) -> String {
     let mut bytes = Vec::with_capacity(s.len());
     let raw = s.as_bytes();
@@ -328,7 +328,7 @@ pub(crate) fn decode_percent_encoded(s: &str) -> String {
     String::from_utf8_lossy(&bytes).to_string()
 }
 
-#[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos", test))]
+#[allow(dead_code)]
 pub(crate) fn clean_wallpaper_uri(uri: &str) -> Option<String> {
     let trimmed = uri.trim().trim_matches('\'').trim_matches('"').trim();
     if trimmed.is_empty() || trimmed == "''" || trimmed == "\"\"" {
