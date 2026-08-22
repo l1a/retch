@@ -13,6 +13,10 @@
 BINS      := "retch"
 MAN_PAGES := "docs/retch.1"
 
+# List available recipes
+default:
+    @just --list
+
 # Do NOT edit inside the markers below. Edit templates/justfile-common.just and the two
 # vendored helpers, bump their versions, and propagate to the sibling repos in their own PRs.
 # `just standard-check` runs the helpers' self-tests and `just check` depends on it, so a
@@ -92,10 +96,6 @@ standard-check:
 # ===== PROJECT-SPECIFIC — everything below is this repo's own =====
 
 set positional-arguments := true
-
-# Default recipe
-default:
-    @just --list
 
 # Build the project (debug mode)
 build:
