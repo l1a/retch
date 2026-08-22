@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787378538737,
+  "lastUpdate": 1787379160795,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15624,70 +15624,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "7a3b029a318196f57111112492235841e6692d8c",
-          "message": "Reword WIP resetâ†’update, rename wip script (#141)\n\nWIP.md is an ongoing rolling log, not reset per-PR. Align the docs and\ntooling with that: AGENTS.md Â§5 and the just merge-pr recipe now say\n\"update\" instead of \"reset\", and scripts/reset_wip.py is renamed to\nscripts/update_wip.py (git mv; behavior unchanged â€” it still only\nrewrites the Active-Branch and latest-commit lines).\n\nAlso folds in the NOTES.md Â§5 \"real hardware benchmark section\" backlog\nitem. Docs/tooling only; no Rust source touched.\n\nVersion bumped 0.3.40 â†’ 0.3.41 (patch); man page + Cargo.lock regenerated.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-10T18:14:33-07:00",
-          "tree_id": "3985c178b81541f77e250902c4997776fb98a214",
-          "url": "https://github.com/l1a/retch/commit/7a3b029a318196f57111112492235841e6692d8c"
-        },
-        "date": 1783734381763,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 128.50213862965154,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.395069656121361,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 127.70285990101301,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 96.52039519515236,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 42416.88133157596,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 582.1625011368676,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 799.1956130741007,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 4666945305,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "fa00d4325e62ef3a7ad84c9158c1328d53f6f6a2",
           "message": "Fix update_wip.py stale-pointer regex + UTF-8 (#142)\n\nThe post-merge WIP updater matched an obsolete \"**Latest commit on\nmain**:\" line that no longer exists, so the substitution silently\nno-op'd and left \"**main HEAD**:\" stale after every `just merge-pr`\n(seen live after #141). Retarget the regex to \"**main HEAD**:\", rewrite\nin the current format (`<hash>` â€” <subject> â€” **v<version>**) with the\nversion read from Cargo.toml, using a function replacement so metachars\nin the subject are literal.\n\nSince the fix now writes the commit subject into WIP.md, and this repo's\nsubjects contain \"â†’\"/em-dashes, pin UTF-8 on read_text/write_text,\nsubprocess decoding, and stdout â€” otherwise cp1252 (the default Windows\nconsole/locale where merge-pr runs) crashes the script. Verified\nend-to-end against a subject containing \"â†’\".\n\nAlso gitignore __pycache__/*.pyc.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-10T18:31:45-07:00",
@@ -18807,6 +18743,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2022508270,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2b80c74b321872317f495009db27eddb70dcfe58",
+          "message": "Add Desktop & UI detection probes (#201)\n\n* Add Desktop & UI detection probes\n\nImplement zero-subprocess desktop and UI detection probes:\n- WM Theme (wm-theme): KWin, Xfwm4, Openbox, Fluxbox, IceWM, GTK, Aqua, Windows.\n- Wallpaper (wallpaper): GNOME, KDE Plasma, XFCE, Hyprpaper, Sway, Feh, Nitrogen, macOS AppKit FFI, Windows registry FFI.\n- Terminal Theme (terminal-theme): Kitty, Alacritty, WezTerm, Foot, Windows Terminal, Konsole, Ptyxis, iTerm2, Apple Terminal.\n- Register fields under FIELDS (Mode::Full), update man page, README, NOTES, and wiki.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix cross-platform parser visibility on macOS/Win\n\nEnsure pure theme and terminal parser functions are available across all\ntarget platforms without cfg gating or dead-code warnings.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Make parse_ini_key available across all targets\n\nRemove target_os = \"linux\" gate from parse_ini_key so unit tests pass\non macOS and Windows.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Make all pure terminal parsers available on Win\n\nRemove target_os cfgs from parse_kitty_theme and other terminal parsers\nso they are unconditionally available on Windows.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix macOS wallpaper Obj-C FFI ABI & AppKit link\n\nAdd AppKit framework link in build.rs and use non-variadic objc_msgSend\ndeclaration (objc_msgSend_id_id) for desktopImageURLForScreen to prevent\nABI misalignments on aarch64 Apple Darwin.\n\nAssisted-By: Gemini 3.5 Flash",
+          "timestamp": "2026-08-21T22:41:46-07:00",
+          "tree_id": "a4206d6e867d2fd2e324cf08f590848666fb1316",
+          "url": "https://github.com/l1a/retch/commit/2b80c74b321872317f495009db27eddb70dcfe58"
+        },
+        "date": 1787379157247,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 227.35981540007623,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 4.948508119500376,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 116.40650125441262,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 101.57122592581244,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41906.42246273313,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 608.1619942891459,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 904.5205910010548,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2497507690,
             "unit": "ns"
           }
         ]
