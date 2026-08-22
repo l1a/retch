@@ -621,6 +621,12 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             print_line("WM", wm);
         }
     }
+    if let Some(wm_theme) = &info.wm_theme {
+        print_line("WM Theme", wm_theme);
+    }
+    if let Some(wallpaper) = &info.wallpaper {
+        print_line("Wallpaper", wallpaper);
+    }
     if let Some(lm) = &info.login_manager {
         print_line("Login Manager", lm);
     }
@@ -644,6 +650,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     }
     if let Some(term_font) = &info.terminal_font {
         print_line("Terminal Font", term_font);
+    }
+    if let Some(term_theme) = &info.terminal_theme {
+        print_line("Terminal Theme", term_theme);
     }
     if let Some(weather) = &info.weather {
         print_line("Weather", weather);

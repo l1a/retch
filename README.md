@@ -265,7 +265,7 @@ fields = [
     "net", "public-ip", "wifi", "dns", "bluetooth", "battery", "power-adapter",
     "shell", "editor", "terminal", "terminal-font", "terminal-size", "desktop", "wm", "login-manager",
     "player", "media",
-    "theme", "icons", "cursor", "font", "users", "packages", "weather"
+    "wm-theme", "wallpaper", "terminal-theme", "theme", "icons", "cursor", "font", "users", "packages", "weather"
 ]
 ```
 

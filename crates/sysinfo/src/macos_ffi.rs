@@ -834,6 +834,45 @@ pub fn get_macos_appearance() -> Option<String> {
     }
 }
 
+// ─── AppKit — Wallpaper ──────────────────────────────────────────────────────
+
+#[link(name = "AppKit", kind = "framework")]
+extern "C" {}
+
+/// Read the current desktop wallpaper image path via NSWorkspace / AppKit.
+pub fn get_macos_wallpaper() -> Option<String> {
+    unsafe {
+        let ws_cls = objc_getClass(CString::new("NSWorkspace").unwrap().as_ptr());
+        let screen_cls = objc_getClass(CString::new("NSScreen").unwrap().as_ptr());
+        if ws_cls.is_null() || screen_cls.is_null() {
+            return None;
+        }
+        let shared_sel = sel_registerName(CString::new("sharedWorkspace").unwrap().as_ptr());
+        let ws = objc_msgSend(ws_cls, shared_sel);
+        if ws.is_null() {
+            return None;
+        }
+        let main_sel = sel_registerName(CString::new("mainScreen").unwrap().as_ptr());
+        let screen = objc_msgSend(screen_cls, main_sel);
+        if screen.is_null() {
+            return None;
+        }
+        let wp_sel = sel_registerName(CString::new("desktopImageURLForScreen:").unwrap().as_ptr());
+        let url = objc_msgSend(ws, wp_sel, screen);
+        if url.is_null() {
+            return None;
+        }
+        let path_sel = sel_registerName(CString::new("path").unwrap().as_ptr());
+        let path_ns = objc_msgSend(url, path_sel) as CFStringRef;
+        if let Some(path) = cf_string_to_rust(path_ns) {
+            if !path.is_empty() {
+                return Some(path);
+            }
+        }
+        None
+    }
+}
+
 // ─── CoreWLAN — Wi-Fi SSID and link rate ─────────────────────────────────────
 //
 // The SystemConfiguration dynamic store key `State:/Network/Interface/*/AirPort`

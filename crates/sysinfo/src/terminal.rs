@@ -455,6 +455,390 @@ pub(crate) fn detect_terminal_font(terminal: Option<&str>) -> Option<String> {
     None
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos", test))]
+pub(crate) fn parse_kitty_theme(
+    content: &str,
+    kitty_dir: Option<&std::path::Path>,
+) -> Option<String> {
+    let mut bg = None;
+    let mut fg = None;
+    for line in content.lines() {
+        let line = line.trim();
+        if line.starts_with("include") {
+            let path_str = line.trim_start_matches("include").trim();
+            let p = std::path::Path::new(path_str);
+            if let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {
+                if stem != "current-theme" && stem != "theme" && !stem.is_empty() {
+                    return Some(stem.to_string());
+                }
+                if let Some(dir) = kitty_dir {
+                    let full_p = if p.is_relative() {
+                        dir.join(p)
+                    } else {
+                        p.to_path_buf()
+                    };
+                    if let Ok(theme_content) = std::fs::read_to_string(&full_p) {
+                        for t_line in theme_content.lines() {
+                            let t_line = t_line.trim();
+                            if let Some(rest) = t_line
+                                .strip_prefix("## name:")
+                                .or_else(|| t_line.strip_prefix("# name:"))
+                                .or_else(|| t_line.strip_prefix("## Name:"))
+                                .or_else(|| t_line.strip_prefix("# Name:"))
+                                .or_else(|| t_line.strip_prefix("# Theme:"))
+                            {
+                                let name = rest.trim();
+                                if !name.is_empty() {
+                                    return Some(name.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if line.starts_with("background") && !line.starts_with("background_") {
+            let val = line.trim_start_matches("background").trim();
+            if !val.is_empty() {
+                bg = Some(val.to_string());
+            }
+        } else if line.starts_with("foreground") && !line.starts_with("foreground_") {
+            let val = line.trim_start_matches("foreground").trim();
+            if !val.is_empty() {
+                fg = Some(val.to_string());
+            }
+        }
+    }
+    match (bg, fg) {
+        (Some(b), Some(f)) => Some(format!("BG: {}, FG: {}", b, f)),
+        (Some(b), None) => Some(format!("BG: {}", b)),
+        (None, Some(f)) => Some(format!("FG: {}", f)),
+        (None, None) => None,
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", test))]
+pub(crate) fn parse_alacritty_theme(content: &str) -> Option<String> {
+    let mut bg = None;
+    let mut fg = None;
+    let mut in_colors = false;
+    let mut in_primary = false;
+    let mut in_import = false;
+
+    for line in content.lines() {
+        let line = line.trim();
+        if line.starts_with('#') {
+            continue;
+        }
+        if line.contains("import") {
+            in_import = true;
+        }
+        if in_import || line.contains(".toml") || line.contains(".yml") || line.contains(".yaml") {
+            let path_start = line.find('"').or_else(|| line.find('\''));
+            if let Some(start) = path_start {
+                let quote = line.chars().nth(start).unwrap();
+                let rest = &line[start + 1..];
+                if let Some(end) = rest.find(quote) {
+                    let imp_path = &rest[..end];
+                    let last_segment = imp_path.rsplit(['/', '\\']).next().unwrap_or(imp_path);
+                    let stem = if let Some(idx) = last_segment.rfind('.') {
+                        &last_segment[..idx]
+                    } else {
+                        last_segment
+                    };
+                    if !stem.is_empty() && stem != "alacritty" {
+                        return Some(stem.to_string());
+                    }
+                }
+            }
+        }
+        if line.contains(']') && in_import {
+            in_import = false;
+        }
+        if line.starts_with("[colors]") {
+            in_colors = true;
+            in_primary = false;
+            continue;
+        } else if line.starts_with("[colors.primary]") {
+            in_colors = true;
+            in_primary = true;
+            continue;
+        } else if line.starts_with('[') {
+            in_colors = false;
+            in_primary = false;
+            continue;
+        }
+        if line.starts_with("scheme") || line.starts_with("colorscheme") {
+            if let Some(idx) = line.find('=').or_else(|| line.find(':')) {
+                let val = line[idx + 1..].trim().trim_matches('"').trim_matches('\'');
+                if !val.is_empty() {
+                    return Some(val.to_string());
+                }
+            }
+        }
+        if (in_primary || in_colors) && line.starts_with("background") {
+            if let Some(idx) = line.find('=').or_else(|| line.find(':')) {
+                let val = line[idx + 1..].trim().trim_matches('"').trim_matches('\'');
+                if !val.is_empty() {
+                    bg = Some(val.to_string());
+                }
+            }
+        }
+        if (in_primary || in_colors) && line.starts_with("foreground") {
+            if let Some(idx) = line.find('=').or_else(|| line.find(':')) {
+                let val = line[idx + 1..].trim().trim_matches('"').trim_matches('\'');
+                if !val.is_empty() {
+                    fg = Some(val.to_string());
+                }
+            }
+        }
+    }
+
+    match (bg, fg) {
+        (Some(b), Some(f)) => Some(format!("BG: {}, FG: {}", b, f)),
+        (Some(b), None) => Some(format!("BG: {}", b)),
+        (None, Some(f)) => Some(format!("FG: {}", f)),
+        (None, None) => None,
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", test))]
+pub(crate) fn parse_wezterm_theme(content: &str) -> Option<String> {
+    for line in content.lines() {
+        let line = line.trim();
+        if line.starts_with("--") {
+            continue;
+        }
+        if line.contains("color_scheme") {
+            if let Some(idx) = line.find('=') {
+                let rest = line[idx + 1..].trim().trim_end_matches(',');
+                let val = rest.trim_matches('"').trim_matches('\'');
+                if !val.is_empty() {
+                    return Some(val.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
+#[cfg(any(target_os = "linux", test))]
+pub(crate) fn parse_foot_theme(content: &str) -> Option<String> {
+    let mut bg = None;
+    let mut fg = None;
+    for line in content.lines() {
+        let line = line.trim();
+        if line.starts_with("include") {
+            let rest = line
+                .trim_start_matches("include")
+                .trim()
+                .trim_start_matches('=')
+                .trim();
+            let p = std::path::Path::new(rest);
+            if let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {
+                if !stem.is_empty() {
+                    return Some(stem.to_string());
+                }
+            }
+        } else if line.starts_with("background=") {
+            let val = line.trim_start_matches("background=").trim();
+            if !val.is_empty() {
+                bg = Some(val.to_string());
+            }
+        } else if line.starts_with("foreground=") {
+            let val = line.trim_start_matches("foreground=").trim();
+            if !val.is_empty() {
+                fg = Some(val.to_string());
+            }
+        }
+    }
+    match (bg, fg) {
+        (Some(b), Some(f)) => Some(format!("BG: #{}, FG: #{}", b, f)),
+        (Some(b), None) => Some(format!("BG: #{}", b)),
+        (None, Some(f)) => Some(format!("FG: #{}", f)),
+        (None, None) => None,
+    }
+}
+
+#[cfg(any(target_os = "windows", test))]
+pub(crate) fn parse_windows_terminal_theme(settings_json: &str) -> Option<String> {
+    for line in settings_json.lines() {
+        let line = line.trim();
+        if line.contains("\"colorScheme\"") {
+            if let Some(pos) = line.find("\"colorScheme\"") {
+                let rest = &line[pos + 13..];
+                if let Some(colon) = rest.find(':') {
+                    let val_part = rest[colon + 1..].trim().trim_end_matches(',');
+                    let val = val_part.trim_matches('"').trim_matches('\'');
+                    if !val.is_empty() {
+                        return Some(val.to_string());
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+#[cfg(any(target_os = "linux", test))]
+pub(crate) fn parse_konsole_theme(profile_content: &str) -> Option<String> {
+    for line in profile_content.lines() {
+        let line = line.trim();
+        if line.starts_with("ColorScheme=") {
+            let val = line.trim_start_matches("ColorScheme=").trim();
+            if !val.is_empty() {
+                return Some(val.to_string());
+            }
+        }
+    }
+    None
+}
+
+pub(crate) fn detect_terminal_theme(terminal: Option<&str>) -> Option<String> {
+    let term = terminal?;
+    let term_lower = term.to_lowercase();
+    let home = dirs::home_dir();
+
+    if term_lower.contains("kitty") {
+        if let Some(ref h) = home {
+            let kitty_dir = h.join(".config/kitty");
+            let conf_path = kitty_dir.join("kitty.conf");
+            if let Ok(content) = std::fs::read_to_string(&conf_path) {
+                if let Some(theme) = parse_kitty_theme(&content, Some(&kitty_dir)) {
+                    return Some(theme);
+                }
+            }
+        }
+    } else if term_lower.contains("alacritty") {
+        if let Some(ref h) = home {
+            for path in &[
+                h.join(".config/alacritty/alacritty.toml"),
+                h.join(".config/alacritty/alacritty.yml"),
+                h.join(".alacritty.toml"),
+                h.join(".alacritty.yml"),
+            ] {
+                if let Ok(content) = std::fs::read_to_string(path) {
+                    if let Some(theme) = parse_alacritty_theme(&content) {
+                        return Some(theme);
+                    }
+                }
+            }
+        }
+    } else if term_lower.contains("wezterm") {
+        if let Some(ref h) = home {
+            for path in &[
+                h.join(".wezterm.lua"),
+                h.join(".config/wezterm/wezterm.lua"),
+            ] {
+                if let Ok(content) = std::fs::read_to_string(path) {
+                    if let Some(theme) = parse_wezterm_theme(&content) {
+                        return Some(theme);
+                    }
+                }
+            }
+        }
+    } else if term_lower.contains("foot") {
+        if let Some(ref h) = home {
+            let conf_path = h.join(".config/foot/foot.ini");
+            if let Ok(content) = std::fs::read_to_string(&conf_path) {
+                if let Some(theme) = parse_foot_theme(&content) {
+                    return Some(theme);
+                }
+            }
+        }
+    } else if term_lower.contains("konsole") {
+        if let Some(ref h) = home {
+            let rc_path = h.join(".config/konsolerc");
+            let mut profile_name = "Default.profile".to_string();
+            if let Ok(content) = std::fs::read_to_string(&rc_path) {
+                for line in content.lines() {
+                    let line = line.trim();
+                    if line.starts_with("DefaultProfile=") {
+                        profile_name = line.trim_start_matches("DefaultProfile=").to_string();
+                        break;
+                    }
+                }
+            }
+            let profile_path = h.join(".local/share/konsole").join(profile_name);
+            if let Ok(content) = std::fs::read_to_string(&profile_path) {
+                if let Some(theme) = parse_konsole_theme(&content) {
+                    return Some(theme);
+                }
+            }
+        }
+    } else if term_lower.contains("ptyxis") {
+        #[cfg(target_os = "linux")]
+        if let Ok(output) = std::process::Command::new("gsettings")
+            .args(["get", "org.gnome.Ptyxis", "palette"])
+            .output()
+        {
+            if output.status.success() {
+                let val = String::from_utf8_lossy(&output.stdout)
+                    .trim()
+                    .trim_matches('\'')
+                    .to_string();
+                if !val.is_empty() && val != "''" {
+                    return Some(val);
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    if term_lower.contains("windowsterminal")
+        || term_lower.contains("windows terminal")
+        || term_lower.contains("wt")
+    {
+        if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+            let pkg_dir = std::path::Path::new(&local_app_data)
+                .join("Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json");
+            let unpkg_dir = std::path::Path::new(&local_app_data)
+                .join("Microsoft/Windows Terminal/settings.json");
+            for path in &[pkg_dir, unpkg_dir] {
+                if let Ok(content) = std::fs::read_to_string(path) {
+                    if let Some(theme) = parse_windows_terminal_theme(&content) {
+                        return Some(theme);
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    if term_lower == "iterm.app" || term_lower.contains("iterm2") {
+        if let Ok(output) = std::process::Command::new("defaults")
+            .args(["read", "com.googlecode.iterm2", "Custom Color Presets"])
+            .output()
+        {
+            if let Ok(s) = String::from_utf8(output.stdout) {
+                let theme = s.trim();
+                if !theme.is_empty() && theme != "0" {
+                    return Some(theme.to_string());
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    if term_lower == "terminal"
+        || term_lower == "apple_terminal"
+        || term_lower.contains("terminal.app")
+    {
+        if let Ok(output) = std::process::Command::new("defaults")
+            .args(["read", "com.apple.Terminal", "Default Window Settings"])
+            .output()
+        {
+            if let Ok(s) = String::from_utf8(output.stdout) {
+                let theme = s.trim();
+                if !theme.is_empty() {
+                    return Some(theme.to_string());
+                }
+            }
+        }
+    }
+
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -485,5 +869,84 @@ mod tests {
         assert_eq!(size_of::<SmallRect>(), 8);
         // 4 (size) + 4 (cursor) + 2 (attributes) + 8 (window) + 4 (max) = 22.
         assert_eq!(size_of::<ConsoleScreenBufferInfo>(), 22);
+    }
+
+    #[test]
+    fn test_parse_kitty_theme() {
+        let conf = "include themes/catppuccin-mocha.conf\nfont_size 12.0\n";
+        assert_eq!(
+            parse_kitty_theme(conf, None),
+            Some("catppuccin-mocha".to_string())
+        );
+
+        let conf_colors = "background #1e1e2e\nforeground #cdd6f4\n";
+        assert_eq!(
+            parse_kitty_theme(conf_colors, None),
+            Some("BG: #1e1e2e, FG: #cdd6f4".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_alacritty_theme() {
+        let conf = r#"
+import = [
+    "~/.config/alacritty/themes/dracula.toml"
+]
+"#;
+        assert_eq!(parse_alacritty_theme(conf), Some("dracula".to_string()));
+
+        let conf_colors = r##"
+[colors.primary]
+background = "#282a36"
+foreground = "#f8f8f2"
+"##;
+        assert_eq!(
+            parse_alacritty_theme(conf_colors),
+            Some("BG: #282a36, FG: #f8f8f2".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_wezterm_theme() {
+        let conf = r#"
+local wezterm = require 'wezterm'
+local config = {}
+config.color_scheme = 'Tokyo Night'
+return config
+"#;
+        assert_eq!(parse_wezterm_theme(conf), Some("Tokyo Night".to_string()));
+    }
+
+    #[test]
+    fn test_parse_foot_theme() {
+        let conf = "include=/usr/share/foot/themes/nord\n";
+        assert_eq!(parse_foot_theme(conf), Some("nord".to_string()));
+
+        let conf_colors = "[colors]\nbackground=2e3440\nforeground=d8dee9\n";
+        assert_eq!(
+            parse_foot_theme(conf_colors),
+            Some("BG: #2e3440, FG: #d8dee9".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_windows_terminal_theme() {
+        let json = r#"{
+    "profiles": {
+        "defaults": {
+            "colorScheme": "Campbell"
+        }
+    }
+}"#;
+        assert_eq!(
+            parse_windows_terminal_theme(json),
+            Some("Campbell".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_konsole_theme() {
+        let profile = "[Appearance]\nColorScheme=Breeze\nFont=Hack,10,-1,5,50,0,0,0,0,0\n";
+        assert_eq!(parse_konsole_theme(profile), Some("Breeze".to_string()));
     }
 }
