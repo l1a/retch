@@ -3,7 +3,7 @@
 
 //! UI theme, icon, cursor, and font detection.
 
-#[cfg(target_os = "linux")]
+#[allow(dead_code)]
 fn parse_ini_key(content: &str, key: &str) -> Option<String> {
     for line in content.lines() {
         let line = line.trim();
