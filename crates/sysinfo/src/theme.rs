@@ -348,7 +348,7 @@ pub(crate) fn clean_wallpaper_uri(uri: &str) -> Option<String> {
     }
 }
 
-#[cfg(any(target_os = "linux", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_kwin_theme(content: &str) -> Option<String> {
     let mut in_kdec = false;
     let mut theme = None;
@@ -394,7 +394,7 @@ pub(crate) fn parse_kwin_theme(content: &str) -> Option<String> {
     }
 }
 
-#[cfg(any(target_os = "linux", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_xfwm4_theme(content: &str) -> Option<String> {
     for line in content.lines() {
         let line = line.trim();
@@ -413,7 +413,7 @@ pub(crate) fn parse_xfwm4_theme(content: &str) -> Option<String> {
     None
 }
 
-#[cfg(any(target_os = "linux", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_openbox_theme(content: &str) -> Option<String> {
     let mut in_theme = false;
     for line in content.lines() {
@@ -439,7 +439,7 @@ pub(crate) fn parse_openbox_theme(content: &str) -> Option<String> {
     None
 }
 
-#[cfg(any(target_os = "linux", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_fluxbox_theme(content: &str) -> Option<String> {
     for line in content.lines() {
         let line = line.trim();
@@ -456,7 +456,7 @@ pub(crate) fn parse_fluxbox_theme(content: &str) -> Option<String> {
     None
 }
 
-#[cfg(any(target_os = "linux", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_icewm_theme(content: &str) -> Option<String> {
     for line in content.lines() {
         let line = line.trim();
@@ -475,7 +475,7 @@ pub(crate) fn parse_icewm_theme(content: &str) -> Option<String> {
     None
 }
 
-#[cfg(any(target_os = "linux", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_plasma_wallpaper(content: &str) -> Option<String> {
     for line in content.lines() {
         let line = line.trim();
@@ -496,7 +496,7 @@ pub(crate) fn parse_plasma_wallpaper(content: &str) -> Option<String> {
     None
 }
 
-#[cfg(any(target_os = "linux", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_xfce_wallpaper(content: &str) -> Option<String> {
     for line in content.lines() {
         let line = line.trim();
@@ -515,7 +515,7 @@ pub(crate) fn parse_xfce_wallpaper(content: &str) -> Option<String> {
     None
 }
 
-#[cfg(any(target_os = "linux", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_hyprpaper_wallpaper(content: &str) -> Option<String> {
     for line in content.lines() {
         let line = line.trim();
@@ -544,7 +544,7 @@ pub(crate) fn parse_hyprpaper_wallpaper(content: &str) -> Option<String> {
     None
 }
 
-#[cfg(any(target_os = "linux", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_sway_wallpaper(content: &str) -> Option<String> {
     for line in content.lines() {
         let line = line.trim();
@@ -563,7 +563,7 @@ pub(crate) fn parse_sway_wallpaper(content: &str) -> Option<String> {
     None
 }
 
-#[cfg(any(target_os = "linux", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_feh_wallpaper(content: &str) -> Option<String> {
     for line in content.lines() {
         let line = line.trim();
@@ -589,7 +589,7 @@ pub(crate) fn parse_feh_wallpaper(content: &str) -> Option<String> {
     None
 }
 
-#[cfg(any(target_os = "linux", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_nitrogen_wallpaper(content: &str) -> Option<String> {
     for line in content.lines() {
         let line = line.trim();
@@ -600,7 +600,7 @@ pub(crate) fn parse_nitrogen_wallpaper(content: &str) -> Option<String> {
     None
 }
 
-#[cfg(any(target_os = "windows", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_windows_theme_name(theme_path: &str) -> Option<String> {
     let clean = theme_path.trim().trim_matches('"').trim_matches('\'');
     let last_segment = clean.rsplit(['/', '\\']).next()?;

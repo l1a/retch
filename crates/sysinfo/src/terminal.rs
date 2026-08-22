@@ -621,7 +621,7 @@ pub(crate) fn parse_wezterm_theme(content: &str) -> Option<String> {
     None
 }
 
-#[cfg(any(target_os = "linux", test))]
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", test))]
 pub(crate) fn parse_foot_theme(content: &str) -> Option<String> {
     let mut bg = None;
     let mut fg = None;
@@ -659,7 +659,7 @@ pub(crate) fn parse_foot_theme(content: &str) -> Option<String> {
     }
 }
 
-#[cfg(any(target_os = "windows", test))]
+#[allow(dead_code)]
 pub(crate) fn parse_windows_terminal_theme(settings_json: &str) -> Option<String> {
     for line in settings_json.lines() {
         let line = line.trim();
@@ -679,7 +679,7 @@ pub(crate) fn parse_windows_terminal_theme(settings_json: &str) -> Option<String
     None
 }
 
-#[cfg(any(target_os = "linux", test))]
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", test))]
 pub(crate) fn parse_konsole_theme(profile_content: &str) -> Option<String> {
     for line in profile_content.lines() {
         let line = line.trim();
