@@ -40,11 +40,18 @@ fn should_show_logo(
     config_show_logo.unwrap_or(true) && stdout_is_tty // auto mode: default-on, but TTY-gated
 }
 
-/// Result of [`plan_layout`]: whether the logo sits beside the text, and the column the text
-/// is padded to (where the logo begins).
+/// Result of [`plan_layout`]: whether the logo sits beside the text, the width the info
+/// lines beside the logo wrap to, and the column the logo itself is drawn at.
+///
+/// `text_column_width` and `logo_column` are deliberately **separate**. The first bounds how
+/// wide a beside-logo info line may grow; the second is where the logo block starts. Folding
+/// them into one value is what let the logo drift inward: the text column is clamped to 65
+/// columns, so on a wide terminal the logo was drawn at column 65 with the rest of the
+/// terminal left empty.
 struct LayoutPlan {
     side_by_side: bool,
     text_column_width: usize,
+    logo_column: usize,
 }
 
 /// Decide side-by-side vs. stacked layout, and the text-column width, from the geometry of
@@ -61,6 +68,17 @@ struct LayoutPlan {
 /// and the graphical image protocols (Kitty/iTerm2/Sixel, whose cell footprint comes from
 /// [`logo::fit_logo_cells`] — the *same* call the emitters use to size the image, so the
 /// reserved area and the drawn area cannot disagree).
+///
+/// In side-by-side mode the logo is **flush against the right margin** (`logo_column =
+/// term_width - logo_width`), not butted up against the end of the text column. The two used
+/// to be the same number, which was only ever right by accident: before the text column was
+/// narrowed to the beside-logo lines (v0.6.8) and then clamped to 65 (v0.6.16), a long
+/// `Wi-Fi`/`Net` line inflated it far enough that the logo happened to land near the edge.
+/// Afterwards it sat at column 65 on every wide terminal, stranding the remainder.
+///
+/// Right-anchoring can never push the logo *left* of the text: `side_by_side` already
+/// requires `term_width >= text_column_width + logo_width`, so `term_width - logo_width` is
+/// at least `text_column_width`.
 ///
 /// `info_widths` are the ANSI-stripped visible widths of the info lines, in render order.
 fn plan_layout(
@@ -85,15 +103,41 @@ fn plan_layout(
     };
     let side_by_side =
         show_logo && term_width >= 95 && term_width >= text_column_width + logo_width;
+    // Flush right. The `max(text_column_width)` floor is belt-and-braces: the `side_by_side`
+    // condition above already guarantees it, and the value is unused when stacked.
+    let logo_column = term_width.saturating_sub(logo_width).max(text_column_width);
     LayoutPlan {
         side_by_side,
         text_column_width,
+        logo_column,
     }
 }
 
-/// Helper to strip ANSI escape sequences and calculate visible string length.
+/// Strip ANSI escape sequences and return the string's width in **terminal columns**.
+///
+/// Not a character count. A CJK ideograph or a Hangul syllable occupies two columns, a
+/// combining mark occupies none, and an emoji followed by the variation selector U+FE0F
+/// (`☀️`) is two columns even though its base character alone would be one — none of which a
+/// `chars().count()` can express.
+///
+/// This matters because every layout decision in this module is denominated in columns: the
+/// padding that positions the logo, the wrap width for beside-logo lines, and the logo's own
+/// measured width. Counting characters undercounted `Media: 宇多田ヒカル - 花束を君に` by 11
+/// columns, so the line overran its column and pushed the logo out of alignment on that row.
+/// `media`/`player` (v0.8.0) read arbitrary track metadata, so non-Latin text is an ordinary
+/// input here, not an exotic one.
+///
+/// Escape handling is unchanged: `\x1b` opens a sequence that ends at the first ASCII letter,
+/// which covers the CSI (`\x1b[…m`), charset (`\x1b(B`) and private (`\x1b[?25l`) forms that
+/// `owo_colors` and `chafa` emit.
+///
+/// The visible characters are measured as one run rather than summed per character, because
+/// width is not a per-character property: variation-selector and zero-width-joiner sequences
+/// are only correct when the whole grapheme is measured together.
 pub fn visible_len(s: &str) -> usize {
-    let mut count = 0;
+    use unicode_width::UnicodeWidthStr;
+
+    let mut visible = String::with_capacity(s.len());
     let mut in_esc = false;
     for c in s.chars() {
         if c == '\x1b' {
@@ -103,10 +147,10 @@ pub fn visible_len(s: &str) -> usize {
                 in_esc = false;
             }
         } else {
-            count += 1;
+            visible.push(c);
         }
     }
-    count
+    visible.width()
 }
 
 /// Wrap a formatted info line (key: value) at logical boundaries to fit within `max_width`.
@@ -230,8 +274,33 @@ fn split_wifi_line(wifi: &str) -> (&str, Option<&str>) {
     }
 }
 
+/// Compose one row of the side-by-side layout: the info line, padded out to `logo_column`,
+/// followed by the logo line.
+///
+/// Padding goes to the **logo column** (the right margin), not merely to the end of the text
+/// column. Rows with no logo content get none at all — otherwise every line below the logo
+/// would carry ~90 trailing spaces.
+///
+/// Extracted from `display()`'s render loop deliberately. This arithmetic used to be inline
+/// there, alongside a local `visible_len` closure that shadowed the module function for the
+/// whole of `display()`; the shadow was a byte-for-byte copy of an older, character-counting
+/// implementation, so the layout silently measured characters while the module function —
+/// and its unit tests — measured columns. A free function cannot be shadowed by a local
+/// binding in another function's body, so the two can no longer diverge, and this is now
+/// directly testable without a pseudo-terminal.
+fn compose_side_by_side_row(info_line: &str, logo_line: &str, logo_column: usize) -> String {
+    let vis_len = visible_len(info_line);
+    if logo_line.is_empty() || vis_len >= logo_column {
+        return format!("{info_line}{logo_line}");
+    }
+    format!(
+        "{info_line}{}{logo_line}",
+        " ".repeat(logo_column - vis_len)
+    )
+}
+
 /// Escape prelude for [`render_graphical_side_by_side`]: reserve `logo_rows` rows with
-/// newlines, move back up to the image-top row, shift right to the logo column, and save the
+/// newlines, move back up to the image-top row, shift right to `logo_column`, and save the
 /// cursor (`\x1b7`).
 ///
 /// The reservation is the scroll-safety mechanism: printing the newlines *first* forces any
@@ -244,13 +313,13 @@ fn split_wifi_line(wifi: &str) -> (&str, Option<&str>) {
 ///
 /// `logo_rows == 0` emits no reservation and no cursor-up (`CSI 0 A` would still move one
 /// row on real terminals).
-fn graphical_side_by_side_prelude(text_column_width: usize, logo_rows: usize) -> String {
+fn graphical_side_by_side_prelude(logo_column: usize, logo_rows: usize) -> String {
     let mut prelude = String::new();
     if logo_rows > 0 {
         prelude.push_str(&"\n".repeat(logo_rows));
         prelude.push_str(&format!("\x1b[{}A", logo_rows));
     }
-    prelude.push_str(&format!("\x1b[{}C\x1b7", text_column_width));
+    prelude.push_str(&format!("\x1b[{}C\x1b7", logo_column));
     prelude
 }
 
@@ -270,7 +339,7 @@ fn graphical_side_by_side_prelude(text_column_width: usize, logo_rows: usize) ->
 /// image). Residual risk: the draw can still scroll only if the image's real row count
 /// exceeds `logo_rows` — the same cell-height estimate the layout already trusts.
 fn render_graphical_side_by_side(
-    text_column_width: usize,
+    logo_column: usize,
     info_lines: &[String],
     logo_rows: usize,
     draw: impl FnOnce(),
@@ -278,10 +347,7 @@ fn render_graphical_side_by_side(
     use std::io::Write;
     // Reserve the logo rows (scroll now, if at all), return to the image-top row at the
     // logo column, save, draw the image, restore, return to column 0.
-    print!(
-        "{}",
-        graphical_side_by_side_prelude(text_column_width, logo_rows)
-    );
+    print!("{}", graphical_side_by_side_prelude(logo_column, logo_rows));
     draw(); // emits the image escape (and may move the cursor / print a newline)
     print!("\x1b8\r");
     for line in info_lines {
@@ -798,24 +864,13 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         }
     }
 
-    // Helper to strip ANSI codes and calculate visible length
-    let visible_len = |s: &str| -> usize {
-        let mut count = 0;
-        let mut in_esc = false;
-        for c in s.chars() {
-            if c == '\x1b' {
-                in_esc = true;
-            } else if in_esc {
-                if c.is_ascii_alphabetic() {
-                    in_esc = false;
-                }
-            } else {
-                count += 1;
-            }
-        }
-        count
-    };
-
+    // NOTE: `display()` previously defined a local `visible_len` closure here that was a
+    // byte-for-byte copy of the module-level [`visible_len`] and shadowed it for this entire
+    // function — which is where every layout decision is made. It has been removed so there
+    // is one implementation. Do not reintroduce a local helper by this name: the shadow was
+    // invisible at every call site (the calls below read identically either way), and it
+    // silently reverted this module's width handling for the layout while the module
+    // function's own unit tests kept passing.
     let info_widths: Vec<usize> = info_lines.iter().map(|line| visible_len(line)).collect();
 
     // Height (row count) and width of the active logo, whatever its kind. ASCII and Chafa are
@@ -841,6 +896,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     let LayoutPlan {
         side_by_side,
         text_column_width,
+        logo_column,
     } = plan_layout(
         &info_widths,
         logo_height,
@@ -873,18 +929,15 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                 for i in 0..max_lines {
                     let info_line = formatted_info_lines.get(i).cloned().unwrap_or_default();
                     let logo_line = logo_lines.get(i).cloned().unwrap_or_default();
-                    let vis_len = visible_len(&info_line);
-                    let padding = if vis_len < text_column_width {
-                        " ".repeat(text_column_width - vis_len)
-                    } else {
-                        String::new()
-                    };
-                    println!("{}{}{}", info_line, padding, logo_line);
+                    println!(
+                        "{}",
+                        compose_side_by_side_row(&info_line, &logo_line, logo_column)
+                    );
                 }
             }
             ActiveLogo::Kitty(bytes, _, logo_rows) => {
                 render_graphical_side_by_side(
-                    text_column_width,
+                    logo_column,
                     &formatted_info_lines,
                     logo_rows,
                     || logo::print_graphical_logo(&bytes),
@@ -892,7 +945,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             }
             ActiveLogo::Iterm2(bytes, _, logo_rows) => {
                 render_graphical_side_by_side(
-                    text_column_width,
+                    logo_column,
                     &formatted_info_lines,
                     logo_rows,
                     || logo::print_iterm2_logo(&bytes),
@@ -900,7 +953,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             }
             ActiveLogo::Sixel(bytes, _, logo_rows) => {
                 render_graphical_side_by_side(
-                    text_column_width,
+                    logo_column,
                     &formatted_info_lines,
                     logo_rows,
                     || logo::print_sixel_logo(&bytes),
@@ -1091,6 +1144,130 @@ mod tests {
         assert!(should_show_logo(Some(false), false, true, false));
     }
 
+    // ── visible_len ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_visible_len_strips_every_escape_form_retch_emits() {
+        // owo_colors' SGR, its default-reset, chafa's private-mode cursor hide, and the
+        // charset designator. `\x1b[?25l` is the one that bit a measurement harness during
+        // this work: it is 6 characters and an SGR-only stripper leaves all of them.
+        assert_eq!(visible_len("plain"), 5);
+        assert_eq!(visible_len("\x1b[38;2;1;2;3mabc\x1b[39m"), 3);
+        assert_eq!(visible_len("\x1b[?25labc"), 3);
+        assert_eq!(visible_len("\x1b(Babc"), 3);
+        assert_eq!(visible_len("\x1b[0m \x1b[38;2;0;0;0m\u{2582}"), 2);
+    }
+
+    #[test]
+    fn test_visible_len_counts_columns_not_characters() {
+        // Regression: this returned a char count, so every wide glyph was undercounted by
+        // one column. `media`/`player` (v0.8.0) surface arbitrary track metadata, so CJK and
+        // Hangul are ordinary inputs.
+        assert_eq!(visible_len("宇多田ヒカル"), 12); // 6 ideographs, 2 columns each
+        assert_eq!(visible_len("아이유"), 6); // 3 Hangul syllables
+        assert_eq!(visible_len("Media: 宇多田ヒカル - 花束を君に"), 32);
+        assert_eq!(visible_len("Media: 아이유 - 밤편지"), 22);
+
+        // Combining marks add no width: "cafe" + U+0301 renders as four columns.
+        assert_eq!(visible_len("cafe\u{301}"), 4);
+        // Precomposed form measures the same, so the two spellings cannot disagree.
+        assert_eq!(visible_len("café"), 4);
+
+        // A colour-wrapped wide value must measure the same as the bare one — the layout
+        // sees the wrapped form.
+        assert_eq!(
+            visible_len("\x1b[38;2;1;2;3m宇多田\x1b[39m"),
+            visible_len("宇多田")
+        );
+    }
+
+    #[test]
+    fn test_visible_len_ascii_art_and_chafa_symbols_are_one_column_each() {
+        // Every shipped logo is ASCII or narrow block-drawing, which is why the char-count
+        // bug never showed on a logo. Pin that, so a future wide-glyph asset fails here
+        // rather than silently overflowing the right margin.
+        for line in logo::get_ascii_logo(Some("fedora")) {
+            let stripped: String = strip_for_test(&line);
+            assert_eq!(
+                visible_len(&line),
+                stripped.chars().count(),
+                "fedora ASCII logo line is not one column per character: {stripped:?}"
+            );
+        }
+        // Chafa's half-block/quadrant symbols are all narrow.
+        for sym in [
+            '\u{2580}', '\u{2584}', '\u{2588}', '\u{258c}', '\u{2596}', '\u{2582}',
+        ] {
+            assert_eq!(visible_len(&sym.to_string()), 1, "{sym:?} is not 1 column");
+        }
+    }
+
+    /// Test-only escape stripper, deliberately independent of [`visible_len`] so the test
+    /// above compares two different implementations rather than one against itself.
+    fn strip_for_test(s: &str) -> String {
+        let mut out = String::new();
+        let mut in_esc = false;
+        for c in s.chars() {
+            if c == '\x1b' {
+                in_esc = true;
+            } else if in_esc {
+                if c.is_ascii_alphabetic() {
+                    in_esc = false;
+                }
+            } else {
+                out.push(c);
+            }
+        }
+        out
+    }
+
+    // ── compose_side_by_side_row ──────────────────────────────────────────────
+
+    #[test]
+    fn test_row_places_the_logo_at_the_logo_column() {
+        let row = compose_side_by_side_row("OS: Fedora", "###", 20);
+        assert_eq!(row, format!("OS: Fedora{}###", " ".repeat(10)));
+        assert_eq!(visible_len(&row), 23);
+    }
+
+    #[test]
+    fn test_row_aligns_wide_characters_by_column_not_character_count() {
+        // The regression that hid behind a shadowed `visible_len`: the layout measured
+        // characters while the module function measured columns, so a CJK value pushed the
+        // logo right by one column per wide glyph. Both rows below must put the logo at
+        // exactly the same column.
+        let latin = compose_side_by_side_row("Locale: en_US.UTF-8", "###", 40);
+        let cjk = compose_side_by_side_row("Locale: ja_JP.宇多田ヒカル", "###", 40);
+        assert_eq!(visible_len(&latin), 43);
+        assert_eq!(
+            visible_len(&cjk),
+            43,
+            "a wide-character info line must not shift the logo column"
+        );
+        // And the logo really is at column 40 in both, not merely the same total width.
+        assert!(latin.ends_with("   ###") && cjk.ends_with("  ###"));
+    }
+
+    #[test]
+    fn test_row_without_a_logo_gets_no_trailing_padding() {
+        // Lines below the logo would otherwise carry ~90 trailing spaces each.
+        assert_eq!(compose_side_by_side_row("Net: eth0", "", 40), "Net: eth0");
+    }
+
+    #[test]
+    fn test_row_with_overlong_info_does_not_underflow() {
+        // An info line wider than the logo column must not panic on the subtraction.
+        let row = compose_side_by_side_row("x".repeat(50).as_str(), "###", 40);
+        assert_eq!(row, format!("{}###", "x".repeat(50)));
+    }
+
+    #[test]
+    fn test_row_ignores_ansi_colour_when_measuring() {
+        let plain = compose_side_by_side_row("abc", "###", 10);
+        let coloured = compose_side_by_side_row("\x1b[31mabc\x1b[39m", "###", 10);
+        assert_eq!(visible_len(&plain), visible_len(&coloured));
+    }
+
     // ── plan_layout ───────────────────────────────────────────────────────────
 
     // A ~20-row logo with the widest beside-logo line = 54 (e.g. the CPU line), then a very
@@ -1175,6 +1352,49 @@ mod tests {
         let p = plan_layout(&[50, 30, 54], 20, 40, 120, true);
         assert!(p.side_by_side);
         assert_eq!(p.text_column_width, 58); // widest of the 3 (54) + 4
+    }
+
+    #[test]
+    fn test_layout_logo_is_flush_with_the_right_margin() {
+        // The drift this fixes: on a wide terminal the logo used to be drawn at
+        // `text_column_width` (capped at 65), stranding everything to its right. Measured on
+        // arrakis at 138 columns with the 49-wide Windows ASCII logo: output stopped at
+        // column 103, leaving 35 dead columns.
+        let p = plan_layout(&realistic_full_widths(), 20, 49, 138, true);
+        assert!(p.side_by_side);
+        assert_eq!(p.text_column_width, 58); // unchanged: still driven by the beside lines
+        assert_eq!(p.logo_column, 138 - 49); // logo now ends exactly at the right margin
+        assert!(
+            p.logo_column > p.text_column_width,
+            "the pre-fix behaviour was logo_column == text_column_width"
+        );
+    }
+
+    #[test]
+    fn test_layout_right_anchor_never_overlaps_the_text_column() {
+        // At the 95-column threshold with a full-width logo the two columns meet exactly;
+        // the logo must never be pulled left of where beside-logo text can reach.
+        for term_width in 95..200 {
+            let p = plan_layout(&[120; 25], 10, logo::LOGO_MAX_COLS, term_width, true);
+            if p.side_by_side {
+                assert!(
+                    p.logo_column >= p.text_column_width,
+                    "logo_column {} < text_column_width {} at {} cols",
+                    p.logo_column,
+                    p.text_column_width,
+                    term_width
+                );
+                assert_eq!(p.logo_column + logo::LOGO_MAX_COLS, term_width);
+            }
+        }
+    }
+
+    #[test]
+    fn test_layout_logo_column_does_not_underflow_on_an_oversized_logo() {
+        // A logo wider than the terminal stacks, and the (unused) column must not underflow.
+        let p = plan_layout(&[40; 10], 10, 200, 100, true);
+        assert!(!p.side_by_side);
+        assert_eq!(p.logo_column, p.text_column_width);
     }
 
     // ── graphical_side_by_side_prelude ────────────────────────────────────────

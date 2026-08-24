@@ -326,10 +326,17 @@ pub fn fit_logo_cells(
     // Compare box_w/img_w against box_h/img_h without floating point: whichever ratio is
     // smaller is the limiting dimension.
     let width_limited = box_w * img_h <= box_h * img_w;
+    // `div_ceil` on the *pixel* division too, not just the cell division below. Truncating
+    // here first could leave the reservation up to one pixel short of what the terminal
+    // actually draws, because the truncated value can fall exactly on a cell boundary that
+    // the true value sits just above: `mx.png` (256x232) scales to 220.69 px, truncated to
+    // 220, which `div_ceil`s to 22 cells = 220 px — 0.69 px less than the image. Invisible
+    // while the logo sat mid-screen with columns to spare; against the right margin it is
+    // the difference between honouring the invariant below and merely nearly honouring it.
     let (disp_w, disp_h) = if width_limited {
-        (box_w, box_w * img_h / img_w) // wide image: touches the sides first
+        (box_w, (box_w * img_h).div_ceil(img_w)) // wide image: touches the sides first
     } else {
-        (box_h * img_w / img_h, box_h) // tall image: touches top and bottom first
+        ((box_h * img_w).div_ceil(img_h), box_h) // tall image: touches top and bottom first
     };
 
     LogoFit {
@@ -1074,6 +1081,75 @@ mod tests {
             let fit = fit_logo_cells(w, h, 10, 20, 45, 10);
             assert!((1..=45).contains(&fit.cols), "{w}x{h} -> {} cols", fit.cols);
             assert!((1..=10).contains(&fit.rows), "{w}x{h} -> {} rows", fit.rows);
+        }
+    }
+
+    /// Every logo asset shipped in `assets/logos/`, as `(width, height)` pixels.
+    ///
+    /// Hardcoded rather than read from disk so the test is a pure function of the numbers —
+    /// the aspect ratios are what matter, and a fixture that reads PNGs would fail for
+    /// filesystem reasons rather than arithmetic ones.
+    const SHIPPED_ASSET_DIMENSIONS: &[(u32, u32)] = &[
+        (384, 117), // arch
+        (291, 384), // debian
+        (384, 384), // endeavouros, manjaro, opensuse, pop, windows
+        (384, 108), // fedora
+        (256, 256), // garuda, linuxmint
+        (256, 150), // kali
+        (313, 384), // macos
+        (256, 232), // mx      <- 220.69 px wide: the truncation case
+        (384, 121), // nixos
+        (384, 163), // tux
+        (384, 135), // ubuntu
+        (256, 222), // zorin   <- 230.63 px wide: the other truncation case
+    ];
+
+    #[test]
+    fn test_fit_logo_cells_reservation_is_never_smaller_than_the_drawn_image() {
+        // The invariant `fit_logo_cells` documents, asserted exactly (cross-multiplied, so
+        // there is no floating point and no rounding of our own).
+        //
+        // Regression for a sub-pixel breach: the display size was computed with truncating
+        // integer division *before* the cell count was `div_ceil`ed, so a true size sitting
+        // just above a cell boundary truncated onto it and reserved one pixel too few.
+        // `mx.png` and `zorin.png` both did this (0.07 cells over). It was invisible while the
+        // logo sat mid-screen; right-anchored, the overflow is at the terminal's edge.
+        for &(w, h) in SHIPPED_ASSET_DIMENSIONS {
+            for (cell_w, cell_h) in [(10usize, 20usize), (7, 15), (22, 51), (9, 18)] {
+                let fit = fit_logo_cells(w, h, cell_w, cell_h, LOGO_MAX_COLS, LOGO_MAX_ROWS);
+                let (box_w, box_h) = (
+                    (LOGO_MAX_COLS * cell_w) as u64,
+                    (LOGO_MAX_ROWS * cell_h) as u64,
+                );
+                let (w, h) = (u64::from(w), u64::from(h));
+                let (res_w, res_h) = ((fit.cols * cell_w) as u64, (fit.rows * cell_h) as u64);
+                if fit.width_limited {
+                    // Drawn size is box_w x (box_w * h / w). Assert res_h >= that, exactly.
+                    assert!(
+                        res_w >= box_w,
+                        "{w}x{h} cells {cell_w}x{cell_h}: width short"
+                    );
+                    // Print the drawn size as a real number — reporting it with the same
+                    // truncating division the bug is about would render the message
+                    // self-contradicting ("reserved 220px < drawn 220px").
+                    assert!(
+                        res_h * w >= box_w * h,
+                        "{w}x{h} cells {cell_w}x{cell_h}: reserved {res_h}px < drawn {:.2}px",
+                        (box_w * h) as f64 / w as f64
+                    );
+                } else {
+                    // Drawn size is (box_h * w / h) x box_h.
+                    assert!(
+                        res_h >= box_h,
+                        "{w}x{h} cells {cell_w}x{cell_h}: height short"
+                    );
+                    assert!(
+                        res_w * h >= box_h * w,
+                        "{w}x{h} cells {cell_w}x{cell_h}: reserved {res_w}px < drawn {:.2}px",
+                        (box_h * w) as f64 / h as f64
+                    );
+                }
+            }
         }
     }
 
