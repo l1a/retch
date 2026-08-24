@@ -106,7 +106,47 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.2)
+## Current State (v0.9.3)
+- **v0.9.3 — what happens to an info line that wraps: colour, separator, and width**
+  (`src/display.rs`; CLI-only, `retch-sysinfo` unchanged at `0.1.56`). User report from
+  arrakis on a 283-column Windows Terminal: the second line of a wrapped `BIOS:` value
+  rendered in a different colour from the first. Investigating it found three defects, two
+  pre-existing and one introduced by v0.9.2.
+  - **The continuation line lost the value colour** (pre-existing, since `wrap_info_line` in
+    v0.6.16). Lines are colourised *before* they are wrapped: `Theme::color_value` emits
+    `<SGR>value<reset>`, so when the value is split the opening SGR stays on the first line
+    and the closing `\x1b[39m` lands on the last — every line between renders in the
+    terminal's default colour. Reproduced byte-for-byte with the reporter's own string; the
+    continuation line's raw form was `'       LLC. HN7306EAC.310 (8//20/07/0)\x1b[39m'`: no
+    opening sequence, and a stray reset. New `carry_sgr_across_lines` re-opens the active
+    colour on each continuation line and closes it at each line end, so a colour can never
+    bleed into the logo column either. Same family as v0.5.1's `colorize_nested` — colour
+    state and layout interacting — and fixed at the wrap step deliberately, because wrap
+    points are chosen from *visible* width and so the wrapper must see the escapes anyway.
+  - **The separator was silently dropped at the break** (pre-existing, same vintage, and the
+    worse of the two because it changes the **data**). The comma branch continued a line with
+    `format!("{}{}", indent, part)`, omitting the `", "` it had just split on, so
+    `American Megatrends International, LLC.` rendered as `…International` / `LLC.` — which
+    reads as two values rather than one company name, with nothing to signal the loss. The
+    comma now stays on the preceding line, as in prose. A test rejoins the wrapped lines and
+    asserts the original text is recovered exactly.
+  - **Beside-logo lines still wrapped at the text column** (introduced by v0.9.2). Decoupling
+    `logo_column` from `text_column_width` moved the logo to the right margin but left the
+    wrap width at the old 45–65 clamp, so on the reporter's 283-column terminal `BIOS:`
+    wrapped at **55 columns with ~177 columns free to its right**. Beside-logo rows now wrap
+    at `logo_column - 2`, matching below-logo rows, which already used the full terminal
+    width. Verified: at 283 columns the line no longer wraps at all.
+  - **Worth stating plainly: the first fix would have been invisible without the third.** On
+    a wide terminal the line no longer wraps, so the colour bug cannot appear there — but it
+    is still live on any terminal narrow enough to wrap, which is why all three were fixed
+    rather than just the one that removed the symptom.
+  - Only zero-width escapes are injected, so `visible_len` of every wrapped line is unchanged
+    and every layout number computed from them still holds — pinned by a test that wraps the
+    same text with and without colour and asserts identical visible widths per line.
+  - 6 new unit tests (separator retention + exact text round-trip, colour re-opened on every
+    continuation, widths unchanged by the carry, uncoloured lines untouched, and two on
+    `active_sgr_after` including the nested `Net` `[Up]` case from v0.5.1).
+  - `retch-cli` → 0.9.3. Patch bump.
 - **v0.9.2 — the side-by-side logo is anchored to the right margin again** (rendering fix,
   `src/display.rs`; CLI-only, `retch-sysinfo` unchanged at `0.1.56`). User report from arrakis:
   in "logo to the right" mode the logo no longer sits on the right margin.
