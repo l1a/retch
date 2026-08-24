@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787546740025,
+  "lastUpdate": 1787547242104,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18934,70 +18934,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "7a3b029a318196f57111112492235841e6692d8c",
-          "message": "Reword WIP resetâ†’update, rename wip script (#141)\n\nWIP.md is an ongoing rolling log, not reset per-PR. Align the docs and\ntooling with that: AGENTS.md Â§5 and the just merge-pr recipe now say\n\"update\" instead of \"reset\", and scripts/reset_wip.py is renamed to\nscripts/update_wip.py (git mv; behavior unchanged â€” it still only\nrewrites the Active-Branch and latest-commit lines).\n\nAlso folds in the NOTES.md Â§5 \"real hardware benchmark section\" backlog\nitem. Docs/tooling only; no Rust source touched.\n\nVersion bumped 0.3.40 â†’ 0.3.41 (patch); man page + Cargo.lock regenerated.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-10T18:14:33-07:00",
-          "tree_id": "3985c178b81541f77e250902c4997776fb98a214",
-          "url": "https://github.com/l1a/retch/commit/7a3b029a318196f57111112492235841e6692d8c"
-        },
-        "date": 1783735003995,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 102.70347930741579,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.95315213757736,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 101.15081229412414,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 83.24120758957929,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47177.19964344787,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 489.13547731668115,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 746.282863038297,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3438870640,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "fa00d4325e62ef3a7ad84c9158c1328d53f6f6a2",
           "message": "Fix update_wip.py stale-pointer regex + UTF-8 (#142)\n\nThe post-merge WIP updater matched an obsolete \"**Latest commit on\nmain**:\" line that no longer exists, so the substitution silently\nno-op'd and left \"**main HEAD**:\" stale after every `just merge-pr`\n(seen live after #141). Retarget the regex to \"**main HEAD**:\", rewrite\nin the current format (`<hash>` â€” <subject> â€” **v<version>**) with the\nversion read from Cargo.toml, using a function replacement so metachars\nin the subject are literal.\n\nSince the fix now writes the commit subject into WIP.md, and this repo's\nsubjects contain \"â†’\"/em-dashes, pin UTF-8 on read_text/write_text,\nsubprocess decoding, and stdout â€” otherwise cp1252 (the default Windows\nconsole/locale where merge-pr runs) crashes the script. Verified\nend-to-end against a subject containing \"â†’\".\n\nAlso gitignore __pycache__/*.pyc.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-10T18:31:45-07:00",
@@ -22117,6 +22053,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1607862860,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8b416c67b714e155d9d041fb7f2d1f942a38841e",
+          "message": "Create .SRCINFO temp file beside its target (#203)\n\n* Create .SRCINFO temp file beside its target\n\naur-srcinfo generated to `mktemp` in /tmp and moved the result into\npackaging/aur. /tmp is tmpfs, so that mv is a cross-filesystem copy and\ncoreutils preserves the source SELinux context — the file landed with\nuser_tmp_t and mode 0600 instead of the directory's container_file_t.\n\nThis repo lives under a Syncthing folder whose container runs as\ncontainer_t and therefore could not read the file, wedging the entire\nfolder on it: `hashing: ... permission denied`, needFiles stuck at 1,\nwhile Unix permissions looked perfectly normal. The recipe already\navoided the related `:Z` trap; this is the same blast radius reached by\na different route.\n\nCreating the temp file in the destination directory inherits that\ndirectory's context by type transition and makes the mv a\nsame-filesystem rename, which cannot relabel. chmod 0644 because mktemp\ncreates 0600 and the committed file must match its PKGBUILD sibling.\n\nAssisted-By: Claude Opus 5\n\n* Document the .SRCINFO temp-file SELinux guard\n\nThe aur-srcinfo bullet presented `:z` as the Syncthing-container hazard,\nwhich was incomplete: the temp file's location was a second, unmitigated\ninstance of the same hazard and is what actually wedged the folder.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-23T21:15:51-07:00",
+          "tree_id": "ba33e2439b511c5e53e43dadcde06390056bc3b4",
+          "url": "https://github.com/l1a/retch/commit/8b416c67b714e155d9d041fb7f2d1f942a38841e"
+        },
+        "date": 1787547238754,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 181.80764995163312,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947884222794868,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 99.17761571661671,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 82.70595869788325,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47864.85772661956,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 491.62673805391313,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 762.1031957990953,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2049773870,
             "unit": "ns"
           }
         ]
