@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787611158709,
+  "lastUpdate": 1787611210006,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7936,90 +7936,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "c57409d318756bf9bf92ee798f438e2c2e4747fd",
-          "message": "Use native Win32 IOCTLs for Windows phys-disk (#146)\n\nReplace the Get-PhysicalDisk PowerShell spawn (~1.7s of interpreter\nstartup) in retch-sysinfo's Windows physical-disk detection with direct\nstorage IOCTLs over \\.\\PhysicalDriveN, via hand-written extern \"system\"\nFFI matching the crate's existing style (win_reg.rs) — no new dependency.\n\nEach drive is opened with zero desired access and only FILE_ANY_ACCESS\nquery IOCTLs are used (IOCTL_STORAGE_QUERY_PROPERTY for model/bus type +\nseek penalty, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX for size), so no elevation\nis required. Classification and label format are unchanged; the model\nstring reproduces Get-PhysicalDisk's FriendlyName. Verified byte-identical\noutput; --fields phys-disk ~1684ms -> ~210ms on an AMD Ryzen AI MAX+ 395.\n\nAlso fix a gate/CI blind spot found while verifying this: a bare\n`cargo test`/`cargo clippy` at the workspace root only covers retch-cli\nand silently skips the retch-sysinfo member (where this change lives).\nThe just recipes (test/lint/check + the pr steps) and both rust.yml CI\njobs now pass --workspace; AGENTS.md 4.0/4.1 document why.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-11T12:51:19-07:00",
-          "tree_id": "02202ebbc2cd99020a9d56bc36db81f79b1aa906",
-          "url": "https://github.com/l1a/retch/commit/c57409d318756bf9bf92ee798f438e2c2e4747fd"
-        },
-        "date": 1783800318899,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 890069618.4,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 1000.9924456408396,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 50.007176574112606,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9464035995473123,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 49.0797917797363,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7841.532835421854,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 71704.58525230746,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4813.576345565967,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4957.45007987855,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1196284.4023272095,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 334.66808682865053,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 278.86370933627643,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "e7427ff1a1011473cda36ef463893d8a10dea342",
           "message": "Read SMBIOS natively for Windows phys-mem (#147)\n\n* Read SMBIOS natively for Windows phys-mem\n\nReplace the two Get-CimInstance Win32_PhysicalMemory / Win32_ComputerSystem\nPowerShell spawns (~600 ms) with GetSystemFirmwareTable('RSMB') (kernel32),\nparsing SMBIOS type-17 (Memory Device) structures directly, plus\nGlobalMemoryStatusEx as the VM total-memory fallback. Hand-written\nextern \"system\" FFI matching win_reg.rs — no new dependency.\n\nA pure parse_smbios_type17 fn does a bounds-checked walk of the structure\ntable (formatted area + double-null-terminated string set) and carries the\nunit tests. Now also surfaces the SMBIOS Configured Memory Speed field\n(offset 0x20), so Windows shows running-vs-rated speed when they differ\n(e.g. \"8x 16 GB LPDDR5 8000 MT/s (rated 8533 MT/s)\"), matching Linux; the\nold WMI path only reported the rated speed.\n\n--fields phys-mem ~597ms -> ~152ms on an AMD Ryzen AI MAX+ 395; output\nverified against Get-CimInstance Win32_PhysicalMemory.\n\nAssisted-By: Claude Opus 4.8\n\n* Fix clippy byte-str lint on RSMB signature\n\nRust 1.97's clippy flags `[b'R', b'S', b'M', b'B']` (can be a byte str).\nUse `*b\"RSMB\"` instead. Local toolchain was 1.96 so `just check` passed\nlocally but CI (1.97) failed clippy; bumped local toolchain to match.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-11T13:32:19-07:00",
@@ -12119,6 +12035,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 254.5938067833295,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "94768368ccfeb8b6ea7f4d30a4126df625efd287",
+          "message": "aur: update to 0.9.3\n\nsha256 4979b91c81aa607d878abcf9278bced32a904438840d700d6ce9437630393b50,\ncomputed from the real v0.9.3 release tarball (1275088 bytes) three\nindependent ways and matching what aur-bump rendered.\n\nAssisted-By: Claude Opus 5 (1M context)",
+          "timestamp": "2026-08-24T15:26:55-07:00",
+          "tree_id": "33fd7ed59f4bb16244d984614ffc9af8cd1c5ae6",
+          "url": "https://github.com/l1a/retch/commit/94768368ccfeb8b6ea7f4d30a4126df625efd287"
+        },
+        "date": 1787611208638,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 667255033.55,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 958.9236707132825,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 111.44445592620283,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946864422888837,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 53.903646828017735,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7756.308032966654,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70699.20288788372,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4767.768772733777,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4853.339565881806,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1045147.9900839331,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 345.81280300045614,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 275.6188357669768,
             "unit": "ns"
           }
         ]
