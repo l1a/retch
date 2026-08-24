@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787545751507,
+  "lastUpdate": 1787546099621,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -12030,80 +12030,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "9f639d38da27f892e183f9fa1e0f77d57cdfdcad",
-          "message": "update_wip.py: bound subs with count=1 (#143)\n\nFollow-up to #142. The retargeted `**main HEAD**:` regex had no count,\nso it rewrote every line containing the header string â€” and WIP.md's\nopen-task prose mentions it verbatim, so the #142 merge clobbered those\ntask lines. Pass count=1 to both re.sub calls (Active-Branch and\nmain-HEAD) so only the first top-of-file header occurrence is rewritten.\nVerified end-to-end against a sample with the header in both a header\nline and later prose.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-10T20:05:40-07:00",
-          "tree_id": "e1d68a1f542a32e88f5f5adaece7b1b06c929de4",
-          "url": "https://github.com/l1a/retch/commit/9f639d38da27f892e183f9fa1e0f77d57cdfdcad"
-        },
-        "date": 1783740432758,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1040152256.25,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 413.36824147991763,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 64.5195627238358,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.7533143815580083,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 64.7125732361218,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 5096.306903220017,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1348.9142900818558,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 416.8863075005217,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 74690.96821636384,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 343.7571757296781,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "cc5b997b1ce8d887d19a0813bd26c4a8e52b35ab",
           "message": "Drop PowerShell spawn in Windows net detection (#144)\n\ndetect_active_interface_and_local_ip shelled out to PowerShell\n(Get-NetRoute) on Windows to name the default-route interface. That\nspawn costs ~977ms (PowerShell startup) and, since the `net` field is in\nevery mode, dominated runtime — `retch --short` was ~1.15s, ~11x over\nits <100ms target and ~20x slower than fastfetch.\n\nDerive the active interface instead from the adapter whose\nsysinfo-reported IPs include the outbound local_ip (already resolved via\nthe UDP-connect trick) — no spawn, no new dependency, no FFI. Extracted\na pure match_active_interface helper with a unit test. Resolves to the\nsame interface as before (verified on Windows).\n\nMeasured (AMD Ryzen AI MAX+ 395, Win 11): --short 1149ms -> 163ms (~7x).\nretch-sysinfo bumped 0.1.33 -> 0.1.34 (library behavior change).\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-10T20:42:31-07:00",
@@ -15713,6 +15639,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 339.97045615565787,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8b416c67b714e155d9d041fb7f2d1f942a38841e",
+          "message": "Create .SRCINFO temp file beside its target (#203)\n\n* Create .SRCINFO temp file beside its target\n\naur-srcinfo generated to `mktemp` in /tmp and moved the result into\npackaging/aur. /tmp is tmpfs, so that mv is a cross-filesystem copy and\ncoreutils preserves the source SELinux context — the file landed with\nuser_tmp_t and mode 0600 instead of the directory's container_file_t.\n\nThis repo lives under a Syncthing folder whose container runs as\ncontainer_t and therefore could not read the file, wedging the entire\nfolder on it: `hashing: ... permission denied`, needFiles stuck at 1,\nwhile Unix permissions looked perfectly normal. The recipe already\navoided the related `:Z` trap; this is the same blast radius reached by\na different route.\n\nCreating the temp file in the destination directory inherits that\ndirectory's context by type transition and makes the mv a\nsame-filesystem rename, which cannot relabel. chmod 0644 because mktemp\ncreates 0600 and the committed file must match its PKGBUILD sibling.\n\nAssisted-By: Claude Opus 5\n\n* Document the .SRCINFO temp-file SELinux guard\n\nThe aur-srcinfo bullet presented `:z` as the Syncthing-container hazard,\nwhich was incomplete: the temp file's location was a second, unmitigated\ninstance of the same hazard and is what actually wedged the folder.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-23T21:15:51-07:00",
+          "tree_id": "ba33e2439b511c5e53e43dadcde06390056bc3b4",
+          "url": "https://github.com/l1a/retch/commit/8b416c67b714e155d9d041fb7f2d1f942a38841e"
+        },
+        "date": 1787546097162,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 784196343.75,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 406.8497011960637,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 117.78425258111429,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.6652598577266986,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 65.2982584938172,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4227.738646965217,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1059.5832056582778,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 377.8512459390311,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 63736.63486231731,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 327.1294739314495,
             "unit": "ns"
           }
         ]
