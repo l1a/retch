@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787545378571,
+  "lastUpdate": 1787545751507,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7828,90 +7828,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "9f639d38da27f892e183f9fa1e0f77d57cdfdcad",
-          "message": "update_wip.py: bound subs with count=1 (#143)\n\nFollow-up to #142. The retargeted `**main HEAD**:` regex had no count,\nso it rewrote every line containing the header string â€” and WIP.md's\nopen-task prose mentions it verbatim, so the #142 merge clobbered those\ntask lines. Pass count=1 to both re.sub calls (Active-Branch and\nmain-HEAD) so only the first top-of-file header occurrence is rewritten.\nVerified end-to-end against a sample with the header in both a header\nline and later prose.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-10T20:05:40-07:00",
-          "tree_id": "e1d68a1f542a32e88f5f5adaece7b1b06c929de4",
-          "url": "https://github.com/l1a/retch/commit/9f639d38da27f892e183f9fa1e0f77d57cdfdcad"
-        },
-        "date": 1783740024798,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 767111503.8,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 992.7069951331381,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.66680232310023,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9469726702787113,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 46.92093949883008,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7813.749494332398,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 70558.60474696374,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4780.121041887973,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4877.990173263925,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1205157.8095299557,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 350.5069301430261,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 275.98573734527565,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "cc5b997b1ce8d887d19a0813bd26c4a8e52b35ab",
           "message": "Drop PowerShell spawn in Windows net detection (#144)\n\ndetect_active_interface_and_local_ip shelled out to PowerShell\n(Get-NetRoute) on Windows to name the default-route interface. That\nspawn costs ~977ms (PowerShell startup) and, since the `net` field is in\nevery mode, dominated runtime â€” `retch --short` was ~1.15s, ~11x over\nits <100ms target and ~20x slower than fastfetch.\n\nDerive the active interface instead from the adapter whose\nsysinfo-reported IPs include the outbound local_ip (already resolved via\nthe UDP-connect trick) â€” no spawn, no new dependency, no FFI. Extracted\na pure match_active_interface helper with a unit test. Resolves to the\nsame interface as before (verified on Windows).\n\nMeasured (AMD Ryzen AI MAX+ 395, Win 11): --short 1149ms -> 163ms (~7x).\nretch-sysinfo bumped 0.1.33 -> 0.1.34 (library behavior change).\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-10T20:42:31-07:00",
@@ -12011,6 +11927,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 276.00164373171697,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8b416c67b714e155d9d041fb7f2d1f942a38841e",
+          "message": "Create .SRCINFO temp file beside its target (#203)\n\n* Create .SRCINFO temp file beside its target\n\naur-srcinfo generated to `mktemp` in /tmp and moved the result into\npackaging/aur. /tmp is tmpfs, so that mv is a cross-filesystem copy and\ncoreutils preserves the source SELinux context — the file landed with\nuser_tmp_t and mode 0600 instead of the directory's container_file_t.\n\nThis repo lives under a Syncthing folder whose container runs as\ncontainer_t and therefore could not read the file, wedging the entire\nfolder on it: `hashing: ... permission denied`, needFiles stuck at 1,\nwhile Unix permissions looked perfectly normal. The recipe already\navoided the related `:Z` trap; this is the same blast radius reached by\na different route.\n\nCreating the temp file in the destination directory inherits that\ndirectory's context by type transition and makes the mv a\nsame-filesystem rename, which cannot relabel. chmod 0644 because mktemp\ncreates 0600 and the committed file must match its PKGBUILD sibling.\n\nAssisted-By: Claude Opus 5\n\n* Document the .SRCINFO temp-file SELinux guard\n\nThe aur-srcinfo bullet presented `:z` as the Syncthing-container hazard,\nwhich was incomplete: the temp file's location was a second, unmitigated\ninstance of the same hazard and is what actually wedged the folder.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-23T21:15:51-07:00",
+          "tree_id": "ba33e2439b511c5e53e43dadcde06390056bc3b4",
+          "url": "https://github.com/l1a/retch/commit/8b416c67b714e155d9d041fb7f2d1f942a38841e"
+        },
+        "date": 1787545750343,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 694371156.35,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 954.5081652365631,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 110.12880208214844,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947011415697438,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 47.47025886734044,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7816.539833230994,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70663.78151088863,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4805.846391588505,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4917.591924825139,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1048545.5960157642,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 346.4995170888345,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 265.0612859915459,
             "unit": "ns"
           }
         ]
