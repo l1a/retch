@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787608745433,
+  "lastUpdate": 1787609302056,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18988,70 +18988,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "fa00d4325e62ef3a7ad84c9158c1328d53f6f6a2",
-          "message": "Fix update_wip.py stale-pointer regex + UTF-8 (#142)\n\nThe post-merge WIP updater matched an obsolete \"**Latest commit on\nmain**:\" line that no longer exists, so the substitution silently\nno-op'd and left \"**main HEAD**:\" stale after every `just merge-pr`\n(seen live after #141). Retarget the regex to \"**main HEAD**:\", rewrite\nin the current format (`<hash>` â€” <subject> â€” **v<version>**) with the\nversion read from Cargo.toml, using a function replacement so metachars\nin the subject are literal.\n\nSince the fix now writes the commit subject into WIP.md, and this repo's\nsubjects contain \"â†’\"/em-dashes, pin UTF-8 on read_text/write_text,\nsubprocess decoding, and stdout â€” otherwise cp1252 (the default Windows\nconsole/locale where merge-pr runs) crashes the script. Verified\nend-to-end against a subject containing \"â†’\".\n\nAlso gitignore __pycache__/*.pyc.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-10T18:31:45-07:00",
-          "tree_id": "2db4346561186354ab7202a4b36fa637426c79f1",
-          "url": "https://github.com/l1a/retch/commit/fa00d4325e62ef3a7ad84c9158c1328d53f6f6a2"
-        },
-        "date": 1783736062763,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 102.72955802351723,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9481925007740144,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 101.27047720742308,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 83.66464702906501,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47130.71565277877,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 485.51145260893543,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 737.1641732594002,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3824133795,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "9f639d38da27f892e183f9fa1e0f77d57cdfdcad",
           "message": "update_wip.py: bound subs with count=1 (#143)\n\nFollow-up to #142. The retargeted `**main HEAD**:` regex had no count,\nso it rewrote every line containing the header string â€” and WIP.md's\nopen-task prose mentions it verbatim, so the #142 merge clobbered those\ntask lines. Pass count=1 to both re.sub calls (Active-Branch and\nmain-HEAD) so only the first top-of-file header occurrence is rewritten.\nVerified end-to-end against a sample with the header in both a header\nline and later prose.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-10T20:05:40-07:00",
@@ -22171,6 +22107,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2049773870,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "67cb9d13f5ff9bb518d50bdc4fe464921b107a11",
+          "message": "Anchor side-by-side logo to the right margin (#204)\n\nIn \"logo to the right\" mode the logo was drawn wherever the text column\nended rather than at the terminal's right margin. Measured on a 138-column\nterminal, `--full --ascii-logo` rendered its widest line at column 103,\nstranding 35 columns.\n\nplan_layout returned a single `text_column_width` that every render site\nused both as the wrap width for beside-logo info lines and as the column to\ndraw the logo at. That column is clamp(45, 65), so the logo could never be\ndrawn past column 65 however wide the terminal was.\n\nThis drifted out of two correct fixes, which is why it went unnoticed:\ntext_column_width was once max(widest_of_ALL_lines + 4, 45), so the long\nWi-Fi/Net lines in --long/--full inflated it and the logo happened to land\nnear the edge. #173 narrowed the basis to beside-logo lines and #186 capped\nit at 65; each removed part of the accident, and nothing asserted the\nintended property.\n\nLayoutPlan now carries a separate logo_column = term_width - logo_width.\nWrap widths and the side-by-side/stacked decision are unchanged.\n\nAlso fixed, both found while verifying the above:\n\n- visible_len measured characters, not terminal columns, so CJK/Hangul\n  values pushed a row's logo right by one column per wide glyph. media and\n  player (v0.8.0) surface arbitrary track metadata, so this was live, not\n  hypothetical. Now uses unicode-width (no transitive deps).\n\n- display() carried a local visible_len closure that shadowed the module\n  function for its whole body, where every layout decision is made. It was\n  a byte-for-byte copy of the old character-counting implementation, so the\n  unit tests and the renderer exercised different code. The closure is gone\n  and the row arithmetic moved into a free compose_side_by_side_row, which\n  a local binding cannot shadow.\n\n- fit_logo_cells computed display pixels with truncating division before\n  div_ceil-ing the cell count, so the reservation could be one pixel short\n  of the drawn image (mx.png, zorin.png). Harmless mid-screen; at the right\n  margin it is the invariant it documents.\n\nVerified in a PTY: ASCII and Chafa at 95/110/138/169/200 columns render\ntheir widest line at exactly the terminal width, with Latin, CJK and Hangul\nfield values alike; 94 columns still stacks. Kitty, iTerm2 and Sixel land\ntheir right edge on the margin across nine assets, wide and tall.\n\nAssisted-By: Claude Opus 5 (1M context)",
+          "timestamp": "2026-08-24T14:28:22-07:00",
+          "tree_id": "4c7aa387cf77288256fb0dfe6c2a36ec9c1a07dd",
+          "url": "https://github.com/l1a/retch/commit/67cb9d13f5ff9bb518d50bdc4fe464921b107a11"
+        },
+        "date": 1787609298733,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 178.23498323399292,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947511320203749,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 97.6720263727995,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 82.55985115407971,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45237.13395066363,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 477.3849443631153,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 743.9619643848355,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1928287670,
             "unit": "ns"
           }
         ]
