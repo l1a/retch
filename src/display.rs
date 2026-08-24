@@ -195,7 +195,11 @@ pub fn wrap_info_line(line: &str, max_width: usize) -> Vec<String> {
             if current.is_empty() || visible_len(&current) + item_vis <= max_width {
                 current.push_str(&item);
             } else {
-                lines.push(current);
+                // Keep the separator we split on. Dropping it changed the *data*, not just
+                // its appearance: `American Megatrends International, LLC.` wrapped to
+                // `…International` / `LLC.`, which reads as two values rather than one
+                // company name. The comma stays on the preceding line, as in prose.
+                lines.push(format!("{current},"));
                 current = format!("{}{}", indent, part);
             }
         }
@@ -203,7 +207,7 @@ pub fn wrap_info_line(line: &str, max_width: usize) -> Vec<String> {
             lines.push(current);
         }
         if lines.iter().all(|l| visible_len(l) <= max_width + 10) {
-            return lines;
+            return carry_sgr_across_lines(lines);
         }
     }
 
@@ -255,8 +259,76 @@ pub fn wrap_info_line(line: &str, max_width: usize) -> Vec<String> {
     if lines.is_empty() {
         vec![line.to_string()]
     } else {
-        lines
+        // No separator to retain here — this branch breaks on whitespace, and a space at a
+        // line break needs no visible marker the way a comma does.
+        carry_sgr_across_lines(lines)
     }
+}
+
+/// The foreground-colour SGR sequence still in effect at the end of `s`, given the sequence
+/// `entry` that was in effect when it started.
+///
+/// Only foreground colour is tracked, because that is all `Theme`/`owo_colors` emit here.
+/// A reset — `\x1b[0m` or `\x1b[39m` — clears it; any other `…m` sequence becomes the new
+/// state. Non-`m` sequences (cursor moves, chafa's `\x1b[?25l`) are ignored.
+fn active_sgr_after(s: &str, entry: Option<String>) -> Option<String> {
+    let mut active = entry;
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] != 0x1b {
+            i += 1;
+            continue;
+        }
+        let start = i;
+        i += 1;
+        while i < bytes.len() && !bytes[i].is_ascii_alphabetic() {
+            i += 1;
+        }
+        if i < bytes.len() {
+            let seq = &s[start..=i];
+            if seq.ends_with('m') {
+                active = if seq == "\x1b[0m" || seq == "\x1b[39m" {
+                    None
+                } else {
+                    Some(seq.to_string())
+                };
+            }
+            i += 1;
+        }
+    }
+    active
+}
+
+/// Re-open the active colour on every continuation line, and close it at each line end.
+///
+/// Info lines are colourised **before** they are wrapped, so a value split across lines has
+/// its opening SGR on the first line and its closing `\x1b[39m` on the last: every line in
+/// between renders in the terminal's default colour. Reported against a wrapped `BIOS:` value,
+/// whose second line came out uncoloured while the first was cyan.
+///
+/// Fixing it at the wrap step rather than by colourising after wrapping is deliberate — the
+/// wrap points are chosen from *visible* width, so wrapping has to see the escapes anyway.
+///
+/// Only zero-width escape sequences are added, so [`visible_len`] of every line is unchanged
+/// and the widths the layout already computed still hold.
+fn carry_sgr_across_lines(lines: Vec<String>) -> Vec<String> {
+    let mut active: Option<String> = None;
+    let mut out = Vec::with_capacity(lines.len());
+    for line in lines {
+        let reopened = match &active {
+            Some(sgr) => format!("{sgr}{line}"),
+            None => line.clone(),
+        };
+        let end_state = active_sgr_after(&line, active.clone());
+        active = end_state.clone();
+        out.push(match end_state {
+            // Close the colour at the line end so it cannot bleed into the logo column.
+            Some(_) => format!("{reopened}\x1b[39m"),
+            None => reopened,
+        });
+    }
+    out
 }
 
 /// Split the Wi-Fi detail string into `(hardware, connection)` for two-line display.
@@ -910,8 +982,14 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     let formatted_info_lines: Vec<String> = if side_by_side && text_column_width > 15 {
         let mut result = Vec::new();
         for (i, line) in info_lines.iter().enumerate() {
+            // Beside-logo rows may use every column up to the logo, not just the text
+            // column. Those were the same number until the logo was anchored to the right
+            // margin; afterwards, wrapping at the text column left a wrapped line with the
+            // whole gap to the logo unused — a 283-column terminal wrapped `BIOS:` at 55
+            // columns with ~177 free to its right. Below-logo rows already use the full
+            // terminal width, so this makes the two consistent.
             let max_w = if i < logo_height {
-                text_column_width.saturating_sub(2)
+                logo_column.saturating_sub(2)
             } else {
                 term_width.saturating_sub(2)
             };
@@ -1219,6 +1297,116 @@ mod tests {
             }
         }
         out
+    }
+
+    // ── wrap_info_line: separator retention and colour carry ──────────────────
+
+    /// The shape `Theme::color_value` produces: `<SGR>value<reset>`.
+    const CYAN: &str = "\x1b[38;2;0;255;255m";
+    const RESET: &str = "\x1b[39m";
+
+    #[test]
+    fn test_wrap_keeps_the_comma_it_split_on() {
+        // Regression: the comma was dropped at the break, so a wrapped
+        // `American Megatrends International, LLC.` read as two separate values. That is a
+        // change to the data, not to its presentation.
+        let out = wrap_info_line(
+            "BIOS: American Megatrends International, LLC. HN7306EAC.310 (8//20/07/0)",
+            40,
+        );
+        assert!(out.len() > 1, "expected a wrap, got {out:?}");
+        assert!(
+            out[0].ends_with(','),
+            "separator lost at the break: {:?}",
+            out[0]
+        );
+        // And nothing is invented or dropped: rejoining recovers the original text.
+        let rejoined: String = out
+            .iter()
+            .map(|l| l.trim_start().to_string())
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert_eq!(
+            rejoined,
+            "BIOS: American Megatrends International, LLC. HN7306EAC.310 (8//20/07/0)"
+        );
+    }
+
+    #[test]
+    fn test_wrap_reopens_the_colour_on_every_continuation_line() {
+        // Reported symptom: a wrapped BIOS value rendered its second line in the terminal
+        // default because the opening SGR stayed on line 1 and the closing reset landed on
+        // the last line.
+        let line =
+            format!("BIOS: {CYAN}American Megatrends International, LLC. HN7306EAC.310{RESET}");
+        let out = wrap_info_line(&line, 40);
+        assert!(out.len() > 1, "expected a wrap, got {out:?}");
+        for (i, l) in out.iter().enumerate().skip(1) {
+            assert!(
+                l.contains(CYAN),
+                "continuation line {i} has no colour: {l:?}"
+            );
+        }
+        // Every line that opens a colour also closes it, so none can bleed into the logo.
+        for l in &out {
+            if l.contains(CYAN) {
+                assert!(l.ends_with(RESET), "colour left open on {l:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn test_wrap_colour_carry_does_not_change_visible_width() {
+        // The escapes added must be zero-width, or every layout number computed from these
+        // lines would be wrong.
+        let plain = "BIOS: American Megatrends International, LLC. HN7306EAC.310";
+        let coloured =
+            format!("BIOS: {CYAN}American Megatrends International, LLC. HN7306EAC.310{RESET}");
+        let a = wrap_info_line(plain, 40);
+        let b = wrap_info_line(&coloured, 40);
+        assert_eq!(a.len(), b.len());
+        for (x, y) in a.iter().zip(b.iter()) {
+            assert_eq!(visible_len(x), visible_len(y), "{x:?} vs {y:?}");
+        }
+    }
+
+    #[test]
+    fn test_wrap_uncoloured_line_is_untouched_by_the_carry() {
+        let out = wrap_info_line("Disk: aaaa, bbbb, cccc, dddd, eeee, ffff, gggg, hhhh", 24);
+        assert!(out.len() > 1);
+        assert!(
+            out.iter().all(|l| !l.contains('\x1b')),
+            "carry injected escapes into an uncoloured line: {out:?}"
+        );
+    }
+
+    #[test]
+    fn test_active_sgr_after_tracks_open_and_reset() {
+        assert_eq!(active_sgr_after("plain", None), None);
+        assert_eq!(active_sgr_after(CYAN, None), Some(CYAN.to_string()));
+        assert_eq!(active_sgr_after(&format!("{CYAN}x{RESET}"), None), None);
+        assert_eq!(active_sgr_after("\x1b[0m", Some(CYAN.into())), None);
+        // Carried in from the previous line and never reset here.
+        assert_eq!(
+            active_sgr_after("more text", Some(CYAN.into())),
+            Some(CYAN.to_string())
+        );
+        // A non-`m` sequence (chafa's cursor hide) must not disturb the colour state.
+        assert_eq!(
+            active_sgr_after("\x1b[?25l", Some(CYAN.into())),
+            Some(CYAN.to_string())
+        );
+    }
+
+    #[test]
+    fn test_active_sgr_after_takes_the_last_colour_when_nested() {
+        // The `Net` line embeds a green Up inside the value colour (v0.5.1). Whatever the
+        // nesting, the state at end-of-line is simply the last sequence seen.
+        let green = "\x1b[32m";
+        let s = format!("{CYAN}[{green}Up{RESET}] RX: 1 MB");
+        assert_eq!(active_sgr_after(&s, None), None); // last was the reset
+        let s2 = format!("{CYAN}[{green}Up{RESET}]{CYAN} RX: 1 MB");
+        assert_eq!(active_sgr_after(&s2, None), Some(CYAN.to_string()));
     }
 
     // ── compose_side_by_side_row ──────────────────────────────────────────────
