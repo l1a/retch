@@ -106,7 +106,95 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.1)
+## Current State (v0.9.2)
+- **v0.9.2 — the side-by-side logo is anchored to the right margin again** (rendering fix,
+  `src/display.rs`; CLI-only, `retch-sysinfo` unchanged at `0.1.56`). User report from arrakis:
+  in "logo to the right" mode the logo no longer sits on the right margin.
+  - **Measured, not inferred.** `retch --full --ascii-logo` in a 138-column PTY rendered its
+    widest line at **column 103** — 35 dead columns to the right of the logo. The graphical
+    path showed the same thing in its escapes: the Kitty emitter shifted right by `CSI 45 C`
+    on a 138-column terminal instead of `CSI 93 C`.
+  - **Root cause: one number was doing two jobs.** `plan_layout` returned only
+    `text_column_width`, and every render site — the ASCII/Chafa padding, the
+    `graphical_side_by_side_prelude` right-shift, and therefore Kitty/iTerm2/Sixel alike —
+    used it *both* as the wrap width for beside-logo info lines *and* as the column to draw
+    the logo at. The text column is `clamp(45, 65)`, so the logo could never be drawn past
+    column 65 no matter how wide the terminal was.
+  - **This is drift out of two correct fixes, not a single bad commit** — worth recording
+    because neither one looks wrong in isolation. Originally `text_column_width` was
+    `max(widest_of_ALL_lines + 4, 45)`, so in `--long`/`--full` the 150+ char `Wi-Fi`/`Net`
+    lines inflated it and the logo *happened* to land near the right edge. v0.6.8 (#173)
+    narrowed the basis to the beside-logo lines (fixing the logo being pushed above the
+    text), and v0.6.16 (#186) added the 65-column cap (fixing overlong text columns). Each
+    removed part of the accident that had been holding the logo out at the margin, and
+    nothing had ever asserted the intended property.
+  - **Fix**: `LayoutPlan` gains a separate `logo_column = term_width - logo_width`. Wrap
+    widths are untouched, so line wrapping and the side-by-side/stacked decision are
+    byte-identical; only the anchor moved. Right-anchoring can never pull the logo *left* of
+    the text, because `side_by_side` already requires
+    `term_width >= text_column_width + logo_width`.
+  - Rows with no logo content now get no padding at all. Previously they were padded to the
+    text column; keeping that while padding to the margin would have put ~90 trailing spaces
+    on every line below the logo.
+  - **Verified in a PTY across every renderer, not just the ASCII one.** ASCII and Chafa
+    (both `ActiveLogo::Lines`) at 95/110/138/169/200 columns: the widest rendered line equals
+    the terminal width **exactly** at all five, and the 94-column case still stacks. Kitty,
+    iTerm2 and Sixel at 138 columns across nine assets — wide (fedora/tux/ubuntu) and tall
+    (windows/kali/debian/macos/mx/zorin) — every one lands its right edge on column 138.
+    3 new `plan_layout` unit tests, including a sweep over every width from 95 to 199
+    asserting `logo_column + logo_width == term_width` and `logo_column >= text_column_width`,
+    plus an underflow guard for a logo wider than the terminal.
+  - **Structurally safe, not just empirically**: `plan_layout` is handed the *same* `cols`
+    that the emitter uses to size the image — `fit_logo_cells` is the single source of truth
+    for a graphical logo's footprint — so the reserved and drawn widths cannot disagree. The
+    one place they can differ is Kitty's height-limited case, where only `r=` is emitted (per
+    v0.6.18, passing both axes reintroduces stretch) and Kitty derives the width itself; the
+    reservation is `div_ceil`-rounded, so the image ends *at or before* the margin, never past
+    it. Worst measured slack is 0.87 cells (kali).
+  - **`fit_logo_cells` had a sub-pixel breach of its own documented invariant, fixed here**
+    (`src/logo.rs`). It computed the display size with **truncating** integer division and
+    only then `div_ceil`ed the cell count, so a true size sitting just above a cell boundary
+    truncated onto it and reserved one pixel too few: `mx.png` (256×232) scales to 220.69 px
+    and reserved 22 cells = 220 px; `zorin.png` likewise. Both now `div_ceil` at the pixel
+    step too (23 and 24 cells). This was harmless while the logo sat mid-screen with columns
+    to spare — right-anchored, the overflow would be at the terminal's edge. New test asserts
+    the invariant **exactly**, cross-multiplied so there is no floating point, over every
+    shipped asset's aspect ratio × four cell geometries; watched failing on the pre-fix code
+    with `256x232 cells 10x20: reserved 220px < drawn 220.69px`. The message deliberately
+    prints the drawn size as a real number — reporting it with the same truncating division
+    the bug is about renders it self-contradicting (`reserved 220px < drawn 220px`, the first
+    version of this assertion).
+  - **`visible_len` now measures terminal columns, not characters** — and the bug that hid
+    this is the most important thing in this entry. New direct dependency `unicode-width`
+    0.2.2 (zero transitive deps).
+    - **A local closure named `visible_len`, defined inside `display()`, shadowed the
+      module-level function for that entire function body** — which is where every layout
+      decision is made: `info_widths`, the logo's measured width, and the padding that
+      positions the logo. It was a byte-for-byte copy of the old character-counting
+      implementation. So making the module function width-aware, and unit-testing it, changed
+      **nothing** about the layout: the tests exercised one implementation while the renderer
+      used the other, and both looked correct in isolation.
+    - **The symptom that exposed it**: with `Locale` set to a CJK value at 138 columns, the
+      row rendered 144 columns wide — the info text grew 19→26 *columns* (19→20 *characters*)
+      and the emitted padding shrank by exactly 1, not 7. That arithmetic is only possible
+      from a character count, while instrumentation inside the module function simultaneously
+      printed `width=26`. Two correct-looking answers from one call site is what a shadow
+      looks like.
+    - **Fixed structurally, not just textually.** The closure is gone, and the row arithmetic
+      moved out of the render loop into a free `compose_side_by_side_row(info, logo,
+      logo_column)`. A free function cannot be shadowed by a local binding in another
+      function's body, so the two can no longer diverge — and the row layout is now testable
+      without a pseudo-terminal, which it previously was not. 5 unit tests on it, including
+      Latin-vs-CJK rows that must land the logo at the same column.
+    - **Why this was a live bug, not a hypothetical**: `media`/`player` (v0.8.0) surface
+      arbitrary track metadata, so CJK/Hangul values are ordinary. `Media: 宇多田ヒカル -
+      花束を君に` was undercounted by 11 columns.
+    - Verified end to end: with a CJK and a Hangul `Locale`, ASCII and Chafa rows now measure
+      exactly the terminal width at 95/138/200 columns, identical to the Latin run.
+  - **Known limitation, stated rather than papered over**: flush-right means the widest logo
+    row writes the terminal's last cell, which relies on deferred-wrap (every VT-derived
+    terminal implements it, and the `\n` that follows resolves the pending wrap).
+  - `retch-cli` → 0.9.2. Patch bump. New dependency: `unicode-width` 0.2.2.
 - **v0.9.1 — Fix `just` default recipe position in `Justfile`**:
   - Moved `default: @just --list` before the vendored `COMMON (template v3)` block so that running bare `just` correctly lists available recipes instead of executing `install` (which was previously the first defined recipe in the file). Removed the unreachable duplicate `default:` recipe from the bottom section.
 - **v0.9.0 — Desktop & UI Detection Probes: `WMTheme`, `Wallpaper`, `TerminalTheme` (zero subprocess forking)**:
