@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787607708355,
+  "lastUpdate": 1787608129899,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -12084,80 +12084,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "cc5b997b1ce8d887d19a0813bd26c4a8e52b35ab",
-          "message": "Drop PowerShell spawn in Windows net detection (#144)\n\ndetect_active_interface_and_local_ip shelled out to PowerShell\n(Get-NetRoute) on Windows to name the default-route interface. That\nspawn costs ~977ms (PowerShell startup) and, since the `net` field is in\nevery mode, dominated runtime — `retch --short` was ~1.15s, ~11x over\nits <100ms target and ~20x slower than fastfetch.\n\nDerive the active interface instead from the adapter whose\nsysinfo-reported IPs include the outbound local_ip (already resolved via\nthe UDP-connect trick) — no spawn, no new dependency, no FFI. Extracted\na pure match_active_interface helper with a unit test. Resolves to the\nsame interface as before (verified on Windows).\n\nMeasured (AMD Ryzen AI MAX+ 395, Win 11): --short 1149ms -> 163ms (~7x).\nretch-sysinfo bumped 0.1.33 -> 0.1.34 (library behavior change).\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-10T20:42:31-07:00",
-          "tree_id": "e39a81d2e6892fa08bbcacc34138d13dd5af8989",
-          "url": "https://github.com/l1a/retch/commit/cc5b997b1ce8d887d19a0813bd26c4a8e52b35ab"
-        },
-        "date": 1783742623750,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1095601056.2,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 444.7481775804713,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 68.53139092261051,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.8007473460377752,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 81.59713591392294,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 4650.169017065142,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1069.8580411989137,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 426.7952799469105,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 88496.42887888325,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 463.8649775404634,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "18f0bfa4e337d9a815662b1383dab85187e1ac5c",
           "message": "Fix bench-cli/bench-compare on Windows (#145)\n\nThe bench recipes passed a POSIX-style './target/release/retch' to\nhyperfine. With no --shell, hyperfine uses cmd.exe on Windows, which\ncan't execute that path (forward slashes, no .exe), so it exited 1 in\nthe first warmup run and aborted the recipe. retch itself was fine and\n`just bench` (criterion) was unaffected.\n\nAdd an os_family()-selected `retch_release_bin` variable\n('target\\release\\retch.exe' on Windows, './target/release/retch'\nelsewhere) and route all bench hyperfine calls through it. Verified both\nrecipes now run to completion on Windows.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-10T21:26:47-07:00",
@@ -15767,6 +15693,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 327.1294739314495,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "67cb9d13f5ff9bb518d50bdc4fe464921b107a11",
+          "message": "Anchor side-by-side logo to the right margin (#204)\n\nIn \"logo to the right\" mode the logo was drawn wherever the text column\nended rather than at the terminal's right margin. Measured on a 138-column\nterminal, `--full --ascii-logo` rendered its widest line at column 103,\nstranding 35 columns.\n\nplan_layout returned a single `text_column_width` that every render site\nused both as the wrap width for beside-logo info lines and as the column to\ndraw the logo at. That column is clamp(45, 65), so the logo could never be\ndrawn past column 65 however wide the terminal was.\n\nThis drifted out of two correct fixes, which is why it went unnoticed:\ntext_column_width was once max(widest_of_ALL_lines + 4, 45), so the long\nWi-Fi/Net lines in --long/--full inflated it and the logo happened to land\nnear the edge. #173 narrowed the basis to beside-logo lines and #186 capped\nit at 65; each removed part of the accident, and nothing asserted the\nintended property.\n\nLayoutPlan now carries a separate logo_column = term_width - logo_width.\nWrap widths and the side-by-side/stacked decision are unchanged.\n\nAlso fixed, both found while verifying the above:\n\n- visible_len measured characters, not terminal columns, so CJK/Hangul\n  values pushed a row's logo right by one column per wide glyph. media and\n  player (v0.8.0) surface arbitrary track metadata, so this was live, not\n  hypothetical. Now uses unicode-width (no transitive deps).\n\n- display() carried a local visible_len closure that shadowed the module\n  function for its whole body, where every layout decision is made. It was\n  a byte-for-byte copy of the old character-counting implementation, so the\n  unit tests and the renderer exercised different code. The closure is gone\n  and the row arithmetic moved into a free compose_side_by_side_row, which\n  a local binding cannot shadow.\n\n- fit_logo_cells computed display pixels with truncating division before\n  div_ceil-ing the cell count, so the reservation could be one pixel short\n  of the drawn image (mx.png, zorin.png). Harmless mid-screen; at the right\n  margin it is the invariant it documents.\n\nVerified in a PTY: ASCII and Chafa at 95/110/138/169/200 columns render\ntheir widest line at exactly the terminal width, with Latin, CJK and Hangul\nfield values alike; 94 columns still stacks. Kitty, iTerm2 and Sixel land\ntheir right edge on the margin across nine assets, wide and tall.\n\nAssisted-By: Claude Opus 5 (1M context)",
+          "timestamp": "2026-08-24T14:28:22-07:00",
+          "tree_id": "4c7aa387cf77288256fb0dfe6c2a36ec9c1a07dd",
+          "url": "https://github.com/l1a/retch/commit/67cb9d13f5ff9bb518d50bdc4fe464921b107a11"
+        },
+        "date": 1787608127139,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 991084587.55,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 618.0668514149721,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 195.68262238449807,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.5562086826032955,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 89.31437272504886,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6365.145329327389,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1518.4197955805082,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 479.2414503925462,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 127853.93101564469,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 450.552312124963,
             "unit": "ns"
           }
         ]
