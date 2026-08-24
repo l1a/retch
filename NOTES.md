@@ -157,6 +157,21 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
     private MCS category pair that would permanently relabel this directory, and this repo
     lives under a Syncthing folder whose own container then could not scan it (see
     `~/AGENTS.md`).
+  - **The temp file is created in `packaging/aur`, not `/tmp`** — a third guard, added after
+    the `:z` one proved insufficient against the same hazard. `mktemp` in `/tmp` yields a file
+    labelled `user_tmp_t`, and `/tmp` is tmpfs, so the `mv` above is a cross-filesystem copy
+    and coreutils preserves the SELinux context — landing `user_tmp_t` (and mktemp's 0600) in
+    a directory otherwise labelled `container_file_t`. The Syncthing container runs as
+    `container_t` and cannot read that, so the entire synced folder wedged on this one
+    463-byte file: `hashing: ... permission denied`, `needFiles` stuck at 1, while Unix
+    permissions looked perfectly normal and `/rest/db/status` reported `state: idle`
+    throughout. Diagnosed on corrino 2026-08-23; the kernel AVC naming both contexts was the
+    only unambiguous evidence. Creating the temp file in the destination directory inherits
+    that directory's context by type transition and makes the `mv` a same-filesystem rename,
+    which cannot relabel; the explicit `chmod 0644` follows because `mktemp` creates 0600 and
+    the committed file must match its `PKGBUILD` sibling. **Worth stating plainly: this recipe
+    had already been hardened against `:Z` with a comment citing `~/AGENTS.md`, and still
+    shipped the bug — avoiding a documented trap did not cover its undocumented sibling.**
   - **`scripts/aur_check.py` is the anti-drift guard, and `just check` depends on it.** It
     compares the two files **field-by-field** — including the *expanded* `source` URL — so the
     dangerous shape is caught: a pair agreeing on the version while disagreeing on the

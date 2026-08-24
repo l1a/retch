@@ -329,7 +329,16 @@ aur-srcinfo:
     # shell redirect truncates before the command runs, so a missing image or no network
     # would destroy the committed file rather than leave it alone. rusticprofile measured
     # exactly that on a host without podman — 503 bytes to 0.
-    TMP="$(mktemp)"
+    # mktemp in the DESTINATION directory, never in /tmp. A temp file created under /tmp
+    # gets `user_tmp_t`, and /tmp is tmpfs here so the `mv` below is a cross-filesystem
+    # copy that carries that label to the destination. This repo lives under a Syncthing
+    # folder whose container runs as `container_t` and cannot read `user_tmp_t`, so the
+    # moved-in file wedges the whole folder with `hashing: ... permission denied` while
+    # its Unix permissions look perfectly normal. Same blast radius as the `:Z` note
+    # below, reached by a different route; see ~/AGENTS.md. Creating the temp file here
+    # instead inherits the directory's context by type transition, and makes the `mv` a
+    # same-filesystem rename that cannot relabel anything.
+    TMP="$(mktemp "$(dirname "$OUT")/.SRCINFO.XXXXXX")"
     trap 'rm -f "$TMP"' EXIT
 
     # `z`, never `Z`. Uppercase assigns a fresh private MCS category pair per run, which
@@ -346,6 +355,8 @@ aur-srcinfo:
     [ -s "$TMP" ] || fail ".SRCINFO came back empty — $OUT left untouched"
     grep -q '^pkgbase = ' "$TMP" || fail "output has no 'pkgbase =' line — $OUT left untouched"
 
+    # mktemp makes the file 0600; the committed one must match its PKGBUILD sibling.
+    chmod 0644 "$TMP"
     mv "$TMP" "$OUT"
     trap - EXIT
     echo "packaging/aur/.SRCINFO regenerated"
