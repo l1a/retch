@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787626019682,
+  "lastUpdate": 1787626567438,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19096,70 +19096,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "18f0bfa4e337d9a815662b1383dab85187e1ac5c",
-          "message": "Fix bench-cli/bench-compare on Windows (#145)\n\nThe bench recipes passed a POSIX-style './target/release/retch' to\nhyperfine. With no --shell, hyperfine uses cmd.exe on Windows, which\ncan't execute that path (forward slashes, no .exe), so it exited 1 in\nthe first warmup run and aborted the recipe. retch itself was fine and\n`just bench` (criterion) was unaffected.\n\nAdd an os_family()-selected `retch_release_bin` variable\n('target\\release\\retch.exe' on Windows, './target/release/retch'\nelsewhere) and route all bench hyperfine calls through it. Verified both\nrecipes now run to completion on Windows.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-10T21:26:47-07:00",
-          "tree_id": "b2195da8db613809ef3a732f524156e3dd175501",
-          "url": "https://github.com/l1a/retch/commit/18f0bfa4e337d9a815662b1383dab85187e1ac5c"
-        },
-        "date": 1783746473171,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 102.86589887065495,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9496454243264845,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 104.29160849219647,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 83.75169600215932,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46135.02271505704,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 514.2443750937886,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 748.4278178997138,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3373918315,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "c57409d318756bf9bf92ee798f438e2c2e4747fd",
           "message": "Use native Win32 IOCTLs for Windows phys-disk (#146)\n\nReplace the Get-PhysicalDisk PowerShell spawn (~1.7s of interpreter\nstartup) in retch-sysinfo's Windows physical-disk detection with direct\nstorage IOCTLs over \\.\\PhysicalDriveN, via hand-written extern \"system\"\nFFI matching the crate's existing style (win_reg.rs) — no new dependency.\n\nEach drive is opened with zero desired access and only FILE_ANY_ACCESS\nquery IOCTLs are used (IOCTL_STORAGE_QUERY_PROPERTY for model/bus type +\nseek penalty, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX for size), so no elevation\nis required. Classification and label format are unchanged; the model\nstring reproduces Get-PhysicalDisk's FriendlyName. Verified byte-identical\noutput; --fields phys-disk ~1684ms -> ~210ms on an AMD Ryzen AI MAX+ 395.\n\nAlso fix a gate/CI blind spot found while verifying this: a bare\n`cargo test`/`cargo clippy` at the workspace root only covers retch-cli\nand silently skips the retch-sysinfo member (where this change lives).\nThe just recipes (test/lint/check + the pr steps) and both rust.yml CI\njobs now pass --workspace; AGENTS.md 4.0/4.1 document why.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-11T12:51:19-07:00",
@@ -22279,6 +22215,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2013869055,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a495221701cb2efcd054df3a3f901bef68c28acf",
+          "message": "Refuse a path where a command name belongs (#206)\n\ninstall_completions.py takes a command NAME, but the output path is\n`directory / pattern.format(bin=binary)` and pathlib discards the left\noperand when the right side is absolute. Passing a path -- which the\nflag `--from-path` invites -- therefore wrote the completion script\nover the binary it was asked to read.\n\nFound in rusticprofile, where it destroyed a working binary on a host\ntaking hourly backups. retch's copy was byte-identical.\n\n`--from-path` runs [binary], so an absolute path works for the READ\nand only breaks the write: generation succeeds, then destroys its own\ninput, exit 0.\n\nNow refused before any file is written. Watched failing: neutering the\nguard fails --self-test and fails just standard-check, which just\ncheck depends on. retch's own recipes pass bare names and were never\nat risk; the exposure is invoking the helper directly.\n\nTemplate v3. etr still carries the pre-fix copy.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-24T19:16:29-07:00",
+          "tree_id": "14035ba3864fdeb15a23ed42bfcfbdaf8fae5357",
+          "url": "https://github.com/l1a/retch/commit/a495221701cb2efcd054df3a3f901bef68c28acf"
+        },
+        "date": 1787626563946,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 178.546878828265,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947248769983901,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 97.13328817672304,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.33520293268143,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45593.87728046611,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 483.85274867912193,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 744.8473929663302,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1963966745,
             "unit": "ns"
           }
         ]
