@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787628306485,
+  "lastUpdate": 1787628832350,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19096,70 +19096,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "c57409d318756bf9bf92ee798f438e2c2e4747fd",
-          "message": "Use native Win32 IOCTLs for Windows phys-disk (#146)\n\nReplace the Get-PhysicalDisk PowerShell spawn (~1.7s of interpreter\nstartup) in retch-sysinfo's Windows physical-disk detection with direct\nstorage IOCTLs over \\.\\PhysicalDriveN, via hand-written extern \"system\"\nFFI matching the crate's existing style (win_reg.rs) — no new dependency.\n\nEach drive is opened with zero desired access and only FILE_ANY_ACCESS\nquery IOCTLs are used (IOCTL_STORAGE_QUERY_PROPERTY for model/bus type +\nseek penalty, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX for size), so no elevation\nis required. Classification and label format are unchanged; the model\nstring reproduces Get-PhysicalDisk's FriendlyName. Verified byte-identical\noutput; --fields phys-disk ~1684ms -> ~210ms on an AMD Ryzen AI MAX+ 395.\n\nAlso fix a gate/CI blind spot found while verifying this: a bare\n`cargo test`/`cargo clippy` at the workspace root only covers retch-cli\nand silently skips the retch-sysinfo member (where this change lives).\nThe just recipes (test/lint/check + the pr steps) and both rust.yml CI\njobs now pass --workspace; AGENTS.md 4.0/4.1 document why.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-11T12:51:19-07:00",
-          "tree_id": "02202ebbc2cd99020a9d56bc36db81f79b1aa906",
-          "url": "https://github.com/l1a/retch/commit/c57409d318756bf9bf92ee798f438e2c2e4747fd"
-        },
-        "date": 1783801808218,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 102.49100225569961,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.947520228201557,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.61518034859174,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.53550878241302,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46806.514091565055,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 493.9232226111006,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 751.5837166395864,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3133746585,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "e7427ff1a1011473cda36ef463893d8a10dea342",
           "message": "Read SMBIOS natively for Windows phys-mem (#147)\n\n* Read SMBIOS natively for Windows phys-mem\n\nReplace the two Get-CimInstance Win32_PhysicalMemory / Win32_ComputerSystem\nPowerShell spawns (~600 ms) with GetSystemFirmwareTable('RSMB') (kernel32),\nparsing SMBIOS type-17 (Memory Device) structures directly, plus\nGlobalMemoryStatusEx as the VM total-memory fallback. Hand-written\nextern \"system\" FFI matching win_reg.rs — no new dependency.\n\nA pure parse_smbios_type17 fn does a bounds-checked walk of the structure\ntable (formatted area + double-null-terminated string set) and carries the\nunit tests. Now also surfaces the SMBIOS Configured Memory Speed field\n(offset 0x20), so Windows shows running-vs-rated speed when they differ\n(e.g. \"8x 16 GB LPDDR5 8000 MT/s (rated 8533 MT/s)\"), matching Linux; the\nold WMI path only reported the rated speed.\n\n--fields phys-mem ~597ms -> ~152ms on an AMD Ryzen AI MAX+ 395; output\nverified against Get-CimInstance Win32_PhysicalMemory.\n\nAssisted-By: Claude Opus 4.8\n\n* Fix clippy byte-str lint on RSMB signature\n\nRust 1.97's clippy flags `[b'R', b'S', b'M', b'B']` (can be a byte str).\nUse `*b\"RSMB\"` instead. Local toolchain was 1.96 so `just check` passed\nlocally but CI (1.97) failed clippy; bumped local toolchain to match.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-11T13:32:19-07:00",
@@ -22279,6 +22215,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1963966745,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "d60658ca92e0dc731c0baa88ad37e8f5b75e65ed",
+          "message": "aur: update to 0.9.4\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-24T19:53:26-07:00",
+          "tree_id": "3b38c1f2608c9f32998a837ec0aae4b017319c97",
+          "url": "https://github.com/l1a/retch/commit/d60658ca92e0dc731c0baa88ad37e8f5b75e65ed"
+        },
+        "date": 1787628828470,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 175.33411474776253,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948316479153925,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 97.03201876758291,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.19601100479831,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46829.95412670759,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 480.0956019552885,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 731.58700175119,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2427053340,
             "unit": "ns"
           }
         ]
