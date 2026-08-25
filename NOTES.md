@@ -106,7 +106,39 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.3)
+## Current State (v0.9.4)
+- **v0.9.4 — the completions helper could overwrite the binary it was asked to read**
+  (tooling only; no runtime change, `retch-sysinfo` unchanged at `0.1.56`).
+  `scripts/install_completions.py` → **template v3**. Found in `rusticprofile`, where this
+  helper destroyed a working binary on a host taking hourly backups; retch's copy was
+  **byte-identical** and carried the same defect.
+  - **The mechanism.** `binaries` are command *names*, and the output path is
+    `directory / pattern.format(bin=binary)` — but **`Path("/dest") / "/abs/path"` discards the
+    left operand**. So an absolute `binary` silently relocates every write out of the completion
+    directory and onto the path itself, which under `--from-path` is the installed binary: the
+    helper overwrites the executable it was asked to read. Measured: a 3.6 MB binary replaced by a
+    21 KB bash completion script.
+  - **It fails in the worst available order.** `--from-path` runs `[binary]`, so an absolute path
+    *works for the read* and only breaks the write — generation succeeds and then destroys its own
+    input, exit 0, nothing printed. And the flag is **called `--from-path`**, which invites exactly
+    the argument that breaks it, so a docstring would not have stopped it.
+  - **Fixed by making it unexpressible**: `reject_path_like()` refuses any argument containing a
+    path separator or resolving absolute, **before any file is written**, and names the correct form
+    (`install_completions.py retch --from-path`) in the error.
+  - **Watched failing in both places it is enforced.** Neutering the condition fails `--self-test`
+    (*"rejects an absolute path — expected True, got False"*) **and** fails `just standard-check`,
+    which `just check` depends on — so `pre-push` and `just pr` both catch it. Re-running the
+    original accident against a stand-in file now leaves it **byte-identical** instead of clobbered.
+  - A fourth self-test case pins the *property* rather than the mechanism — that joining a directory
+    with an absolute string yields the absolute string — so the check survives a rewrite of the guard.
+  - **retch's own recipes were never at risk**: `install`/`install-tag` pass `{{BINS}}`, i.e. bare
+    names. Checked rather than assumed. The exposure is anyone — human or agent — invoking the
+    helper directly, which is how it happened.
+  - **This is v0.6.20's standard working as designed, in the direction it was built for.** That entry
+    made these helpers canonical *and* self-testing precisely so a fix found in one repo could be
+    propagated with evidence rather than by text diff; `etr` still carries the pre-fix copy and needs
+    its own PR.
+  - `retch-cli` → 0.9.4. Patch bump.
 - **v0.9.3 — what happens to an info line that wraps: colour, separator, and width**
   (`src/display.rs`; CLI-only, `retch-sysinfo` unchanged at `0.1.56`). User report from
   arrakis on a 283-column Windows Terminal: the second line of a wrapped `BIOS:` value
