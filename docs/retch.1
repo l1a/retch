@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "August 2026" "retch 0.9.4" "System Information Fetcher"
+.TH "RETCH" "1" "August 2026" "retch 0.9.5" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -126,292 +126,150 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 
 .SS "Available Configuration Keys"
 .RS
-.Bl
 .IP \(bu 4
 \fBtheme\fP: Theme name to use\. (default: `\f[CR]"auto"\fP`)\.
-.El
-.Bl
 .IP \(bu 4
 \fBshow_logo\fP: Boolean indicating whether to show the logo (default: `\f[CR]true\fP`)\.
-.El
-.Bl
 .IP \(bu 4
 \fBascii_only\fP: Boolean indicating whether to restrict logo to ASCII representation\.
-.El
-.Bl
 .IP \(bu 4
 \fBchafa\fP: Boolean indicating whether to force Chafa symbols output\.
-.El
-.Bl
 .IP \(bu 4
 \fBlogo\fP: Distro name/ID to force override logo detection\.
-.El
-.Bl
 .IP \(bu 4
 \fBweather_location\fP: Location for weather lookup\. Accepts a city name (`\f[CR]"London"\fP`), US ZIP code (`\f[CR]"10001"\fP`), or lat/lon coordinates (`\f[CR]"48\.8566,2\.3522"\fP`)\. If unset, your location is auto\-detected from your outbound IP via ipinfo\.io\.
-.El
-.Bl
 .IP \(bu 4
 \fBweather_unit\fP: Temperature unit for the `\f[CR]weather\fP` field\. Accepts `\f[CR]"fahrenheit"\fP` (default) or `\f[CR]"celsius"\fP`\. Can also be set via `\f[CR]\-\-weather\-unit\fP` on the CLI\.
-.El
-.Bl
 .IP \(bu 4
 \fBfields\fP: Array of strings representing active fields and their display order\. Available fields are:
 .RS
-.Bl
 .IP \(bu 4
 `\f[CR]os\fP`: Operating system name\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]kernel\fP`: Kernel version\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]host\fP`: System host/product name\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]arch\fP`: System architecture\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]chassis\fP`: Chassis type (Laptop, Desktop, Mini PC, etc\.)\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]init\fP`: PID 1 / init system (systemd, runit, launchd, etc\.)\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]locale\fP`: System locale from `\f[CR]$LC_ALL\fP` / `\f[CR]$LANG\fP`\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]cpu\fP`: CPU model name\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]cpu\-freq\fP`: CPU current/max/min frequencies\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]cpu\-cache\fP`: CPU L1/L2/L3 cache sizes\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]cpu\-usage\fP`: Current CPU utilization percentage\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]gpu\fP`: GPU model(s) and VRAM\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]motherboard\fP`: Motherboard manufacturer and model\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]bios\fP`: BIOS vendor and version\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]bootmgr\fP`: Second\-stage bootloader (GRUB, systemd\-boot, etc\.)\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]tpm\fP`: Trusted Platform Module specification version (`\f[CR]2\.0\fP`, `\f[CR]1\.2\fP`), read from `\f[CR]/sys/class/tpm\fP`\. Omitted when no TPM is present or its version cannot be read\. Linux only\. Long mode and above\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]display\fP`: Connected monitor displays with refresh rates and resolution\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]brightness\fP`: Current backlight brightness as a percentage (from `\f[CR]/sys/class/backlight\fP`)\. Linux only\. Long mode and above\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]audio\fP`: Audio card controller and active sound servers (PipeWire, PulseAudio, ALSA, CoreAudio, Windows Audio)\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]camera\fP`: Connected camera/webcam names\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]gamepad\fP`: Connected gamepad/controller names\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]keyboard\fP`: Connected keyboard names, from `\f[CR]/proc/bus/input/devices\fP`\. A device is listed only when its class is unambiguous: peripherals paired through a Logitech Unifying/Bolt receiver are presented by the kernel with a merged capability set that is byte\-identical for a keyboard and a mouse, so those are resolved via the HID++ driver's battery model name and, failing that, listed in neither `\f[CR]keyboard\fP` nor `\f[CR]mouse\fP` rather than guessed into the wrong one\. Linux only\. Long mode and above\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]mouse\fP`: Connected pointing devices \-\- mice, touchpads, and tablets \-\- from `\f[CR]/proc/bus/input/devices\fP`, de\-duplicated by name\. Subject to the same ambiguity rule as `\f[CR]keyboard\fP`\. Linux only\. Long mode and above\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]memory\fP`: System RAM usage and capacity\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]phys\-mem\fP`: Physical RAM slot details \-\- type (DDR5, LPDDR5, etc\.), speed, and per\-slot capacity\. On Linux, shows the module's actual running speed alongside its rated speed when they differ (e\.g\. `\f[CR]4800 MT/s (rated 6000 MT/s)\fP`, as when XMP/EXPO isn't enabled), parsed from dmidecode's "Configured Memory Speed"\. Requires root (`\f[CR]sudo\fP`) to read DMI memory tables via `\f[CR]dmidecode\fP`\. On Windows, uses `\f[CR]Win32_PhysicalMemory\fP` via PowerShell\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]swap\fP`: System SWAP usage and capacity\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]uptime\fP`: System uptime\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]procs\fP`: Active process count\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]load\fP`: Average system load\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]disk\fP`: Mounted disk capacity, usage, and mountpoint\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]phys\-disk\fP`: Physical disk model, size, and type (NVMe SSD, SSD, HDD)\. On Windows, uses `\f[CR]Get\-PhysicalDisk\fP` via PowerShell\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]btrfs\fP`: Mounted btrfs filesystem label, subvolume, and space allocation (`\f[CR]btrfs filesystem show\fP`/`\f[CR]usage\fP`); one entry per mount point, so a filesystem mounted at both `\f[CR]/\fP` and `\f[CR]/home\fP` via separate subvolumes shows two entries\. Snapshot count is shown when it can be read (`\f[CR]btrfs subvolume list \-s\fP`, requires root) and omitted otherwise\. Linux only\. Long mode and above\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]zpool\fP`: Imported ZFS pool name, allocation, and health (`\f[CR]zpool list\fP`)\. Linux and macOS with ZFS installed; empty if `\f[CR]zpool\fP` is not present\. Long mode and above\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]temp\fP`: System temperature sensors\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]net\fP`: Active network interfaces and local/public IP addresses\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]public\-ip\fP`: Public IP address (queried over the network)\. Long mode and above\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]wifi\fP`: Active Wi\-Fi SSID, band frequency, channel, and link rates\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]dns\fP`: Configured DNS nameservers (from `\f[CR]/etc/resolv\.conf\fP` on Linux/macOS)\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]domain\fP`: Configured DNS domain name\. On Linux, the domain of the interface carrying the default route (via `\f[CR]resolvectl\fP`), so a split\-tunnel VPN's domain is not reported unless the VPN is the default route; falls back to the `\f[CR]domain\fP` or first `\f[CR]search\fP` entry in `\f[CR]/etc/resolv\.conf\fP`\. Long mode and above\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]domain\-search\fP`: DNS search domain lists, one entry per scope, formatted as `\f[CR]scope: a, b\fP`\. The scope is the interface name when per\-interface data is available (from `\f[CR]resolvectl status\fP`), or `\f[CR]global\fP` when falling back to `\f[CR]/etc/resolv\.conf\fP`'s `\f[CR]search\fP` list, which carries no interface attribution\. Full mode only\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]bluetooth\fP`: Bluetooth adapter details and connected device count/names\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]battery\fP`: Battery capacity, vendor/model, time remaining, and health\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]power\-adapter\fP`: AC power adapter name and connection state (from `\f[CR]/sys/class/power_supply\fP` `\f[CR]Mains\fP` supply)\. Linux only\. Long mode and above\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]shell\fP`: Currently running shell name and version (e\.g\. bash, zsh, fish, nu)\. Detected from the process tree; falls back to `\f[CR]$SHELL\fP` (login shell)\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]editor\fP`: Default editor from `\f[CR]$VISUAL\fP` / `\f[CR]$EDITOR\fP`\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]terminal\fP`: Terminal emulator name and version\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]terminal\-font\fP`: Terminal emulator active font\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]terminal\-size\fP`: Terminal dimensions (columns x rows)\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]desktop\fP`: Desktop environment name (e\.g\. GNOME, KDE Plasma, XFCE)\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]wm\fP`: Window manager name (e\.g\. Mutter, KWin, Sway)\. Hidden when identical to Desktop\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]login\-manager\fP`: Active display/login manager (GDM, SDDM, LightDM, greetd, \.\.\.), resolved from the `\f[CR]display\-manager\.service\fP` systemd unit\. Linux only\. Long mode and above\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]player\fP`: Active media player name and playback status (e\.g\. Spotify (Playing), VLC media player)\. Long mode and above\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]media\fP`: Currently playing song/track title and artist\. Long mode and above\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]wm\-theme\fP`: Window manager frame / decoration theme (e\.g\. Breeze, Adwaita, Yaru, Greybird, Aqua, Aero)\. Full mode only by default\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]wallpaper\fP`: Current desktop background wallpaper file path or URI\. Full mode only by default\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]terminal\-theme\fP`: Terminal emulator color scheme or palette name (Kitty, Alacritty, WezTerm, Foot, Windows Terminal, Konsole, Ptyxis, iTerm2, Apple Terminal)\. Full mode only by default\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]theme\fP`: UI Theme settings\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]icons\fP`: UI icon pack\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]cursor\fP`: UI mouse cursor settings\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]font\fP`: UI system font\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]users\fP`: Current logged in users\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]packages\fP`: Installed package counts (supporting dpkg, rpm, pacman, flatpak, snap, homebrew, scoop, chocolatey, etc\.)\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]weather\fP`: Current weather via Open\-Meteo (city, condition, temperature)\. Requires network access\. Full mode only by default (~4s network timeout)\.
-.El
 .RE
-.El
 .RE
 
 .SH "THEMES"
@@ -420,22 +278,14 @@ retch supports multiple built\-in themes as well as custom color overrides\.
 .PP
 The following themes are available:
 .RS
-.Bl
 .IP \(bu 4
 \fBauto\fP (default): Automatically follows your system dark/light preference\.
-.El
-.Bl
 .IP \(bu 4
 \fBneutral\fP: A balanced neutral theme (cyan labels, white values)\.
-.El
-.Bl
 .IP \(bu 4
 \fBdark\fP and \fBlight\fP: Basic dark and light themes\.
-.El
-.Bl
 .IP \(bu 4
 Popular community themes: \fBcatppuccin\-latte\fP, \fBcatppuccin\-frappe\fP, \fBcatppuccin\-macchiato\fP, \fBcatppuccin\-mocha\fP, \fBsolarized\-light\fP, \fBsolarized\-dark\fP\.
-.El
 .RE
 .PP
 You can also define custom colors using the `\f[CR][custom_theme]\fP` section in your configuration file\.
@@ -457,18 +307,12 @@ accent_color = "bright_green"
 .PP
 retch supports both ASCII and graphical logos\.
 .RS
-.Bl
 .IP \(bu 4
 ASCII logos are adapted from Fastfetch\.
-.El
-.Bl
 .IP \(bu 4
 Graphical logos are rendered using Chafa when available, or via the Kitty, iTerm2, or Sixel inline image protocols\.
-.El
-.Bl
 .IP \(bu 4
 Logos are automatically suppressed when stdout is not a terminal (e\.g\. when piped to a pager or redirected to a file)\.
-.El
 .RE
 .PP
 Use `\f[CR]\-\-ascii\-only\fP` to force text\-only output\. Use `\f[CR]\-\-no\-logo\fP` to suppress the logo unconditionally\.
@@ -480,26 +324,18 @@ simply adding to them, because sudo's default `\f[CR]env_reset\fP` clears most o
 .PP
 Available only as root:
 .RS
-.Bl
 .IP \(bu 4
 `\f[CR]phys\-mem\fP` \-\- the per\-DIMM breakdown reads the DMI tables (`\f[CR]/sys/firmware/dmi/tables/DMI\fP`, mode 0400)\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]btrfs\fP` \-\- the snapshot count requires `\f[CR]btrfs subvolume list \-s\fP`\. It is omitted, never shown as zero, when it cannot be read\.
-.El
 .RE
 .PP
 Available only as the logged\-in user:
 .RS
-.Bl
 .IP \(bu 4
 `\f[CR]editor\fP` \-\- read from `\f[CR]$VISUAL\fP` / `\f[CR]$EDITOR\fP`\.
-.El
-.Bl
 .IP \(bu 4
 `\f[CR]desktop\fP`, `\f[CR]wm\fP` \-\- read from `\f[CR]XDG_CURRENT_DESKTOP\fP`, `\f[CR]XDG_SESSION_DESKTOP\fP` and `\f[CR]GDMSESSION\fP`\.
-.El
 .RE
 .PP
 All other fields are identical either way\.

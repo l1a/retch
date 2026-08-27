@@ -106,7 +106,53 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.4)
+## Current State (v0.9.5)
+- **v0.9.5 - `icy_sixel` 0.5.1 -> 0.6.0 (consolidated Dependabot #207)** (chore; no runtime
+  behaviour change, `retch-sysinfo` unchanged at `0.1.56`). Rolls Dependabot's PR onto a gated
+  branch so the release hygiene it bypasses - version bump, NOTES entry, man regen - is
+  actually done, following the #167/v0.6.3, #184/v0.6.16, #188/v0.6.19 and #199/v0.8.1 pattern.
+  - **Not lockfile-only, unlike the usual roll.** A caret range on a `0.x` spec will not admit
+    `0.6`, so `Cargo.toml`'s spec widened `"0.5"` -> `"0.6"` - the same shape as v0.6.4's
+    `base64` 0.22 -> 0.23, and the reason that bump was deliberately excluded from the v0.6.3
+    consolidation. `icy_sixel` is **`graphics`-feature-only**, so `just check`'s
+    `--features graphics` clippy pass (v0.6.5) and the CI `graphics-feature` job (v0.6.7) are
+    the only legs that compile it at all; a green default matrix proves nothing here.
+  - **A `0.x` minor is semver-breaking by convention, but the break does not reach retch - and
+    that was established from the source, not from the fact that it compiled.** The two calls
+    retch makes (`SixelImage::try_from_rgba` and `.encode()`, one call site,
+    `src/logo.rs::print_sixel_rgba`) live in `sixel_image.rs`, which together with `encoder.rs`
+    is **byte-identical** between 0.5.1 and 0.6.0 (sha256-compared, not eyeballed). The entire
+    change is decoder-side: a new stateful `SixelDecoder` whose colour registers persist across
+    images (added to `lib.rs`'s exports, i.e. purely additive) plus a `MAX_PIXELS` guard against
+    decode-time memory exhaustion. **retch never decodes sixel** - it only ever emits it.
+  - **Verified empirically as well, because "it compiles" is not "it emits the same bytes" for
+    an encoder.** A throwaway probe encoding a fixed 64x48 RGBA gradient through exactly those
+    two calls produced an identical string under both versions - 9885 bytes,
+    FNV-1a `fe96948691ac471a`. The probe's own `Cargo.lock` was then read to confirm it had
+    really resolved `0.6.0`; without that step the check could have passed by silently testing
+    the same version twice, which is the `~/AGENTS.md` 10/11 family this repo keeps recording.
+  - `Cargo.lock` diff-verified against Dependabot's: exactly the `icy_sixel` entry, with **no
+    transitive movement**. Worth stating because `quantette` - icy_sixel's palette quantiser -
+    *did* move in v0.8.1, and a move here would have changed emitted **colours** rather than
+    just structure. It did not.
+  - `retch-cli` -> 0.9.5. Patch bump.
+- **The 164-line `docs/retch.1` change in this PR is NOT from the dependency bump.** mandown was
+  upgraded to **1.1.1** on the machine that ran `just man`, after v0.9.4 shipped, and it no
+  longer emits `.Bl`/`.El` around list items.
+  - **The new page is the correct one; the committed page carried a latent defect.** `.Bl`/`.El`
+    are **mdoc** macros and are undefined in `man(7)`: groff reports `macro 'Bl' not defined` and
+    `macro 'El' not defined` on the old page and **zero warnings** on the regenerated one, while
+    the **rendered output is byte-identical** (409 lines, same sha256). Nothing a reader sees
+    changed; two warnings went away.
+  - **Established as pre-existing rather than assumed**, by regenerating at the *committed*
+    version 0.9.4 and confirming the diff was exactly 164 deletions, **all** of them `.Bl`/`.El`,
+    with zero other lines changed in either direction. Had that control not been run, a 164-line
+    man-page diff arriving alongside a dependency bump would look like the bump's doing.
+  - **This is the v0.6.2/v0.6.16 flip-flop on a new axis**, and it flips the same way: a
+    contributor on an older mandown regenerates, re-adds the macros, and `just pr` fails step 4
+    with a large diff that reads as "my change broke the man page." The wiki's
+    `Development-Setup.md` now pins the prerequisite at **mandown >= 1.1.1** and explains the
+    symptom, which is the cheapest place to catch it.
 - **v0.9.4 — the completions helper could overwrite the binary it was asked to read**
   (tooling only; no runtime change, `retch-sysinfo` unchanged at `0.1.56`).
   `scripts/install_completions.py` → **template v3**. Found in `rusticprofile`, where this
