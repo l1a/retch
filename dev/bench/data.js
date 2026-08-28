@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787876547291,
+  "lastUpdate": 1787877187634,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15948,70 +15948,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "dfa18d3ba7b91698f61b34f76aaf85b3bd479271",
-          "message": "Drop serial CPU-usage sleep on Windows (#149)\n\nCPU usage needs a delta between two samples. sysinfo enforces a ~200ms\nminimum interval, so collect() slept 200ms then refreshed — and that\nsleep ran serially AFTER the concurrent probe scope, adding ~200ms to\nevery standard/long run.\n\nOn Windows, sample GetSystemTimes (kernel32) just before the scope and\ndiff against a fresh sample at the usage-computation point: the existing\ncollection window is the delta, so no dedicated sleep is added. A ~100ms\nfloor is topped up only when the window is shorter (e.g. an isolated\n`--fields cpu-usage`) so a tiny request reads a real value instead of\nGetSystemTimes quantization noise. A pure usage_percent helper carries\nunit tests. Linux/macOS keep the sysinfo+sleep path (its min interval\nmakes the window-diff unreliable there).\n\nOn an AMD Ryzen AI MAX+ 395: standard mode 1757ms -> 1558ms; isolated\n--fields cpu-usage ~340ms -> ~253ms.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-11T16:26:38-07:00",
-          "tree_id": "ff94a5086c547509df94d6fc37722dd5e6667f45",
-          "url": "https://github.com/l1a/retch/commit/dfa18d3ba7b91698f61b34f76aaf85b3bd479271"
-        },
-        "date": 1783814301119,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 145.33329733258677,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 6.350566702906946,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 124.84517237264197,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 106.2694307009015,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46324.30956706307,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 618.9490930781151,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 790.4998142027349,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2834459460,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "cae94eb0c09e6b2f4675d84cbd239d3ed13b6926",
           "message": "Detect Windows camera natively (SetupAPI) (#150)\n\nReplace the camera PowerShell spawn (Get-PnpDevice -Class Camera,Image\n-PresentOnly, ~1.36s) with a new shared win_setupapi module that enumerates\npresent devices in a setup class via SetupDiGetClassDevsW +\nSetupDiGetDeviceRegistryPropertyW (links setupapi) — the native equivalent\nof Get-PnpDevice -PresentOnly. Camera enumerates the Camera and Image\nclasses and reuses the existing is_real_camera / clean_camera_name / dedup\nlogic. bluetooth (which introduced a private SetupAPI copy) is refactored\nonto the shared module, removing the duplication (mirrors win_reg.rs).\n\nHand-written extern \"system\" FFI, no binding crate. Verified against\nGet-PnpDevice (all real cameras; IR camera filtered as before); bluetooth\nadapter name unchanged after the refactor.\n\nCamera was the last standard-mode PowerShell pole, so this completes the\nWindows native-FFI migration: on an AMD Ryzen AI MAX+ 395, --fields camera\n~1359ms -> ~155ms and standard mode 1558ms -> 273ms. retch now beats\nfastfetch in standard mode (273 vs 1348ms) and is at parity in --long.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-11T22:26:15-07:00",
@@ -19131,6 +19067,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3184434270,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5f5fda4c9f6daefbb8469008f1e5cd2dac686079",
+          "message": "deps: bump icy_sixel to 0.6.0 (#207) (#208)\n\nConsolidates Dependabot #207 onto a gated branch so the release hygiene\nit bypasses -- version bump, NOTES entry, man regen -- is actually done.\n\nNot lockfile-only: a caret range on a 0.x spec will not admit 0.6, so the\nCargo.toml spec widened \"0.5\" -> \"0.6\". icy_sixel is graphics-feature-only,\nso only --features graphics and the CI graphics-feature job compile it.\n\nThe 0.x minor is semver-breaking by convention but does not reach retch:\nsixel_image.rs and encoder.rs, which hold the only two calls retch makes,\nare sha256-identical between 0.5.1 and 0.6.0. The whole change is\ndecoder-side (a new stateful SixelDecoder, additively exported, plus a\nMAX_PIXELS decode guard) and retch only ever emits sixel.\n\ndocs/retch.1 also loses 164 .Bl/.El lines, which is NOT from this bump:\nmandown was upgraded to 1.1.1 after v0.9.4 shipped and no longer emits\nthem. They are mdoc macros, undefined in man(7) -- groff warns twice on\nthe old page and not at all on the new one, and the rendered output is\nbyte-identical. Proved pre-existing by regenerating at the committed\nversion 0.9.4 first.\n\nretch-cli -> 0.9.5; retch-sysinfo unchanged at 0.1.56.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-27T16:59:33-07:00",
+          "tree_id": "d38a83e0752c843b6ec56f75402ea35bf7dea990",
+          "url": "https://github.com/l1a/retch/commit/5f5fda4c9f6daefbb8469008f1e5cd2dac686079"
+        },
+        "date": 1787877180794,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 241.81898609515355,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.39370711998441,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 122.94518102776843,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 97.55368545552888,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 43181.758272744446,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 559.5953790921152,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 884.4769425451086,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2424165940,
             "unit": "ns"
           }
         ]
