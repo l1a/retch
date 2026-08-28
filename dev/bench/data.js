@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787877187634,
+  "lastUpdate": 1787877719996,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19150,70 +19150,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "e7427ff1a1011473cda36ef463893d8a10dea342",
-          "message": "Read SMBIOS natively for Windows phys-mem (#147)\n\n* Read SMBIOS natively for Windows phys-mem\n\nReplace the two Get-CimInstance Win32_PhysicalMemory / Win32_ComputerSystem\nPowerShell spawns (~600 ms) with GetSystemFirmwareTable('RSMB') (kernel32),\nparsing SMBIOS type-17 (Memory Device) structures directly, plus\nGlobalMemoryStatusEx as the VM total-memory fallback. Hand-written\nextern \"system\" FFI matching win_reg.rs — no new dependency.\n\nA pure parse_smbios_type17 fn does a bounds-checked walk of the structure\ntable (formatted area + double-null-terminated string set) and carries the\nunit tests. Now also surfaces the SMBIOS Configured Memory Speed field\n(offset 0x20), so Windows shows running-vs-rated speed when they differ\n(e.g. \"8x 16 GB LPDDR5 8000 MT/s (rated 8533 MT/s)\"), matching Linux; the\nold WMI path only reported the rated speed.\n\n--fields phys-mem ~597ms -> ~152ms on an AMD Ryzen AI MAX+ 395; output\nverified against Get-CimInstance Win32_PhysicalMemory.\n\nAssisted-By: Claude Opus 4.8\n\n* Fix clippy byte-str lint on RSMB signature\n\nRust 1.97's clippy flags `[b'R', b'S', b'M', b'B']` (can be a byte str).\nUse `*b\"RSMB\"` instead. Local toolchain was 1.96 so `just check` passed\nlocally but CI (1.97) failed clippy; bumped local toolchain to match.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-11T13:32:19-07:00",
-          "tree_id": "dde402b0cc3e8c191c71996d19858d5d403cf3b0",
-          "url": "https://github.com/l1a/retch/commit/e7427ff1a1011473cda36ef463893d8a10dea342"
-        },
-        "date": 1783804423220,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 101.95684146741111,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9477903983026663,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.24185649510773,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 80.40682505787004,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46796.65661217397,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 484.8263244426347,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 733.0641628331191,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2065350490,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "36888f89870197b2e040c9178970859ffc467c42",
           "message": "Detect Windows bluetooth natively (bthprops) (#148)\n\nReplace the PowerShell spawn (Get-Service bthserv + two Get-PnpDevice\n-Class Bluetooth queries, ~1.8s) with native Win32:\n- power state from the bthserv service via the Service Control Manager\n  (advapi32),\n- adapter hardware name via SetupAPI enumeration of the Bluetooth device\n  class (links setupapi),\n- connected devices via the classic bthprops API (BluetoothFindFirstDevice\n  with fReturnConnected; links bthprops).\n\nHand-written extern \"system\" FFI, no WinRT and no binding crate. The\ndevice-info struct layout was validated at runtime before trusting the\ncount. A pure format_windows_bluetooth fn carries the unit tests.\n\nBehavior change: \"N connected\" now counts actually-connected devices\nrather than the old count of all paired/present Bluetooth PnP nodes (which\nthe old code mislabeled as connected). Adapter name unchanged. On an AMD\nRyzen AI MAX+ 395: --fields bluetooth ~1765ms -> ~150ms; --long 3462 ->\n2934ms.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-11T16:06:28-07:00",
@@ -22333,6 +22269,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2427053340,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5f5fda4c9f6daefbb8469008f1e5cd2dac686079",
+          "message": "deps: bump icy_sixel to 0.6.0 (#207) (#208)\n\nConsolidates Dependabot #207 onto a gated branch so the release hygiene\nit bypasses -- version bump, NOTES entry, man regen -- is actually done.\n\nNot lockfile-only: a caret range on a 0.x spec will not admit 0.6, so the\nCargo.toml spec widened \"0.5\" -> \"0.6\". icy_sixel is graphics-feature-only,\nso only --features graphics and the CI graphics-feature job compile it.\n\nThe 0.x minor is semver-breaking by convention but does not reach retch:\nsixel_image.rs and encoder.rs, which hold the only two calls retch makes,\nare sha256-identical between 0.5.1 and 0.6.0. The whole change is\ndecoder-side (a new stateful SixelDecoder, additively exported, plus a\nMAX_PIXELS decode guard) and retch only ever emits sixel.\n\ndocs/retch.1 also loses 164 .Bl/.El lines, which is NOT from this bump:\nmandown was upgraded to 1.1.1 after v0.9.4 shipped and no longer emits\nthem. They are mdoc macros, undefined in man(7) -- groff warns twice on\nthe old page and not at all on the new one, and the rendered output is\nbyte-identical. Proved pre-existing by regenerating at the committed\nversion 0.9.4 first.\n\nretch-cli -> 0.9.5; retch-sysinfo unchanged at 0.1.56.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-27T16:59:33-07:00",
+          "tree_id": "d38a83e0752c843b6ec56f75402ea35bf7dea990",
+          "url": "https://github.com/l1a/retch/commit/5f5fda4c9f6daefbb8469008f1e5cd2dac686079"
+        },
+        "date": 1787877716719,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 175.68508258741582,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.94732392784718,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 99.61097825768982,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.49555119241197,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47041.08260521298,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 484.7300859122821,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 720.6099019619385,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2232761960,
             "unit": "ns"
           }
         ]
