@@ -106,7 +106,110 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.6)
+## Current State (v0.9.7)
+- **v0.9.7 - Fedora COPR packaging (`packaging/copr/retch.spec`)** (packaging only; no
+  runtime change, `retch-sysinfo` unchanged at `0.1.56`). A third packaging target beside
+  `packaging/aur` and `packaging/nixpkgs`, and the first one whose build was proven end to
+  end before it shipped.
+  - **COPR is the endpoint, and the spec says so.** It is written for a project with
+    **"Enable internet access during builds" ON**, so `cargo build` resolves crates.io at
+    build time and there is no vendor tarball. That is a deliberate compromise with two
+    consequences, both commented in the spec rather than left for someone to rediscover:
+    - **`--locked` is load-bearing.** With network access and no vendoring it is the only
+      thing pinning what gets resolved to what was actually tested. `Cargo.lock` is format 4
+      with **247 packages**; dropping `--locked` would let a builder silently resolve
+      something else.
+    - **This will not build in koji.** Fedora proper requires offline builds, so shipping
+      there would need a vendor tarball as `Source1` **and** `rusqlite`'s `bundled` feature
+      replaced with system sqlite. Two COPR-only compromises, named, not smuggled.
+  - **The landmine that was not there, checked rather than assumed.** NOTES 3 states that
+    `.cargo/config.toml` sets `rustflags = ["-C", "target-cpu=native"]`. Had that shipped, a
+    COPR builder would emit a `-march=native` binary that **SIGILLs on users' machines**. It
+    does not: only `.cargo/audit.toml` is tracked, and `git archive v0.9.4` confirms no
+    `config.toml` in the release tarball. The AUR package is safe for the same reason. (The
+    NOTES 3 wording describes an untracked, machine-local file as though it were part of the
+    repo - drift worth correcting separately.)
+  - **Proven by building it, not by reading it.** A `fedora:latest` container under podman
+    downloaded the real `v0.9.4` tarball exactly as a COPR builder would: `rpmbuild -ba` with
+    **zero rpm warnings**, `%check` running the full suite (**254 tests**, 87+15+152), and
+    both an RPM (3.2 MB) and an SRPM produced. The package was then **installed and run** -
+    `retch 0.9.4`, `--short` rendering real system information - rather than trusted from an
+    exit code, the same standard the crates.io releases are held to.
+  - **Verified about the payload specifically**: the man page is 395 lines and renders under
+    `man`, footer `.TH ... "retch 0.9.4"`, **0** literal `$` and **0** doubled font runs (the
+    two defects the AUR PKGBUILD carried for months); all three completion files are
+    **byte-identical** to the installed binary's own `--completions` output; auto-generated
+    `Requires` are glibc/libgcc/libm only.
+  - **`%{_mandir}/man1/retch.1*` - the glob is load-bearing.** rpm compresses man pages on
+    install, so the packaged path is `retch.1.gz`; asserting the uncompressed name reports it
+    missing precisely when it is present. That is the `zipman` trap from the `aur` CI job, in
+    RPM form, and it is commented in the spec as such.
+  - **rpmlint found two real defects, both fixed**: `description-line-too-long` (rewrapped to
+    79 columns) and `unstripped-binary-or-object`. The two remaining rpmlint errors are
+    spelling false-positives on `fastfetch` and `neofetch`, the actual project names.
+  - **The build uses Fedora's own rustc flags, `%{build_rustflags}` from `rust-srpm-macros`**,
+    which expand to `-Copt-level=3 -Cdebuginfo=2 -Ccodegen-units=1 -Cstrip=none
+    -Cforce-frame-pointers=yes --cap-lints=warn`. This replaced an earlier
+    `%global debug_package %{nil}` plus a hand-written `strip`, and it fixes three things at
+    once:
+    - **Distro hardening and codegen policy** the spec previously ignored entirely -
+      frame pointers (usable backtraces and profiling), `codegen-units=1`, `opt-level=3`.
+    - **Real debuginfo subpackages.** The flags carry `-Cdebuginfo=2 -Cstrip=none`, which is
+      precisely what rpm's extraction needs. A stock Rust release build emits no DWARF, rpm
+      finds nothing, and the build dies on an empty debuginfo package - which is why the
+      `debug_package %{nil}` shortcut existed.
+    - **It is NOT "shipping a debug build", and that is worth stating because it reads like
+      one.** `-Copt-level=3` is in the same flag set; rpm moves the symbols out into
+      `retch-debuginfo` / `retch-debugsource` and strips the binary in the main package.
+      **Verified, not assumed**: after the change `file` reports the shipped
+      `/usr/bin/retch` as `stripped` with **zero** `.debug_info` sections, and the main
+      package got *smaller* (3,225,389 vs 3,247,726 bytes) because rpm's strip is more
+      thorough than the manual one. Three packages are produced now - main plus a 23 MB
+      debuginfo and a 145 KB debugsource that nobody installs by default.
+  - **`rust-packaging`'s `%cargo_prep`/`%cargo_build` are deliberately NOT used**, and this
+    is the one place the Fedora guidelines are knowingly declined rather than merely unmet.
+    Those macros assume Fedora's offline, vendored-dependency workflow and write a cargo
+    config with `offline = true`, which would fight the network-enabled build this spec is
+    built around. They are also **not installed on the development hosts** - only
+    `rust-srpm-macros` is, so `%{rust_arches}` and `%{build_rustflags}` expand while
+    `%{cargo_prep}` expands to nothing, which would fail silently rather than loudly.
+    Taking the flags without the machinery is the whole of the available benefit.
+  - **Completion directories use the rpm macros** `%{bash_completions_dir}`,
+    `%{zsh_completions_dir}` and `%{fish_completions_dir}` rather than hardcoded paths under
+    `%{_datadir}`, so a future Fedora relocation is followed automatically.
+  - **The install layout was checked against what Fedora actually ships, not from memory, and
+    a three-package sample would have given the wrong answer.** `ripgrep`, `fd-find` and
+    `bat` all name their bash completion `<cmd>.bash`, which suggests a bare `retch` is
+    non-standard. Across the whole directory it is the opposite: **1382 completion files, only
+    10 carry a `.bash` suffix** - `git`, `dnf`, `systemctl`, `ssh`, `flatpak` and `chezmoi`
+    all use the bare command name, and bash-completion's loader accepts either. Likewise all
+    69 files in `zsh/site-functions` are `_`-prefixed, fish uses `<cmd>.fish`, and all three
+    directories are owned by `filesystem`. Generalising from a small sample of packages is
+    how a convention gets misread.
+  - **Dependency facts established with `dnf`, not from memory - two guesses were wrong.**
+    `xrandr` is its own package (not `xorg-x11-server-utils`), and **`wireless-tools` no
+    longer exists in Fedora 44**, so `iwgetid` is not listed at all. `zpool` is confirmed
+    unpackaged in Fedora. Every probe is optional, so none is a hard `Requires`; the list is
+    split between `Recommends` (light: `chafa`, `curl`, `iproute`, `dmidecode`) and
+    `Suggests` (the desktop stack), because dnf installs `Recommends` by default and pulling
+    NetworkManager, bluez and xrandr onto a server install would be obnoxious.
+  - **Three of my own checks failed for the wrong reason before the package ever did.** The
+    `fedora` container image sets `tsflags=nodocs`, so reading the *installed* man path
+    reported it missing while the package plainly contained it - read the payload with
+    `rpm2cpio` instead; `man` was not installed, and under `set -o pipefail` that killed the
+    verification script mid-run; and a nested-quoting error truncated the dependency listing.
+    Same family as the `bsdtar | grep -q` SIGPIPE and `ls`/`eza` entries: **the expensive
+    direction is a checker that cries wolf**, because the reflex is to go change working code.
+  - **`Version:` tracks the last released tag, not `Cargo.toml`**, because `Source0` is a tag
+    tarball that must exist - mirroring `packaging/aur/PKGBUILD`'s `pkgver`. It therefore
+    drifts by one command at release time. Unlike the AUR pair there is **no `copr-check`
+    guard and no CI job** yet: this change is deliberately the spec plus its proof, and the
+    `copr-*` recipes / anti-drift check / `packaging.yml` job are the natural follow-up.
+  - **The repository is `kentobias/retch`** on COPR - `sudo dnf copr enable kentobias/retch`
+    then `sudo dnf install retch`, for Fedora 43 and 44 on x86_64 and aarch64. Documented in
+    `README.md` and the wiki's `Getting-Started.md`, both of which note that COPR is a
+    community build service and not an official Fedora repository.
+  - `retch-cli` -> 0.9.7. Patch bump (packaging only, no user-visible binary change).
 - **v0.9.6 - `packaging.yml` now watches the `Justfile`** (CI configuration only; one path
   added to a `pull_request` filter, no runtime change, `retch-sysinfo` unchanged at `0.1.56`).
   - **The hole, and it is narrow rather than obvious.** The recipes that render

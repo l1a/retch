@@ -68,6 +68,23 @@ yay -S retch
 
 *(AUR package configuration files are available in [packaging/aur](packaging/aur/PKGBUILD)).*
 
+### On Fedora (COPR)
+
+`retch` is built for Fedora in a [COPR](https://copr.fedorainfracloud.org/coprs/kentobias/retch/)
+repository:
+
+```sh
+sudo dnf copr enable kentobias/retch
+sudo dnf install retch
+```
+
+> [!NOTE]
+> COPR is Fedora's community build service, not an official Fedora repository — packages
+> there are not reviewed by Fedora. Builds are provided for Fedora 43 and 44 on `x86_64`
+> and `aarch64`.
+
+*(The RPM spec file is available in [packaging/copr](packaging/copr/retch.spec)).*
+
 ### From crates.io
 
 ```sh
