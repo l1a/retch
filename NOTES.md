@@ -106,7 +106,74 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.6)
+## Current State (v0.9.7)
+- **v0.9.7 - Fedora COPR packaging (`packaging/copr/retch.spec`)** (packaging only; no
+  runtime change, `retch-sysinfo` unchanged at `0.1.56`). A third packaging target beside
+  `packaging/aur` and `packaging/nixpkgs`, and the first one whose build was proven end to
+  end before it shipped.
+  - **COPR is the endpoint, and the spec says so.** It is written for a project with
+    **"Enable internet access during builds" ON**, so `cargo build` resolves crates.io at
+    build time and there is no vendor tarball. That is a deliberate compromise with two
+    consequences, both commented in the spec rather than left for someone to rediscover:
+    - **`--locked` is load-bearing.** With network access and no vendoring it is the only
+      thing pinning what gets resolved to what was actually tested. `Cargo.lock` is format 4
+      with **247 packages**; dropping `--locked` would let a builder silently resolve
+      something else.
+    - **This will not build in koji.** Fedora proper requires offline builds, so shipping
+      there would need a vendor tarball as `Source1` **and** `rusqlite`'s `bundled` feature
+      replaced with system sqlite. Two COPR-only compromises, named, not smuggled.
+  - **The landmine that was not there, checked rather than assumed.** NOTES 3 states that
+    `.cargo/config.toml` sets `rustflags = ["-C", "target-cpu=native"]`. Had that shipped, a
+    COPR builder would emit a `-march=native` binary that **SIGILLs on users' machines**. It
+    does not: only `.cargo/audit.toml` is tracked, and `git archive v0.9.4` confirms no
+    `config.toml` in the release tarball. The AUR package is safe for the same reason. (The
+    NOTES 3 wording describes an untracked, machine-local file as though it were part of the
+    repo - drift worth correcting separately.)
+  - **Proven by building it, not by reading it.** A `fedora:latest` container under podman
+    downloaded the real `v0.9.4` tarball exactly as a COPR builder would: `rpmbuild -ba` with
+    **zero rpm warnings**, `%check` running the full suite (**254 tests**, 87+15+152), and
+    both an RPM (3.2 MB) and an SRPM produced. The package was then **installed and run** -
+    `retch 0.9.4`, `--short` rendering real system information - rather than trusted from an
+    exit code, the same standard the crates.io releases are held to.
+  - **Verified about the payload specifically**: the man page is 395 lines and renders under
+    `man`, footer `.TH ... "retch 0.9.4"`, **0** literal `$` and **0** doubled font runs (the
+    two defects the AUR PKGBUILD carried for months); all three completion files are
+    **byte-identical** to the installed binary's own `--completions` output; auto-generated
+    `Requires` are glibc/libgcc/libm only.
+  - **`%{_mandir}/man1/retch.1*` - the glob is load-bearing.** rpm compresses man pages on
+    install, so the packaged path is `retch.1.gz`; asserting the uncompressed name reports it
+    missing precisely when it is present. That is the `zipman` trap from the `aur` CI job, in
+    RPM form, and it is commented in the spec as such.
+  - **rpmlint found two real defects, both fixed**: `description-line-too-long` (rewrapped to
+    79 columns) and `unstripped-binary-or-object` - `%global debug_package %{nil}`, needed
+    because Rust release builds carry no debuginfo and rpm then fails on an empty debuginfo
+    package, **also disables rpm's automatic strip pass**, so the spec strips explicitly. The
+    two remaining rpmlint errors are spelling false-positives on `fastfetch` and `neofetch`,
+    which are the actual project names.
+  - **Dependency facts established with `dnf`, not from memory - two guesses were wrong.**
+    `xrandr` is its own package (not `xorg-x11-server-utils`), and **`wireless-tools` no
+    longer exists in Fedora 44**, so `iwgetid` is not listed at all. `zpool` is confirmed
+    unpackaged in Fedora. Every probe is optional, so none is a hard `Requires`; the list is
+    split between `Recommends` (light: `chafa`, `curl`, `iproute`, `dmidecode`) and
+    `Suggests` (the desktop stack), because dnf installs `Recommends` by default and pulling
+    NetworkManager, bluez and xrandr onto a server install would be obnoxious.
+  - **Three of my own checks failed for the wrong reason before the package ever did.** The
+    `fedora` container image sets `tsflags=nodocs`, so reading the *installed* man path
+    reported it missing while the package plainly contained it - read the payload with
+    `rpm2cpio` instead; `man` was not installed, and under `set -o pipefail` that killed the
+    verification script mid-run; and a nested-quoting error truncated the dependency listing.
+    Same family as the `bsdtar | grep -q` SIGPIPE and `ls`/`eza` entries: **the expensive
+    direction is a checker that cries wolf**, because the reflex is to go change working code.
+  - **`Version:` tracks the last released tag, not `Cargo.toml`**, because `Source0` is a tag
+    tarball that must exist - mirroring `packaging/aur/PKGBUILD`'s `pkgver`. It therefore
+    drifts by one command at release time. Unlike the AUR pair there is **no `copr-check`
+    guard and no CI job** yet: this change is deliberately the spec plus its proof, and the
+    `copr-*` recipes / anti-drift check / `packaging.yml` job are the natural follow-up.
+  - **The repository is `kentobias/retch`** on COPR - `sudo dnf copr enable kentobias/retch`
+    then `sudo dnf install retch`, for Fedora 43 and 44 on x86_64 and aarch64. Documented in
+    `README.md` and the wiki's `Getting-Started.md`, both of which note that COPR is a
+    community build service and not an official Fedora repository.
+  - `retch-cli` -> 0.9.7. Patch bump (packaging only, no user-visible binary change).
 - **v0.9.6 - `packaging.yml` now watches the `Justfile`** (CI configuration only; one path
   added to a `pull_request` filter, no runtime change, `retch-sysinfo` unchanged at `0.1.56`).
   - **The hole, and it is narrow rather than obvious.** The recipes that render
