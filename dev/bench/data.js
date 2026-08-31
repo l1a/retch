@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788215165795,
+  "lastUpdate": 1788215625027,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -12354,80 +12354,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "2ae3ecffd014bc206189c58e5b613f8ff4e0b66d",
-          "message": "Add FFI struct-layout assertion tests (#151)\n\nFollowing the Windows native-FFI migration (#146-#150), the pure parsers\nare well unit-tested but the #[repr(C)] FFI structs the OS reads/writes by\noffset were only runtime-verified. Add size_of + targeted offset_of!\nassertions for each: disk (StoragePropertyQuery, StorageDeviceDescriptor\nincl. bus_type/vendor/product offsets, DeviceSeekPenaltyDescriptor,\nDiskGeometryEx incl. disk_size), memory (MemoryStatusEx), bluetooth\n(ServiceStatus, DeviceSearchParams, SystemTime, DeviceInfo incl.\nf_connected/sz_name), fetch (win_cpu::FileTime), win_setupapi\n(SpDevinfoData, already present).\n\nThese catch accidental field-reorder/padding regressions at test time —\nthe failure mode the parse tests can't (the phys-mem 0x14->0x15 offset bug\nin #147 was found only by runtime comparison). Test-only, no runtime\nchange; runs on Windows CI since the structs are cfg(windows).\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-11T22:52:26-07:00",
-          "tree_id": "1d42a683cfb643a99870fca57f865d9e88b409e0",
-          "url": "https://github.com/l1a/retch/commit/2ae3ecffd014bc206189c58e5b613f8ff4e0b66d"
-        },
-        "date": 1783836778438,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1020528025.05,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 433.4274825929104,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 70.56852115938759,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.0640509061139154,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 78.73422878806353,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 5125.340445035705,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1192.165103876398,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 410.9455192201552,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 77159.92278037203,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 361.6017771499298,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "744c0dcd3c15ea67803948e0372c5229715b4783",
           "message": "Fix upload_local_bench.py cp1252 crash on Windows (#152)\n\njust bench-upload and the post-merge hook crashed on Windows with\nUnicodeDecodeError: 'charmap' codec can't decode byte 0x9d — so no local\nWindows \"real hardware\" numbers reached the gh-pages benchmark dashboard.\nThe gh-pages data.js is UTF-8 (commit messages embed arrow/em-dash chars)\nbut open() used the default cp1252 encoding on Windows.\n\nPin encoding=\"utf-8\" on every file operation (data.js read + write, the\nhyperfine JSON temp read) and on run_capture's subprocess text decoding\n(git log --format=%B), plus a sys.stdout.reconfigure UTF-8 guard. Same fix\nclass as scripts/update_wip.py (#142).\n\nVerified: the crash reproduces on the live data.js under the default\nencoding; the UTF-8 read succeeds (845 KB) and append_entry /\ngit_commit_info run without error.\n\nTooling-only; no Rust source touched, retch-sysinfo unchanged.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-12T07:01:43-07:00",
@@ -16037,6 +15963,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 531.8381175787488,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a00db8aec1f839c1383bb4d2d18130866c442b02",
+          "message": "Add a Fedora COPR spec, proven by building it (#210)\n\n* Add a Fedora COPR spec, proven by building it\n\npackaging/copr/retch.spec is a third packaging target beside aur and\nnixpkgs. It is written for a COPR project with internet access enabled,\nso cargo resolves crates.io at build time and there is no vendor tarball.\nTwo compromises follow and both are commented in the spec: --locked is\nthe only thing pinning resolution, and this will not build in koji.\n\nProven rather than reviewed: a fedora:latest container downloaded the\nreal v0.9.4 tarball as a COPR builder would, rpmbuild -ba produced an\nRPM and SRPM with zero warnings, %check ran all 254 tests, and the\npackage was installed and run. The man page renders with the right\nfooter and no doubled font runs; all three completion files are\nbyte-identical to the installed binary's own output.\n\nrpmlint found two real defects, both fixed: an over-long description\nand an unstripped binary (debug_package %{nil} also disables rpm's\nstrip pass).\n\nAssisted-By: Claude Opus 5\n\n* Use Fedora's rustc flags and completion macros\n\nReplaces `%global debug_package %{nil}` plus a hand-written strip with\nRUSTFLAGS=\"%{build_rustflags}\" -- Fedora's own flags from rust-srpm-macros.\nThis picks up distro hardening the spec previously ignored (frame pointers,\ncodegen-units=1, opt-level=3), and its -Cdebuginfo=2 -Cstrip=none half is\nwhat rpm's debuginfo extraction needs.\n\nIt does not ship a debug build: -Copt-level=3 is in the same flag set, and\nrpm moves symbols into retch-debuginfo/retch-debugsource while stripping\nthe binary in the main package. Verified -- `file` reports the shipped\nbinary as stripped with zero .debug_info sections, and the main package is\n22 KB smaller than the hand-stripped one.\n\nrust-packaging's %cargo_prep/%cargo_build are deliberately not used: they\nassume an offline vendored workflow and would fight the network-enabled\nbuild, and they are not installed on the dev hosts anyway.\n\nCompletion paths now use %{bash_completions_dir}, %{zsh_completions_dir}\nand %{fish_completions_dir} instead of hardcoded %{_datadir} paths.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-31T15:12:34-07:00",
+          "tree_id": "bb28742b66f497b9f37f05f1afad7ffa92fffd99",
+          "url": "https://github.com/l1a/retch/commit/a00db8aec1f839c1383bb4d2d18130866c442b02"
+        },
+        "date": 1788215622859,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1175192916.6,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 483.62941349798456,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 139.0582582245667,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.9964610472320135,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 75.01899358326037,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5544.17743279671,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1544.190945949267,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 452.46354877078295,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 90083.9878865022,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 365.6244918251091,
             "unit": "ns"
           }
         ]
