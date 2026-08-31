@@ -106,7 +106,44 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.7)
+## Current State (v0.9.8)
+- **v0.9.8 - COPR rebuilds are triggered by the packaging commit, not the release**
+  (CI + packaging only; no runtime change, `retch-sysinfo` unchanged at `0.1.56`). New
+  `.github/workflows/copr.yml` and `.copr/Makefile`.
+  - **The obvious trigger is the wrong one, and this is the whole point of the entry.**
+    "Rebuild COPR when we publish a GitHub release" fires too early. `packaging/copr/
+    retch.spec` pins `Version:` **and** a `Source0` tarball checksum to the last *released*
+    tag, so it can only be bumped **after** the tag exists. The real sequence is: push tag
+    (spec still names the previous version) -> release workflow runs (still previous) ->
+    commit the packaging bump to `main` (**now** current). A release- or tag-triggered
+    rebuild lands on the first two steps and rebuilds **the version already in COPR**. The
+    event that means "there is something new" is the packaging commit, so the workflow is a
+    `push` to `main` filtered to `packaging/copr/**`.
+  - **`.copr/**` is watched as well as `packaging/copr/**`.** The Makefile there is what
+    *generates* the SRPM, so a change to it alters the build without touching the spec -
+    exactly the hole v0.9.6 closed by adding `Justfile` to `packaging.yml`'s filter. Applying
+    the lesson at the point it recurs rather than rediscovering it.
+  - **`.copr/Makefile` (COPR's `make_srpm` method) rather than the `rpkg` source type.** The
+    spec's `Source0` is a remote tag tarball; `make_srpm` makes the fetch explicit instead of
+    depending on how `rpkg` handles remote sources, and it is byte-for-byte the sequence that
+    was verified by hand in a container before the spec was first committed - so a COPR
+    failure and a local failure have the same cause. **Verified by running exactly what COPR
+    runs**: `make -f .copr/Makefile srpm outdir=...` in `fedora:latest`, which downloaded the
+    real v0.9.7 tarball and produced `retch-0.9.7-1.fc44.src.rpm`.
+  - **The COPR package had to change type for any of this to work.** The API reported
+    `source_type='upload'` with `auto_rebuild: False` - an uploaded SRPM has no source for
+    COPR to re-fetch, so **no** webhook or rebuild command can act on it. It needs a one-off
+    `copr-cli edit-package-scm ... --type make_srpm` to become rebuildable; the workflow's
+    `build-package` then rebuilds from that stored config.
+  - **COPR's own GitHub webhook was considered and declined.** It needs no secrets and is
+    COPR-native, but its SCM auto-rebuild has **no path filter**, so every push to `main`
+    would start a four-chroot rebuild of an unchanged NEVRA - roughly 12 minutes of builder
+    time per merge. That is the opposite of what v0.9.6 was for.
+  - Credentials are three GitHub secrets (`COPR_LOGIN`, `COPR_USERNAME`, `COPR_TOKEN`)
+    written to `~/.config/copr` from env and never echoed. A fork without them **skips with a
+    notice instead of failing**, since a red check about a credential a fork should not have
+    is noise, not signal.
+  - `retch-cli` -> 0.9.8. Patch bump.
 - **v0.9.7 - Fedora COPR packaging (`packaging/copr/retch.spec`)** (packaging only; no
   runtime change, `retch-sysinfo` unchanged at `0.1.56`). A third packaging target beside
   `packaging/aur` and `packaging/nixpkgs`, and the first one whose build was proven end to
