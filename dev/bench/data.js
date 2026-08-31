@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788216537662,
+  "lastUpdate": 1788216788792,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19258,70 +19258,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "dfa18d3ba7b91698f61b34f76aaf85b3bd479271",
-          "message": "Drop serial CPU-usage sleep on Windows (#149)\n\nCPU usage needs a delta between two samples. sysinfo enforces a ~200ms\nminimum interval, so collect() slept 200ms then refreshed — and that\nsleep ran serially AFTER the concurrent probe scope, adding ~200ms to\nevery standard/long run.\n\nOn Windows, sample GetSystemTimes (kernel32) just before the scope and\ndiff against a fresh sample at the usage-computation point: the existing\ncollection window is the delta, so no dedicated sleep is added. A ~100ms\nfloor is topped up only when the window is shorter (e.g. an isolated\n`--fields cpu-usage`) so a tiny request reads a real value instead of\nGetSystemTimes quantization noise. A pure usage_percent helper carries\nunit tests. Linux/macOS keep the sysinfo+sleep path (its min interval\nmakes the window-diff unreliable there).\n\nOn an AMD Ryzen AI MAX+ 395: standard mode 1757ms -> 1558ms; isolated\n--fields cpu-usage ~340ms -> ~253ms.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-11T16:26:38-07:00",
-          "tree_id": "ff94a5086c547509df94d6fc37722dd5e6667f45",
-          "url": "https://github.com/l1a/retch/commit/dfa18d3ba7b91698f61b34f76aaf85b3bd479271"
-        },
-        "date": 1783814806987,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 105.09161987688272,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9478407863898504,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 104.15081798768998,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.82349045059902,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47800.77031613224,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 494.0424123571691,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 733.0747982443331,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1941453165,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "cae94eb0c09e6b2f4675d84cbd239d3ed13b6926",
           "message": "Detect Windows camera natively (SetupAPI) (#150)\n\nReplace the camera PowerShell spawn (Get-PnpDevice -Class Camera,Image\n-PresentOnly, ~1.36s) with a new shared win_setupapi module that enumerates\npresent devices in a setup class via SetupDiGetClassDevsW +\nSetupDiGetDeviceRegistryPropertyW (links setupapi) — the native equivalent\nof Get-PnpDevice -PresentOnly. Camera enumerates the Camera and Image\nclasses and reuses the existing is_real_camera / clean_camera_name / dedup\nlogic. bluetooth (which introduced a private SetupAPI copy) is refactored\nonto the shared module, removing the duplication (mirrors win_reg.rs).\n\nHand-written extern \"system\" FFI, no binding crate. Verified against\nGet-PnpDevice (all real cameras; IR camera filtered as before); bluetooth\nadapter name unchanged after the refactor.\n\nCamera was the last standard-mode PowerShell pole, so this completes the\nWindows native-FFI migration: on an AMD Ryzen AI MAX+ 395, --fields camera\n~1359ms -> ~155ms and standard mode 1558ms -> 273ms. retch now beats\nfastfetch in standard mode (273 vs 1348ms) and is at parity in --long.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-11T22:26:15-07:00",
@@ -22441,6 +22377,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2476260000,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a00db8aec1f839c1383bb4d2d18130866c442b02",
+          "message": "Add a Fedora COPR spec, proven by building it (#210)\n\n* Add a Fedora COPR spec, proven by building it\n\npackaging/copr/retch.spec is a third packaging target beside aur and\nnixpkgs. It is written for a COPR project with internet access enabled,\nso cargo resolves crates.io at build time and there is no vendor tarball.\nTwo compromises follow and both are commented in the spec: --locked is\nthe only thing pinning resolution, and this will not build in koji.\n\nProven rather than reviewed: a fedora:latest container downloaded the\nreal v0.9.4 tarball as a COPR builder would, rpmbuild -ba produced an\nRPM and SRPM with zero warnings, %check ran all 254 tests, and the\npackage was installed and run. The man page renders with the right\nfooter and no doubled font runs; all three completion files are\nbyte-identical to the installed binary's own output.\n\nrpmlint found two real defects, both fixed: an over-long description\nand an unstripped binary (debug_package %{nil} also disables rpm's\nstrip pass).\n\nAssisted-By: Claude Opus 5\n\n* Use Fedora's rustc flags and completion macros\n\nReplaces `%global debug_package %{nil}` plus a hand-written strip with\nRUSTFLAGS=\"%{build_rustflags}\" -- Fedora's own flags from rust-srpm-macros.\nThis picks up distro hardening the spec previously ignored (frame pointers,\ncodegen-units=1, opt-level=3), and its -Cdebuginfo=2 -Cstrip=none half is\nwhat rpm's debuginfo extraction needs.\n\nIt does not ship a debug build: -Copt-level=3 is in the same flag set, and\nrpm moves symbols into retch-debuginfo/retch-debugsource while stripping\nthe binary in the main package. Verified -- `file` reports the shipped\nbinary as stripped with zero .debug_info sections, and the main package is\n22 KB smaller than the hand-stripped one.\n\nrust-packaging's %cargo_prep/%cargo_build are deliberately not used: they\nassume an offline vendored workflow and would fight the network-enabled\nbuild, and they are not installed on the dev hosts anyway.\n\nCompletion paths now use %{bash_completions_dir}, %{zsh_completions_dir}\nand %{fish_completions_dir} instead of hardcoded %{_datadir} paths.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-31T15:12:34-07:00",
+          "tree_id": "bb28742b66f497b9f37f05f1afad7ffa92fffd99",
+          "url": "https://github.com/l1a/retch/commit/a00db8aec1f839c1383bb4d2d18130866c442b02"
+        },
+        "date": 1788216785329,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 176.07069831791236,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948278422188081,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 96.8646430154898,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.20679111126393,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 48425.550730421804,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 480.8644124945693,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 720.80822201208,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1436761755,
             "unit": "ns"
           }
         ]
