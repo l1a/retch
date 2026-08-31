@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788207101320,
+  "lastUpdate": 1788207728665,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -16002,70 +16002,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "cae94eb0c09e6b2f4675d84cbd239d3ed13b6926",
-          "message": "Detect Windows camera natively (SetupAPI) (#150)\n\nReplace the camera PowerShell spawn (Get-PnpDevice -Class Camera,Image\n-PresentOnly, ~1.36s) with a new shared win_setupapi module that enumerates\npresent devices in a setup class via SetupDiGetClassDevsW +\nSetupDiGetDeviceRegistryPropertyW (links setupapi) — the native equivalent\nof Get-PnpDevice -PresentOnly. Camera enumerates the Camera and Image\nclasses and reuses the existing is_real_camera / clean_camera_name / dedup\nlogic. bluetooth (which introduced a private SetupAPI copy) is refactored\nonto the shared module, removing the duplication (mirrors win_reg.rs).\n\nHand-written extern \"system\" FFI, no binding crate. Verified against\nGet-PnpDevice (all real cameras; IR camera filtered as before); bluetooth\nadapter name unchanged after the refactor.\n\nCamera was the last standard-mode PowerShell pole, so this completes the\nWindows native-FFI migration: on an AMD Ryzen AI MAX+ 395, --fields camera\n~1359ms -> ~155ms and standard mode 1558ms -> 273ms. retch now beats\nfastfetch in standard mode (273 vs 1348ms) and is at parity in --long.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-11T22:26:15-07:00",
-          "tree_id": "dc9eca701a17186aff929c1b979a8956c13aed61",
-          "url": "https://github.com/l1a/retch/commit/cae94eb0c09e6b2f4675d84cbd239d3ed13b6926"
-        },
-        "date": 1783835855465,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 127.17763109256786,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.828539042020148,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 133.2482164612614,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 97.76211134995279,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 41794.82148983667,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 647.1588025076974,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 1001.8716080653927,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2387999050,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "2ae3ecffd014bc206189c58e5b613f8ff4e0b66d",
           "message": "Add FFI struct-layout assertion tests (#151)\n\nFollowing the Windows native-FFI migration (#146-#150), the pure parsers\nare well unit-tested but the #[repr(C)] FFI structs the OS reads/writes by\noffset were only runtime-verified. Add size_of + targeted offset_of!\nassertions for each: disk (StoragePropertyQuery, StorageDeviceDescriptor\nincl. bus_type/vendor/product offsets, DeviceSeekPenaltyDescriptor,\nDiskGeometryEx incl. disk_size), memory (MemoryStatusEx), bluetooth\n(ServiceStatus, DeviceSearchParams, SystemTime, DeviceInfo incl.\nf_connected/sz_name), fetch (win_cpu::FileTime), win_setupapi\n(SpDevinfoData, already present).\n\nThese catch accidental field-reorder/padding regressions at test time —\nthe failure mode the parse tests can't (the phys-mem 0x14->0x15 offset bug\nin #147 was found only by runtime comparison). Test-only, no runtime\nchange; runs on Windows CI since the structs are cfg(windows).\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-11T22:52:26-07:00",
@@ -19185,6 +19121,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2424165940,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "930a7bbd91dcf099d1416e083e6e34190ca36ba1",
+          "message": "Watch the Justfile in packaging CI paths (#209)\n\nThe recipes that render packaging/aur (aur-bump, aur-srcinfo, aur-check,\naur-publish) live in the Justfile, which no workflow watched. A change to\nthe AUR tooling that did not also change a committed file under packaging/\ntriggered nothing and reported green having never been looked at -- which\nis exactly what #203 did.\n\nThe coverage this adds is artifact-level, not recipe-level: the aur job\nnever invokes just or aur-srcinfo (no just, no podman in the container).\nIt re-verifies that the committed PKGBUILD/.SRCINFO pair still checksums,\nbuilds and packages correctly at that commit.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-31T12:49:42-07:00",
+          "tree_id": "d4a0eb047736cc91bca70ce1c5ca7f8182a08880",
+          "url": "https://github.com/l1a/retch/commit/930a7bbd91dcf099d1416e083e6e34190ca36ba1"
+        },
+        "date": 1788207724633,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 248.6276698193563,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.418764479760439,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 126.47775121844745,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 100.4720860438237,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45243.17874677894,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 556.8849487447642,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 820.5895401264959,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2282561960,
             "unit": "ns"
           }
         ]
