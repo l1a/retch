@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788217460681,
+  "lastUpdate": 1788218007183,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19258,70 +19258,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "cae94eb0c09e6b2f4675d84cbd239d3ed13b6926",
-          "message": "Detect Windows camera natively (SetupAPI) (#150)\n\nReplace the camera PowerShell spawn (Get-PnpDevice -Class Camera,Image\n-PresentOnly, ~1.36s) with a new shared win_setupapi module that enumerates\npresent devices in a setup class via SetupDiGetClassDevsW +\nSetupDiGetDeviceRegistryPropertyW (links setupapi) — the native equivalent\nof Get-PnpDevice -PresentOnly. Camera enumerates the Camera and Image\nclasses and reuses the existing is_real_camera / clean_camera_name / dedup\nlogic. bluetooth (which introduced a private SetupAPI copy) is refactored\nonto the shared module, removing the duplication (mirrors win_reg.rs).\n\nHand-written extern \"system\" FFI, no binding crate. Verified against\nGet-PnpDevice (all real cameras; IR camera filtered as before); bluetooth\nadapter name unchanged after the refactor.\n\nCamera was the last standard-mode PowerShell pole, so this completes the\nWindows native-FFI migration: on an AMD Ryzen AI MAX+ 395, --fields camera\n~1359ms -> ~155ms and standard mode 1558ms -> 273ms. retch now beats\nfastfetch in standard mode (273 vs 1348ms) and is at parity in --long.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-11T22:26:15-07:00",
-          "tree_id": "dc9eca701a17186aff929c1b979a8956c13aed61",
-          "url": "https://github.com/l1a/retch/commit/cae94eb0c09e6b2f4675d84cbd239d3ed13b6926"
-        },
-        "date": 1783836374780,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 103.3116471776857,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.949782793520194,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.59932393903284,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.70064506635231,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47387.24341636711,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 493.50800317258125,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 762.9992193315405,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2950290270,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "2ae3ecffd014bc206189c58e5b613f8ff4e0b66d",
           "message": "Add FFI struct-layout assertion tests (#151)\n\nFollowing the Windows native-FFI migration (#146-#150), the pure parsers\nare well unit-tested but the #[repr(C)] FFI structs the OS reads/writes by\noffset were only runtime-verified. Add size_of + targeted offset_of!\nassertions for each: disk (StoragePropertyQuery, StorageDeviceDescriptor\nincl. bus_type/vendor/product offsets, DeviceSeekPenaltyDescriptor,\nDiskGeometryEx incl. disk_size), memory (MemoryStatusEx), bluetooth\n(ServiceStatus, DeviceSearchParams, SystemTime, DeviceInfo incl.\nf_connected/sz_name), fetch (win_cpu::FileTime), win_setupapi\n(SpDevinfoData, already present).\n\nThese catch accidental field-reorder/padding regressions at test time —\nthe failure mode the parse tests can't (the phys-mem 0x14->0x15 offset bug\nin #147 was found only by runtime comparison). Test-only, no runtime\nchange; runs on Windows CI since the structs are cfg(windows).\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-11T22:52:26-07:00",
@@ -22441,6 +22377,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1436761755,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "de1d73f365d67017a4c6e6b0ef804e7da46550ca",
+          "message": "packaging: update AUR and COPR to 0.9.7\n\nBoth reference copies track the last RELEASED tag, so they can only be\nbumped after v0.9.7 exists -- and committed direct to main, since just pr\nhard-fails while Cargo.toml's version equals the last tag. Same precedent\nas 9476836, f75989c and d60658c.\n\nsha256 b358688008dce88c53089183048368b56c045e64765334ab9b7b89d7d2833fc7\ncomputed from the real release tarball three independent ways (sha256sum,\npython hashlib, openssl) and matching what aur-bump rendered and what\nspectool fetched for the spec. The tarball's docs/retch.1 is byte-identical\nto the committed page, so the installed footer is correct. Both AUR files\ncarry 0 CR bytes and .SRCINFO came out container_file_t.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-31T15:35:35-07:00",
+          "tree_id": "34e1033ad3807fbe440533584a2675e973160e5f",
+          "url": "https://github.com/l1a/retch/commit/de1d73f365d67017a4c6e6b0ef804e7da46550ca"
+        },
+        "date": 1788218003664,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 176.10422489976068,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.952204558130472,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 96.83535296596871,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.11631059528808,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 49014.44886813445,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 477.86040628088557,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 720.6657775634555,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2928792090,
             "unit": "ns"
           }
         ]
