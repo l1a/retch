@@ -12,6 +12,14 @@ on:
       - 'flake.nix'
       - 'flake.lock'
       - 'packaging/**'
+      # The recipes that RENDER packaging/aur (aur-bump / aur-srcinfo / aur-check) live in
+      # the Justfile, so a change there can alter the AUR tooling without touching anything
+      # under packaging/ — which is exactly how #203 shipped with every workflow's paths
+      # filter skipping it, CI green having never looked at the change. This job cannot run
+      # those recipes (no podman, no `just` in the container), so what the entry buys is
+      # artifact-level coverage: the committed PKGBUILD/.SRCINFO pair is re-verified against
+      # the real tarball, rebuilt with makepkg, and its packaged man page inspected.
+      - 'Justfile'
       - '.github/workflows/packaging.yml'
   workflow_dispatch:
 

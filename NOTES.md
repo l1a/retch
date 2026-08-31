@@ -106,7 +106,50 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.5)
+## Current State (v0.9.6)
+- **v0.9.6 - `packaging.yml` now watches the `Justfile`** (CI configuration only; one path
+  added to a `pull_request` filter, no runtime change, `retch-sysinfo` unchanged at `0.1.56`).
+  - **The hole, and it is narrow rather than obvious.** The recipes that render
+    `packaging/aur` - `aur-bump`, `aur-srcinfo`, `aur-check`, `aur-publish` - live in the
+    `Justfile`, which **no workflow watched**. `packaging.yml` matched `packaging/**` and
+    `**/*.rs`; `rust.yml` and `security.yml` match neither. So a change to the AUR tooling
+    that did not also change a committed file under `packaging/` triggered **nothing**, and
+    the PR reported green having never been looked at by the job that exercises packaging.
+  - **This is not hypothetical: it is what #203 did.** That PR fixed the `aur-srcinfo` recipe
+    (the `mktemp`-in-`/tmp` SELinux relabel that wedged the whole Syncthing folder), touched
+    only the `Justfile` and `NOTES.md`, regenerated a **byte-identical** `.SRCINFO`, and
+    therefore matched no filter in any workflow. Only the four CodeQL checks ran. Its session
+    entry recorded the state honestly at the time: *"Green here means 'CI did not look at this
+    change', not 'CI verified it'."*
+  - **What the entry actually buys, stated precisely, because the backlog line overstated it.**
+    The carried-forward task said the `aur` job "would have covered it". Reading the job rather
+    than assuming: it sources the PKGBUILD, verifies the declared `sha256sums` against the real
+    tag tarball, runs a full `makepkg -s` in `archlinux:latest`, and inspects the packaged man
+    page. It **never invokes `just`, `aur-srcinfo` or `scripts/aur_check.py`** - there is no
+    `just` and no podman in that container. So the coverage this adds is **artifact-level**, not
+    recipe-level: it re-verifies that the committed `PKGBUILD`/`.SRCINFO` pair still checksums,
+    builds and packages correctly at that commit. That is the right guarantee for the failure
+    #203 could have caused, and it is not the same as executing the changed recipe. Claiming
+    the stronger thing would be the "what did this actually verify?" mistake this repo keeps
+    recording.
+  - **The complementary case was already covered and stays that way**: a `Justfile` change that
+    *does* alter the rendered `.SRCINFO` writes a file under `packaging/`, which the existing
+    `packaging/**` glob already matched. The uncovered half was precisely the byte-identical
+    one.
+  - **Verification limit, recorded rather than papered over.** A PR must bump `Cargo.toml`
+    (§4.7), and `**/Cargo.toml` is already in this filter, so **this PR triggers `packaging.yml`
+    regardless of the new entry and cannot empirically prove the `Justfile` glob fires** -
+    GitHub does not report which pattern matched. The glob is a bare top-level filename, the
+    simplest pattern the filter syntax has, and `Justfile` is the only tracked file it can match
+    (`templates/justfile-common.just` is a different name, and is a vendored reference block
+    nothing executes - it is guarded by `gate_conformance.py` in `standard-check` instead). The
+    honest confirmation is the next `Justfile`-only change to trigger the job; until then this
+    is verified by inspection. The YAML was machine-checked rather than eyeballed: parsed and
+    compared against `HEAD`, asserting exactly one added path and every other key byte-equal.
+  - **`rust.yml` and `security.yml` deliberately unchanged.** CI invokes `cargo` directly and
+    never `just`, so a `Justfile` change cannot alter what either job does. Adding the path
+    there would buy runs, not coverage.
+  - `retch-cli` -> 0.9.6. Patch bump.
 - **v0.9.5 - `icy_sixel` 0.5.1 -> 0.6.0 (consolidated Dependabot #207)** (chore; no runtime
   behaviour change, `retch-sysinfo` unchanged at `0.1.56`). Rolls Dependabot's PR onto a gated
   branch so the release hygiene it bypasses - version bump, NOTES entry, man regen - is
