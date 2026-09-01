@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788237023735,
+  "lastUpdate": 1788237404097,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -8260,90 +8260,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "88162b293638dfad573a4b63f046cd27aca023f4",
-          "message": "Bump to 0.4.1; fix license SPDX for crates.io (#154)\n\nCorrect the deprecated `license = \"GPL-3.0\"` to `GPL-3.0-or-later` in both\ncrate manifests (matching the SPDX-License-Identifier headers in the\nsource) ahead of publishing to crates.io, where per-version license\nmetadata is permanent.\n\nBump retch-cli 0.4.0 -> 0.4.1 and retch-sysinfo 0.1.40 -> 0.1.41 (v0.4.0\nis already tagged, so the license fix requires a new version). No\nfunctional code change. This is the version published to crates.io,\nreversing the prior GitHub-Release-only hold.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-12T08:27:56-07:00",
-          "tree_id": "20fc220a727f5d7f59bb468da3002cf8631afc81",
-          "url": "https://github.com/l1a/retch/commit/88162b293638dfad573a4b63f046cd27aca023f4"
-        },
-        "date": 1783870918022,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 757938029,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 1002.1667740537757,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.35678232759617,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9467155676312418,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.252631032545374,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7892.781434750284,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 71258.28555687043,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4843.918943427719,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4936.561871165844,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1210697.0589131787,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 338.8863356369337,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 257.87668352072086,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "84a7d7c354231007c97f94f25b262266bb64e146",
           "message": "Fix machine-dependent format_cpu_cores tests (#155)\n\n`format_cpu_cores` reads the host's real CPU topology (Linux /sys cpufreq,\nmacOS hw.perflevel*) and returns a \"NP + ME / KT\" hybrid string on Intel P/E\nand Apple Silicon machines, ignoring its passed-in (logical, physical) counts.\nThe four fallback unit tests called it with fixed args, so they passed on\nnon-hybrid CPUs/CI runners but failed on a hybrid host — an i7-1360P produced\n\"8P + 8E / 16T\" for (16, Some(8)) where the test expected \"8C / 16T\", hard-\nfailing `just pr` there.\n\nExtract the pure fallback into `format_cpu_cores_plain` and retarget the four\ntests at it, so they no longer depend on the runner's hardware. Public\nbehavior of `format_cpu_cores` is unchanged.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-12T18:41:15-07:00",
@@ -12443,6 +12359,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 267.43205079856335,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7fc56ef6232dd6bec8ff5e4b6126b8ed5893dd93",
+          "message": "Fix the COPR SRPM step: mock moves %{_topdir} (#212)\n\n.copr/Makefile ran rpmdev-setuptree and copied the spec into\n$(HOME)/rpmbuild/SPECS. rpmdev-setuptree builds its tree at rpm's\n%{_topdir}, and mock redefines that to /builddir/build -- so on COPR the\ndirectory never existed and build 10927005 died in 60 seconds with\n\"cp: cannot create regular file '/builddir/rpmbuild/SPECS/'\".\n\nv0.9.8 claimed the Makefile was verified by running exactly what COPR\nruns. It was not: it ran in a plain fedora container, where %{_topdir}\nkeeps its default. COPR runs it inside mock. The claim was true of the\ncommand and false of the environment.\n\nFixed by removing the dependency rather than chasing the path: no\nrpmdev-setuptree, no %{_topdir}, no $(HOME) -- _sourcedir and _srcrpmdir\nare passed explicitly with --define. Tested twice, once normally and once\nwith %_topdir forced to /builddir/build as mock sets it.\n\nAlso corrects the edit-package-scm flags in NOTES: --method, not --type,\nand no --subdir.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-31T21:23:37-07:00",
+          "tree_id": "770bab44f250aae33c771ebb99637fa1b520ef52",
+          "url": "https://github.com/l1a/retch/commit/7fc56ef6232dd6bec8ff5e4b6126b8ed5893dd93"
+        },
+        "date": 1788237402903,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 436569917.775,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 962.678650219747,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 111.14040687466903,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946781595930949,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 53.580268239132316,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7801.530823816836,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71016.23308141294,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4797.088851616709,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4891.849392889959,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1060370.9688623021,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 345.6366819648626,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 256.990441119558,
             "unit": "ns"
           }
         ]
