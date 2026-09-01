@@ -1,20 +1,27 @@
 # COPR invokes this as: make -f .copr/Makefile srpm outdir=<dir>
 #
-# Why make_srpm rather than COPR's `rpkg` source type: this spec's Source0 is a remote
-# tag tarball, and make_srpm makes the fetch explicit and reproducible instead of relying
-# on rpkg's handling of remote sources. It is also exactly the sequence verified by hand
-# in a fedora container before the spec was ever committed, so a COPR failure here and a
-# local failure have the same cause.
+# IMPORTANT: COPR runs this inside MOCK, not a plain container, and mock redefines rpm's
+# %{_topdir} to /builddir/build. An earlier version called `rpmdev-setuptree` and then
+# copied into $(HOME)/rpmbuild/SPECS -- which is where the tree lands in a plain container
+# and is NOT where it lands under mock, so the copy failed with 'No such file or
+# directory'. Verifying it in a container therefore proved nothing about COPR.
 #
-# NOTE: this builds whatever version packaging/copr/retch.spec pins, which tracks the
-# last RELEASED tag -- not the current Cargo.toml. That is deliberate; see NOTES.md.
+# This version does not depend on %{_topdir}, $(HOME), or a source tree existing at all:
+# it points _sourcedir and _srcrpmdir explicitly, so the environment cannot move them.
+#
+# Why make_srpm rather than COPR's `rpkg` source type: this spec's Source0 is a remote tag
+# tarball, and make_srpm makes the fetch explicit and reproducible.
+#
+# NOTE: this builds whatever version packaging/copr/retch.spec pins, which tracks the last
+# RELEASED tag -- not the current Cargo.toml. That is deliberate; see NOTES.md.
+
+SPEC    := packaging/copr/retch.spec
+SOURCES := $(CURDIR)/.copr-sources
 
 .PHONY: srpm
 
 srpm:
 	dnf -y install rpm-build rpmdevtools
-	rpmdev-setuptree
-	cp packaging/copr/retch.spec $(HOME)/rpmbuild/SPECS/
-	spectool -g -R $(HOME)/rpmbuild/SPECS/retch.spec
-	rpmbuild -bs $(HOME)/rpmbuild/SPECS/retch.spec
-	cp $(HOME)/rpmbuild/SRPMS/*.src.rpm $(outdir)
+	mkdir -p $(SOURCES) $(outdir)
+	spectool -g -R --define '_sourcedir $(SOURCES)' $(SPEC)
+	rpmbuild -bs --define '_sourcedir $(SOURCES)' --define '_srcrpmdir $(outdir)' $(SPEC)
