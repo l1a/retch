@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788295760003,
+  "lastUpdate": 1788296333395,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19420,70 +19420,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "6c384b96645a8d096e3c0f7a55be58958363939a",
-          "message": "Bump version to 0.4.0 (milestone release) (#153)\n\nMinor version bump (0.3.52 -> 0.4.0) marking the completed Windows\nnative-FFI migration and the first GitHub Release since v0.3.40 (rolls up\n#141-#152). Version-marker only — no code change; retch-sysinfo stays at\n0.1.40 and crates.io remains intentionally held.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-12T07:46:27-07:00",
-          "tree_id": "53e438ffe42566998097d0bc24ec6bd506b380bf",
-          "url": "https://github.com/l1a/retch/commit/6c384b96645a8d096e3c0f7a55be58958363939a"
-        },
-        "date": 1783869984721,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 103.6220702679423,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9481307727363237,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 103.10218079257137,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.52123737740638,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46397.18870486294,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 493.00006020741137,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 749.2982756060737,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2692310795,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "88162b293638dfad573a4b63f046cd27aca023f4",
           "message": "Bump to 0.4.1; fix license SPDX for crates.io (#154)\n\nCorrect the deprecated `license = \"GPL-3.0\"` to `GPL-3.0-or-later` in both\ncrate manifests (matching the SPDX-License-Identifier headers in the\nsource) ahead of publishing to crates.io, where per-version license\nmetadata is permanent.\n\nBump retch-cli 0.4.0 -> 0.4.1 and retch-sysinfo 0.1.40 -> 0.1.41 (v0.4.0\nis already tagged, so the license fix requires a new version). No\nfunctional code change. This is the version published to crates.io,\nreversing the prior GitHub-Release-only hold.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-12T08:27:56-07:00",
@@ -22603,6 +22539,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2205688145,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8fed7c2a0957a824e4ef1e3e9a8b6ade917895af",
+          "message": "Guard the COPR spec against drift (#213)\n\npackaging/copr/retch.spec's Version: tracks the last released tag and is\nbumped by hand at release time, with nothing checking the result. That is\nthe construct, and the missing guard, that let packaging/aur/PKGBUILD sit\neleven releases stale while CI stayed green. v0.7.1 fixed that for the AUR\nafter the drift; this does it for COPR before.\n\nscripts/copr_check.py (offline, wired into just check) asserts five things:\nVersion: equals the PKGBUILD's pkgver, Version: is not ahead of Cargo.toml,\nthe newest %changelog entry matches Version-Release, Source0 still uses\n%{version}, and cargo build still passes --locked. All five were watched\nfailing against the real files, including the negative case that matters\nmost: a Version: trailing Cargo.toml must stay silent.\n\nThe copr CI job builds the SRPM twice - plain, and under mock's environment.\nThe second run is the v0.9.9 regression test, and reproducing it correctly\ntook two attempts: forcing %_topdir alone does NOT fail on the pre-fix\nMakefile, because rpmdev-setuptree builds its tree wherever _topdir points.\nHOME=/builddir is the other half, in a fresh container. Verified against the\npre-fix Makefile from a606bbe, which dies with the exact production message.\n\nAlso adds .copr/** to packaging.yml's pull_request filter. copr.yml watched\nit only on push to main, so a PR touching only .copr/Makefile was verified\nby nothing - which is how the v0.9.9 bug reached main.\n\nCorrects NOTES section 3's .cargo/config.toml claim: no such file exists or\nis tracked, only .cargo/audit.toml.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-01T13:17:46-07:00",
+          "tree_id": "fdb6783d108e157db1d7f917ad16b4f253b7bb55",
+          "url": "https://github.com/l1a/retch/commit/8fed7c2a0957a824e4ef1e3e9a8b6ade917895af"
+        },
+        "date": 1788296329566,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 175.53357599036073,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9491147017561987,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 97.10334562444024,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.30446236766204,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46876.12929385326,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 481.15270914650927,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 721.430523192352,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3278962580,
             "unit": "ns"
           }
         ]
