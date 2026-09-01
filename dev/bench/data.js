@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788227114219,
+  "lastUpdate": 1788227558715,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -12408,80 +12408,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "6c384b96645a8d096e3c0f7a55be58958363939a",
-          "message": "Bump version to 0.4.0 (milestone release) (#153)\n\nMinor version bump (0.3.52 -> 0.4.0) marking the completed Windows\nnative-FFI migration and the first GitHub Release since v0.3.40 (rolls up\n#141-#152). Version-marker only — no code change; retch-sysinfo stays at\n0.1.40 and crates.io remains intentionally held.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-12T07:46:27-07:00",
-          "tree_id": "53e438ffe42566998097d0bc24ec6bd506b380bf",
-          "url": "https://github.com/l1a/retch/commit/6c384b96645a8d096e3c0f7a55be58958363939a"
-        },
-        "date": 1783868871582,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1104331943.8,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 454.3846540409539,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 71.15743131917853,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.9186784175701888,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 74.7270062810611,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 5746.901479045938,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1107.1855316183262,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 404.8277243514332,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 125759.6657699986,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 428.86328272406,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "88162b293638dfad573a4b63f046cd27aca023f4",
           "message": "Bump to 0.4.1; fix license SPDX for crates.io (#154)\n\nCorrect the deprecated `license = \"GPL-3.0\"` to `GPL-3.0-or-later` in both\ncrate manifests (matching the SPDX-License-Identifier headers in the\nsource) ahead of publishing to crates.io, where per-version license\nmetadata is permanent.\n\nBump retch-cli 0.4.0 -> 0.4.1 and retch-sysinfo 0.1.40 -> 0.1.41 (v0.4.0\nis already tagged, so the license fix requires a new version). No\nfunctional code change. This is the version published to crates.io,\nreversing the prior GitHub-Release-only hold.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-12T08:27:56-07:00",
@@ -16091,6 +16017,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 391.7518778613499,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a606bbe53ac5ed3fac05a92ffa1addfde21970fc",
+          "message": "Rebuild COPR from the packaging commit, not the release (#211)\n\n* Rebuild COPR from the packaging commit, not the release\n\nAdds .github/workflows/copr.yml and .copr/Makefile.\n\n\"Rebuild COPR on a GitHub release\" is the obvious trigger and the wrong\none. The spec pins Version: and a Source0 checksum to the last RELEASED\ntag, so it can only be bumped after the tag exists: at tag-push and at\nrelease-publish time the spec still names the previous version, and only\nthe packaging commit that follows makes it current. A release-triggered\nrebuild therefore rebuilds what COPR already has. The workflow keys on a\npush to main filtered to packaging/copr/**.\n\n.copr/** is in the filter too: the Makefile there generates the SRPM, so a\nchange to it alters the build without touching the spec -- the same hole\nv0.9.6 closed by adding Justfile to packaging.yml's filter.\n\nUses COPR's make_srpm method rather than rpkg, because Source0 is a remote\ntag tarball and make_srpm makes the fetch explicit. Verified by running\nwhat COPR runs: make -f .copr/Makefile srpm outdir=... in fedora:latest\nproduced retch-0.9.7-1.fc44.src.rpm.\n\nAssisted-By: Claude Opus 5\n\n* Flag the release/publish sequencing for a rework\n\nNOTES.md section 5 backlog item, recorded at the user's request after the\nv0.9.7 release. The goal stated: tagging a GitHub release should make\neverything else happen.\n\nThe root cause is structural rather than missing automation -- two\npackaging targets pin a sha256 of an artifact that does not exist until\nthe tag is pushed, which forces every post-tag step, which forces the\npackaging bumps direct to main because just pr hard-fails once Cargo.toml\nequals the last tag. Three options are weighed in the entry.\n\nExplicitly notes that this should NOT be started by adding more automation\nto the current shape: each trigger is correct given the pinning. Changing\nthe pinning is the work.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-31T18:31:46-07:00",
+          "tree_id": "7c2cb480fad57dc408853a9cb08fa96cb04217bc",
+          "url": "https://github.com/l1a/retch/commit/a606bbe53ac5ed3fac05a92ffa1addfde21970fc"
+        },
+        "date": 1788227556391,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1066551497.85,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 488.0225425517904,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 136.86002874380503,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.0414318214293514,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 75.2298237740101,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5134.792835578871,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1580.4756980015422,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 460.1797623124884,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 90202.82328953498,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 400.6512966212433,
             "unit": "ns"
           }
         ]
