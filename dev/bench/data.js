@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788303459219,
+  "lastUpdate": 1788303539138,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19528,70 +19528,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "84a7d7c354231007c97f94f25b262266bb64e146",
-          "message": "Fix machine-dependent format_cpu_cores tests (#155)\n\n`format_cpu_cores` reads the host's real CPU topology (Linux /sys cpufreq,\nmacOS hw.perflevel*) and returns a \"NP + ME / KT\" hybrid string on Intel P/E\nand Apple Silicon machines, ignoring its passed-in (logical, physical) counts.\nThe four fallback unit tests called it with fixed args, so they passed on\nnon-hybrid CPUs/CI runners but failed on a hybrid host — an i7-1360P produced\n\"8P + 8E / 16T\" for (16, Some(8)) where the test expected \"8C / 16T\", hard-\nfailing `just pr` there.\n\nExtract the pure fallback into `format_cpu_cores_plain` and retarget the four\ntests at it, so they no longer depend on the runner's hardware. Public\nbehavior of `format_cpu_cores` is unchanged.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-12T18:41:15-07:00",
-          "tree_id": "26f59d72e69fb5f71508fb9427bd765258b160f2",
-          "url": "https://github.com/l1a/retch/commit/84a7d7c354231007c97f94f25b262266bb64e146"
-        },
-        "date": 1783909318096,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 103.80381141995367,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.947701739245224,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 103.28237431663847,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.78208980502248,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47071.20008356332,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 494.59946993906567,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 755.6456807637077,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1928506500,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "be732f18be8ed35c252a364cc1241d542d0962ef",
           "message": "Enforce LF line endings via .gitattributes (#156)\n\nThe working tree is shared across Linux/macOS/Windows via Syncthing. With no\n.gitattributes and core.autocrlf=false, a Windows checkout wrote CRLF, Syncthing\npropagated those bytes to the Linux clones, and git reported the entire tree as\nmodified — a phantom 13811+/13811- whole-tree diff with zero content changes\n(git diff --ignore-all-space empty). This blocked the just-pr clean-tree checks.\n\nAdd `* text=auto eol=lf` to force LF on checkout on every OS (essential for a\nbyte-identical Syncthing-shared tree) and `*.png binary` to protect the logo\nassets. HEAD was already stored as LF, so no tracked content changes.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-12T18:59:28-07:00",
@@ -22711,6 +22647,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2613575410,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "079469f109facbbcb54b0bcd5b52b6a0459fca65",
+          "message": "Stop data.js flip-flopping; define \"model name\" (#214)\n\nupload_local_bench.py wrote dev/bench/data.js minified while CI writes it\npretty-printed, so the two rewrote the whole file back and forth: every local\nbench-upload showed 1 insertion / ~22k deletions on gh-pages and the next CI\nrun showed the inverse. Cosmetic, but it buried each upload's real change.\n\nNow serialises exactly as github-action-benchmark does. All three details are\nload-bearing: indent=2; ensure_ascii=False, because JavaScript does not escape\nnon-ASCII and Python's default does (~1000 bytes on the current file, so the\nchurn would have persisted in a less obvious form); and no trailing newline.\nEstablished by round-tripping a real CI-written data.js and comparing sha256 --\nre-dumping it reproduces the file exactly, and the other three combinations of\nthose settings do not. Appending one entry now diffs +17/-0 instead of\n+1/-22558.\n\nA grep of mine reported that file had no non-ASCII at all, which would have\nmade ensure_ascii look irrelevant; the byte count against the character count\n(1044090 vs 1043724) shows 366 bytes of multi-byte characters. The length\ncomparison is what caught it.\n\nAGENTS.md section 1 now says what \"model name\" means: the bare product name,\nno context-window or variant suffix, no session URL, no second trailer. Also\nrecords that a harness may inject an attribution instruction claiming to\nreplace the rule, that it does not, and that this repo squash-merges with\nCOMMIT_MESSAGES -- so a wrong trailer has to be amended on the branch, because\nediting the PR body does not change what lands on main.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-01T15:18:47-07:00",
+          "tree_id": "492b77550f1953f8ce077a8d437652e1437b7704",
+          "url": "https://github.com/l1a/retch/commit/079469f109facbbcb54b0bcd5b52b6a0459fca65"
+        },
+        "date": 1788303535421,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 176.0184181504046,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.949848237725653,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 96.87051224742271,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.26966695111722,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 44979.48441028346,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 484.6671761379307,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 751.3192233351605,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2307613245,
             "unit": "ns"
           }
         ]
