@@ -172,7 +172,29 @@ def load_data_js(content):
 
 
 def dump_data_js(data):
-    return "window.BENCHMARK_DATA = " + json.dumps(data, separators=(",", ":")) + "\n"
+    """Serialise data.js **byte-for-byte the way github-action-benchmark does**.
+
+    CI writes this file with JavaScript's `JSON.stringify(data, null, 2)`; this script
+    rewrites the same file from a local run. Any formatting difference makes the two flip the
+    whole file back and forth: a local upload used to show `1 insertion / ~22k deletions` on
+    gh-pages and the next CI run showed the inverse. Nothing broke -- the dashboard parses
+    either -- but every local upload buried its one real change in a whole-file diff.
+
+    Three details, and all three are load-bearing. They were established by round-tripping a
+    real CI-written data.js and comparing sha256, not by reading the action's source:
+
+      - `indent=2` matches `JSON.stringify(..., null, 2)`.
+      - `ensure_ascii=False`, because **JSON.stringify does not escape non-ASCII and Python's
+        default does**. Commit subjects here carry arrow and em-dash characters, so the
+        default would emit `\\u2192` where CI emits the character -- ~1000 bytes of difference
+        on the current file, i.e. the churn would persist in a less obvious form.
+      - **No trailing newline.** The action ends the file at the closing brace. One byte, and
+        without it every alternating write still differs.
+
+    Verified: re-dumping a CI-written file through this function reproduces it exactly
+    (sha256 67e7f21e4cbee563, 1043724 bytes). The other three combinations do not.
+    """
+    return "window.BENCHMARK_DATA = " + json.dumps(data, indent=2, ensure_ascii=False)
 
 
 def append_entry(gh_pages_dir, suite, commit_info, benches):

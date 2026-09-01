@@ -107,7 +107,46 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.10)
+## Current State (v0.9.11)
+- **v0.9.11 - `data.js` stops flip-flopping, and the attribution rule says what "model name"
+  means** (tooling + docs only; no runtime change, `retch-sysinfo` unchanged at `0.1.56`).
+  - **`scripts/upload_local_bench.py` wrote `data.js` minified while CI writes it
+    pretty-printed**, so the two rewrote the whole file back and forth: every local
+    `just bench-upload` (and the `post-merge` hook that calls it) showed
+    `1 insertion / ~22k deletions` on gh-pages, and the next CI run showed the inverse.
+    Nothing broke - the dashboard parses either - but each local upload buried its one real
+    change in a whole-file diff. Carried on the backlog since v0.3.52, when the cp1252 fix
+    first let the script run to completion and exposed it.
+  - **Fixed to match `JSON.stringify(data, null, 2)` byte-for-byte, and all three details are
+    load-bearing.** `indent=2` is the obvious one. The other two are not:
+    - **`ensure_ascii=False`** - JavaScript does not escape non-ASCII and Python's default
+      does, so the default emits `\uXXXX` where CI emits the character. On the current file
+      that is ~1000 bytes of difference: the churn would have persisted in a *less obvious*
+      form, which is worse than not fixing it.
+    - **No trailing newline** - the action ends the file at the closing brace. One byte, and
+      without it every alternating write still differs.
+  - **Established by round-tripping a real CI-written `data.js`, not by reading the action's
+    source**: re-dumping it through the fixed function reproduces it exactly (sha256
+    `67e7f21e4cbee563`, 1043724 bytes); the three other combinations of those settings do
+    not. Appending one entry now produces **+17 / -0 lines** instead of `+1 / -22558`.
+  - **A checker of mine was wrong on the way to that, and the byte count is what caught it.**
+    A `grep` for non-ASCII reported the CI file had none, which would have made
+    `ensure_ascii` look irrelevant. But `wc -c` (1044090) against the character count
+    (1043724) shows **366 bytes of multi-byte characters**. The grep answered a different
+    question; the length comparison could not. Same family as every other entry here.
+  - **`AGENTS.md` §1 now says what "model name" means**: the bare product name, no
+    context-window or variant suffix, no session URL, no second trailer. Added after
+    `Assisted-By: Claude Opus 5 (1M context)` was written on the v0.9.10 commit. It also
+    records that a coding agent's harness may inject an attribution instruction *claiming to
+    replace* this rule (Claude Code does, with `Co-Authored-By:` plus a session URL) and that
+    it does not - Part 1 §0 and §7 already say this file wins; the attribution bullet now
+    says so where the mistake actually gets made.
+  - **And the non-obvious half, which cost a force-push to discover**: this repo squash-merges
+    with `squash_merge_commit_message=COMMIT_MESSAGES`, so the commit that lands on `main`
+    takes its body from the **branch commit**. Editing the PR body does not change what ships.
+    A wrong trailer has to be amended on the branch and CI re-verified. Read the setting from
+    `gh api repos/l1a/retch` rather than assuming it.
+  - `retch-cli` -> 0.9.11. Patch bump.
 - **v0.9.10 - the COPR spec gets the drift guard and the CI job the AUR pair already had**
   (tooling + CI only; no runtime change, `retch-sysinfo` unchanged at `0.1.56`). New
   `scripts/copr_check.py`, `just copr-check` / `just copr-bump`, and a `copr` job in
