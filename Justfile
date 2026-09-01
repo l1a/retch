@@ -122,7 +122,7 @@ lint:
     cargo clippy --workspace -- -D warnings
 
 # Run strict checks (formatting and linting) as done in CI
-check: standard-check aur-check
+check: standard-check aur-check copr-check
     cargo fmt -- --check
     cargo clippy --workspace -- -D warnings
     # Also lint the optional `graphics` feature (base64/image/icy_sixel in src/logo.rs),
@@ -459,6 +459,65 @@ aur-publish:
     git push origin master 2>&1 | tail -3
     pass "published retch $PKGVER to the AUR"
     echo "  https://aur.archlinux.org/packages/retch"
+
+# ===== COPR =====
+#
+# packaging/copr/retch.spec is the AUR PKGBUILD's construct with the AUR PKGBUILD's exposure:
+# its `Version:` tracks the last RELEASED tag (Source0 is a tag tarball that must exist), so
+# it is bumped by a human, at release time, in a separate commit, with nothing checking the
+# result. That is precisely how the PKGBUILD reached ELEVEN releases of drift while CI stayed
+# green. These recipes are v0.7.1's answer applied to COPR before the drift rather than after.
+#
+# There is deliberately NO `copr-publish`. .github/workflows/copr.yml already rebuilds the
+# package when the packaging commit lands on main, so a manual publish recipe would either
+# duplicate that build or race it. The bump is the manual step; the rebuild is not.
+
+# The checker's own self-test runs first, and for the same reason `aur-check` does not live in
+# `standard-check`: that block is vendored byte-identically across retch, rusticprofile and
+# etr, and retch is the only one of the three with a COPR target at all.
+#
+# Verify packaging/copr/retch.spec has not drifted (offline, no network, no rpm tooling)
+copr-check:
+    @{{PY}} scripts/copr_check.py --self-test
+    @{{PY}} scripts/copr_check.py
+
+# Point the spec at a released tag: bump Version, reset Release, add a %changelog entry
+copr-bump VERSION:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    RED='\033[0;31m'; GREEN='\033[0;32m'; NC='\033[0m'
+    fail() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
+    V="{{VERSION}}"
+    SPEC="{{justfile_directory()}}/packaging/copr/retch.spec"
+    URL="https://github.com/l1a/retch/archive/refs/tags/v${V}.tar.gz"
+
+    # Same precondition as aur-bump, for the same reason: Source0 is the release tarball, so
+    # bumping ahead of the tag pins something COPR cannot fetch. This is also why the spec
+    # legitimately trails Cargo.toml for a whole release cycle.
+    curl -sfIL -o /dev/null "$URL" || fail "no release tarball at $URL — tag and release v$V first"
+
+    grep -q "^Version:" "$SPEC" || fail "no Version: tag in $SPEC"
+    sed -i -e "s/^Version:\( *\).*/Version:\1${V}/" \
+           -e "s/^Release:\( *\).*/Release:\11%{?dist}/" "$SPEC"
+
+    # Prepended, because rpm's changelog is newest-first and copr_check.py compares the FIRST
+    # entry. Date in rpm's required C-locale format — LC_ALL is pinned so a non-English
+    # locale cannot emit a month name rpmbuild will reject.
+    NAME=$(git -C "{{justfile_directory()}}" config user.name)
+    EMAIL=$(git -C "{{justfile_directory()}}" config user.email)
+    STAMP=$(LC_ALL=C date '+%a %b %d %Y')
+    # Trailing blank line: rpm separates changelog entries with one, and every existing
+    # entry in this spec does. Without it the new entry abuts the previous one.
+    ENTRY="* ${STAMP} ${NAME} <${EMAIL}> - ${V}-1\n- Update to ${V}\n\n"
+    # awk rather than `sed -i '/^%changelog/a'`: the entry contains slashes and ampersands
+    # (an email address, a URL-ish name) that sed's replacement side would interpret.
+    awk -v entry="$ENTRY" '
+        /^%changelog$/ && !done { print; printf "%s", entry; done = 1; next } { print }
+    ' "$SPEC" > "$SPEC.tmp" && mv "$SPEC.tmp" "$SPEC"
+
+    echo -e "${GREEN}[✓]${NC} Version=${V} Release=1 + %changelog entry"
+    just copr-check
+    echo "Commit packaging/copr — .github/workflows/copr.yml rebuilds COPR when it lands on main"
 
 # Merge the active PR, switch to main, pull, delete the branch, and update WIP.md (requires gh)
 merge-pr:
