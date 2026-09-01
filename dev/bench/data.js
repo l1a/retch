@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788228185940,
+  "lastUpdate": 1788228746166,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19312,70 +19312,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "2ae3ecffd014bc206189c58e5b613f8ff4e0b66d",
-          "message": "Add FFI struct-layout assertion tests (#151)\n\nFollowing the Windows native-FFI migration (#146-#150), the pure parsers\nare well unit-tested but the #[repr(C)] FFI structs the OS reads/writes by\noffset were only runtime-verified. Add size_of + targeted offset_of!\nassertions for each: disk (StoragePropertyQuery, StorageDeviceDescriptor\nincl. bus_type/vendor/product offsets, DeviceSeekPenaltyDescriptor,\nDiskGeometryEx incl. disk_size), memory (MemoryStatusEx), bluetooth\n(ServiceStatus, DeviceSearchParams, SystemTime, DeviceInfo incl.\nf_connected/sz_name), fetch (win_cpu::FileTime), win_setupapi\n(SpDevinfoData, already present).\n\nThese catch accidental field-reorder/padding regressions at test time —\nthe failure mode the parse tests can't (the phys-mem 0x14->0x15 offset bug\nin #147 was found only by runtime comparison). Test-only, no runtime\nchange; runs on Windows CI since the structs are cfg(windows).\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-11T22:52:26-07:00",
-          "tree_id": "1d42a683cfb643a99870fca57f865d9e88b409e0",
-          "url": "https://github.com/l1a/retch/commit/2ae3ecffd014bc206189c58e5b613f8ff4e0b66d"
-        },
-        "date": 1783837882397,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 103.5862578964354,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9474590514105454,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.9056749878004,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.79182354006542,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45091.03338511706,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 492.97162020549194,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 761.6566655257468,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2193316175,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "744c0dcd3c15ea67803948e0372c5229715b4783",
           "message": "Fix upload_local_bench.py cp1252 crash on Windows (#152)\n\njust bench-upload and the post-merge hook crashed on Windows with\nUnicodeDecodeError: 'charmap' codec can't decode byte 0x9d — so no local\nWindows \"real hardware\" numbers reached the gh-pages benchmark dashboard.\nThe gh-pages data.js is UTF-8 (commit messages embed arrow/em-dash chars)\nbut open() used the default cp1252 encoding on Windows.\n\nPin encoding=\"utf-8\" on every file operation (data.js read + write, the\nhyperfine JSON temp read) and on run_capture's subprocess text decoding\n(git log --format=%B), plus a sys.stdout.reconfigure UTF-8 guard. Same fix\nclass as scripts/update_wip.py (#142).\n\nVerified: the crash reproduces on the live data.js under the default\nencoding; the UTF-8 read succeeds (845 KB) and append_entry /\ngit_commit_info run without error.\n\nTooling-only; no Rust source touched, retch-sysinfo unchanged.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-12T07:01:43-07:00",
@@ -22495,6 +22431,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2928792090,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a606bbe53ac5ed3fac05a92ffa1addfde21970fc",
+          "message": "Rebuild COPR from the packaging commit, not the release (#211)\n\n* Rebuild COPR from the packaging commit, not the release\n\nAdds .github/workflows/copr.yml and .copr/Makefile.\n\n\"Rebuild COPR on a GitHub release\" is the obvious trigger and the wrong\none. The spec pins Version: and a Source0 checksum to the last RELEASED\ntag, so it can only be bumped after the tag exists: at tag-push and at\nrelease-publish time the spec still names the previous version, and only\nthe packaging commit that follows makes it current. A release-triggered\nrebuild therefore rebuilds what COPR already has. The workflow keys on a\npush to main filtered to packaging/copr/**.\n\n.copr/** is in the filter too: the Makefile there generates the SRPM, so a\nchange to it alters the build without touching the spec -- the same hole\nv0.9.6 closed by adding Justfile to packaging.yml's filter.\n\nUses COPR's make_srpm method rather than rpkg, because Source0 is a remote\ntag tarball and make_srpm makes the fetch explicit. Verified by running\nwhat COPR runs: make -f .copr/Makefile srpm outdir=... in fedora:latest\nproduced retch-0.9.7-1.fc44.src.rpm.\n\nAssisted-By: Claude Opus 5\n\n* Flag the release/publish sequencing for a rework\n\nNOTES.md section 5 backlog item, recorded at the user's request after the\nv0.9.7 release. The goal stated: tagging a GitHub release should make\neverything else happen.\n\nThe root cause is structural rather than missing automation -- two\npackaging targets pin a sha256 of an artifact that does not exist until\nthe tag is pushed, which forces every post-tag step, which forces the\npackaging bumps direct to main because just pr hard-fails once Cargo.toml\nequals the last tag. Three options are weighed in the entry.\n\nExplicitly notes that this should NOT be started by adding more automation\nto the current shape: each trigger is correct given the pinning. Changing\nthe pinning is the work.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-31T18:31:46-07:00",
+          "tree_id": "7c2cb480fad57dc408853a9cb08fa96cb04217bc",
+          "url": "https://github.com/l1a/retch/commit/a606bbe53ac5ed3fac05a92ffa1addfde21970fc"
+        },
+        "date": 1788228742667,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 175.93640347805214,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9486762990560336,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 96.94950353319553,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.36475381319204,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47142.56162666178,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 481.3752473658402,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 719.8038919416632,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2127065530,
             "unit": "ns"
           }
         ]
