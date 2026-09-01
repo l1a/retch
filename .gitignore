@@ -5,3 +5,6 @@ WIP.md
 memory/
 __pycache__/
 *.pyc
+
+# Created by .copr/Makefile when generating the SRPM locally
+.copr-sources/

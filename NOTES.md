@@ -106,7 +106,36 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.8)
+## Current State (v0.9.9)
+- **v0.9.9 - the COPR SRPM step assumed `%{_topdir}`, which mock moves** (packaging fix;
+  no runtime change, `retch-sysinfo` unchanged at `0.1.56`).
+  - **The bug**: `.copr/Makefile` ran `rpmdev-setuptree` and then copied the spec into
+    `$(HOME)/rpmbuild/SPECS`. `rpmdev-setuptree` builds its tree at rpm's `%{_topdir}`, and
+    **mock redefines that to `/builddir/build`** - so on COPR the directory never existed and
+    the build died in 60 seconds with
+    `cp: cannot create regular file '/builddir/rpmbuild/SPECS/': No such file or directory`.
+  - **The verification that missed it is the point of this entry.** v0.9.8 claimed the
+    Makefile was "verified by running exactly what COPR runs". It was not: it ran in a plain
+    `fedora:latest` container, where `%{_topdir}` keeps its default and `$(HOME)/rpmbuild` is
+    exactly right. **COPR runs the Makefile inside mock**, and the one environmental
+    difference that mattered was the one the container did not reproduce. "Exactly what COPR
+    runs" was true of the *command* and false of the *environment*, which is the more
+    important half.
+  - **Fixed by removing the dependency rather than by chasing the path.** The Makefile no
+    longer calls `rpmdev-setuptree` and never mentions `%{_topdir}` or `$(HOME)`; it points
+    `_sourcedir` and `_srcrpmdir` explicitly with `--define`, so no environment can relocate
+    them. A hardcoded `/builddir/build` would have worked on COPR and broken everywhere else.
+  - **Now tested against the failure condition, not just the happy path**: the same
+    `make -f .copr/Makefile srpm outdir=...` is run twice in a container - once normally, and
+    once with `%_topdir` forced to `/builddir/build` as mock sets it. Both produce
+    `retch-0.9.7-1.fc44.src.rpm`. The second run is the one that would have caught this.
+  - `.copr-sources/` added to `.gitignore` - the Makefile creates it in the working tree when
+    run locally. Harmless on COPR, which clones fresh each time.
+  - **What did work, and is worth keeping separate from the failure**: the GitHub Actions half
+    behaved exactly as designed - it authenticated, submitted build `10927005`, watched it, and
+    **went red when COPR failed** rather than reporting success over a broken package. That is
+    the property the workflow exists for.
+  - `retch-cli` -> 0.9.9. Patch bump.
 - **v0.9.8 - COPR rebuilds are triggered by the packaging commit, not the release**
   (CI + packaging only; no runtime change, `retch-sysinfo` unchanged at `0.1.56`). New
   `.github/workflows/copr.yml` and `.copr/Makefile`.
@@ -133,8 +162,11 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
   - **The COPR package had to change type for any of this to work.** The API reported
     `source_type='upload'` with `auto_rebuild: False` - an uploaded SRPM has no source for
     COPR to re-fetch, so **no** webhook or rebuild command can act on it. It needs a one-off
-    `copr-cli edit-package-scm ... --type make_srpm` to become rebuildable; the workflow's
-    `build-package` then rebuilds from that stored config.
+    `copr-cli edit-package-scm ... --method make_srpm` to become rebuildable; the workflow's
+    `build-package` then rebuilds from that stored config. **The v0.9.8 entry and the wiki both
+    named the wrong flags** and are corrected here: it is `--method`, not `--type` (which
+    selects the versioning tool and accepts only `git`/`svn`), and **no `--subdir`** - COPR
+    runs `.copr/Makefile` from the repository root.
   - **COPR's own GitHub webhook was considered and declined.** It needs no secrets and is
     COPR-native, but its SCM auto-rebuild has **no path filter**, so every push to `main`
     would start a four-chroot rebuild of an unchanged NEVRA - roughly 12 minutes of builder
