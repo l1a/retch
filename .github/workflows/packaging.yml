@@ -20,6 +20,13 @@ on:
       # artifact-level coverage: the committed PKGBUILD/.SRCINFO pair is re-verified against
       # the real tarball, rebuilt with makepkg, and its packaged man page inspected.
       - 'Justfile'
+      # .copr/Makefile is what GENERATES the SRPM, and until v0.9.10 no PR-triggered
+      # workflow watched it: copr.yml watches '.copr/**' but only on push to main, so a PR
+      # touching only that file got no packaging verification whatsoever. That is not
+      # hypothetical — it is how the v0.9.9 bug (`rpmdev-setuptree` assuming %{_topdir},
+      # which mock moves) reached main and failed on COPR instead of in CI. Same hole as
+      # the Justfile one above, one directory over.
+      - '.copr/**'
       - '.github/workflows/packaging.yml'
   workflow_dispatch:
 
@@ -204,3 +211,94 @@ jobs:
 
           rm -f pkg-listing.txt packaged-retch.1 packaged-man.raw
           echo "packaged man page OK"
+
+  copr:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      # Installed BEFORE checkout: fedora:latest ships no git, and without it
+      # actions/checkout silently falls back to a REST tarball download. Same ordering and
+      # the same reason as the aur job above.
+      - name: Install system dependencies
+        run: dnf -y install git make rpm-build rpmdevtools
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      # Offline consistency, the same half `just check` runs. CI invokes cargo directly and
+      # never `just` (see NOTES.md), so the checker has to be called explicitly here or the
+      # guard only ever runs on the machine of whoever remembered to type `just check`.
+      - name: Verify the spec has not drifted
+        run: python3 scripts/copr_check.py
+
+      # This is the artifact-level half, and it is deliberately the SRPM step rather than a
+      # full `rpmbuild -ba`: COPR itself does the full build on every packaging commit, so
+      # duplicating a ~6-minute compile here would buy a second copy of a signal we already
+      # get. What COPR does NOT give us is a signal *before* merge, which is the gap this
+      # closes.
+      - name: Build the SRPM exactly as COPR does
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/srpm-plain
+          make -f .copr/Makefile srpm outdir=/tmp/srpm-plain
+          ls -1 /tmp/srpm-plain
+
+      # THE REGRESSION TEST, and the run with the actual diagnostic value.
+      #
+      # COPR does not run .copr/Makefile in a plain container: it runs it inside MOCK, which
+      # sets HOME=/builddir and redefines rpm's %{_topdir} to /builddir/build. v0.9.8 claimed
+      # its Makefile was "verified by running exactly what COPR runs" — true of the COMMAND,
+      # false of the ENVIRONMENT, and the environment was the half that mattered. The build
+      # died on COPR in 60 seconds with
+      #   cp: cannot create regular file '/builddir/rpmbuild/SPECS/': No such file or directory
+      #
+      # BOTH conditions are required to reproduce it. Setting %{_topdir} alone does NOT fail
+      # on the pre-fix Makefile (rpmdev-setuptree simply creates the tree wherever _topdir
+      # points); it is the combination with HOME=/builddir that separates the two paths. This
+      # step was written by reconstructing the pre-fix Makefile from a606bbe and confirming it
+      # FAILS here with that exact message, then confirming the current one passes — a check
+      # nobody has watched fail is not yet a check.
+      #
+      # Both runs are kept, and neither is redundant: the plain run catches a Makefile that
+      # hardcodes /builddir/build (which would work on COPR and break every dev box), and the
+      # mock run catches one that assumes the default. NOTES.md's v0.9.9 entry names exactly
+      # that pair as the reason not to hardcode.
+      - name: Build the SRPM under mock's environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .copr-sources
+          mkdir -p /builddir /tmp/srpm-mock
+          echo "%_topdir /builddir/build" > /builddir/.rpmmacros
+          export HOME=/builddir
+          echo "HOME=$HOME  _topdir=$(rpmbuild --eval '%{_topdir}')"
+          make -f .copr/Makefile srpm outdir=/tmp/srpm-mock
+          ls -1 /tmp/srpm-mock
+
+      # The SRPM's name encodes the version rpm actually resolved, so this closes the loop
+      # between the text copr_check.py reads and the artifact the build produced.
+      - name: Verify the SRPM matches the version the spec pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's/^Version:[[:space:]]*//p' packaging/copr/retch.spec | head -1)
+          # find -print -quit, never `ls | head`: under pipefail a producer killed by SIGPIPE
+          # makes the pipeline fail, so that idiom reports "not found" precisely when it
+          # matched. The aur job's man-page step went red on a correct package for exactly
+          # this reason; see NOTES.md.
+          srpm=$(find /tmp/srpm-mock -maxdepth 1 -name '*.src.rpm' -print -quit)
+          if [ -z "$srpm" ]; then
+            echo "::error::no .src.rpm was produced"
+            ls -la /tmp/srpm-mock || true
+            exit 1
+          fi
+          echo "spec Version: $version"
+          echo "built:        $(basename "$srpm")"
+          case "$(basename "$srpm")" in
+            retch-"$version"-*.src.rpm) ;;
+            *)
+              echo "::error::SRPM name does not carry the spec's Version ($version)"
+              exit 1
+              ;;
+          esac
+          echo "SRPM matches the pinned version"

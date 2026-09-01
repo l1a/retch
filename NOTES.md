@@ -65,7 +65,8 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
   - **tldr Page**: Update the local `docs/retch.md` if new options are introduced. **Do NOT run `just tldr-release`** — the upstream submission to [tldr-pages/tldr](https://github.com/tldr-pages/tldr) was denied pending more community traction. Keep `docs/retch.md` and the `just tldr-release` workflow maintained, but hold all upstream submissions until further notice.
   - **Bumping Strategy**: If the changes are significant, ALWAYS ask the user whether to perform a major, minor, or patch version bump.
 - **Command Redundancy**: Avoid running `just check && cargo test` sequentially since both build and check the project profiles, causing redundant background compilation cycles. Prefer `cargo test` during iteration and a final check before staging.
-- **Cross-Machine `target/` via Syncthing**: This working directory (`~/Sync/git/retch`) is synced across multiple machines by Syncthing, including `target/`. `.cargo/config.toml` sets `rustflags = ["-C", "target-cpu=native"]`, so build artifacts compiled on one machine's CPU can be illegal-instruction (`SIGILL`) on another. If a build/test fails with a `SIGILL` in a build script or binary (not a compile error), the fix is `cargo clean` (or at minimum removing the offending crate's `target/debug/build/<crate>-*` dir) to purge the stale cross-CPU artifacts — **not** overriding/unsetting `RUSTFLAGS`, which would silently build without the native-CPU optimizations the config intends.
+- **Cross-Machine `target/` via Syncthing**: This working directory (`~/Sync/git/retch`) is synced across multiple machines by Syncthing, including `target/`, so a build/test can pick up artifacts compiled on a different machine. If one fails at *runtime* rather than compile time — a `SIGILL` in a build script or binary being the classic shape — the fix is `cargo clean` (or at minimum removing the offending crate's `target/debug/build/<crate>-*` dir) to purge the stale artifacts.
+  - **Correction (v0.9.10): this entry used to state that `.cargo/config.toml` sets `rustflags = ["-C", "target-cpu=native"]`. There is no such file.** Only `.cargo/audit.toml` is tracked, and no `config.toml` exists in the working tree either, so nothing here applies `-C target-cpu=native` and the SIGILL mechanism as originally described cannot arise from this repo's own configuration. The wording had described an untracked, machine-local file as though it were part of the repo — which mattered when the COPR spec was written (v0.9.7), because a builder inheriting `-march=native` would emit a binary that SIGILLs on users' machines. That was checked rather than assumed at the time (`git archive v0.9.4` carries no `config.toml`), and the AUR package is safe for the same reason; this corrects the claim that prompted the check.
 - **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages. Use `just bench-upload` to manually push local benchmark results to the dashboard; a `post-merge` hook installed via `just install-hooks` does this automatically after every merge to main.
 - **Performance Regression Vigilance**: After every merge, check the post-merge benchmark output. A primary goal of retch is to be faster than fastfetch — benchmarks exist to catch regressions early. If retch is slower than fastfetch in any mode, treat it as a blocking issue. Note that local benchmarks can be skewed by slow FUSE mounts (e.g. cryfs vaults) causing `statvfs` delays in disk detection — unmount them before benchmarking or discount those runs.
 - **Releases & Tagging**: Releases are triggered by pushing a `v*` tag to main. The CI pipeline runs `full-test` → `build-release` → `release` automatically.
@@ -106,7 +107,82 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.9)
+## Current State (v0.9.10)
+- **v0.9.10 - the COPR spec gets the drift guard and the CI job the AUR pair already had**
+  (tooling + CI only; no runtime change, `retch-sysinfo` unchanged at `0.1.56`). New
+  `scripts/copr_check.py`, `just copr-check` / `just copr-bump`, and a `copr` job in
+  `packaging.yml`.
+  - **The exposure being closed is a construct with a history, not a hypothetical.**
+    `packaging/copr/retch.spec`'s `Version:` tracks the last **released** tag, because
+    `Source0` is a tag tarball that must exist — so it is bumped by a human, at release time,
+    in a separate commit, with nothing checking the result. That is the same shape, and the
+    same absence of a guard, that let `packaging/aur/PKGBUILD` sit **eleven releases** stale
+    while every CI run stayed green. v0.7.1 fixed it for the AUR after the drift; this does
+    it for COPR before.
+  - **`scripts/copr_check.py` is the cheap offline half**, wired into `just check`, and it
+    asserts five things: `Version:` equals the PKGBUILD's `pkgver` (two independent
+    recordings of one fact, so a disagreement means one was forgotten); `Version:` is not
+    *ahead* of `Cargo.toml` (one-sided on purpose — trailing by a whole release cycle is the
+    normal state); the newest `%changelog` entry matches `Version:`-`Release:`; `Source0`
+    still refers to `%{version}` rather than a hardcoded number; and `cargo build` still
+    carries `--locked`. That last one was previously a comment saying "Never drop it",
+    which is not a guard.
+  - **It parses rather than calling `rpmspec`, and that is load-bearing twice over.**
+    `rpmspec` does not exist on Windows or macOS, where `just check` is expected to run (the
+    v0.6.16 portability reason) — and it *expands macros*, so a hardcoded `Source0` and a
+    `%{version}` one produce identical output, which would delete the fourth check entirely.
+    The text is what drifts, so the text is what is read.
+  - **Every assertion was watched failing against the REAL files**, not only its fixtures:
+    each of the five was reproduced by mutating a copy of the actual spec/PKGBUILD/Cargo.toml
+    and confirming both the failure and the message, with a clean control run either side.
+    The one that matters most is the negative: a `Version:` *trailing* `Cargo.toml` must stay
+    silent, because that is the state the repo is in for most of its life and a guard that
+    fires there would be deleted within a week.
+  - **The `copr` CI job is artifact-level, and deliberately builds the SRPM rather than the
+    RPM.** COPR itself does the full ~6-minute build on every packaging commit; what it does
+    not give is a signal *before* merge, which is the gap. The job runs `copr_check.py`
+    explicitly (CI invokes cargo directly and never `just`, so a guard wired only into
+    `just check` runs solely on the machine of whoever typed it), then builds the SRPM twice.
+  - **The second SRPM build is the regression test for v0.9.9, and reproducing it correctly
+    took two attempts — the first was a check that could not fail.** COPR runs
+    `.copr/Makefile` inside **mock**, which sets `HOME=/builddir` *and* redefines `%{_topdir}`
+    to `/builddir/build`. Forcing `%{_topdir}` **alone does not fail** on the pre-fix
+    Makefile: `rpmdev-setuptree` simply builds its tree wherever `_topdir` points. It is the
+    *combination* with `HOME=/builddir` that separates the two paths, because the failing
+    line copied into `$(HOME)/rpmbuild/SPECS`. Verified by reconstructing the pre-fix
+    Makefile from `a606bbe` and watching it die with the exact production message —
+    `cp: cannot create regular file '/builddir/rpmbuild/SPECS/': No such file or directory` —
+    then confirming the current one passes under the identical condition. A first attempt
+    that passed *both* runs also had a second defect worth recording: it reused one container,
+    so run 1's `/root/rpmbuild` was still there for run 2 to find.
+  - **Both SRPM runs are kept and neither is redundant.** The plain run catches a Makefile
+    that hardcodes `/builddir/build` (which would work on COPR and break every dev box); the
+    mock run catches one that assumes the default. The v0.9.9 entry names exactly that pair
+    as the reason not to hardcode, so the test now covers both directions rather than the one
+    that happened to break.
+  - **`.copr/**` is added to `packaging.yml`'s `pull_request` paths filter, and this is a
+    real hole rather than tidiness.** `copr.yml` watches `.copr/**` but only on *push to
+    main*, so a PR touching only `.copr/Makefile` was verified by **nothing** — which is
+    precisely how the v0.9.9 bug reached `main` and failed on COPR instead of in CI. It is
+    the v0.9.6 `Justfile` hole one directory over, found by asking the same question about a
+    different file.
+  - **There is deliberately no `copr-publish` recipe.** `copr.yml` already rebuilds when the
+    packaging commit lands on `main`; a manual publish would duplicate that build or race it.
+    The bump is the manual step, and the rebuild is not — so only `copr-bump` exists.
+  - `copr-bump` was exercised end to end against a real released tag (its output re-read, and
+    the generated spec parsed by `rpmspec` to `retch 0.9.7 1.fc44`), and its precondition
+    watched refusing an unreleased tag **before** touching the file. It prepends the
+    `%changelog` entry via `awk`, not `sed -i /a`: the entry carries an email address, and
+    sed would interpret the `&` and `/` in its replacement side.
+  - **NOTES §3's `.cargo/config.toml` claim is corrected in the same PR** — see §3. It
+    described an untracked, absent file as part of the repo; only `.cargo/audit.toml` is
+    tracked. Carried on the open-task list since the v0.9.7 COPR work, which is where the
+    claim was checked and found false.
+  - `copr-check` deliberately does **not** live in `standard-check`, and no rule for it was
+    added to `gate_conformance.py`: both are vendored byte-identically across retch,
+    rusticprofile and etr, and retch is the only one of the three with a COPR target at all.
+    Same reasoning already recorded for `aur-check`.
+  - `retch-cli` -> 0.9.10. Patch bump.
 - **v0.9.9 - the COPR SRPM step assumed `%{_topdir}`, which mock moves** (packaging fix;
   no runtime change, `retch-sysinfo` unchanged at `0.1.56`).
   - **The bug**: `.copr/Makefile` ran `rpmdev-setuptree` and then copied the spec into
