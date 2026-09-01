@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788295134125,
+  "lastUpdate": 1788295760003,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -16218,70 +16218,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "84a7d7c354231007c97f94f25b262266bb64e146",
-          "message": "Fix machine-dependent format_cpu_cores tests (#155)\n\n`format_cpu_cores` reads the host's real CPU topology (Linux /sys cpufreq,\nmacOS hw.perflevel*) and returns a \"NP + ME / KT\" hybrid string on Intel P/E\nand Apple Silicon machines, ignoring its passed-in (logical, physical) counts.\nThe four fallback unit tests called it with fixed args, so they passed on\nnon-hybrid CPUs/CI runners but failed on a hybrid host — an i7-1360P produced\n\"8P + 8E / 16T\" for (16, Some(8)) where the test expected \"8C / 16T\", hard-\nfailing `just pr` there.\n\nExtract the pure fallback into `format_cpu_cores_plain` and retarget the four\ntests at it, so they no longer depend on the runner's hardware. Public\nbehavior of `format_cpu_cores` is unchanged.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-12T18:41:15-07:00",
-          "tree_id": "26f59d72e69fb5f71508fb9427bd765258b160f2",
-          "url": "https://github.com/l1a/retch/commit/84a7d7c354231007c97f94f25b262266bb64e146"
-        },
-        "date": 1783908820391,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 124.74541132791956,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.327661167521707,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 122.76964523950059,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 97.34053307470393,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 42441.97421232909,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 854.7499118275512,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 824.6313784293234,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2682709000,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "be732f18be8ed35c252a364cc1241d542d0962ef",
           "message": "Enforce LF line endings via .gitattributes (#156)\n\nThe working tree is shared across Linux/macOS/Windows via Syncthing. With no\n.gitattributes and core.autocrlf=false, a Windows checkout wrote CRLF, Syncthing\npropagated those bytes to the Linux clones, and git reported the entire tree as\nmodified — a phantom 13811+/13811- whole-tree diff with zero content changes\n(git diff --ignore-all-space empty). This blocked the just-pr clean-tree checks.\n\nAdd `* text=auto eol=lf` to force LF on checkout on every OS (essential for a\nbyte-identical Syncthing-shared tree) and `*.png binary` to protect the logo\nassets. HEAD was already stored as LF, so no tracked content changes.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-12T18:59:28-07:00",
@@ -19401,6 +19337,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2763127035,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8fed7c2a0957a824e4ef1e3e9a8b6ade917895af",
+          "message": "Guard the COPR spec against drift (#213)\n\npackaging/copr/retch.spec's Version: tracks the last released tag and is\nbumped by hand at release time, with nothing checking the result. That is\nthe construct, and the missing guard, that let packaging/aur/PKGBUILD sit\neleven releases stale while CI stayed green. v0.7.1 fixed that for the AUR\nafter the drift; this does it for COPR before.\n\nscripts/copr_check.py (offline, wired into just check) asserts five things:\nVersion: equals the PKGBUILD's pkgver, Version: is not ahead of Cargo.toml,\nthe newest %changelog entry matches Version-Release, Source0 still uses\n%{version}, and cargo build still passes --locked. All five were watched\nfailing against the real files, including the negative case that matters\nmost: a Version: trailing Cargo.toml must stay silent.\n\nThe copr CI job builds the SRPM twice - plain, and under mock's environment.\nThe second run is the v0.9.9 regression test, and reproducing it correctly\ntook two attempts: forcing %_topdir alone does NOT fail on the pre-fix\nMakefile, because rpmdev-setuptree builds its tree wherever _topdir points.\nHOME=/builddir is the other half, in a fresh container. Verified against the\npre-fix Makefile from a606bbe, which dies with the exact production message.\n\nAlso adds .copr/** to packaging.yml's pull_request filter. copr.yml watched\nit only on push to main, so a PR touching only .copr/Makefile was verified\nby nothing - which is how the v0.9.9 bug reached main.\n\nCorrects NOTES section 3's .cargo/config.toml claim: no such file exists or\nis tracked, only .cargo/audit.toml.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-01T13:17:46-07:00",
+          "tree_id": "fdb6783d108e157db1d7f917ad16b4f253b7bb55",
+          "url": "https://github.com/l1a/retch/commit/8fed7c2a0957a824e4ef1e3e9a8b6ade917895af"
+        },
+        "date": 1788295746672,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 221.07737180963485,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.014307722666602,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 121.02747062195712,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 97.68879119987541,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42434.893483078704,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 560.9088986986818,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 840.6463032092497,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 3409159250,
             "unit": "ns"
           }
         ]
