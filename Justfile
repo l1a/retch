@@ -519,6 +519,117 @@ copr-bump VERSION:
     just copr-check
     echo "Commit packaging/copr — .github/workflows/copr.yml rebuilds COPR when it lands on main"
 
+# ===== POST-RELEASE =====
+#
+# Everything that has to happen AFTER a tag exists, as one gated PR instead of a commit
+# straight to main.
+#
+# WHY THIS EXISTS, AND THE ASSUMPTION IT CORRECTS
+# -----------------------------------------------
+# Both packaging targets pin the last RELEASED tag -- the PKGBUILD carries its tarball's
+# sha256, the spec's Source0 is a tag tarball -- so neither can be bumped until the tag is
+# pushed. Five commits went DIRECT TO MAIN on the belief that a PR was therefore impossible
+# (9476836, f75989c, d60658c, de1d73f, 468efc7), each explaining that `just pr` hard-fails
+# once Cargo.toml equals the last tag.
+#
+# **That belief was wrong.** `pr`'s step 2 is `[ "$LAST_TAG" = "v$CARGO_VER" ] && fail` -- an
+# equality test against the last tag, not "did this PR bump anything". So a packaging bump
+# passes the gate as long as it ALSO opens the next version, which it should be doing anyway.
+# Nothing in the gate needed changing; the packaging bump just had to stop travelling alone.
+#
+# So this recipe does both halves in one branch: packaging pinned to the version just
+# released, Cargo.toml opened to the next one. It deliberately stops before `open-pr` -- the
+# manual checklist needs a human, and this is a release, which is the worst possible moment to
+# rubber-stamp one.
+
+# Prepare the post-release PR: packaging pinned to VERSION, Cargo.toml opened to the next patch
+post-release VERSION:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    BOLD='\033[1m'; GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
+    pass() { echo -e "${GREEN}[✓]${NC} $1"; }
+    fail() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
+    info() { echo -e "${YELLOW}[→]${NC} $1"; }
+
+    V="{{VERSION}}"
+
+    # Start from a clean main. A packaging bump computed on top of unrelated work would put
+    # that work in the release PR, and this is the one PR nobody reads closely.
+    [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ] || fail "run this from main"
+    [ -z "$(git status --porcelain)" ] || fail "working tree is dirty — commit or stash first"
+
+    # The tag must already exist: everything below pins to its tarball.
+    LAST_TAG=$(git describe --tags --abbrev=0)
+    [ "$LAST_TAG" = "v$V" ] || fail "last tag is $LAST_TAG, not v$V — tag and release v$V first"
+    pass "released tag: v$V"
+
+    # Guard against running this twice. After a successful run Cargo.toml is already ahead,
+    # and a second run would bump again and pin packaging to a version that is no longer the
+    # newest -- silently producing exactly the drift copr-check exists to catch.
+    CUR=$(grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)
+    [ "$CUR" = "$V" ] || fail "Cargo.toml is $CUR, not $V — post-release already run, or the wrong version"
+
+    # Next patch. Deliberately not minor/major: this bump only opens the next cycle so the
+    # gate has something to compare against, and the PR that lands a real feature re-bumps
+    # as §4.7 requires.
+    NEXT=$(echo "$V" | awk -F. '{printf "%s.%s.%d", $1, $2, $3 + 1}')
+    BRANCH="chore/post-release-v$V"
+    git rev-parse --verify "$BRANCH" >/dev/null 2>&1 && fail "branch $BRANCH already exists"
+    git checkout -q -b "$BRANCH"
+    pass "branch: $BRANCH  (Cargo.toml $V -> $NEXT)"
+
+    info "Pinning packaging to v$V..."
+    just aur-bump "$V"
+    just copr-bump "$V"
+
+    info "Opening the next version..."
+    sed -i "s/^version = \"$V\"/version = \"$NEXT\"/" Cargo.toml
+    cargo check --workspace -q
+    just man
+
+    # The gate checks this header, and unlike a feature PR the entry's content is fully known
+    # here -- so it is written rather than stubbed. A TODO stub would either ship as-is or
+    # block the release on prose.
+    python3 - "$V" "$NEXT" <<'PYEOF'
+    import pathlib, re, sys
+    v, nxt = sys.argv[1], sys.argv[2]
+    p = pathlib.Path("NOTES.md"); t = p.read_text(encoding="utf-8")
+    old = re.search(r"^## Current State \(v[^)]+\)$", t, re.M)
+    if not old:
+        raise SystemExit("NOTES.md has no Current State header")
+    entry = (f"## Current State (v{nxt})\n"
+             f"- **v{nxt} - post-release: packaging pinned to {v}, next cycle opened** "
+             f"(packaging only; no runtime change).\n"
+             f"  - `packaging/aur` (PKGBUILD and .SRCINFO) and `packaging/copr/retch.spec` bumped to "
+             f"**{v}**, the version just released. Both track the last RELEASED tag, so they can "
+             f"only move after the tag exists.\n"
+             f"  - `Cargo.toml` -> **{nxt}**, which is what lets this be a normal gated PR rather "
+             f"than a commit straight to `main`: `just pr`'s version check compares against the "
+             f"last tag, so the packaging bump passes as long as it travels with the next "
+             f"version bump.\n"
+             f"  - `retch-cli` -> {nxt}. Patch bump.\n")
+    p.write_text(t[:old.start()] + entry + t[old.end():].lstrip("\n"), encoding="utf-8")
+    PYEOF
+
+    git add -A
+    git commit -q -m "packaging: pin to $V, open $NEXT
+
+    packaging/aur and packaging/copr track the last RELEASED tag, so they can
+    only be bumped once v$V exists. Bundling that with the next version bump
+    is what makes this a normal gated PR: just pr's step 2 compares Cargo.toml
+    against the last tag, not against this PR's parent, so opening $NEXT
+    satisfies it. Previous releases sent this commit straight to main on the
+    belief that a PR was impossible.
+
+    Assisted-By: Claude Opus 5"
+
+    echo
+    pass "prepared $BRANCH"
+    echo -e "${BOLD}Next:${NC}"
+    echo "  1. review the diff, then: just open-pr"
+    echo "  2. after it merges:       just aur-publish"
+    echo "     (COPR rebuilds itself once packaging/copr lands on main)"
+
 # Merge the active PR, switch to main, pull, delete the branch, and update WIP.md (requires gh)
 merge-pr:
     #!/usr/bin/env bash

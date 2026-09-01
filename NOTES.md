@@ -88,16 +88,25 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
     cargo publish -p retch-cli
     ```
     Publish `retch-sysinfo` first since `retch-cli` depends on it.
-  - **Publish to the AUR** (manual, after the GitHub Release — the tag must exist first,
-    because the PKGBUILD's checksum is taken from the release tarball):
+  - **Post-release: packaging + the next version, as ONE gated PR** (after the GitHub
+    Release, because both packaging targets pin the tag's tarball and cannot move before it
+    exists):
     ```
-    just aur-bump <version>    # renders packaging/aur/{PKGBUILD,.SRCINFO}; needs podman
-    git add packaging/aur && git commit -m "aur: update to <version>"
-    just aur-publish           # verifies, then pushes to the AUR (asks before publishing)
+    just post-release <version>   # the version just RELEASED; needs podman
+    just open-pr                  # after reviewing the diff
+    just aur-publish              # after it merges
     ```
+    `post-release` branches, pins `packaging/aur` and `packaging/copr` to the released
+    version, opens `Cargo.toml` on the next patch, regenerates the man page and writes the
+    NOTES entry. **Bundling the two is what makes it a normal PR**: `just pr`'s version check
+    compares `Cargo.toml` against the last *tag*, so opening the next version satisfies it —
+    which is why releases before v0.9.12 did not need to commit packaging straight to `main`
+    after all (see §5). It stops short of `open-pr` deliberately: the manual checklist needs a
+    human, and a release is the worst moment to rubber-stamp one.
     Never hand-edit `packaging/aur/.SRCINFO`; it is generated. `just check` fails while it
     disagrees with the PKGBUILD. The AUR RPC lags a push by minutes to hours — the git ref is
-    the authoritative check, so do not chase a stale `rpc/v5/info` reading.
+    the authoritative check, so do not chase a stale `rpc/v5/info` reading. COPR needs no
+    manual step at all: `copr.yml` rebuilds once `packaging/copr` lands on `main`.
   - **Publish to tldr-pages upstream** (on hold — do not run):
     The upstream tldr-pages submission was denied pending more community traction.
     Keep `docs/retch.md` current but do not run `just tldr-release` until further notice.
@@ -107,7 +116,45 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.11)
+## Current State (v0.9.12)
+- **v0.9.12 - the post-tag packaging commit becomes a normal PR, because the gate never
+  blocked it** (tooling + docs only; no runtime change, `retch-sysinfo` unchanged at
+  `0.1.56`). New `just post-release VERSION`.
+  - **The finding, which is the whole entry: a documented constraint was never tested.** Five
+    releases committed `packaging/aur` and `packaging/copr` straight to `main` (`9476836`,
+    `f75989c`, `d60658c`, `de1d73f`, `468efc7`), each commit message explaining that a PR was
+    *impossible* because `just pr` hard-fails once `Cargo.toml` equals the last tag. NOTES §5
+    recorded it as structural, and proposed "move the version bump out of the per-PR gate" as
+    the fix. But step 2 is `[ "$LAST_TAG" = "v$CARGO_VER" ] && fail` - an **equality test
+    against the last tag**, not "did this PR bump anything". A packaging bump that *also*
+    opens the next version passes untouched. The constraint was a misreading, propagated
+    through five commit messages and a backlog entry, and it cost the repo its gate on the one
+    commit class nobody reviews.
+  - **`just post-release VERSION`** branches, pins both packaging targets to the version just
+    released, opens `Cargo.toml` on the next patch, regenerates the man page and writes the
+    NOTES entry - then **stops before `open-pr`**, because the manual checklist needs a human
+    and a release is the worst moment to rubber-stamp one.
+  - **Proven against real history rather than a fixture.** A clone was rewound to `8fed7c2` -
+    the actual post-tag state where `Cargo.toml` equalled `v0.9.10` and packaging still read
+    0.9.7, i.e. exactly the situation called impossible - the recipe was run, and **all eight
+    automated gate steps passed** on what it produced. Its output matches what `468efc7` did
+    by hand, plus the version bump.
+  - Five guards, each watched refusing: not on `main`; dirty tree; the tag not matching
+    `VERSION`; `Cargo.toml` no longer equal to `VERSION` (already run, or wrong version); and
+    the branch already existing. The `Cargo.toml` one matters most - without it a second run
+    would bump again and pin packaging to a version that is no longer newest, silently
+    manufacturing the exact drift `copr-check` exists to catch.
+  - **A `{{` inside the recipe's embedded Python was parsed by `just` as its own
+    interpolation** and broke the whole file. Worth remembering for any recipe carrying a
+    heredoc: `just` sees `{{` before the shell or Python ever does. Written around rather than
+    escaped, since the braces were incidental.
+  - **What this does and does not close.** The *gating* half of NOTES §5 is done: nothing
+    bypasses the gate any more. The *automation* half - "push a tag and everything happens" -
+    is untouched; crates.io and the AUR still need a human. But the steps `post-release`
+    performs are exactly the ones a release workflow would run, so lifting them into CI is now
+    a port rather than a redesign. §5 records that, and what it would cost (two secrets, and a
+    bot commit traded against the gating just gained).
+  - `retch-cli` -> 0.9.12. Patch bump.
 - **v0.9.11 - `data.js` stops flip-flopping, and the attribution rule says what "model name"
   means** (tooling + docs only; no runtime change, `retch-sysinfo` unchanged at `0.1.56`).
   - **`scripts/upload_local_bench.py` wrote `data.js` minified while CI writes it
@@ -1783,10 +1830,19 @@ Adds over long:
     carries its sha256; then the result must be committed and `just aur-publish` run.
   - COPR -> `packaging/copr/retch.spec` pins `Version:` and the same tarball checksum, so it
     too can only be bumped after the tag, and only then can a rebuild be triggered.
-  - **The bump for the next dev cycle then collides with the gate**: once `Cargo.toml`'s
+  - ~~**The bump for the next dev cycle then collides with the gate**: once `Cargo.toml`'s
     version equals the last tag, `just pr` hard-fails step 2, which is why both packaging
-    bumps have to go **direct to main** with no PR (`9476836`, `f75989c`, `d60658c`,
-    `de1d73f`). That is documented and correct today, and it is also a smell.
+    bumps have to go **direct to main** with no PR.~~ **RESOLVED in v0.9.12, and the premise
+    was simply wrong.** `just pr`'s step 2 is
+    `[ "$LAST_TAG" = "v$CARGO_VER" ] && fail` - an **equality test against the last tag**, not
+    "did this PR bump anything". So the packaging bump always could have been a normal PR, as
+    long as it also opened the next version - which every PR is supposed to do anyway (§4.7).
+    Five commits went straight to `main` on a belief nobody had tested (`9476836`, `f75989c`,
+    `d60658c`, `de1d73f`, `468efc7`). `just post-release VERSION` now prepares exactly that
+    PR, and it was proven by rewinding a clone to `8fed7c2` - the real post-tag state where
+    the process claimed a PR was impossible - running the recipe, and watching all eight
+    automated gate steps pass. **Nothing in the gate needed changing; option 3 below was
+    solving a problem that did not exist.**
   - **The root cause is that two packaging targets pin a checksum of an artifact that does not
     exist until the tag is pushed.** Everything downstream follows from that. Options worth
     weighing when this is picked up, none free:
@@ -1798,14 +1854,23 @@ Adds over long:
        version from `Cargo.toml`), which removes the post-tag commit entirely for that channel.
        The AUR cannot follow - `makepkg` genuinely requires real `sha256sums` - so this only
        half-solves it and splits the two targets' models apart.
-    3. **Move the version bump out of the per-PR gate**, so `just pr` stops forcing a bump on
-       every PR and the post-tag packaging commit can be a normal PR. Larger change to a
-       workflow that is otherwise working well, and the unconditional bump exists for good
-       reasons (§4.7).
+    3. ~~**Move the version bump out of the per-PR gate**~~ - **unnecessary; see above.** The
+       gate never forced the packaging commit out of the PR flow, so this option was
+       addressing a symptom that was itself a misreading. Recorded rather than deleted,
+       because "the obvious fix was aimed at the wrong thing" is the useful part.
   - **Do not start this by adding more automation to the current shape.** Each channel's
     trigger is currently correct *given* the pinning - see the comment block in
     `.github/workflows/copr.yml` for why a release-triggered COPR rebuild builds the previous
     version. Changing the pinning is the actual work; the triggers fall out of it.
+  - **Where this stands after v0.9.12.** The *gating* half is closed: the post-tag packaging
+    commit is now a normal reviewed PR (`just post-release`), so nothing bypasses the gate and
+    the "smell" is gone. The *automation* half is untouched and is the remaining work - a tag
+    still does not, by itself, publish to crates.io or push to the AUR. Option 1 is the
+    straightforward route now that the shape it would automate is gated and scripted: the
+    steps `post-release` performs are exactly the ones a release workflow would run, so
+    lifting them into CI is a port rather than a redesign. It still needs a crates.io token
+    and an AUR SSH key as secrets, and it still means a bot commit to `main` - which is a
+    deliberate trade against the gating just gained, not a free win.
 - **Package repository submissions**: Submit retch to AUR (Arch User Repository) and nixpkgs so it appears in the [Repology](https://repology.org/project/retch/versions) packaging status widget. The Nix flake (contributed by @quixaq) is a useful starting point for the nixpkgs submission.
 - **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
