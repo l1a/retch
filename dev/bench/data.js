@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788303006497,
+  "lastUpdate": 1788303459219,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -12624,80 +12624,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "fbb9672b8c95616671974128187d9d3b32f0fe53",
-          "message": "Fix network status bracket color nesting (#158)\n\nowo_colors closes every foreground color with the default-reset \\x1b[39m, so\nthe green \"Up\" / red \"Down\" embedded in the Net value cancelled the enclosing\nvalue color (and, for the active interface, the bright-blue highlight). Everything\nafter [Up] fell back to the terminal default: the active line's opening [ was blue\nbut the closing ] and the RX/TX stats were not.\n\nAdd colorize_nested(text, prefix) which re-asserts the enclosing color after every\ninterior \\x1b[39m so nested colored spans restore the surrounding color instead of\nfalling to default. It is byte-identical to the old plain wrap when there is no\nnested reset, so only the Net field's rendering changes. Theme::color_value routes\nthrough it and the active-interface highlight uses ACTIVE_IFACE_PREFIX. The library\nnetwork.rs is untouched. Four regression tests cover the helper.\n\nBump retch-cli to 0.5.1 (retch-sysinfo unchanged at 0.1.43); regen man page.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-12T21:49:19-07:00",
-          "tree_id": "15c36368910c46efd1ba4d0a4f43df2b81c63aa0",
-          "url": "https://github.com/l1a/retch/commit/fbb9672b8c95616671974128187d9d3b32f0fe53"
-        },
-        "date": 1783919373753,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 771281975.2,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 415.6456687275747,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 72.67613568060668,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.8507210507630887,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 60.705384193066664,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 4257.955209606525,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1054.8313787695529,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 394.98030362141645,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 71207.64268886857,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 360.1226709791345,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "c4f762eed77a36ac3d95a1beb6a4cab62afb2965",
           "message": "Add Windows domain and terminal-size fields (#159)\n\nTwo --long fields that previously returned None on Windows now have\nnative arms — the first of the Windows cross-platform-parity feature\nseries (distinct from the completed PowerShell->FFI perf migration).\n\n- domain: primary DNS suffix via GetComputerNameExW(ComputerNameDnsDomain)\n  (kernel32, two-call size probe). A workgroup host's empty suffix maps to\n  None via the pure clean_domain helper — not the NetBIOS WORKGROUP name —\n  matching the Linux/macOS /etc/resolv.conf DNS-domain semantics.\n- terminal-size: console viewport via GetStdHandle + GetConsoleScreenBufferInfo,\n  using the srWindow rect (not dwSize, the scrollback buffer). Pure\n  window_rect_to_size helper does the inclusive-rect -> \"COLSxROWS\" math;\n  piped output has no console -> graceful None -> existing env fallback.\n\nHand-written extern \"system\" FFI, no binding crate (house style); // SAFETY:\non every unsafe. Non-Windows arms untouched. New tests: clean_domain,\nwindow_rect_to_size, and a CONSOLE_SCREEN_BUFFER_INFO size_of layout guard.\nVerified live on arrakis (Windows 11): domain correctly absent (DNS suffix\ngenuinely empty), terminal-size renders 100x40.\n\nretch-cli 0.5.1 -> 0.6.0, retch-sysinfo 0.1.43 -> 0.1.44.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-13T14:13:18-07:00",
@@ -16307,6 +16233,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 410.92967123988745,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "22ca787cdfda1484b3606919bf901ef432a5f8e2",
+          "message": "Make the post-tag packaging bump a normal PR (#215)\n\nFive releases committed packaging/aur and packaging/copr straight to main\n(9476836, f75989c, d60658c, de1d73f, 468efc7), each commit message explaining\nthat a PR was impossible because just pr hard-fails once Cargo.toml equals the\nlast tag. NOTES section 5 recorded it as structural and proposed moving the\nversion bump out of the gate.\n\nThe premise was wrong. Step 2 is [ \"$LAST_TAG\" = \"v$CARGO_VER\" ] && fail -- an\nequality test against the last tag, not \"did this PR bump anything\". A\npackaging bump that also opens the next version passes untouched. The\nconstraint was a misreading that propagated through five commit messages and a\nbacklog entry, and it cost the gate on the one commit class nobody reviews.\n\njust post-release VERSION branches, pins both packaging targets to the version\njust released, opens Cargo.toml on the next patch, regenerates the man page and\nwrites the NOTES entry -- then stops before open-pr, because the manual\nchecklist needs a human and a release is the worst moment to rubber-stamp one.\n\nProven against real history: a clone rewound to 8fed7c2 (the actual post-tag\nstate where Cargo.toml equalled v0.9.10 and packaging still read 0.9.7) runs\nthe recipe and passes all eight automated gate steps on the result, which\nmatches what 468efc7 did by hand plus the version bump. Five guards each\nwatched refusing.\n\nThis closes the gating half of NOTES section 5. The automation half -- a tag\npublishing to crates.io and the AUR by itself -- is untouched, but the steps\nthis recipe performs are the ones a release workflow would run, so lifting them\ninto CI becomes a port rather than a redesign.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-01T15:36:29-07:00",
+          "tree_id": "bde08b98640fbf92adcc5a654341840b216f7f84",
+          "url": "https://github.com/l1a/retch/commit/22ca787cdfda1484b3606919bf901ef432a5f8e2"
+        },
+        "date": 1788303456362,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1336460974.9,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 588.4425319382083,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 207.1492668060479,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.577111173601735,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 97.17525350477972,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6833.182225100837,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1935.4984622922748,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 508.0771046998002,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 100055.75248148825,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 513.1617289795905,
             "unit": "ns"
           }
         ]
