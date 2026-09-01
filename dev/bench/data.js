@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788301178610,
+  "lastUpdate": 1788301563030,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4166,90 +4166,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "280db85bc07aaa37fe6e22c1428c57d3a95ba55b",
-          "message": "Add Linux login-manager/brightness/power-adapter (#157)\n\nThree new --long fields closing NOTES §6 fastfetch gaps, each a cheap\nsingle-source Linux probe in the sequential detect_* style (like init/chassis):\n\n- login-manager: resolves the display-manager.service systemd unit symlink\n  (GDM/SDDM/LightDM/greetd/…), prettified.\n- brightness: reads /sys/class/backlight/*/{brightness,max_brightness} as a %.\n- power-adapter: reads the Mains supply under /sys/class/power_supply (name +\n  connected state; wattage omitted — sysfs Mains rarely exposes it).\n\nAll three are Linux-only (None elsewhere). Each detector wraps a pure helper\n(login_manager_from_unit / brightness_percent / format_power_adapter), split\nout and unit-tested host-independently per the v0.4.2 format_cpu_cores lesson;\nhelpers + tests are cfg(linux) so they aren't dead code under clippy -D warnings\non other platforms. Verified live on corrino (greetd, 51%, AC (connected)).\n\nretch-cli 0.4.3 -> 0.5.0, retch-sysinfo 0.1.42 -> 0.1.43.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-12T20:11:45-07:00",
-          "tree_id": "c4f4b86a753026bf48a3009deb1ece1f46ea99bc",
-          "url": "https://github.com/l1a/retch/commit/280db85bc07aaa37fe6e22c1428c57d3a95ba55b"
-        },
-        "date": 1783912759644,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 956493279.8,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2132.1192412302044,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 66.44242967215007,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.833942044330579,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 58.416631308664044,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 18397.931292627014,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 191236.18804551425,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 12980.04606973221,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 13088.113079504337,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1640343.8143278505,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 406.8107630151731,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 288.9715936757221,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "fbb9672b8c95616671974128187d9d3b32f0fe53",
           "message": "Fix network status bracket color nesting (#158)\n\nowo_colors closes every foreground color with the default-reset \\x1b[39m, so\nthe green \"Up\" / red \"Down\" embedded in the Net value cancelled the enclosing\nvalue color (and, for the active interface, the bright-blue highlight). Everything\nafter [Up] fell back to the terminal default: the active line's opening [ was blue\nbut the closing ] and the RX/TX stats were not.\n\nAdd colorize_nested(text, prefix) which re-asserts the enclosing color after every\ninterior \\x1b[39m so nested colored spans restore the surrounding color instead of\nfalling to default. It is byte-identical to the old plain wrap when there is no\nnested reset, so only the Net field's rendering changes. Theme::color_value routes\nthrough it and the active-interface highlight uses ACTIVE_IFACE_PREFIX. The library\nnetwork.rs is untouched. Four regression tests cover the helper.\n\nBump retch-cli to 0.5.1 (retch-sysinfo unchanged at 0.1.43); regen man page.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-12T21:49:19-07:00",
@@ -8349,6 +8265,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 284.3225680367845,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "079469f109facbbcb54b0bcd5b52b6a0459fca65",
+          "message": "Stop data.js flip-flopping; define \"model name\" (#214)\n\nupload_local_bench.py wrote dev/bench/data.js minified while CI writes it\npretty-printed, so the two rewrote the whole file back and forth: every local\nbench-upload showed 1 insertion / ~22k deletions on gh-pages and the next CI\nrun showed the inverse. Cosmetic, but it buried each upload's real change.\n\nNow serialises exactly as github-action-benchmark does. All three details are\nload-bearing: indent=2; ensure_ascii=False, because JavaScript does not escape\nnon-ASCII and Python's default does (~1000 bytes on the current file, so the\nchurn would have persisted in a less obvious form); and no trailing newline.\nEstablished by round-tripping a real CI-written data.js and comparing sha256 --\nre-dumping it reproduces the file exactly, and the other three combinations of\nthose settings do not. Appending one entry now diffs +17/-0 instead of\n+1/-22558.\n\nA grep of mine reported that file had no non-ASCII at all, which would have\nmade ensure_ascii look irrelevant; the byte count against the character count\n(1044090 vs 1043724) shows 366 bytes of multi-byte characters. The length\ncomparison is what caught it.\n\nAGENTS.md section 1 now says what \"model name\" means: the bare product name,\nno context-window or variant suffix, no session URL, no second trailer. Also\nrecords that a harness may inject an attribution instruction claiming to\nreplace the rule, that it does not, and that this repo squash-merges with\nCOMMIT_MESSAGES -- so a wrong trailer has to be amended on the branch, because\nediting the PR body does not change what lands on main.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-01T15:18:47-07:00",
+          "tree_id": "492b77550f1953f8ce077a8d437652e1437b7704",
+          "url": "https://github.com/l1a/retch/commit/079469f109facbbcb54b0bcd5b52b6a0459fca65"
+        },
+        "date": 1788301560941,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 973406082.45,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2217.2175989840825,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 116.40635611847729,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.8326931792044086,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 58.05978462521749,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 18279.302884059674,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 189160.20137139503,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12732.407414286004,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 12919.233219518068,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1408580.9581166373,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 396.041706947267,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 286.7109755554488,
             "unit": "ns"
           }
         ]
