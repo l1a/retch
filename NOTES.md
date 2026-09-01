@@ -106,7 +106,44 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.7)
+## Current State (v0.9.8)
+- **v0.9.8 - COPR rebuilds are triggered by the packaging commit, not the release**
+  (CI + packaging only; no runtime change, `retch-sysinfo` unchanged at `0.1.56`). New
+  `.github/workflows/copr.yml` and `.copr/Makefile`.
+  - **The obvious trigger is the wrong one, and this is the whole point of the entry.**
+    "Rebuild COPR when we publish a GitHub release" fires too early. `packaging/copr/
+    retch.spec` pins `Version:` **and** a `Source0` tarball checksum to the last *released*
+    tag, so it can only be bumped **after** the tag exists. The real sequence is: push tag
+    (spec still names the previous version) -> release workflow runs (still previous) ->
+    commit the packaging bump to `main` (**now** current). A release- or tag-triggered
+    rebuild lands on the first two steps and rebuilds **the version already in COPR**. The
+    event that means "there is something new" is the packaging commit, so the workflow is a
+    `push` to `main` filtered to `packaging/copr/**`.
+  - **`.copr/**` is watched as well as `packaging/copr/**`.** The Makefile there is what
+    *generates* the SRPM, so a change to it alters the build without touching the spec -
+    exactly the hole v0.9.6 closed by adding `Justfile` to `packaging.yml`'s filter. Applying
+    the lesson at the point it recurs rather than rediscovering it.
+  - **`.copr/Makefile` (COPR's `make_srpm` method) rather than the `rpkg` source type.** The
+    spec's `Source0` is a remote tag tarball; `make_srpm` makes the fetch explicit instead of
+    depending on how `rpkg` handles remote sources, and it is byte-for-byte the sequence that
+    was verified by hand in a container before the spec was first committed - so a COPR
+    failure and a local failure have the same cause. **Verified by running exactly what COPR
+    runs**: `make -f .copr/Makefile srpm outdir=...` in `fedora:latest`, which downloaded the
+    real v0.9.7 tarball and produced `retch-0.9.7-1.fc44.src.rpm`.
+  - **The COPR package had to change type for any of this to work.** The API reported
+    `source_type='upload'` with `auto_rebuild: False` - an uploaded SRPM has no source for
+    COPR to re-fetch, so **no** webhook or rebuild command can act on it. It needs a one-off
+    `copr-cli edit-package-scm ... --type make_srpm` to become rebuildable; the workflow's
+    `build-package` then rebuilds from that stored config.
+  - **COPR's own GitHub webhook was considered and declined.** It needs no secrets and is
+    COPR-native, but its SCM auto-rebuild has **no path filter**, so every push to `main`
+    would start a four-chroot rebuild of an unchanged NEVRA - roughly 12 minutes of builder
+    time per merge. That is the opposite of what v0.9.6 was for.
+  - Credentials are three GitHub secrets (`COPR_LOGIN`, `COPR_USERNAME`, `COPR_TOKEN`)
+    written to `~/.config/copr` from env and never echoed. A fork without them **skips with a
+    notice instead of failing**, since a red check about a credential a fork should not have
+    is noise, not signal.
+  - `retch-cli` -> 0.9.8. Patch bump.
 - **v0.9.7 - Fedora COPR packaging (`packaging/copr/retch.spec`)** (packaging only; no
   runtime change, `retch-sysinfo` unchanged at `0.1.56`). A third packaging target beside
   `packaging/aur` and `packaging/nixpkgs`, and the first one whose build was proven end to
@@ -1589,6 +1626,39 @@ Adds over long:
   benchmarks section documenting retch-vs-fastfetch timings measured on actual
   physical machines (with CPU/OS/spec context per run), so the published numbers
   are meaningful rather than runner-dependent.
+- **Revisit the whole release/publish flow: one tag should do everything.** Recorded
+  2026-08-31 after the v0.9.7 release, which touched four channels and needed a different
+  trigger and a different manual step for each. **The sequencing is the complaint, and it is
+  structural rather than a matter of adding automation on top.** Today:
+  - `git push origin vX` -> CI builds binaries and publishes the GitHub Release. Automatic.
+  - crates.io -> a human runs `just publish` afterwards.
+  - AUR -> `just aur-bump X` **cannot run until the tag tarball exists**, because the PKGBUILD
+    carries its sha256; then the result must be committed and `just aur-publish` run.
+  - COPR -> `packaging/copr/retch.spec` pins `Version:` and the same tarball checksum, so it
+    too can only be bumped after the tag, and only then can a rebuild be triggered.
+  - **The bump for the next dev cycle then collides with the gate**: once `Cargo.toml`'s
+    version equals the last tag, `just pr` hard-fails step 2, which is why both packaging
+    bumps have to go **direct to main** with no PR (`9476836`, `f75989c`, `d60658c`,
+    `de1d73f`). That is documented and correct today, and it is also a smell.
+  - **The root cause is that two packaging targets pin a checksum of an artifact that does not
+    exist until the tag is pushed.** Everything downstream follows from that. Options worth
+    weighing when this is picked up, none free:
+    1. **Compute the checksums in CI at release time** and have the release workflow commit the
+       packaging bumps itself, then publish to crates.io, push to the AUR and trigger COPR.
+       Keeps the pinning; needs a crates.io token, an AUR SSH key and a COPR token as secrets,
+       and a bot commit to `main`.
+    2. **Stop pinning tarballs.** Build COPR from the checkout (a `.copr/Makefile` deriving the
+       version from `Cargo.toml`), which removes the post-tag commit entirely for that channel.
+       The AUR cannot follow - `makepkg` genuinely requires real `sha256sums` - so this only
+       half-solves it and splits the two targets' models apart.
+    3. **Move the version bump out of the per-PR gate**, so `just pr` stops forcing a bump on
+       every PR and the post-tag packaging commit can be a normal PR. Larger change to a
+       workflow that is otherwise working well, and the unconditional bump exists for good
+       reasons (§4.7).
+  - **Do not start this by adding more automation to the current shape.** Each channel's
+    trigger is currently correct *given* the pinning - see the comment block in
+    `.github/workflows/copr.yml` for why a release-triggered COPR rebuild builds the previous
+    version. Changing the pinning is the actual work; the triggers fall out of it.
 - **Package repository submissions**: Submit retch to AUR (Arch User Repository) and nixpkgs so it appears in the [Repology](https://repology.org/project/retch/versions) packaging status widget. The Nix flake (contributed by @quixaq) is a useful starting point for the nixpkgs submission.
 - **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
