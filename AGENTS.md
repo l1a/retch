@@ -292,6 +292,13 @@ Clone `https://github.com/l1a/retch.wiki.git`, edit the relevant pages, and push
 ### 4.9 Packaging
 - [ ] If this is a release PR, check whether `packaging/nixpkgs/package.nix` needs
       `just nix-update` and whether the AUR PKGBUILD needs a version bump.
+- [ ] **The post-release packaging bump is a normal PR — do not commit it to `main`.** Run
+      `just post-release <version just released>`, which pins `packaging/aur` and
+      `packaging/copr` to that version *and* opens `Cargo.toml` on the next patch, then
+      `just open-pr` as usual. Releases up to v0.9.10 committed this straight to `main` on the
+      belief that the gate made a PR impossible; it did not. `just pr`'s version check is an
+      equality test against the last **tag**, so bundling the packaging bump with the next
+      version bump satisfies it. See NOTES §5.
 
 ### 4.10 PR description
 - [ ] Title is concise (≤ 70 chars), imperative mood.
