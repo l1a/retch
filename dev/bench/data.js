@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788238386076,
+  "lastUpdate": 1788238939958,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19366,70 +19366,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "744c0dcd3c15ea67803948e0372c5229715b4783",
-          "message": "Fix upload_local_bench.py cp1252 crash on Windows (#152)\n\njust bench-upload and the post-merge hook crashed on Windows with\nUnicodeDecodeError: 'charmap' codec can't decode byte 0x9d — so no local\nWindows \"real hardware\" numbers reached the gh-pages benchmark dashboard.\nThe gh-pages data.js is UTF-8 (commit messages embed arrow/em-dash chars)\nbut open() used the default cp1252 encoding on Windows.\n\nPin encoding=\"utf-8\" on every file operation (data.js read + write, the\nhyperfine JSON temp read) and on run_capture's subprocess text decoding\n(git log --format=%B), plus a sys.stdout.reconfigure UTF-8 guard. Same fix\nclass as scripts/update_wip.py (#142).\n\nVerified: the crash reproduces on the live data.js under the default\nencoding; the UTF-8 read succeeds (845 KB) and append_entry /\ngit_commit_info run without error.\n\nTooling-only; no Rust source touched, retch-sysinfo unchanged.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-12T07:01:43-07:00",
-          "tree_id": "d579527f5693db2e5215b8c7e6ddfa52671a60fd",
-          "url": "https://github.com/l1a/retch/commit/744c0dcd3c15ea67803948e0372c5229715b4783"
-        },
-        "date": 1783867378898,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 103.76193531562221,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9478545143168504,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 103.07665434022326,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.94339342589039,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46677.358387005144,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 493.4677709895881,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 740.9010498272562,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2603184120,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "6c384b96645a8d096e3c0f7a55be58958363939a",
           "message": "Bump version to 0.4.0 (milestone release) (#153)\n\nMinor version bump (0.3.52 -> 0.4.0) marking the completed Windows\nnative-FFI migration and the first GitHub Release since v0.3.40 (rolls up\n#141-#152). Version-marker only — no code change; retch-sysinfo stays at\n0.1.40 and crates.io remains intentionally held.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-12T07:46:27-07:00",
@@ -22549,6 +22485,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2127065530,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7fc56ef6232dd6bec8ff5e4b6126b8ed5893dd93",
+          "message": "Fix the COPR SRPM step: mock moves %{_topdir} (#212)\n\n.copr/Makefile ran rpmdev-setuptree and copied the spec into\n$(HOME)/rpmbuild/SPECS. rpmdev-setuptree builds its tree at rpm's\n%{_topdir}, and mock redefines that to /builddir/build -- so on COPR the\ndirectory never existed and build 10927005 died in 60 seconds with\n\"cp: cannot create regular file '/builddir/rpmbuild/SPECS/'\".\n\nv0.9.8 claimed the Makefile was verified by running exactly what COPR\nruns. It was not: it ran in a plain fedora container, where %{_topdir}\nkeeps its default. COPR runs it inside mock. The claim was true of the\ncommand and false of the environment.\n\nFixed by removing the dependency rather than chasing the path: no\nrpmdev-setuptree, no %{_topdir}, no $(HOME) -- _sourcedir and _srcrpmdir\nare passed explicitly with --define. Tested twice, once normally and once\nwith %_topdir forced to /builddir/build as mock sets it.\n\nAlso corrects the edit-package-scm flags in NOTES: --method, not --type,\nand no --subdir.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-08-31T21:23:37-07:00",
+          "tree_id": "770bab44f250aae33c771ebb99637fa1b520ef52",
+          "url": "https://github.com/l1a/retch/commit/7fc56ef6232dd6bec8ff5e4b6126b8ed5893dd93"
+        },
+        "date": 1788238936523,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 175.9415241507531,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947740556191454,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 97.60889858757875,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.29895562870034,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45131.95895763917,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 478.1632462487164,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 732.2823254905804,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2205688145,
             "unit": "ns"
           }
         ]
