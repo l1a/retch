@@ -557,4 +557,42 @@ mod tests {
             "exactly one bare reset (the final closer) should remain: {out:?}"
         );
     }
+
+    #[test]
+    fn test_active_iface_prefix_matches_owo() {
+        // ACTIVE_IFACE_PREFIX is a hand-written copy of what `.bright_blue()`
+        // emits, so the display layer can compose it through colorize_nested
+        // without pulling owo_colors into that call site. Its doc comment has
+        // claimed that equality since v0.5.1 with nothing able to falsify it;
+        // this is the assertion behind the claim. Added when owo-colors moved
+        // 4.3.0 -> 4.4.0 (v0.9.13): a bump of the crate that *produces* these
+        // bytes is exactly what can break a hardcoded copy of them silently.
+        assert_eq!(
+            ACTIVE_IFACE_PREFIX,
+            "x".bright_blue()
+                .to_string()
+                .replace(&format!("x{FG_RESET}"), "")
+        );
+    }
+
+    #[test]
+    fn test_fg_reset_is_owo_closer_for_every_color_form() {
+        // colorize_nested finds nested spans by scanning for FG_RESET, so if
+        // owo_colors ever closed a span with anything else, the network line's
+        // green "Up" would stop being re-wrapped and the enclosing color would
+        // drop to the terminal default after it. The nested spans in practice
+        // come from `.green()`/`.red()` in retch-sysinfo's network.rs, i.e. the
+        // basic-ANSI forms, not just the truecolor one rgb_prefix covers.
+        for colored in [
+            "Up".green().to_string(),
+            "Down".red().to_string(),
+            "x".bright_blue().to_string(),
+            "x".color(Rgb(137, 180, 250)).to_string(),
+        ] {
+            assert!(
+                colored.ends_with(FG_RESET),
+                "owo_colors no longer closes with FG_RESET: {colored:?}"
+            );
+        }
+    }
 }
