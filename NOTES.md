@@ -116,7 +116,62 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.12)
+## Current State (v0.9.13)
+- **v0.9.13 - two Dependabot bumps consolidated onto a gated branch (#216, #217)** (chore;
+  no runtime behaviour change, `retch-sysinfo` unchanged at `0.1.56`). `owo-colors`
+  4.3.0 -> 4.4.0 and `softprops/action-gh-release` 3.0.2 -> 3.0.3, rolled up so the release
+  hygiene Dependabot bypasses - version bump, NOTES entry, man regen - is actually done,
+  following the #167/v0.6.3, #184/v0.6.16, #188/v0.6.19, #199/v0.8.1 and #207/v0.9.5 pattern.
+  - **Lockfile-only, unlike v0.9.5.** `Cargo.toml`'s spec is `"4.0"`, and a caret range on a
+    1.x-or-greater version already admits 4.4 - so no spec widening, and the `Cargo.lock` diff
+    is exactly the `owo-colors` entry with **no transitive movement** (diff-verified against
+    Dependabot's own).
+  - **The entire owo-colors release is an MSRV raise, and that is the only thing in it.**
+    1.81 -> 1.83, which makes `&mut` in `const fn` unconditionally available - so the crate
+    **deletes its `build.rs`** (58 lines of rustc-version sniffing that set a `const_mut_refs`
+    cfg) and `Style`'s private bit-flag setters become `&mut self` in place rather than
+    move-and-return. Public API unchanged, and retch never constructs a `Style` at all.
+  - **A "lockfile-only" bump reads as consequence-free and this one carries a toolchain
+    floor**, so the floor was checked rather than assumed: neither `Cargo.toml` declares
+    `rust-version`, there is no `rust-toolchain.toml`, CI is `dtolnay/rust-toolchain@stable`,
+    and both packaging targets require unversioned `cargo`/`rust` (`BuildRequires` in the COPR
+    spec, `makedepends` in the PKGBUILD). The raise binds nothing here. One fewer build script
+    in the graph is a small real gain for the **COPR** build specifically, which runs
+    `cargo build --locked` with network access and no vendoring - a build script is arbitrary
+    code executed at build time.
+  - **Verified by emitting the bytes, because "it compiles" is not "it emits the same bytes"
+    for a colour library.** `src/theme.rs` hardcodes ANSI sequences that must stay identical
+    to what owo-colors produces - `rgb_prefix`, `FG_RESET`, `ACTIVE_IFACE_PREFIX` - and
+    `colorize_nested` is only a drop-in for a plain `.color()` wrap while that holds. A probe
+    covering the whole production surface (`.color(Rgb)`, `.green()`, `.red()`,
+    `.bright_blue()`; those five call sites are all of it) produced **byte-identical** output
+    under both versions. The probe's own `Cargo.lock` was read back at each step to confirm it
+    had really resolved 4.3.0 and then 4.4.0 - without that the check could pass by silently
+    testing one version twice, the v0.9.5 trap.
+  - **Two of those hardcoded couplings had a doc comment and no test. They have tests now,
+    and this is the part of the PR worth keeping.** `test_rgb_prefix_matches_owo` already
+    pinned the truecolor prefix against the live crate; `ACTIVE_IFACE_PREFIX` merely *claimed*
+    in prose to be exactly what `.bright_blue()` emits, and `FG_RESET` to be owo's closer for
+    every colour form - assertions nothing could falsify, on the two constants a bump of this
+    crate would break most quietly. Both new tests were **watched failing** against a mutated
+    constant (`94` -> `96`; `39` -> `0`) before being kept. The second covers the basic-ANSI
+    forms specifically, since the nested spans in practice are `.green()`/`.red()` from
+    `crates/sysinfo/src/network.rs`, not the truecolor form the existing test covers.
+  - **The action's pinned SHA was verified against the tag, not trusted from the PR title.**
+    `v3.0.3` is an *annotated* tag, so the ref resolves to a tag object first; dereferencing it
+    gives `efb35369e0ad2afab669f228072c1b0d510eae64`, which is what the pin now says. Of the
+    16 commits in the range, 13 are npm bumps; the one functional change is `src/github.ts`
+    "safely classify GitHub API errors" - `error: any` casts replaced by typed
+    `getErrorStatus`/`getResponseData` helpers. No behaviour change for us, and strictly
+    better error classification in the job that publishes releases.
+  - The workflow edit was **machine-checked rather than eyeballed** (the v0.9.6 standard):
+    both versions parsed as YAML and compared key by key, yielding exactly one semantic
+    difference, `.jobs.release.steps[4].uses`.
+  - **Verification limit, recorded rather than papered over**: the `release` job runs only on
+    a `v*` tag, so **no CI run on this PR exercises the bumped action**. Its first real outing
+    is the next release. Same shape as v0.9.6's note that the `Justfile` glob could not be
+    empirically proven by the PR that added it.
+  - `retch-cli` -> 0.9.13. Patch bump.
 - **v0.9.12 - the post-tag packaging commit becomes a normal PR, because the gate never
   blocked it** (tooling + docs only; no runtime change, `retch-sysinfo` unchanged at
   `0.1.56`). New `just post-release VERSION`.
