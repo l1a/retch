@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788372191906,
+  "lastUpdate": 1788372623338,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -12678,80 +12678,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "c4f762eed77a36ac3d95a1beb6a4cab62afb2965",
-          "message": "Add Windows domain and terminal-size fields (#159)\n\nTwo --long fields that previously returned None on Windows now have\nnative arms — the first of the Windows cross-platform-parity feature\nseries (distinct from the completed PowerShell->FFI perf migration).\n\n- domain: primary DNS suffix via GetComputerNameExW(ComputerNameDnsDomain)\n  (kernel32, two-call size probe). A workgroup host's empty suffix maps to\n  None via the pure clean_domain helper — not the NetBIOS WORKGROUP name —\n  matching the Linux/macOS /etc/resolv.conf DNS-domain semantics.\n- terminal-size: console viewport via GetStdHandle + GetConsoleScreenBufferInfo,\n  using the srWindow rect (not dwSize, the scrollback buffer). Pure\n  window_rect_to_size helper does the inclusive-rect -> \"COLSxROWS\" math;\n  piped output has no console -> graceful None -> existing env fallback.\n\nHand-written extern \"system\" FFI, no binding crate (house style); // SAFETY:\non every unsafe. Non-Windows arms untouched. New tests: clean_domain,\nwindow_rect_to_size, and a CONSOLE_SCREEN_BUFFER_INFO size_of layout guard.\nVerified live on arrakis (Windows 11): domain correctly absent (DNS suffix\ngenuinely empty), terminal-size renders 100x40.\n\nretch-cli 0.5.1 -> 0.6.0, retch-sysinfo 0.1.43 -> 0.1.44.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-13T14:13:18-07:00",
-          "tree_id": "89121134b1cdf90e97f3ba23b740bd744dbf5193",
-          "url": "https://github.com/l1a/retch/commit/c4f762eed77a36ac3d95a1beb6a4cab62afb2965"
-        },
-        "date": 1783978501662,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1056177593.8,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 483.42202697397505,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 71.12052313973012,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.159769627217704,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 80.09021280323913,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 5141.341407907525,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1139.7600678211247,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 447.46380356214723,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 78712.81127130904,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 387.28623695779095,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "30195b0eaaf4f96b4b6fe43c11001046a871537b",
           "message": "Fix Windows Camera (scanners) and Users (=0) bugs (#160)\n\nTwo user-reported Windows output bugs in the cross-platform-parity series.\n\nCamera listed scanners as cameras (e.g. \"EPSON ET-3850 Series\"). The Windows\npath enumerated the Camera + Image (WIA) setup classes, but scanners/printers\nshare the Image class with some real webcams (a Logitech BRIO is Image-class),\nand is_real_camera has no keyword to catch an EPSON model string. Fixed by\nenumerating the KSCATEGORY_VIDEO_CAMERA device-interface class instead — only\nreal cameras register it, so scanners are excluded while Image-class webcams are\nkept. Added win_setupapi::present_interface_device_names (DIGCF_DEVICEINTERFACE,\nsharing the existing enumerate_names core) + the KSCATEGORY_VIDEO_CAMERA GUID;\nremoved the now-unused GUID_DEVCLASS_CAMERA/_IMAGE. Also drops the synthetic\n\"Windows Virtual Camera Device\" via a Windows-only is_windows_virtual_camera\nhelper (Linux/macOS untouched).\n\nUsers showed 0 with a user logged in: sysinfo keys Windows users by SID, so the\nUnix uid>=1000 filter never matched. New win_users module counts active\ninteractive sessions via WTSEnumerateSessionsW + WTSQuerySessionInformationW\n(wtsapi32; query-user semantics), with a pure unit-tested count helper. Per the\n\"if it doesn't work, don't show it\" request, display.rs now suppresses Users\nwhen the count is 0 (mirrors the packages guard).\n\nNon-Windows camera/users behavior unchanged. FFI house style (hand-written\nextern \"system\", // SAFETY:, WTS_SESSION_INFOW size_of guard). Verified live on\narrakis: Camera = Logitech BRIO + ASUS FHD webcam only; Users: 1.\n\nretch-cli 0.6.0 -> 0.6.1, retch-sysinfo 0.1.44 -> 0.1.45. Patch (bugfixes).\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-13T14:46:19-07:00",
@@ -16361,6 +16287,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 513.1617289795905,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "32c2bb0543a0daf67af877903bf893fea1627c09",
+          "message": "deps: bump owo-colors and action-gh-release (#218)\n\nConsolidates Dependabot #216 and #217 onto a gated branch so the release\nhygiene they bypass -- version bump, NOTES entry, man regen -- is done.\n\nowo-colors 4.3.0 -> 4.4.0 is lockfile-only: the spec is \"4.0\" and a caret\nrange already admits 4.4, so unlike v0.9.5's icy_sixel there is nothing to\nwiden. The whole release is an MSRV raise, 1.81 -> 1.83, which makes &mut in\nconst fn unconditional -- so the crate deletes its build.rs (58 lines of\nrustc-version sniffing for a const_mut_refs cfg) and Style's private bit-flag\nsetters become &mut self in place. No public API change, and retch never\nconstructs a Style. Nothing here declares rust-version, there is no\nrust-toolchain.toml, CI is @stable, and both packaging targets require\nunversioned cargo/rust, so the floor binds nothing -- checked rather than\nassumed, because a lockfile-only bump reads as consequence-free.\n\nsrc/theme.rs hardcodes ANSI sequences that must equal what owo-colors emits,\nso a bump of the crate that produces them is what breaks them silently. A\nprobe over the whole production surface (.color(Rgb), .green(), .red(),\n.bright_blue(); five call sites is all of it) emitted byte-identical output\nunder both versions, with each probe's own Cargo.lock read back to confirm it\nreally resolved that version -- without which the check passes by testing one\nversion twice.\n\nACTIVE_IFACE_PREFIX and FG_RESET claimed that coupling in a doc comment with\nno test behind it; rgb_prefix had one, those two did not. Two tests now pin\nthem, both watched failing against a mutated constant (94->96, 39->0) before\nbeing kept. The FG_RESET one covers the basic-ANSI forms, since the nested\nspans in practice are .green()/.red() from crates/sysinfo/src/network.rs.\n\naction-gh-release 3.0.2 -> 3.0.3: v3.0.3 is an annotated tag, so the ref\nresolves to a tag object; dereferenced it gives efb35369, which is what the\npin says -- verified against the tag, not trusted from the PR title. Of 16\ncommits, 13 are npm bumps; the one functional change is src/github.ts\n\"safely classify GitHub API errors\". The YAML was parsed and compared rather\nthan eyeballed: exactly one semantic diff, .jobs.release.steps[4].uses. The\nrelease job runs only on a v* tag, so no CI run on this PR exercises it.\n\nretch-cli -> 0.9.13. Patch bump.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-02T10:49:29-07:00",
+          "tree_id": "579c1d63d7ed00137b9b8623b88e357f159ede38",
+          "url": "https://github.com/l1a/retch/commit/32c2bb0543a0daf67af877903bf893fea1627c09"
+        },
+        "date": 1788372620155,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1299700839.5,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 557.0129392493527,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 158.92599880024756,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.513448315508865,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 75.0437926938692,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6203.396596647284,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1696.0980473895208,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 498.5256585660621,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 119829.06501478008,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 392.5944897386423,
             "unit": "ns"
           }
         ]
