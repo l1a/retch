@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788373265761,
+  "lastUpdate": 1788373818557,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19582,70 +19582,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "280db85bc07aaa37fe6e22c1428c57d3a95ba55b",
-          "message": "Add Linux login-manager/brightness/power-adapter (#157)\n\nThree new --long fields closing NOTES §6 fastfetch gaps, each a cheap\nsingle-source Linux probe in the sequential detect_* style (like init/chassis):\n\n- login-manager: resolves the display-manager.service systemd unit symlink\n  (GDM/SDDM/LightDM/greetd/…), prettified.\n- brightness: reads /sys/class/backlight/*/{brightness,max_brightness} as a %.\n- power-adapter: reads the Mains supply under /sys/class/power_supply (name +\n  connected state; wattage omitted — sysfs Mains rarely exposes it).\n\nAll three are Linux-only (None elsewhere). Each detector wraps a pure helper\n(login_manager_from_unit / brightness_percent / format_power_adapter), split\nout and unit-tested host-independently per the v0.4.2 format_cpu_cores lesson;\nhelpers + tests are cfg(linux) so they aren't dead code under clippy -D warnings\non other platforms. Verified live on corrino (greetd, 51%, AC (connected)).\n\nretch-cli 0.4.3 -> 0.5.0, retch-sysinfo 0.1.42 -> 0.1.43.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-12T20:11:45-07:00",
-          "tree_id": "c4f4b86a753026bf48a3009deb1ece1f46ea99bc",
-          "url": "https://github.com/l1a/retch/commit/280db85bc07aaa37fe6e22c1428c57d3a95ba55b"
-        },
-        "date": 1783914733275,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 102.18062921261183,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9477502961633926,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.14781784137934,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.43481127396957,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46881.74308551313,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 496.6098381030747,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 742.8951286051954,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2351829810,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "c4f762eed77a36ac3d95a1beb6a4cab62afb2965",
           "message": "Add Windows domain and terminal-size fields (#159)\n\nTwo --long fields that previously returned None on Windows now have\nnative arms — the first of the Windows cross-platform-parity feature\nseries (distinct from the completed PowerShell->FFI perf migration).\n\n- domain: primary DNS suffix via GetComputerNameExW(ComputerNameDnsDomain)\n  (kernel32, two-call size probe). A workgroup host's empty suffix maps to\n  None via the pure clean_domain helper — not the NetBIOS WORKGROUP name —\n  matching the Linux/macOS /etc/resolv.conf DNS-domain semantics.\n- terminal-size: console viewport via GetStdHandle + GetConsoleScreenBufferInfo,\n  using the srWindow rect (not dwSize, the scrollback buffer). Pure\n  window_rect_to_size helper does the inclusive-rect -> \"COLSxROWS\" math;\n  piped output has no console -> graceful None -> existing env fallback.\n\nHand-written extern \"system\" FFI, no binding crate (house style); // SAFETY:\non every unsafe. Non-Windows arms untouched. New tests: clean_domain,\nwindow_rect_to_size, and a CONSOLE_SCREEN_BUFFER_INFO size_of layout guard.\nVerified live on arrakis (Windows 11): domain correctly absent (DNS suffix\ngenuinely empty), terminal-size renders 100x40.\n\nretch-cli 0.5.1 -> 0.6.0, retch-sysinfo 0.1.43 -> 0.1.44.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-13T14:13:18-07:00",
@@ -22765,6 +22701,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3143226160,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "32c2bb0543a0daf67af877903bf893fea1627c09",
+          "message": "deps: bump owo-colors and action-gh-release (#218)\n\nConsolidates Dependabot #216 and #217 onto a gated branch so the release\nhygiene they bypass -- version bump, NOTES entry, man regen -- is done.\n\nowo-colors 4.3.0 -> 4.4.0 is lockfile-only: the spec is \"4.0\" and a caret\nrange already admits 4.4, so unlike v0.9.5's icy_sixel there is nothing to\nwiden. The whole release is an MSRV raise, 1.81 -> 1.83, which makes &mut in\nconst fn unconditional -- so the crate deletes its build.rs (58 lines of\nrustc-version sniffing for a const_mut_refs cfg) and Style's private bit-flag\nsetters become &mut self in place. No public API change, and retch never\nconstructs a Style. Nothing here declares rust-version, there is no\nrust-toolchain.toml, CI is @stable, and both packaging targets require\nunversioned cargo/rust, so the floor binds nothing -- checked rather than\nassumed, because a lockfile-only bump reads as consequence-free.\n\nsrc/theme.rs hardcodes ANSI sequences that must equal what owo-colors emits,\nso a bump of the crate that produces them is what breaks them silently. A\nprobe over the whole production surface (.color(Rgb), .green(), .red(),\n.bright_blue(); five call sites is all of it) emitted byte-identical output\nunder both versions, with each probe's own Cargo.lock read back to confirm it\nreally resolved that version -- without which the check passes by testing one\nversion twice.\n\nACTIVE_IFACE_PREFIX and FG_RESET claimed that coupling in a doc comment with\nno test behind it; rgb_prefix had one, those two did not. Two tests now pin\nthem, both watched failing against a mutated constant (94->96, 39->0) before\nbeing kept. The FG_RESET one covers the basic-ANSI forms, since the nested\nspans in practice are .green()/.red() from crates/sysinfo/src/network.rs.\n\naction-gh-release 3.0.2 -> 3.0.3: v3.0.3 is an annotated tag, so the ref\nresolves to a tag object; dereferenced it gives efb35369, which is what the\npin says -- verified against the tag, not trusted from the PR title. Of 16\ncommits, 13 are npm bumps; the one functional change is src/github.ts\n\"safely classify GitHub API errors\". The YAML was parsed and compared rather\nthan eyeballed: exactly one semantic diff, .jobs.release.steps[4].uses. The\nrelease job runs only on a v* tag, so no CI run on this PR exercises it.\n\nretch-cli -> 0.9.13. Patch bump.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-02T10:49:29-07:00",
+          "tree_id": "579c1d63d7ed00137b9b8623b88e357f159ede38",
+          "url": "https://github.com/l1a/retch/commit/32c2bb0543a0daf67af877903bf893fea1627c09"
+        },
+        "date": 1788373815222,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 177.54999455022516,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9480038412143914,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 97.17931157469445,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 82.5590461754048,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45964.35960133742,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 489.971422773447,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 767.2903079001424,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2508723955,
             "unit": "ns"
           }
         ]
