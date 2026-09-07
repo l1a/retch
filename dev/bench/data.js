@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788817656532,
+  "lastUpdate": 1788819611291,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3812,6 +3812,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1107746413.32
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "c662f957d27202066528996c62eb426cd83e38a2",
+          "message": "packaging: pin to 0.10.0, open 0.10.1 (#220)\n\npackaging/aur and packaging/copr track the last RELEASED tag, so they can\nonly be bumped once v0.10.0 exists. Bundling that with the next version bump\nis what makes this a normal gated PR: just pr's step 2 compares Cargo.toml\nagainst the last tag, not against this PR's parent, so opening 0.10.1\nsatisfies it. Previous releases sent this commit straight to main on the\nbelief that a PR was impossible.\n\nPrepared by `just post-release 0.10.0` -- its first live outing, having only\never been exercised against a clone rewound to the v0.9.10 post-tag state.\n\nVerified rather than trusted: the declared sha256 was computed from the real\n1319408-byte release tarball three independent ways (sha256sum, python\nhashlib, openssl) and matches both the PKGBUILD and the generated .SRCINFO.\nThe tarball's docs/retch.1 is byte-identical to the committed page, so the\ninstalled man page footer is right. Both AUR files hold 0 CR bytes, and the\ngenerated .SRCINFO came out container_file_t -- the #203 SELinux fix still\nholding. The spec parses to `retch 0.10.0 1.fc44` under rpmspec, and its\n%changelog date is a real Monday.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-07T15:19:11-07:00",
+          "tree_id": "3259327cf2429feb4894e8bd26f7f531d6c4168c",
+          "url": "https://github.com/l1a/retch/commit/c662f957d27202066528996c62eb426cd83e38a2"
+        },
+        "date": 1788819611291,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 348149691.88000005
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1113990225.08
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 14109934.06
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 52547434.36
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 485820545.9600001
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1102022346.46
           }
         ]
       }
