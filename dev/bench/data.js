@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788817061118,
+  "lastUpdate": 1788817656532,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19636,70 +19636,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "c4f762eed77a36ac3d95a1beb6a4cab62afb2965",
-          "message": "Add Windows domain and terminal-size fields (#159)\n\nTwo --long fields that previously returned None on Windows now have\nnative arms — the first of the Windows cross-platform-parity feature\nseries (distinct from the completed PowerShell->FFI perf migration).\n\n- domain: primary DNS suffix via GetComputerNameExW(ComputerNameDnsDomain)\n  (kernel32, two-call size probe). A workgroup host's empty suffix maps to\n  None via the pure clean_domain helper — not the NetBIOS WORKGROUP name —\n  matching the Linux/macOS /etc/resolv.conf DNS-domain semantics.\n- terminal-size: console viewport via GetStdHandle + GetConsoleScreenBufferInfo,\n  using the srWindow rect (not dwSize, the scrollback buffer). Pure\n  window_rect_to_size helper does the inclusive-rect -> \"COLSxROWS\" math;\n  piped output has no console -> graceful None -> existing env fallback.\n\nHand-written extern \"system\" FFI, no binding crate (house style); // SAFETY:\non every unsafe. Non-Windows arms untouched. New tests: clean_domain,\nwindow_rect_to_size, and a CONSOLE_SCREEN_BUFFER_INFO size_of layout guard.\nVerified live on arrakis (Windows 11): domain correctly absent (DNS suffix\ngenuinely empty), terminal-size renders 100x40.\n\nretch-cli 0.5.1 -> 0.6.0, retch-sysinfo 0.1.43 -> 0.1.44.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-13T14:13:18-07:00",
-          "tree_id": "89121134b1cdf90e97f3ba23b740bd744dbf5193",
-          "url": "https://github.com/l1a/retch/commit/c4f762eed77a36ac3d95a1beb6a4cab62afb2965"
-        },
-        "date": 1783979681012,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 104.60849946766382,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.948137282330988,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.65134591236149,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 83.63624301645739,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45625.22585755799,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 490.1246627065525,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 747.2225988964921,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2163348725,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "30195b0eaaf4f96b4b6fe43c11001046a871537b",
           "message": "Fix Windows Camera (scanners) and Users (=0) bugs (#160)\n\nTwo user-reported Windows output bugs in the cross-platform-parity series.\n\nCamera listed scanners as cameras (e.g. \"EPSON ET-3850 Series\"). The Windows\npath enumerated the Camera + Image (WIA) setup classes, but scanners/printers\nshare the Image class with some real webcams (a Logitech BRIO is Image-class),\nand is_real_camera has no keyword to catch an EPSON model string. Fixed by\nenumerating the KSCATEGORY_VIDEO_CAMERA device-interface class instead — only\nreal cameras register it, so scanners are excluded while Image-class webcams are\nkept. Added win_setupapi::present_interface_device_names (DIGCF_DEVICEINTERFACE,\nsharing the existing enumerate_names core) + the KSCATEGORY_VIDEO_CAMERA GUID;\nremoved the now-unused GUID_DEVCLASS_CAMERA/_IMAGE. Also drops the synthetic\n\"Windows Virtual Camera Device\" via a Windows-only is_windows_virtual_camera\nhelper (Linux/macOS untouched).\n\nUsers showed 0 with a user logged in: sysinfo keys Windows users by SID, so the\nUnix uid>=1000 filter never matched. New win_users module counts active\ninteractive sessions via WTSEnumerateSessionsW + WTSQuerySessionInformationW\n(wtsapi32; query-user semantics), with a pure unit-tested count helper. Per the\n\"if it doesn't work, don't show it\" request, display.rs now suppresses Users\nwhen the count is 0 (mirrors the packages guard).\n\nNon-Windows camera/users behavior unchanged. FFI house style (hand-written\nextern \"system\", // SAFETY:, WTS_SESSION_INFOW size_of guard). Verified live on\narrakis: Camera = Logitech BRIO + ASUS FHD webcam only; Users: 1.\n\nretch-cli 0.6.0 -> 0.6.1, retch-sysinfo 0.1.44 -> 0.1.45. Patch (bugfixes).\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-13T14:46:19-07:00",
@@ -22819,6 +22755,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2508723955,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "58c0d3b14acd2f18daf565c23e3a729d01d24e92",
+          "message": "Add disk-io and net-io throughput fields (#219)\n\nCloses two of the three remaining NOTES §6 fastfetch gaps. Both are\n--long and above, Linux only, in the v0.5.0 shape: pure helpers in a new\ncrates/sysinfo/src/io.rs under thin /proc and sysfs readers.\n\nThe design problem is the interval, not the counters. The kernel exposes\nonly cumulative bytes, so a rate needs two samples and a known window.\nfastfetch sleeps ~1 s for it -- measured, not assumed: `fastfetch -s\nNetIO` takes 1.00 s against 0.00 s for a counter-only module. That would\nput --long (~500 ms) behind fastfetch, which NOTES §3 treats as blocking.\nSo this uses the v0.3.49 cpu-usage pattern instead: sample before the\nconcurrent probe scope, diff after it, making the run's own collection\nwindow the sampling window. The second sample is taken after the\ncpu_usage block so the 200 ms sleep that block already performs on Unix\nwidens the window rather than being paid for twice.\n\nMeasured with a control run, which is what makes it evidence: --long is\n521.1 +- 40.3 ms here against 513.4 +- 33.2 ms on main, while main\nbenchmarked against itself read 533.4 +- 69.6 ms -- the branch/main gap\nis smaller than main's spread against itself. Standard mode at 40 runs:\n382.3 +- 9.7 vs 381.2 +- 10.9. Against fastfetch: retch --long 526 ms vs\n`fastfetch -c all` 1.097 s, now reporting the same two fields. An\nisolated `--fields disk-io` hits the ~100 ms floor at 0.10 s, the only\ncase where either field costs anything.\n\nDISKSTATS_SECTOR_BYTES = 512 is load-bearing and was checked: a known\n64 MiB write moved the counter 146808 sectors, i.e. 71 MiB at 512\nB/sector (the excess is btrfs metadata and CoW) against an impossible\n573 MiB at 4096. Recorded limit: the test host's own hw_sector_size is\n512, so this confirms the value without discriminating \"always 512\" from\n\"the hardware sector size\".\n\nTwo tests were watched failing against mutated code -- 512 to 4096 fails\nthe column test, and saturating_sub to wrapping_sub fails the reset test\nwith 1.8e19 B/s, exactly the reading its comment predicts. Rates were\ncross-checked against fastfetch under a sustained load (249.5/264.1 MB/s\nvs 192.95/192.98 MiB/s over its own window; both 0 idle) after a first\nattempt that agreed only because both tools had sampled an idle disk.\n\ndisk.rs's virtual-device name filter is now shared rather than copied, so\nphys-disk and disk-io cannot drift apart on what counts as a disk.\n\nStrata golden counts Long 54->56, Full 63->65. 12 new unit tests, keyed\non a verbatim /proc/diskstats fixture with an injected device filter so\nno test depends on the block devices of the machine running it.\n\nretch-sysinfo -> 0.1.57 (new public io module); retch-cli -> 0.10.0.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-07T14:04:54-07:00",
+          "tree_id": "115878a30bd428a34da012243a2e20b1d154f8c4",
+          "url": "https://github.com/l1a/retch/commit/58c0d3b14acd2f18daf565c23e3a729d01d24e92"
+        },
+        "date": 1788817652310,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 176.82768238975402,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9486901620653962,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 96.80269623890855,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 82.92987714296343,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 44809.44349199618,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 505.6241456472452,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 764.014076261704,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2744746155,
             "unit": "ns"
           }
         ]
