@@ -193,6 +193,10 @@ const FIELDS: &[FieldDef] = &[
         min_mode: Mode::Standard,
     },
     FieldDef {
+        key: "disk-io",
+        min_mode: Mode::Long,
+    },
+    FieldDef {
         key: "btrfs",
         min_mode: Mode::Long,
     },
@@ -208,6 +212,10 @@ const FIELDS: &[FieldDef] = &[
     FieldDef {
         key: "net",
         min_mode: Mode::Short,
+    },
+    FieldDef {
+        key: "net-io",
+        min_mode: Mode::Long,
     },
     FieldDef {
         key: "public-ip",
@@ -407,8 +415,8 @@ mod tests {
         // A change here should be deliberate and accompany a docs/NOTES update.
         assert_eq!(fields_for(Mode::Short).len(), 8, "short field count");
         assert_eq!(fields_for(Mode::Standard).len(), 19, "standard field count");
-        assert_eq!(fields_for(Mode::Long).len(), 54, "long field count");
-        assert_eq!(fields_for(Mode::Full).len(), 63, "full field count");
+        assert_eq!(fields_for(Mode::Long).len(), 56, "long field count");
+        assert_eq!(fields_for(Mode::Full).len(), 65, "full field count");
     }
 
     #[test]

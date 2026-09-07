@@ -130,10 +130,12 @@ You can generate a starting configuration with:
   - `load`: Average system load.
   - `disk`: Mounted disk capacity, usage, and mountpoint.
   - `phys-disk`: Physical disk model, size, and type (NVMe SSD, SSD, HDD). On Windows, uses `Get-PhysicalDisk` via PowerShell.
+  - `disk-io`: Per-disk read/write throughput in bytes per second, for physical whole disks only (partitions are excluded — their traffic is already counted against the parent device). Read from `/proc/diskstats`. Linux only. Long mode and above. See **I/O RATES** below for how the rate is measured.
   - `btrfs`: Mounted btrfs filesystem label, subvolume, and space allocation (`btrfs filesystem show`/`usage`); one entry per mount point, so a filesystem mounted at both `/` and `/home` via separate subvolumes shows two entries. Snapshot count is shown when it can be read (`btrfs subvolume list -s`, requires root) and omitted otherwise. Linux only. Long mode and above.
   - `zpool`: Imported ZFS pool name, allocation, and health (`zpool list`). Linux and macOS with ZFS installed; empty if `zpool` is not present. Long mode and above.
   - `temp`: System temperature sensors.
   - `net`: Active network interfaces and local/public IP addresses.
+  - `net-io`: Per-interface RX/TX throughput in bytes per second, read from `/sys/class/net/<iface>/statistics`. Reports the default-route interface when it is known, otherwise every non-loopback interface that moved data during the window. Linux only. Long mode and above. See **I/O RATES** below.
   - `public-ip`: Public IP address (queried over the network). Long mode and above.
   - `wifi`: Active Wi-Fi SSID, band frequency, channel, and link rates.
   - `dns`: Configured DNS nameservers (from `/etc/resolv.conf` on Linux/macOS).
@@ -194,6 +196,27 @@ retch supports both ASCII and graphical logos.
 - Logos are automatically suppressed when stdout is not a terminal (e.g. when piped to a pager or redirected to a file).
 
 Use `--ascii-only` to force text-only output. Use `--no-logo` to suppress the logo unconditionally.
+
+# I/O RATES
+
+The `disk-io` and `net-io` fields report throughput, and the kernel exposes only
+cumulative counters — so a rate requires two samples and an interval. **retch** takes the
+first sample before its concurrent probes run and the second after they finish, which
+makes the run's own collection window the sampling window and costs no additional time.
+
+Two consequences follow, and both are deliberate:
+
+- The window varies with the output mode — roughly 0.4 seconds in `--long`, several
+  seconds in `--full`. The figure is therefore an **average over the run**, not an
+  instantaneous rate. A fixed window would be more comparable between runs, but only by
+  sleeping on every invocation.
+- Requesting one of these fields on its own (`retch --fields disk-io`) leaves almost no
+  window at all, so it is topped up to approximately 100 milliseconds. This is the only
+  situation in which either field adds measurable wall-clock time.
+
+A device that appears part-way through the run — a VPN interface coming up — is omitted
+rather than reported, since its lifetime counter is not a delta. Counter resets are
+clamped to zero for the same reason.
 
 # PRIVILEGES
 

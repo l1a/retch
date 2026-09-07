@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.9.13" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.10.0" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -206,6 +206,8 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]phys\-disk\fP`: Physical disk model, size, and type (NVMe SSD, SSD, HDD)\. On Windows, uses `\f[CR]Get\-PhysicalDisk\fP` via PowerShell\.
 .IP \(bu 4
+`\f[CR]disk\-io\fP`: Per\-disk read/write throughput in bytes per second, for physical whole disks only (partitions are excluded \-\- their traffic is already counted against the parent device)\. Read from `\f[CR]/proc/diskstats\fP`\. Linux only\. Long mode and above\. See \fBI/O RATES\fP below for how the rate is measured\.
+.IP \(bu 4
 `\f[CR]btrfs\fP`: Mounted btrfs filesystem label, subvolume, and space allocation (`\f[CR]btrfs filesystem show\fP`/`\f[CR]usage\fP`); one entry per mount point, so a filesystem mounted at both `\f[CR]/\fP` and `\f[CR]/home\fP` via separate subvolumes shows two entries\. Snapshot count is shown when it can be read (`\f[CR]btrfs subvolume list \-s\fP`, requires root) and omitted otherwise\. Linux only\. Long mode and above\.
 .IP \(bu 4
 `\f[CR]zpool\fP`: Imported ZFS pool name, allocation, and health (`\f[CR]zpool list\fP`)\. Linux and macOS with ZFS installed; empty if `\f[CR]zpool\fP` is not present\. Long mode and above\.
@@ -213,6 +215,8 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 `\f[CR]temp\fP`: System temperature sensors\.
 .IP \(bu 4
 `\f[CR]net\fP`: Active network interfaces and local/public IP addresses\.
+.IP \(bu 4
+`\f[CR]net\-io\fP`: Per\-interface RX/TX throughput in bytes per second, read from `\f[CR]/sys/class/net/<iface>/statistics\fP`\. Reports the default\-route interface when it is known, otherwise every non\-loopback interface that moved data during the window\. Linux only\. Long mode and above\. See \fBI/O RATES\fP below\.
 .IP \(bu 4
 `\f[CR]public\-ip\fP`: Public IP address (queried over the network)\. Long mode and above\.
 .IP \(bu 4
@@ -316,6 +320,30 @@ Logos are automatically suppressed when stdout is not a terminal (e\.g\. when pi
 .RE
 .PP
 Use `\f[CR]\-\-ascii\-only\fP` to force text\-only output\. Use `\f[CR]\-\-no\-logo\fP` to suppress the logo unconditionally\.
+
+.SH "I/O RATES"
+.PP
+The `\f[CR]disk\-io\fP` and `\f[CR]net\-io\fP` fields report throughput, and the kernel exposes only
+cumulative counters \-\- so a rate requires two samples and an interval\. \fBretch\fP takes the
+first sample before its concurrent probes run and the second after they finish, which
+makes the run's own collection window the sampling window and costs no additional time\.
+.PP
+Two consequences follow, and both are deliberate:
+.RS
+.IP \(bu 4
+The window varies with the output mode \-\- roughly 0\.4 seconds in `\f[CR]\-\-long\fP`, several
+seconds in `\f[CR]\-\-full\fP`\. The figure is therefore an \fBaverage over the run\fP, not an
+instantaneous rate\. A fixed window would be more comparable between runs, but only by
+sleeping on every invocation\.
+.IP \(bu 4
+Requesting one of these fields on its own (`\f[CR]retch \-\-fields disk\-io\fP`) leaves almost no
+window at all, so it is topped up to approximately 100 milliseconds\. This is the only
+situation in which either field adds measurable wall\-clock time\.
+.RE
+.PP
+A device that appears part\-way through the run \-\- a VPN interface coming up \-\- is omitted
+rather than reported, since its lifetime counter is not a delta\. Counter resets are
+clamped to zero for the same reason\.
 
 .SH "PRIVILEGES"
 .PP

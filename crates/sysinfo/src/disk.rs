@@ -142,6 +142,20 @@ pub fn detect_physical_disks() -> Vec<String> {
     return Vec::new();
 }
 
+/// True for block-device names that are virtual rather than physical media.
+///
+/// Shared with [`crate::io::sample_disk_io`] so the `phys-disk` and `disk-io` fields
+/// cannot drift into disagreeing about what counts as a disk: a device listed by one and
+/// not the other reads as a bug in whichever field the user looked at second.
+#[cfg(target_os = "linux")]
+pub(crate) fn is_virtual_block_name(name: &str) -> bool {
+    name.starts_with("loop")
+        || name.starts_with("ram")
+        || name.starts_with("zram")
+        || name.starts_with("dm-")
+        || name.starts_with("md")
+}
+
 #[cfg(target_os = "linux")]
 fn detect_linux() -> Vec<String> {
     use std::fs;
@@ -157,12 +171,7 @@ fn detect_linux() -> Vec<String> {
         let name = name.to_string_lossy();
 
         // Skip partitions, virtual, and loop devices
-        if name.starts_with("loop")
-            || name.starts_with("ram")
-            || name.starts_with("zram")
-            || name.starts_with("dm-")
-            || name.starts_with("md")
-        {
+        if is_virtual_block_name(&name) {
             continue;
         }
 

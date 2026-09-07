@@ -20,6 +20,7 @@
 //! - [`gamepad`] — Gamepad and joystick controller detection.
 //! - [`gpu`] — GPU detection and PCI ID lookup.
 //! - [`input`] — Keyboard and pointing-device detection.
+//! - [`io`] — Disk and network I/O throughput sampling.
 //! - [`disk`] — Physical disk model, size, and type detection.
 //! - [`media`] — Active media player and currently playing track detection.
 //! - [`memory`] — Physical memory (RAM) slot detection.
@@ -45,6 +46,7 @@ pub mod fetch;
 pub mod gamepad;
 pub mod gpu;
 pub mod input;
+pub mod io;
 pub mod media;
 pub mod memory;
 pub mod motherboard;

@@ -116,7 +116,79 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.9.13)
+## Current State (v0.10.0)
+- **v0.10.0 - `disk-io` and `net-io`: throughput without the sleep fastfetch pays for**
+  (`crates/sysinfo/src/io.rs` (new), `crates/sysinfo/src/fetch.rs`,
+  `crates/sysinfo/src/disk.rs`, `src/fields.rs`, `src/display.rs`). Two of the three
+  remaining NOTES §6 fastfetch gaps, both `--long`+, Linux-only, in the v0.5.0 shape: pure
+  helpers under a thin `/proc`+sysfs reader.
+  - **The design question is not "how do I read the counters", it is "where does the
+    interval come from".** The kernel exposes only cumulative byte counters, so a *rate*
+    needs two samples and a known window. **fastfetch sleeps ~1 s for it** - measured here,
+    not assumed: `fastfetch -s NetIO` takes **1.00 s** on two consecutive runs against
+    **0.00 s** for a counter-only module. Copying that would put `--long` (~500 ms) behind
+    fastfetch, which NOTES §3 treats as a blocking issue.
+  - **Solved with the v0.3.49 `cpu-usage` pattern instead**: sample before the concurrent
+    probe scope, diff after it, so the run's existing collection window *is* the sampling
+    window. The second sample is taken deliberately **after** the `cpu_usage` block, since
+    that block already sleeps 200 ms on Unix for sysinfo's minimum refresh interval -
+    folding that sleep into the window rather than paying for it twice.
+  - **Measured cost: none, and the control run is what proves it.** `--long` came out
+    **521.1 ± 40.3 ms** on the branch against **513.4 ± 33.2 ms** on `main` - but `main`
+    benchmarked against *itself* in the same session read **533.4 ± 69.6 ms**, i.e. the
+    branch/main gap is smaller than main's spread against itself. Standard mode at 40 runs:
+    382.3 ± 9.7 vs 381.2 ± 10.9. An earlier 3-way run showed standard +22 ms and that was
+    ordering noise, exactly what the 2026-08-27 WIP entry warns about. Against fastfetch on
+    the same box: **retch `--long` 526 ms vs `fastfetch -c all` 1.097 s**, now reporting the
+    same two fields.
+  - **The floor is the only place either field costs anything**: an isolated
+    `retch --fields disk-io` leaves no window at all, so it is topped up to ~100 ms -
+    verified at **0.10 s**, against fastfetch's 1.00 s. Short and standard modes never
+    collect these fields at all, and that is structural rather than a timing accident:
+    every mode passes `Some(fields_for(mode))`, so `should_collect` is false there.
+  - **Stated rather than glossed: the window varies by mode**, so the figure is the average
+    rate over the run (~0.4 s in `--long`, seconds in `--full`), not an instantaneous one.
+    A fixed window would be more comparable between runs and would cost a sleep on every
+    invocation. Documented in a new **I/O RATES** section of the man page, not just in code.
+  - **The load-bearing constant is `DISKSTATS_SECTOR_BYTES = 512`, and it was checked.**
+    `/proc/diskstats` counts 512-byte bio sectors regardless of the device's
+    `hw_sector_size`; keying off the hardware value inflates every figure 8× on a
+    4 KiB-sector drive. Writing a known 64 MiB of incompressible data moved the counter
+    146808 sectors = **71 MiB at 512 B/sector** (the excess is btrfs metadata and CoW)
+    against an impossible **573 MiB at 4096**. **Verification limit, recorded rather than
+    papered over:** corrino's `hw_sector_size` is itself 512, so the test confirms the value
+    without discriminating "always 512" from "the hardware sector size". A device with a
+    4 KiB logical sector would separate them.
+  - **Cross-checked against fastfetch under a real sustained load**, because agreeing on an
+    idle machine proves nothing: at ~250 MiB/s of `dd` writes, retch read 249.5 and
+    264.1 MB/s where fastfetch read 192.95 and 192.98 MiB/s over its own different window,
+    and reads of 186 KB/s vs 128 KiB/s. Both read 0 B/s idle. **The first attempt at this
+    check was worthless and is worth recording:** a 320 MiB burst finished in under a second
+    inside a 3 s sleep, so both tools sampled an idle disk and *agreed* - a check that
+    passed while measuring nothing. Only a time-bounded load exercised it.
+  - **Two tests watched failing against mutated code**, both for the right reason:
+    `DISKSTATS_SECTOR_BYTES` 512→4096 fails the column test, and `saturating_sub` →
+    `wrapping_sub` fails the reset test with **1.8e19 B/s** - literally the
+    exabyte-per-second reading its comment predicts. A third caught a mistake of mine: the
+    reset test originally asserted the post-reset counter as the delta. It is clamped to
+    **0** instead, deliberately - a decrease says the baseline is void, not how many bytes
+    followed it, and under-reporting beats asserting something false (the `Users: 0` /
+    v0.7.0 input-classification call). It now also asserts an unaffected device in the same
+    pair still reports, so it cannot pass by everything being zero.
+  - **`disk.rs`'s virtual-device name filter is now shared** (`is_virtual_block_name`)
+    rather than copied, so `phys-disk` and `disk-io` cannot drift into disagreeing about
+    what counts as a disk. Partitions are excluded because their traffic is already counted
+    against the parent device - listing both doubles the apparent throughput of every disk.
+  - `net-io` reports the default-route interface when known (matching fastfetch and the way
+    the `Net` field already singles it out), else every non-loopback interface that moved
+    data. An **idle active interface still prints `0 B/s`** - a reading, not a miss.
+  - A device present in only one sample is dropped rather than reported: an interface
+    appearing mid-run has no baseline, and its lifetime counter is not a delta.
+  - Strata golden counts updated Long 54→56, Full 63→65. 12 new unit tests, keyed on a
+    verbatim `/proc/diskstats` fixture with an **injected** device filter, so no test
+    depends on the block devices of the machine running it (the #155/v0.6.2 pattern).
+  - `retch-sysinfo` → `0.1.57` (new public `io` module); `retch-cli` → `0.10.0`. Minor bump
+    (new user-visible fields).
 - **v0.9.13 - two Dependabot bumps consolidated onto a gated branch (#216, #217)** (chore;
   no runtime behaviour change, `retch-sysinfo` unchanged at `0.1.56`). `owo-colors`
   4.3.0 -> 4.4.0 and `softprops/action-gh-release` 3.0.2 -> 3.0.3, rolled up so the release
@@ -1846,6 +1918,9 @@ Adds over standard:
 - `brightness` (Linux), `power-adapter` (Linux), `login-manager` (Linux) — new v0.5.0 fastfetch-gap fields
 - `keyboard` (Linux), `mouse` (Linux), `tpm` (Linux) — new v0.7.0 fastfetch-gap fields
 - `player`, `media` — new v0.8.0 fastfetch-gap fields (100% native FFI / socket communication, zero subprocess forking)
+- `disk-io`, `net-io` — new v0.10.0 fastfetch-gap fields (Linux). Throughput rates measured
+  across the run's own collection window rather than a dedicated sleep, so they add no
+  wall-clock in `--long`/`--full`; see the v0.10.0 release entry
 
 ### `--full`
 Long plus everything slow, verbose, or cosmetic. Suitable for reporting, screenshots, or deep diagnostics. Users should expect multi-second runtimes.
@@ -1969,10 +2044,12 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ### Storage & Filesystems
 - ~~**Btrfs**: Btrfs volume info~~ — added in v0.3.37 (`btrfs` field)
 - ~~**Zpool**: ZFS storage pool info~~ — added in v0.3.37 (`zpool` field)
-- **DiskIO**: Disk I/O throughput
+- ~~**DiskIO**: Disk I/O throughput~~ — added in v0.10.0 (`disk-io` field, Linux;
+  `/proc/diskstats`, rate averaged over the run's own collection window)
 
 ### Network
-- **NetIO**: Network I/O throughput
+- ~~**NetIO**: Network I/O throughput~~ — added in v0.10.0 (`net-io` field, Linux;
+  `/sys/class/net/*/statistics`, same sampling window as `disk-io`)
 
 ### Desktop Environment & UI
 - ~~**WMTheme**: Window manager theme~~ — added in v0.9.0 (`wm-theme` field; KWin, Xfwm4, Openbox, Fluxbox, IceWM, GTK/Mutter, Aqua, Windows themes)
