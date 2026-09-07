@@ -116,7 +116,11 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.10.0)
+## Current State (v0.10.1)
+- **v0.10.1 - post-release: packaging pinned to 0.10.0, next cycle opened** (packaging only; no runtime change).
+  - `packaging/aur` (PKGBUILD and .SRCINFO) and `packaging/copr/retch.spec` bumped to **0.10.0**, the version just released. Both track the last RELEASED tag, so they can only move after the tag exists.
+  - `Cargo.toml` -> **0.10.1**, which is what lets this be a normal gated PR rather than a commit straight to `main`: `just pr`'s version check compares against the last tag, so the packaging bump passes as long as it travels with the next version bump.
+  - `retch-cli` -> 0.10.1. Patch bump.
 - **v0.10.0 - `disk-io` and `net-io`: throughput without the sleep fastfetch pays for**
   (`crates/sysinfo/src/io.rs` (new), `crates/sysinfo/src/fetch.rs`,
   `crates/sysinfo/src/disk.rs`, `src/fields.rs`, `src/display.rs`). Two of the three
