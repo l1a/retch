@@ -126,6 +126,10 @@ pub struct SystemInfo {
     pub cpu_usage: Option<String>,
     /// Physical disk models, sizes, and types.
     pub physical_disks: Vec<String>,
+    /// Per-disk read/write throughput over the collection window. Linux only.
+    pub disk_io: Vec<String>,
+    /// Per-interface RX/TX throughput over the collection window. Linux only.
+    pub net_io: Vec<String>,
     /// Physical memory (RAM) slot summary — type, speed, capacity.
     pub physical_memory: Option<String>,
     /// PID 1 / init system (systemd, runit, OpenRC, launchd, etc.).
@@ -398,6 +402,25 @@ impl SystemInfo {
         let cpu_sample0 = win_cpu::sample();
         #[cfg(target_os = "windows")]
         let cpu_t0 = std::time::Instant::now();
+
+        // Disk/network I/O are rates, and the kernel only exposes cumulative counters, so
+        // they need two samples and an interval. Take the first here — before the
+        // concurrent probes — and diff it after them, making the collection window the
+        // sampling window. That is the v0.3.49 `cpu-usage` approach, and it is why these
+        // fields cost no wall-clock in a normal run where fastfetch spends a full second.
+        let want_disk_io = should_collect("disk-io") || should_collect("disk io");
+        let want_net_io = should_collect("net-io") || should_collect("net io");
+        let disk_io_sample0 = if want_disk_io {
+            crate::io::sample_disk_io()
+        } else {
+            Vec::new()
+        };
+        let net_io_sample0 = if want_net_io {
+            crate::io::sample_net_io()
+        } else {
+            Vec::new()
+        };
+        let io_t0 = std::time::Instant::now();
 
         // Compute slow system queries concurrently in parallel threads
         let (
@@ -722,6 +745,48 @@ impl SystemInfo {
             None
         };
 
+        // Second I/O sample. Deliberately after the `cpu_usage` block above: on Unix that
+        // block sleeps 200 ms for sysinfo's minimum refresh interval, and taking the
+        // second sample afterwards folds that sleep into the window instead of paying for
+        // it twice. The floor below therefore only ever fires for a request so small that
+        // neither the concurrent scope nor the CPU sleep happened.
+        let (disk_io, net_io) = if want_disk_io || want_net_io {
+            let floor = std::time::Duration::from_millis(100);
+            let elapsed = io_t0.elapsed();
+            if elapsed < floor {
+                std::thread::sleep(floor - elapsed);
+            }
+            let elapsed_secs = io_t0.elapsed().as_secs_f64();
+            let disk_io = if want_disk_io {
+                crate::io::compute_rates(
+                    &disk_io_sample0,
+                    &crate::io::sample_disk_io(),
+                    elapsed_secs,
+                )
+                .iter()
+                .map(|r| crate::io::format_io_line(r, "R", "W"))
+                .collect()
+            } else {
+                Vec::new()
+            };
+            let net_io = if want_net_io {
+                let rates = crate::io::compute_rates(
+                    &net_io_sample0,
+                    &crate::io::sample_net_io(),
+                    elapsed_secs,
+                );
+                crate::io::select_net_rates(rates, active_interface.as_deref())
+                    .iter()
+                    .map(|r| crate::io::format_io_line(r, "RX", "TX"))
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            (disk_io, net_io)
+        } else {
+            (Vec::new(), Vec::new())
+        };
+
         let init_system = if should_collect("init") || should_collect("init system") {
             detect_init_system()
         } else {
@@ -935,6 +1000,8 @@ impl SystemInfo {
             cpu_cache,
             cpu_usage,
             physical_disks,
+            disk_io,
+            net_io,
             physical_memory,
             init_system,
             chassis,

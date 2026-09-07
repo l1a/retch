@@ -662,6 +662,11 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             print_line("Phys Disk", disk);
         }
     }
+    if should_show("Disk IO") {
+        for io in &info.disk_io {
+            print_line("Disk IO", io);
+        }
+    }
     if should_show("Btrfs") {
         for vol in &info.btrfs {
             print_line("Btrfs", vol);
@@ -724,6 +729,11 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                     }
                 }
             }
+        }
+    }
+    if should_show("Net IO") {
+        for io in &info.net_io {
+            print_line("Net IO", io);
         }
     }
     if let Some(ip) = &info.public_ip {

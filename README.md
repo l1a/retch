@@ -272,14 +272,17 @@ separator_color = "bright_black"
 # Note: "phys-disk" on Windows uses native storage IOCTLs (no PowerShell, no admin).
 # Note: "weather" requires network access; shown in full mode only by default.
 # Note: "domain-search" queries resolvectl; shown in full mode only by default.
+# Note: "disk-io" and "net-io" are rates averaged over the run's own collection window
+#       (Linux only). They add no wall-clock in --long/--full; requesting one on its own
+#       tops the window up to ~100 ms so the reading is a measurement, not sampling noise.
 fields = [
     "os", "kernel", "host", "domain", "domain-search", "chassis", "init", "locale",
     "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage", "gpu",
     "motherboard", "bios", "bootmgr", "tpm", "display", "brightness", "audio", "camera", "gamepad",
     "keyboard", "mouse",
     "memory", "phys-mem", "swap", "uptime", "procs", "load",
-    "disk", "phys-disk", "btrfs", "zpool", "temp",
-    "net", "public-ip", "wifi", "dns", "bluetooth", "battery", "power-adapter",
+    "disk", "phys-disk", "disk-io", "btrfs", "zpool", "temp",
+    "net", "net-io", "public-ip", "wifi", "dns", "bluetooth", "battery", "power-adapter",
     "shell", "editor", "terminal", "terminal-font", "terminal-size", "desktop", "wm", "login-manager",
     "player", "media",
     "wm-theme", "wallpaper", "terminal-theme", "theme", "icons", "cursor", "font", "users", "packages", "weather"
