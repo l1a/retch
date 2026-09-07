@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788820366804,
+  "lastUpdate": 1788820816823,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -12786,80 +12786,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "2b4a083ed6b7696bd56727cbcc285ed5ac45030f",
-          "message": "Unblock just pr on Linux: tests + man regen (#165)\n\nTwo coupled docs/test-hygiene fixes (no runtime behavior change), bundled\nbecause the first is what lets `just pr` pass on the reinstalled Fedora box.\n\n1. Machine-independent xrandr display tests. parse_xrandr_displays called\n   get_monitor_name_for_port (live /sys/class/drm EDID) inline, so the\n   fixture tests substituted the physically-attached monitor for the\n   fixture's connector name (DP-1 -> the panel's EDID model ATNA33AA08-0).\n   These tests are cfg(not(macos/windows)) and never ran on the old Windows\n   arrakis, so the defect was latent until the first cargo test after the\n   Fedora reinstall. Same class as #155. Extract a pure\n   parse_xrandr_displays_with(stdout, resolve); the public wrapper passes\n   get_monitor_name_for_port (production unchanged) and the tests pass\n   |_| None. Add a regression test asserting the resolver is honored.\n\n2. Regenerate docs/retch.1. The committed page carried double-bold groff\n   runs from the Windows #160 `just man` run, where the recipe's\n   sed 's/\\fB\\fB/\\fB/g' strip did not take effect. Linux regeneration\n   produces the intended single-bold output, matching the recipe's intent.\n\nPatch bump: retch-cli 0.6.2, retch-sysinfo 0.1.46 (new pub\nparse_xrandr_displays_with).\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-24T08:10:26-07:00",
-          "tree_id": "545ecee36947f96e29585e4dcc803424559d5b6b",
-          "url": "https://github.com/l1a/retch/commit/2b4a083ed6b7696bd56727cbcc285ed5ac45030f"
-        },
-        "date": 1784907127151,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 944557939.65,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 729.188699923306,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 80.3210096875044,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.219312530853153,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 79.95180457772528,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 5855.483679378052,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1510.7165539961668,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 615.8581121222073,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 172215.6399762088,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 537.7588427382486,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "a9cbad3234c6ec06f444e623a84b3ff72efbcd50",
           "message": "Bump deps + CI actions (Dependabot #161/163/164) (#167)\n\nConsolidate three open Dependabot PRs into one gated PR so the release-hygiene\nsteps they bypass (retch version bump, NOTES/man regen) are performed. No\nruntime behavior change.\n\n- Rust deps (#164, cargo-dependencies group, all patch-level, lockfile-only\n  since the Cargo.toml specs are caret ranges): clap 4.6.1->4.6.4 (pulls syn v3\n  via clap_builder/clap_derive), serde 1.0.228->1.0.229, toml 1.1.2->1.1.3,\n  clap_complete_nushell 4.6.0->4.6.1, anyhow 1.0.103->1.0.104,\n  libc 0.2.186->0.2.189, sysinfo 0.39.5->0.39.6, serde_json 1.0.150->1.0.151.\n- actions/checkout 7.0.0->7.0.1 (#163) across benchmark/claude/\n  claude-code-review/packaging/rust/security (both SHA-pinned and @v7 uses).\n- softprops/action-gh-release 3.0.1->3.0.2 (#161) in the rust.yml release job.\n\nretch-cli -> 0.6.3; retch-sysinfo unchanged (0.1.46, no source change).\nWorkspace fmt/clippy/test all green.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-24T08:51:12-07:00",
@@ -16469,6 +16395,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 412.80356074761767,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c662f957d27202066528996c62eb426cd83e38a2",
+          "message": "packaging: pin to 0.10.0, open 0.10.1 (#220)\n\npackaging/aur and packaging/copr track the last RELEASED tag, so they can\nonly be bumped once v0.10.0 exists. Bundling that with the next version bump\nis what makes this a normal gated PR: just pr's step 2 compares Cargo.toml\nagainst the last tag, not against this PR's parent, so opening 0.10.1\nsatisfies it. Previous releases sent this commit straight to main on the\nbelief that a PR was impossible.\n\nPrepared by `just post-release 0.10.0` -- its first live outing, having only\never been exercised against a clone rewound to the v0.9.10 post-tag state.\n\nVerified rather than trusted: the declared sha256 was computed from the real\n1319408-byte release tarball three independent ways (sha256sum, python\nhashlib, openssl) and matches both the PKGBUILD and the generated .SRCINFO.\nThe tarball's docs/retch.1 is byte-identical to the committed page, so the\ninstalled man page footer is right. Both AUR files hold 0 CR bytes, and the\ngenerated .SRCINFO came out container_file_t -- the #203 SELinux fix still\nholding. The spec parses to `retch 0.10.0 1.fc44` under rpmspec, and its\n%changelog date is a real Monday.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-07T15:19:11-07:00",
+          "tree_id": "3259327cf2429feb4894e8bd26f7f531d6c4168c",
+          "url": "https://github.com/l1a/retch/commit/c662f957d27202066528996c62eb426cd83e38a2"
+        },
+        "date": 1788820814492,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1255874241.75,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 509.9747227344093,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 144.2217896938219,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.1984341914818857,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 73.39276864020346,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6737.45602081871,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1495.5112002395006,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 476.5914919830034,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 156341.8324173634,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 473.5363509929912,
             "unit": "ns"
           }
         ]
