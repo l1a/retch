@@ -51,6 +51,48 @@ pub const KSCATEGORY_VIDEO_CAMERA: Guid = Guid {
     data4: [0x9b, 0x55, 0xb9, 0x46, 0x99, 0xc4, 0x6e, 0x44],
 };
 
+/// A `DEVPROPKEY` — a property GUID plus its property id.
+///
+/// Distinct from the older `SPDRP_*` registry properties read by
+/// [`SetupDiGetDeviceRegistryPropertyW`]: the unified device property model exposes
+/// values (such as live connection state) that have no `SPDRP_` equivalent.
+#[repr(C)]
+pub struct DevPropKey {
+    pub fmtid: Guid,
+    pub pid: u32,
+}
+
+/// `System.Devices.Connected` = {83DA6326-97A6-4088-9453-A1923F573B29}, PID 15.
+///
+/// `DEVPROP_TYPE_BOOLEAN`, and the only PnP-visible signal for whether a device is
+/// *currently* connected rather than merely paired. Verified across both Bluetooth
+/// transports: the neighbouring `DEVPKEY_Bluetooth_LastConnectedTime` is historical (it
+/// records when a link was last established, not whether one is up) and
+/// `DEVPKEY_DeviceContainer_AlwaysShowDeviceAsConnected` is a shell display hint that
+/// reads `True` regardless — neither is a usable oracle.
+pub const DEVPKEY_DEVICE_CONNECTED: DevPropKey = DevPropKey {
+    fmtid: Guid {
+        data1: 0x83da_6326,
+        data2: 0x97a6,
+        data3: 0x4088,
+        data4: [0x94, 0x53, 0xa1, 0x92, 0x3f, 0x57, 0x3b, 0x29],
+    },
+    pid: 15,
+};
+
+/// `DEVPROP_TYPE_BOOLEAN`. Its `TRUE` is `0xFF` (-1), not `1`.
+const DEVPROP_TYPE_BOOLEAN: u32 = 0x0000_0011;
+
+/// A present device node: its instance id, friendly name, and connection state.
+pub struct PresentDevice {
+    /// e.g. `BTHLE\DEV_F5183CA50C6B\9&1C053637&0&F5183CA50C6B`.
+    pub instance_id: String,
+    pub name: Option<String>,
+    /// `None` when the device does not expose [`DEVPKEY_DEVICE_CONNECTED`] — treated as
+    /// unknown rather than as disconnected.
+    pub connected: Option<bool>,
+}
+
 #[repr(C)]
 struct SpDevinfoData {
     cb_size: u32,
@@ -75,6 +117,23 @@ extern "system" {
         property_reg_data_type: *mut u32,
         property_buffer: *mut u8,
         property_buffer_size: u32,
+        required_size: *mut u32,
+    ) -> i32;
+    fn SetupDiGetDevicePropertyW(
+        dev_info: Handle,
+        data: *const SpDevinfoData,
+        prop_key: *const DevPropKey,
+        prop_type: *mut u32,
+        prop_buffer: *mut u8,
+        prop_buffer_size: u32,
+        required_size: *mut u32,
+        flags: u32,
+    ) -> i32;
+    fn SetupDiGetDeviceInstanceIdW(
+        dev_info: Handle,
+        data: *const SpDevinfoData,
+        buffer: *mut u16,
+        buffer_size: u32,
         required_size: *mut u32,
     ) -> i32;
     fn SetupDiDestroyDeviceInfoList(dev_info: Handle) -> i32;
@@ -148,6 +207,89 @@ fn enumerate_names(class_guid: &Guid, flags: u32) -> Vec<String> {
     names
 }
 
+/// Reads a device's instance id (e.g. `BTHLE\DEV_F5183CA50C6B\9&1C053637&0&…`).
+fn device_instance_id(dev_info: Handle, data: &SpDevinfoData) -> Option<String> {
+    let mut buf = [0u16; 512];
+    let mut required = 0u32;
+    // SAFETY: buf is writable and its element count is passed as the size; data is a
+    // valid SP_DEVINFO_DATA obtained from SetupDiEnumDeviceInfo.
+    let ok = unsafe {
+        SetupDiGetDeviceInstanceIdW(
+            dev_info,
+            data,
+            buf.as_mut_ptr(),
+            buf.len() as u32,
+            &mut required,
+        )
+    };
+    if ok == 0 {
+        return None;
+    }
+    wide_to_string(&buf)
+}
+
+/// Reads [`DEVPKEY_DEVICE_CONNECTED`]; `None` when the device does not expose it.
+fn device_connected(dev_info: Handle, data: &SpDevinfoData) -> Option<bool> {
+    let mut prop_type = 0u32;
+    let mut value = 0u8;
+    let mut required = 0u32;
+    // SAFETY: a one-byte buffer is correct for DEVPROP_TYPE_BOOLEAN and its length is
+    // passed; data is a valid SP_DEVINFO_DATA.
+    let ok = unsafe {
+        SetupDiGetDevicePropertyW(
+            dev_info,
+            data,
+            &DEVPKEY_DEVICE_CONNECTED,
+            &mut prop_type,
+            &mut value,
+            1,
+            &mut required,
+            0,
+        )
+    };
+    if ok == 0 || prop_type != DEVPROP_TYPE_BOOLEAN {
+        return None;
+    }
+    // DEVPROP_TRUE is 0xFF (-1) and DEVPROP_FALSE is 0, so this must test for non-zero
+    // rather than for 1.
+    Some(value != 0)
+}
+
+/// All *present* devices in the given setup class, with connection state.
+///
+/// The heavier sibling of [`present_device_names`], for callers that need to tell a
+/// connected device from a merely-paired one.
+pub fn present_devices(class_guid: &Guid) -> Vec<PresentDevice> {
+    let mut devices = Vec::new();
+    // SAFETY: the device-info set is created and destroyed in-scope.
+    unsafe {
+        let dev_info =
+            SetupDiGetClassDevsW(class_guid, ptr::null(), ptr::null_mut(), DIGCF_PRESENT);
+        if dev_info == INVALID_HANDLE_VALUE {
+            return devices;
+        }
+        let mut index = 0u32;
+        loop {
+            let mut data: SpDevinfoData = std::mem::zeroed();
+            data.cb_size = size_of::<SpDevinfoData>() as u32;
+            if SetupDiEnumDeviceInfo(dev_info, index, &mut data) == 0 {
+                break;
+            }
+            index += 1;
+            let Some(instance_id) = device_instance_id(dev_info, &data) else {
+                continue;
+            };
+            devices.push(PresentDevice {
+                instance_id,
+                name: device_name(dev_info, &data),
+                connected: device_connected(dev_info, &data),
+            });
+        }
+        SetupDiDestroyDeviceInfoList(dev_info);
+    }
+    devices
+}
+
 /// Friendly names of all *present* devices in the given setup class (the native
 /// equivalent of `Get-PnpDevice -Class <class> -PresentOnly`).
 pub fn present_device_names(class_guid: &Guid) -> Vec<String> {
@@ -174,5 +316,13 @@ mod tests {
         // every enumeration silently, so pin the size.
         assert_eq!(size_of::<SpDevinfoData>(), 32);
         assert_eq!(size_of::<Guid>(), 16);
+    }
+
+    #[test]
+    fn test_dev_prop_key_layout() {
+        // SetupDiGetDevicePropertyW reads the key by pointer, so a padding or field-order
+        // regression would silently query the wrong property rather than fail loudly:
+        // 16 (GUID) + 4 (PID) = 20, with no tail padding.
+        assert_eq!(size_of::<DevPropKey>(), 20);
     }
 }

@@ -299,16 +299,25 @@ fn format_windows_bluetooth(on: bool, adapter: &str, devices: &[String]) -> Stri
 /// `Get-PnpDevice -Class Bluetooth` queries, ~1.8 s) with native Win32:
 /// - Power state: the `bthserv` service state via the Service Control Manager
 ///   (advapi32) — the same signal the old `Get-Service` check used.
-/// - Adapter name + connected devices: the classic `bthprops` Bluetooth API
-///   (`BluetoothFindFirstRadio`/`BluetoothGetRadioInfo` and
-///   `BluetoothFindFirstDevice` with `fReturnConnected`) — no WinRT.
+/// - Adapter name: SetupAPI enumeration of `GUID_DEVCLASS_BLUETOOTH`.
+/// - Connected devices: SetupAPI again, reading `System.Devices.Connected` per device
+///   node. This replaced the classic `bthprops` API (`BluetoothFindFirstDevice` with
+///   `fReturnConnected`), which is **BR/EDR-only** and therefore never reported a
+///   Bluetooth Low Energy peripheral at all — the field under-counted every LE mouse,
+///   keyboard and headset on the machine. Measured on a box with a classic headset and
+///   an LE mouse connected, `bthprops` returned only the headset while the device nodes
+///   reported both. LE state is not reachable from `bthprops`, and the WinRT route that
+///   does expose it (`DeviceInformation` over association endpoints) never completed in
+///   testing and cost ~1 s where it did work, against ~11 ms for this enumeration.
+///
+/// No WinRT: this is the same synchronous SetupAPI already used for the adapter name and
+/// for `camera`.
 ///
 /// Hand-written `extern "system"` FFI matching the crate's style (`win_reg.rs`).
 #[cfg(target_os = "windows")]
 mod windows_impl {
     use super::format_windows_bluetooth;
     use std::ffi::{c_void, OsStr};
-    use std::mem::size_of;
     use std::os::windows::ffi::OsStrExt;
     use std::ptr;
 
@@ -341,69 +350,8 @@ mod windows_impl {
         fn CloseServiceHandle(handle: Handle) -> i32;
     }
 
-    const BLUETOOTH_MAX_NAME_SIZE: usize = 248;
-
-    #[repr(C)]
-    struct DeviceSearchParams {
-        dw_size: u32,
-        return_authenticated: i32,
-        return_remembered: i32,
-        return_unknown: i32,
-        return_connected: i32,
-        issue_inquiry: i32,
-        timeout_multiplier: u8,
-        h_radio: Handle,
-    }
-
-    #[repr(C)]
-    struct SystemTime {
-        year: u16,
-        month: u16,
-        day_of_week: u16,
-        day: u16,
-        hour: u16,
-        minute: u16,
-        second: u16,
-        milliseconds: u16,
-    }
-
-    #[repr(C)]
-    struct DeviceInfo {
-        dw_size: u32,
-        address: u64,
-        ul_class_of_device: u32,
-        f_connected: i32,
-        f_remembered: i32,
-        f_authenticated: i32,
-        st_last_seen: SystemTime,
-        st_last_used: SystemTime,
-        sz_name: [u16; BLUETOOTH_MAX_NAME_SIZE],
-    }
-
-    #[link(name = "bthprops")]
-    extern "system" {
-        fn BluetoothFindFirstDevice(
-            params: *const DeviceSearchParams,
-            info: *mut DeviceInfo,
-        ) -> Handle;
-        fn BluetoothFindNextDevice(find: Handle, info: *mut DeviceInfo) -> i32;
-        fn BluetoothFindDeviceClose(find: Handle) -> i32;
-    }
-
     fn wide(s: &str) -> Vec<u16> {
         OsStr::new(s).encode_wide().chain(Some(0)).collect()
-    }
-
-    /// Converts a null-terminated wide buffer to a `String`, trimmed; `None` if empty.
-    fn wide_to_string(buf: &[u16]) -> Option<String> {
-        let len = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
-        let s = String::from_utf16_lossy(&buf[..len]);
-        let s = s.trim().to_string();
-        if s.is_empty() {
-            None
-        } else {
-            Some(s)
-        }
     }
 
     /// Whether the `bthserv` (Bluetooth Support Service) is running — the power-state
@@ -455,39 +403,59 @@ mod windows_impl {
             .find(|name| looks_like_adapter(name))
     }
 
-    /// Names of currently-connected Bluetooth devices across all radios.
+    /// True for a *remote device* instance id, as opposed to a service, an enumerator or
+    /// the local radio.
+    ///
+    /// The Bluetooth setup class holds all of them. Remote devices are `BTHENUM\DEV_…`
+    /// (classic) and `BTHLE\DEV_…` (LE); per-profile service nodes are
+    /// `BTHENUM\{guid}_…` / `BTHLEDEVICE\{guid}_…`, so the `DEV_` segment is what
+    /// separates a device from one of its services.
+    pub(super) fn is_remote_device_id(instance_id: &str) -> bool {
+        let id = instance_id.to_ascii_uppercase();
+        id.starts_with("BTHENUM\\DEV_") || id.starts_with("BTHLE\\DEV_")
+    }
+
+    /// The device address embedded in a Bluetooth instance id, uppercased.
+    ///
+    /// `BTHLE\DEV_F5183CA50C6B\9&1C053637&0&F5183CA50C6B` yields `F5183CA50C6B`. Used to
+    /// collapse a dual-mode device, which enumerates once per transport — a phone paired
+    /// for both audio and LE appears as both `BTHENUM\DEV_<addr>` and `BTHLE\DEV_<addr>`
+    /// and would otherwise be counted twice. De-duplicating on the address rather than
+    /// the name is deliberate: two distinct devices may share a name, and collapsing
+    /// those would under-count.
+    pub(super) fn address_from_instance_id(instance_id: &str) -> Option<String> {
+        let id = instance_id.to_ascii_uppercase();
+        let rest = id.split_once("\\DEV_")?.1;
+        let addr = rest.split('\\').next()?;
+        if addr.is_empty() || !addr.chars().all(|c| c.is_ascii_hexdigit()) {
+            return None;
+        }
+        Some(addr.to_string())
+    }
+
+    /// Names of currently-connected Bluetooth devices, classic and LE alike.
     fn connected_devices() -> Vec<String> {
-        let params = DeviceSearchParams {
-            dw_size: size_of::<DeviceSearchParams>() as u32,
-            return_authenticated: 0,
-            return_remembered: 0,
-            return_unknown: 0,
-            return_connected: 1,
-            issue_inquiry: 0, // no scan — only already-known/connected devices
-            timeout_multiplier: 0,
-            h_radio: ptr::null_mut(), // all radios
-        };
+        let mut seen = std::collections::HashSet::new();
         let mut names = Vec::new();
-        // SAFETY: info's dw_size is set before each call; the find handle is closed.
-        unsafe {
-            let mut info: DeviceInfo = std::mem::zeroed();
-            info.dw_size = size_of::<DeviceInfo>() as u32;
-            let find = BluetoothFindFirstDevice(&params, &mut info);
-            if find.is_null() {
-                return names;
+        for device in
+            crate::win_setupapi::present_devices(&crate::win_setupapi::GUID_DEVCLASS_BLUETOOTH)
+        {
+            if !is_remote_device_id(&device.instance_id) {
+                continue;
             }
-            loop {
-                if info.f_connected != 0 {
-                    if let Some(n) = wide_to_string(&info.sz_name) {
-                        names.push(n);
-                    }
-                }
-                info.dw_size = size_of::<DeviceInfo>() as u32;
-                if BluetoothFindNextDevice(find, &mut info) == 0 {
-                    break;
+            // Only a definite `true` counts: a node that does not expose the property is
+            // unknown, and reporting an unknown device as connected would overstate.
+            if device.connected != Some(true) {
+                continue;
+            }
+            if let Some(addr) = address_from_instance_id(&device.instance_id) {
+                if !seen.insert(addr) {
+                    continue;
                 }
             }
-            BluetoothFindDeviceClose(find);
+            if let Some(name) = device.name {
+                names.push(name);
+            }
         }
         names
     }
@@ -501,18 +469,13 @@ mod windows_impl {
 
     #[cfg(test)]
     mod layout {
-        use std::mem::{offset_of, size_of};
+        use std::mem::size_of;
 
-        // `dw_size` fields must match the OS's sizeof, and the API fills these `#[repr(C)]`
-        // buffers by offset — pin the layout so a reorder/padding change can't slip through.
+        // `QueryServiceStatus` fills this `#[repr(C)]` buffer by offset — pin the layout
+        // so a reorder/padding change can't slip through.
         #[test]
         fn ffi_struct_layout() {
             assert_eq!(size_of::<super::ServiceStatus>(), 28);
-            assert_eq!(size_of::<super::DeviceSearchParams>(), 40);
-            assert_eq!(size_of::<super::SystemTime>(), 16);
-            assert_eq!(size_of::<super::DeviceInfo>(), 560);
-            assert_eq!(offset_of!(super::DeviceInfo, f_connected), 20);
-            assert_eq!(offset_of!(super::DeviceInfo, sz_name), 64);
         }
     }
 }
@@ -589,5 +552,75 @@ mod tests {
         assert!(looks_like_adapter("Realtek Bluetooth Controller"));
         assert!(!looks_like_adapter("Ken's Pixel Buds Pro 2"));
         assert!(!looks_like_adapter("MX Anywhere 3S"));
+    }
+
+    /// Instance ids below are verbatim from a live machine, so the discriminator is
+    /// pinned against real data rather than an invented shape.
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_is_remote_device_id() {
+        use super::windows_impl::is_remote_device_id;
+        // Real remote devices — classic and LE.
+        assert!(is_remote_device_id(
+            r"BTHENUM\DEV_7CE9138B5564\9&8E04A68&0&BLUETOOTHDEVICE_7CE9138B5564"
+        ));
+        assert!(is_remote_device_id(
+            r"BTHLE\DEV_F5183CA50C6B\9&1C053637&0&F5183CA50C6B"
+        ));
+        // Per-profile service nodes sit in the same setup class and must not be counted:
+        // an Avrcp transport and a GATT service are not devices.
+        assert!(!is_remote_device_id(
+            r"BTHENUM\{0000110E-0000-1000-8000-00805F9B34FB}_VID&000100E0_PID&4115\9&8E04A68&0&7CE9138B5564_C00000000"
+        ));
+        assert!(!is_remote_device_id(
+            r"BTHLEDEVICE\{0000180F-0000-1000-8000-00805F9B34FB}_DEV_VID&02046D_PID&B037_REV&0003_D0940BA106B6\A&38AF489E&0&001B"
+        ));
+        // The radio itself and the enumerators.
+        assert!(!is_remote_device_id(
+            r"USB\VID_13D3&PID_3602&MI_00\7&2434504C&0&0000"
+        ));
+        assert!(!is_remote_device_id(r"BTH\MS_BTHLE\8&29FC6E36&0&3"));
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_address_from_instance_id() {
+        use super::windows_impl::address_from_instance_id;
+        // The same physical device on both transports yields one address, which is what
+        // makes de-duplicating a dual-mode device possible.
+        assert_eq!(
+            address_from_instance_id(
+                r"BTHENUM\DEV_B0D5FBBB66EA\9&8E04A68&0&BLUETOOTHDEVICE_B0D5FBBB66EA"
+            ),
+            Some("B0D5FBBB66EA".to_string())
+        );
+        assert_eq!(
+            address_from_instance_id(r"BTHLE\DEV_B0D5FBBB66EA\9&1C053637&0&B0D5FBBB66EA"),
+            Some("B0D5FBBB66EA".to_string())
+        );
+        // Case-insensitive: the two transports disagree on case for the same device.
+        assert_eq!(
+            address_from_instance_id(r"BTHLE\Dev_f5183ca50c6b\9&1c053637&0&f5183ca50c6b"),
+            Some("F5183CA50C6B".to_string())
+        );
+        // Not an address: a service node's `_DEV_` segment is followed by VID/PID text,
+        // which must not be mistaken for one.
+        assert_eq!(
+            address_from_instance_id(
+                r"BTHLEDEVICE\{0000180F-0000-1000-8000-00805F9B34FB}_DEV_VID&02046D_PID&B037_REV&0003_D0940BA106B6\A&38AF489E&0&001B"
+            ),
+            None
+        );
+        assert_eq!(
+            address_from_instance_id(r"BTH\MS_BTHLE\8&29FC6E36&0&3"),
+            None
+        );
+        // Synthetic — no observed device produces this. It covers the hex guard, which is
+        // what stops a malformed id becoming a de-duplication key: a bogus key shared by
+        // two real devices would silently drop one of them.
+        assert_eq!(
+            address_from_instance_id(r"BTHENUM\DEV_NOTANADDRESS\9&1"),
+            None
+        );
     }
 }
