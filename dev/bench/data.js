@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788904374537,
+  "lastUpdate": 1788904924777,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19690,70 +19690,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "2b4a083ed6b7696bd56727cbcc285ed5ac45030f",
-          "message": "Unblock just pr on Linux: tests + man regen (#165)\n\nTwo coupled docs/test-hygiene fixes (no runtime behavior change), bundled\nbecause the first is what lets `just pr` pass on the reinstalled Fedora box.\n\n1. Machine-independent xrandr display tests. parse_xrandr_displays called\n   get_monitor_name_for_port (live /sys/class/drm EDID) inline, so the\n   fixture tests substituted the physically-attached monitor for the\n   fixture's connector name (DP-1 -> the panel's EDID model ATNA33AA08-0).\n   These tests are cfg(not(macos/windows)) and never ran on the old Windows\n   arrakis, so the defect was latent until the first cargo test after the\n   Fedora reinstall. Same class as #155. Extract a pure\n   parse_xrandr_displays_with(stdout, resolve); the public wrapper passes\n   get_monitor_name_for_port (production unchanged) and the tests pass\n   |_| None. Add a regression test asserting the resolver is honored.\n\n2. Regenerate docs/retch.1. The committed page carried double-bold groff\n   runs from the Windows #160 `just man` run, where the recipe's\n   sed 's/\\fB\\fB/\\fB/g' strip did not take effect. Linux regeneration\n   produces the intended single-bold output, matching the recipe's intent.\n\nPatch bump: retch-cli 0.6.2, retch-sysinfo 0.1.46 (new pub\nparse_xrandr_displays_with).\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-24T08:10:26-07:00",
-          "tree_id": "545ecee36947f96e29585e4dcc803424559d5b6b",
-          "url": "https://github.com/l1a/retch/commit/2b4a083ed6b7696bd56727cbcc285ed5ac45030f"
-        },
-        "date": 1784908263694,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 102.48218500684997,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.94733909784003,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 101.32634693579624,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.59246117887184,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46557.00100567789,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 488.7468268798646,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 728.4509923388956,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1947541185,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "a9cbad3234c6ec06f444e623a84b3ff72efbcd50",
           "message": "Bump deps + CI actions (Dependabot #161/163/164) (#167)\n\nConsolidate three open Dependabot PRs into one gated PR so the release-hygiene\nsteps they bypass (retch version bump, NOTES/man regen) are performed. No\nruntime behavior change.\n\n- Rust deps (#164, cargo-dependencies group, all patch-level, lockfile-only\n  since the Cargo.toml specs are caret ranges): clap 4.6.1->4.6.4 (pulls syn v3\n  via clap_builder/clap_derive), serde 1.0.228->1.0.229, toml 1.1.2->1.1.3,\n  clap_complete_nushell 4.6.0->4.6.1, anyhow 1.0.103->1.0.104,\n  libc 0.2.186->0.2.189, sysinfo 0.39.5->0.39.6, serde_json 1.0.150->1.0.151.\n- actions/checkout 7.0.0->7.0.1 (#163) across benchmark/claude/\n  claude-code-review/packaging/rust/security (both SHA-pinned and @v7 uses).\n- softprops/action-gh-release 3.0.1->3.0.2 (#161) in the rust.yml release job.\n\nretch-cli -> 0.6.3; retch-sysinfo unchanged (0.1.46, no source change).\nWorkspace fmt/clippy/test all green.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-24T08:51:12-07:00",
@@ -22873,6 +22809,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 3595009595,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "570913ca271decc4f08f3247f11ab82b47988ced",
+          "message": "Fix Windows Bluetooth missing LE devices (#221)\n\nThe Windows path counted connected devices with bthprops\n(BluetoothFindFirstDevice with fReturnConnected), which is a BR/EDR-only\nAPI: a Bluetooth Low Energy peripheral is not returned by it at all, so\nevery LE mouse, keyboard and headset was missing from the count. Reported\nas \"shows only 1 of 2 connected devices\"; the enumeration loop it appears\nto blame is correct.\n\nEnumerate Bluetooth device nodes via SetupAPI instead and read\nSystem.Devices.Connected on each, which covers classic and LE alike.\nDual-mode devices enumerate once per transport and are de-duplicated by\nthe address in the instance id, not by name, since two distinct devices\ncan share a name. Only a definite true counts: a node not exposing the\nproperty is unknown and skipped rather than reported.\n\nWinRT (Windows.Devices.Enumeration) is the documented route to LE state\nand was tried first. Its AssociationEndpoint enumeration never completed\n(status=Started, no error, after 8s) and the query that did work cost\n~1s; SetupAPI reads the same device nodes in 11ms.\n\nDeletes the bthprops FFI entirely, so one fewer linked library. Adapter\nname and power state are unchanged.\n\nVerified on hardware with two devices connected, against controls: 2\nconnected where bthprops reported 1. No measurable cost, measured against\na binary built from main, interleaved and repeated.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-08T14:22:37-07:00",
+          "tree_id": "3d202f5455f7b7b7aee8b5b2a7089f09c58490ee",
+          "url": "https://github.com/l1a/retch/commit/570913ca271decc4f08f3247f11ab82b47988ced"
+        },
+        "date": 1788904921157,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 176.80190786564802,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9478906264072386,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 96.1474865057582,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.35948938261126,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46044.060432328544,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 493.1129292666863,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 751.816401728375,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2793083740,
             "unit": "ns"
           }
         ]
