@@ -116,7 +116,70 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.10.1)
+## Current State (v0.10.2)
+- **v0.10.2 - Windows Bluetooth counted classic devices only, so every LE peripheral was
+  invisible** (`crates/sysinfo/src/bluetooth.rs`, `crates/sysinfo/src/win_setupapi.rs`).
+  Closes the first §6a open item, reported 2026-07-13 as "shows only 1 of 2 connected
+  devices".
+  - **The enumeration loop was never the bug.** The reported symptom reads like an
+    off-by-one in `BluetoothFindFirstDevice`/`FindNextDevice`, and that loop is correct.
+    `bthprops` is a **BR/EDR-only** API: an LE-only peripheral is not returned by it at
+    all - not as `fConnected = 0`, but absent from the enumeration entirely. Proved with a
+    probe that ran the exact search retch used and then widened it to every category
+    (`fReturnAuthenticated`/`Remembered`/`Unknown`/`Connected` all set): it returned two
+    classic devices and none of the three paired LE mice on the machine.
+  - **Ground truth was established before the fix, with controls**, because the obvious
+    oracle disagreed: `fastfetch` also reported 1. Two paired-but-idle mice served as
+    negative controls against the connected one - their HID child nodes read `Unknown`
+    while the connected device's read `OK`, and `System.Devices.Connected` read `False`
+    against `True`. Two devices genuinely were connected while both tools said one.
+  - **`System.Devices.Connected` ({83DA6326-97A6-4088-9453-A1923F573B29}, PID 15) is the
+    signal**, read per device node with `SetupDiGetDevicePropertyW`. Verified across all
+    five paired devices on both transports, and cross-checked against
+    `DEVPKEY_Device_DevNodeStatus`'s `DN_DEVICE_DISCONNECTED` bit, which agreed on every
+    one. The two neighbouring properties that look usable are not:
+    `DEVPKEY_Bluetooth_LastConnectedTime` is historical (it records when a link was last
+    *established*, and does not move while one is up), and
+    `DEVPKEY_DeviceContainer_AlwaysShowDeviceAsConnected` reads `True` regardless - an
+    oracle that cannot fail, the family this file keeps recording.
+  - **WinRT was the intended fix and was abandoned on evidence.** `Windows.Devices.
+    Enumeration` over association endpoints is the documented way to see LE state, and
+    v0.8.0's `media.rs` already carries a `combase.dll` bootstrap, so it was available.
+    But `FindAllAsync` with `DeviceInformationKind::AssociationEndpoint` **never
+    completed** - `status = Started`, no error, after a full 8 s - and the unfiltered
+    query that did work took ~1 s for 1489 device interfaces. A `--long` field that can
+    stall is worse than one that under-counts. SetupAPI is synchronous, needs no WinRT,
+    and enumerated the same six device nodes in **11 ms**.
+  - **Dual-mode devices are de-duplicated by address, and that is measured rather than
+    defensive**: a phone paired for both audio and LE enumerates as *both*
+    `BTHENUM\DEV_<addr>` and `BTHLE\DEV_<addr>`, so counting nodes would report it twice.
+    De-duplication keys on the address parsed from the instance id, **not** the name -
+    two distinct devices can share a name, and collapsing those would under-count.
+  - Only a definite `true` counts: a node not exposing the property is unknown and is
+    skipped rather than reported, the same call as `Users: 0` (v0.6.1) and the v0.7.0
+    input classification - under-reporting beats asserting something false.
+  - **The whole `bthprops` FFI is deleted** - `DeviceSearchParams`, `DeviceInfo`,
+    `SystemTime`, the `#[link(name = "bthprops")]` block and their layout assertions -
+    since nothing else used it. One fewer linked library, and adapter name and power state
+    are untouched.
+  - **Measured against a binary built from `main`, interleaved and repeated** because a
+    single ordered pair is not a measurement: `--fields bluetooth` 232.8 -> 235.2 ms and,
+    on the repeat, 229.4 -> 231.7 ms, against a spread of 7-10 ms; `--long` 2766.8 ->
+    2763.1 ms and, on the repeat, 2840.1 -> 2709.8 ms against spreads of 80-497 ms. The
+    `--long` pair moves in both directions across repeats, which is the honest reading -
+    inside the noise, not evidence the new path is faster.
+  - 2 new unit tests over pure helpers, both **watched failing** against mutated code:
+    relaxing the instance-id discriminator makes a GATT service node count as a device,
+    and dropping the address normalisation makes the same physical device fail to
+    de-duplicate. A third case covers the hex guard on a synthetic id, labelled as such -
+    no observed device produces it, but without the guard a malformed id becomes a
+    de-duplication key that would silently drop a real device.
+  - Verified live on arrakis: `On (MediaTek Bluetooth Adapter) - 2 connected (MX Vertical,
+    soundcore Liberty 5 Pro)` where `bthprops` reported one. **retch is now ahead of
+    fastfetch on this field**, which still reports only the classic device - so fastfetch
+    is not the oracle here, and the controls above are.
+  - `retch-sysinfo` -> `0.1.58` (library behaviour change); `retch-cli` -> `0.10.2`. Patch
+    bump (bugfix).
 - **v0.10.1 - post-release: packaging pinned to 0.10.0, next cycle opened** (packaging only; no runtime change).
   - `packaging/aur` (PKGBUILD and .SRCINFO) and `packaging/copr/retch.spec` bumped to **0.10.0**, the version just released. Both track the last RELEASED tag, so they can only move after the tag exists.
   - `Cargo.toml` -> **0.10.1**, which is what lets this be a normal gated PR rather than a commit straight to `main`: `just pr`'s version check compares against the last tag, so the packaging bump passes as long as it travels with the next version bump.
@@ -2086,10 +2149,13 @@ Windows 11, Windows Terminal).
   `HKLM\SYSTEM\CurrentControlSet\Enum\DISPLAY\...` registry keys, and parses monitor brand/model
   names using `parse_monitor_name_from_edid`).
 
+- ~~**Bluetooth shows only 1 of 2 connected devices**~~ — fixed v0.10.2. Not the
+  enumeration loop, which was correct: `bthprops` is BR/EDR-only and never returned an LE
+  peripheral at all, so every LE mouse, keyboard and headset was invisible to the count.
+  Now enumerates Bluetooth device nodes via SetupAPI and reads `System.Devices.Connected`,
+  covering both transports, with dual-mode devices de-duplicated by address.
+
 **Open**
-- **Bluetooth shows only 1 of 2 connected devices** (bug). `bluetooth.rs` Windows path uses
-  `BluetoothFindFirstDevice`/`BluetoothFindNextDevice` with `{fReturnConnected}` — audit the
-  enumeration loop / search-params against a box with 2 connected devices.
 - **Logo renders above the text, not beside it (upper-right)** on Windows Terminal
   (CLI/rendering, retch-cli `src/`). Likely terminal-detection / cursor-positioning specific
   to Windows Terminal.
