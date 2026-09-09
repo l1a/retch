@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788928366973,
+  "lastUpdate": 1788928921610,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -16488,70 +16488,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "7c0cf9c9583413e1b1d346274f3367162daef52e",
-          "message": "Bump base64 0.22 -> 0.23 (Dependabot #166) (#169)\n\nThe one genuinely-new bump from Dependabot #166 (the other 8 crates in that\ngroup already landed in #167/v0.6.3). A semver-breaking 0.x bump, held out of\nthe v0.6.3 consolidation pending an API check. No runtime behavior change.\n\nbase64 is used only under the optional `graphics` feature (src/logo.rs, two\ngeneral_purpose::STANDARD.encode() sites for the Kitty/iTerm2 inline-image\nprotocol). The Engine encode API is unchanged in 0.23: build + clippy\n-D warnings are clean *with --features graphics* (the default gate does not\ncompile base64), and tests pass with and without the feature. `cargo bench`\nis unchanged (base64 is not on any benchmarked path). Widened the Cargo.toml\nspec \"0.22\" -> \"0.23\" since the caret range wouldn't admit 0.23.\n\nretch-cli -> 0.6.4; retch-sysinfo unchanged (0.1.46).\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-25T08:22:25-07:00",
-          "tree_id": "5c659664226725eb40ca8c915bafbcf13fe02f12",
-          "url": "https://github.com/l1a/retch/commit/7c0cf9c9583413e1b1d346274f3367162daef52e"
-        },
-        "date": 1784994908775,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 125.75091081359726,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.316893860025843,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 125.54940493391427,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 96.5268852346032,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 44104.502675086704,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 570.738999112332,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 829.8544418083686,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2903597250,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "586012cefc4c98dfa9ab5b227b0832620797265c",
           "message": "Lint graphics feature in just check (v0.6.5) (#170)\n\nAdd `cargo clippy --features graphics -- -D warnings` to the `check` recipe\n(and therefore the `just pr` gate). The base64 0.22->0.23 bump surfaced that\nbase64/image/icy_sixel and their src/logo.rs call sites live behind the\noptional `graphics` feature, which the default `cargo clippy --workspace`\nnever compiles -- so a graphics-only lint or API break could pass the gate\nunseen. Targets retch-cli (which defines the feature), not --workspace.\n\nTooling only, no runtime change. Closes the LOCAL gate gap; CI still builds\ndefault features, so a CI graphics job would be a separate follow-up.\nretch-cli -> 0.6.5; retch-sysinfo unchanged (0.1.46).\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-25T09:33:31-07:00",
@@ -19671,6 +19607,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2192281420,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ade8b05d02ecbc8e19755a7d7caf4503523edc9a",
+          "message": "Add Windows disk-io and net-io throughput (#223)\n\nBoth fields shipped Linux-only in v0.10.0 and returned nothing on Windows.\nThey now read native counters there: IOCTL_DISK_PERFORMANCE per\n\\.\\PhysicalDriveN, and GetIfTable2 per interface. No subprocess, and no\nelevation - both were confirmed to answer from an unelevated shell, on a\nzero-access handle, before the code was designed around them.\n\nNothing outside the two sample_* functions changed. The rate maths, the\n100 ms floor, the sampling window in fetch.rs, fields.rs and display.rs\nwere already platform-independent, so this is an arm, not a redesign.\n\nThe finding: GetIfTable2 returns one row per NDIS lightweight filter bound\nto an adapter, each repeating that adapter's counters. Wi-Fi appeared five\ntimes here, every row reading in=219996461 out=32914969. Reporting them all\nstates the machine's throughput five times - the Windows form of the\npartition double-counting the Linux arm already excludes. The rule is to\nexclude FilterInterface rows, NOT to keep HardwareInterface ones: the wt0\nWireGuard tunnel is neither, and carries real traffic, so the obvious\nfilter drops exactly the interface class the Linux side reports.\n\nGetIfTable2 rather than GetIfTable, whose MIB_IFROW counters are 32-bit and\nwrap every 4 GB; this adapter had already moved 216 GB.\n\nCross-checked against independent oracles under time-bounded load, since\nagreement on an idle machine proves nothing: disk against Get-Counter\n(229.5/236.3/199.9 vs 221.7/191.0/215.7 MB/s), net against\nGet-NetAdapterStatistics (68.1/66.3 vs 57.3/53.8 MB/s), both 0 B/s idle.\nPerf A/B against a binary built from main moves in both directions across\nrepeats, i.e. inside the noise.\n\nThe drive-scan range is now shared with phys-disk so the two cannot drift\ninto disagreeing about which disks exist.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-08T21:11:18-07:00",
+          "tree_id": "03ac4514727051efabf6fd5801fd68948b70b4d0",
+          "url": "https://github.com/l1a/retch/commit/ade8b05d02ecbc8e19755a7d7caf4503523edc9a"
+        },
+        "date": 1788928910178,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 168.52856682493464,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.7845847951350704,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 92.68176122019962,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 75.09466428558514,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 36236.72433804689,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 444.4614782631441,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 668.6928365118471,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1434444745,
             "unit": "ns"
           }
         ]
