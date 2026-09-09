@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788989277677,
+  "lastUpdate": 1788989783981,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20014,70 +20014,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "b899b3ca3988eab8b8632cbb3b5263bf35322a76",
-          "message": "Fix graphical logo placement after scroll (v0.6.9) (#174)\n\nThe v0.6.8 side-by-side choreography saved the cursor (DECSC), drew\nthe image, and restored (DECRC). With the prompt at the bottom of the\nscreen the draw scrolls the viewport, and DECSC/DECRC restore a\nviewport-relative position, so the info text landed below the logo\ninstead of beside it. Reproduced identically on Rio and kitty.\n\nReserve the logo rows with newlines first and cursor-up back to the\nimage-top row, so any scroll happens before the save and nothing\nbetween save and restore can scroll. Fresh-screen output unchanged.\n\nAlso refresh the stale in-repo packaging reference copies\n(PKGBUILD/package.nix 0.3.21 -> 0.6.8), per the tracked WIP task.\n\nAssisted-By: Claude Fable 5",
-          "timestamp": "2026-07-26T07:32:00-07:00",
-          "tree_id": "a20285fab03aaf49bedc3f4d570f209aaf34e68d",
-          "url": "https://github.com/l1a/retch/commit/b899b3ca3988eab8b8632cbb3b5263bf35322a76"
-        },
-        "date": 1785078730005,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 101.93889166298653,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.953503418634525,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 104.24104221406726,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.04076380406396,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45573.51277233214,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 491.5327584579415,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 752.9869484136301,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2750815045,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "fd8164049e99da545e8fe98d3f0b76e8c09b6faa",
           "message": "Fix AMD GPU names via libdrm amdgpu.ids (v0.6.10) (#175)\n\nThe Strix Halo iGPU (1002:1586) was reported as 'Radeon 880M / 890M':\nimprove_amd_gpu_name's first-substring-wins table matched the 'Strix'\n(Strix Point) entry against pci.ids' 'Strix Halo [...]' name, and\npci.ids cannot separate 1586's revision variants (8040S/8050S/8060S)\nat all.\n\nResolve AMD names on Linux through /usr/share/libdrm/amdgpu.ids first,\nkeyed by device id + revision from sysfs (how fastfetch does it), with\ngraceful fallback to the pci.ids + codename path. Order 'Strix Halo'\nbefore 'Strix' in the fallback table and add 'Krackan'.\n\nVerified live on Strix Halo: 'AMD Radeon 8060S Graphics (32 GB)'.\n\nAssisted-By: Claude Fable 5",
           "timestamp": "2026-07-26T07:58:18-07:00",
@@ -23197,6 +23133,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1195213875,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6c1e280cf5d410f32f6f429246ddf45e1e8dff89",
+          "message": "packaging: pin to 0.11.6, open 0.11.7 (#230)\n\nPost-release packaging commit as a normal gated PR: packaging/aur and\npackaging/copr pinned to the released v0.11.6, Cargo.toml opened on\n0.11.7 so `just pr`'s tag-equality check passes.\n\nsha256 02136d0d... verified three independent ways (sha256sum, python\nhashlib, openssl) against the real v0.11.6 tarball, and the tarball's\ndocs/retch.1 is byte-identical to the committed page at the tag.\n.SRCINFO came out container_file_t with no stray temp file, so the #203\nSELinux fix still holds on this synced tree.\n\nAlso corrects NOTES drift this release exposed: the v0.11.5 entry\ndescribes a version that never shipped. 0.11.5 was bumped on a branch\nand amended into 0.11.6 when the two changes were combined into one PR,\nso the released run is 0.11.3, 0.11.4, 0.11.6. The entry is relabelled\nrather than deleted, and its \"two documents\" count corrected to three --\nthe wiki carried the same claim.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T13:57:08-07:00",
+          "tree_id": "ac2d27a36d6106e6452294f8615c0344605b16eb",
+          "url": "https://github.com/l1a/retch/commit/6c1e280cf5d410f32f6f429246ddf45e1e8dff89"
+        },
+        "date": 1788989780119,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 186.62943712303348,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9476066865825885,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.74611832696674,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 84.49332088637924,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 48043.9479643127,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 490.17404834495136,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 749.3488960288054,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1533297765,
             "unit": "ns"
           }
         ]
