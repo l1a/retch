@@ -116,7 +116,54 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.11.0)
+## Current State (v0.11.1)
+- **v0.11.1 - three defects in the `Net` field, all from matching a formatted string**
+  (`crates/sysinfo/src/network.rs`, `crates/sysinfo/src/win_iftable.rs` (new),
+  `crates/sysinfo/src/io.rs`, `src/display.rs`). Found while implementing v0.11.0's
+  `net-io`; the first was recorded in §6a then, and investigating it turned up two more.
+  - **The root cause is one design choice, not three mistakes.** `detect_networks` returned
+    pre-formatted, ANSI-colourised `String`s, so `display.rs` had to recover semantics from
+    presentation by substring-matching them. Every defect below is that pattern.
+  - **1. The active interface was matched by substring, against the whole rendered line.**
+    `net.contains(active)` with `active = "Wi-Fi"` also matches
+    `Wi-Fi-Native WiFi Filter Driver-0000`, so **both** were printed as the active
+    interface, both painted bright blue. **This is cross-platform, not a Windows quirk**:
+    on Linux `eth0` matches an `eth0.100` VLAN and any `veth0…` pair. It also matched
+    against the addresses and byte counts, not just the name.
+  - **2. Windows listed NDIS filter pseudo-interfaces as interfaces**, each carrying a copy
+    of its adapter's counters - the duplicate `Net` line with identical RX/TX. Excluded now
+    on the same `FilterInterface` rule `net-io` uses.
+  - **3. The standard-mode fallback was dead code.** It tested
+    `net.contains("[Up]")`, but the status is colourised *before* the line is built, so the
+    bytes are `[` + `ESC[32m` + `Up` + `ESC[39m` + `]` and the literal `[Up]` never
+    appears. **Measured, not reasoned**: 0 occurrences in the raw output, 2 after stripping
+    ANSI. Consequence: with no resolvable active interface, standard mode printed **no
+    `Net` line at all** rather than falling back to the first interface that is up.
+  - **The fix is structural.** `detect_networks` now returns `NetworkInterface { name,
+    is_up, line }`, so identity and status are *facts* rather than things inferred from
+    presentation, and `display.rs` compares names exactly. Two pure helpers
+    (`partition_net_lines`, `choose_net_line`) carry the logic and are unit-tested without
+    a terminal or a network.
+  - **`GetIfTable2` moved into a shared `win_iftable` module** rather than being declared a
+    second time in `network.rs`: `MIB_IF_ROW2` is 1352 bytes with its useful fields past
+    1.2 KB of others, and two copies drifting is precisely what the shared `win_setupapi`
+    module exists to prevent. `io.rs` now consumes it too, so there is one definition and
+    one set of layout guards. The module is gated `#[cfg(any(target_os = "windows", test))]`
+    so the pure classification rule is exercised by the Linux and macOS CI legs as well.
+  - **All three watched failing against the code that shipped**, each for its own reason:
+    the substring match classified 2 of 2 Wi-Fi rows as active (`left: 2, right: 1`) and 3
+    of 3 `eth0*` rows on the Linux fixture (`left: 3, right: 1`), and the literal-`[Up]`
+    fallback returned `None` where a line was required.
+  - **A fixture defect of mine, caught before it could matter**: the first version of the
+    test helper built its line with a plain `[Up]`, which would have let the broken
+    `contains("[Up]")` predicate pass and proved nothing. The helper now colourises the
+    status exactly as `detect_networks` does, so the fixture reproduces the condition the
+    bug needs.
+  - Verified live on arrakis: `--long` shows **one** `Net` line where it showed two, with
+    exactly one bright-blue (`ESC[94m`) run in the output; standard mode unchanged.
+  - `retch-sysinfo` -> `0.1.60` (public API change: `detect_networks` returns
+    `Vec<NetworkInterface>`); `retch-cli` -> `0.11.1`. Patch bump - three bug fixes, no new
+    field.
 - **v0.11.0 - `disk-io` and `net-io` on Windows** (`crates/sysinfo/src/io.rs`,
   `crates/sysinfo/src/disk.rs`). Both fields shipped Linux-only in v0.10.0 and returned
   nothing on Windows; they now read native counters there, with no subprocess and no
@@ -2256,12 +2303,18 @@ Windows 11, Windows Terminal).
   excluding `FilterInterface` rows — and *not* by keeping `HardwareInterface` rows, which
   would drop tunnel interfaces like WireGuard's.
 
+- ~~**The `net` field lists NDIS filter pseudo-interfaces on Windows**~~ — fixed v0.11.1,
+  and **the v0.11.0 entry describing it here was wrong on the cause**, which is worth
+  keeping rather than quietly overwriting. It attributed the duplicate line solely to
+  sysinfo's interface list. That was half of it: the second line existed because sysinfo
+  lists the filter instance, but *both* lines rendered as the active interface because
+  `display.rs` matched the active interface with `line.contains(active)` — a substring test
+  over the rendered string, which is a **cross-platform** defect (`eth0` matches
+  `eth0.100`) and was not mentioned at all. A third defect in the same block, a fallback
+  keyed on a literal `[Up]` that the colourised line never contains, was also missed. See
+  the v0.11.1 entry.
+
 **Open**
-- **The `net` field lists NDIS filter pseudo-interfaces on Windows.** A `--long` run shows
-  `Net: Wi-Fi-Native WiFi Filter Driver-0000` alongside the real `Wi-Fi`, duplicating its
-  RX/TX totals. Found while implementing `net-io` in v0.11.0, which excludes them; `net`
-  builds its list from sysinfo rather than `GetIfTable2`, so the same filter cannot simply
-  be reused — it needs the two cross-referenced in `detect_networks`.
 - **Logo renders above the text, not beside it (upper-right)** on Windows Terminal
   (CLI/rendering, retch-cli `src/`). Likely terminal-detection / cursor-positioning specific
   to Windows Terminal.

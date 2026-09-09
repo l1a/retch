@@ -11,6 +11,7 @@ use crate::fetch::SystemInfo;
 use crate::fields::{self, Mode};
 use crate::logo;
 use crate::theme::{colorize_nested, Theme, ACTIVE_IFACE_PREFIX};
+use retch_sysinfo::network::NetworkInterface;
 
 /// Decide whether to render a logo at all.
 ///
@@ -438,6 +439,39 @@ fn render_graphical_side_by_side(
 /// This function handles theme selection, logo rendering (including fallbacks
 /// between graphics, Chafa, and ASCII), and field filtering based on
 /// CLI flags and configuration.
+/// Splits interfaces into (active, everything else), preserving order within each group.
+///
+/// **The active interface is identified by an exact NAME match**, which is the whole point
+/// of this function existing. It replaces `line.contains(active)` over the rendered line,
+/// which matched any interface whose *presentation* happened to contain the active name:
+/// on Windows `Wi-Fi` matched the `Wi-Fi-Native WiFi Filter Driver-0000` pseudo-interface,
+/// so both were printed as the active interface; on Linux `eth0` matches an `eth0.100`
+/// VLAN or a `veth0…` pair. Substring-matching a formatted string cannot answer a question
+/// about identity, and it also read the addresses and byte counts, not just the name.
+fn partition_net_lines<'a>(
+    nets: &'a [NetworkInterface],
+    active: Option<&str>,
+) -> (Vec<&'a NetworkInterface>, Vec<&'a NetworkInterface>) {
+    nets.iter().partition(|n| active == Some(n.name.as_str()))
+}
+
+/// Chooses the single interface standard mode shows: the active one, else the first that
+/// is up.
+///
+/// The fallback is the part that was broken. It used to test `line.contains("[Up]")`, but
+/// the status is colourised before the line is built, so the bytes are
+/// `[` + `ESC[32m` + `Up` + `ESC[39m` + `]` and the literal `[Up]` **never appears** —
+/// the branch could not fire, and standard mode printed no `Net` line at all whenever the
+/// active interface could not be resolved. Keyed on the interface's own `is_up` now.
+fn choose_net_line<'a>(
+    nets: &'a [NetworkInterface],
+    active: Option<&str>,
+) -> Option<&'a NetworkInterface> {
+    nets.iter()
+        .find(|n| active == Some(n.name.as_str()))
+        .or_else(|| nets.iter().find(|n| n.is_up))
+}
+
 pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<()> {
     let _config = config;
     let theme_name = _config.theme.as_deref().or(cli.theme.as_deref());
@@ -691,44 +725,20 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
 
     // Network
     if should_show("Net") {
+        let active = info.active_interface.as_deref();
         if cli.long || cli.full {
-            for net in &info.networks {
-                if let Some(ref active) = info.active_interface {
-                    if net.contains(active) {
-                        // Re-assert bright blue after the nested green "Up" /
-                        // red "Down" reset so the whole active line stays blue
-                        // (brackets and RX/TX included), not just up to "[".
-                        print_line("Net", &colorize_nested(net, ACTIVE_IFACE_PREFIX));
-                    }
-                }
+            let (active_nets, others) = partition_net_lines(&info.networks, active);
+            for net in active_nets {
+                // Re-assert bright blue after the nested green "Up" /
+                // red "Down" reset so the whole active line stays blue
+                // (brackets and RX/TX included), not just up to "[".
+                print_line("Net", &colorize_nested(&net.line, ACTIVE_IFACE_PREFIX));
             }
-            for net in &info.networks {
-                if let Some(ref active) = info.active_interface {
-                    if net.contains(active) {
-                        continue;
-                    }
-                }
-                print_line("Net", net);
+            for net in others {
+                print_line("Net", &net.line);
             }
-        } else {
-            let mut printed = false;
-            if let Some(ref active) = info.active_interface {
-                for net in &info.networks {
-                    if net.contains(active) {
-                        print_line("Net", net);
-                        printed = true;
-                        break;
-                    }
-                }
-            }
-            if !printed {
-                for net in &info.networks {
-                    if net.contains("[Up]") {
-                        print_line("Net", net);
-                        break;
-                    }
-                }
-            }
+        } else if let Some(net) = choose_net_line(&info.networks, active) {
+            print_line("Net", &net.line);
         }
     }
     if should_show("Net IO") {
@@ -1200,6 +1210,92 @@ fn graphical_logo_cells(bytes: &[u8]) -> (usize, usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── net line selection ────────────────────────────────────────────────────
+
+    fn net(name: &str, is_up: bool) -> NetworkInterface {
+        // The status is COLOURISED, exactly as `detect_networks` builds it, so the literal
+        // "[Up]" does not appear in the line. That is not incidental detail: the bug being
+        // guarded is a `line.contains("[Up]")` test that could never match, and a fixture
+        // with a plain "[Up]" would let that broken predicate pass and prove nothing.
+        let status = if is_up {
+            "\x1b[32mUp\x1b[39m"
+        } else {
+            "\x1b[31mDown\x1b[39m"
+        };
+        NetworkInterface {
+            name: name.to_string(),
+            is_up,
+            line: format!("{name} (10.0.0.1) [{status}] RX: 1.0 MB TX: 1.0 MB"),
+        }
+    }
+
+    #[test]
+    fn test_active_interface_is_matched_by_exact_name_not_substring() {
+        // The Windows case that shipped: an NDIS filter pseudo-interface whose name has
+        // the real adapter's name as a prefix. Both were previously printed as active.
+        let nets = vec![
+            net("Wi-Fi-Native WiFi Filter Driver-0000", true),
+            net("Wi-Fi", true),
+        ];
+        let (active, others) = partition_net_lines(&nets, Some("Wi-Fi"));
+        assert_eq!(active.len(), 1);
+        assert_eq!(active[0].name, "Wi-Fi");
+        assert_eq!(others.len(), 1);
+        assert_eq!(others[0].name, "Wi-Fi-Native WiFi Filter Driver-0000");
+    }
+
+    #[test]
+    fn test_active_interface_does_not_match_a_vlan_or_veth_sibling() {
+        // The same defect on Linux, where it is not hidden by any filtering: a VLAN and a
+        // veth pair both carry the parent's name as a prefix.
+        let nets = vec![
+            net("eth0", true),
+            net("eth0.100", true),
+            net("veth0a1b2c3", true),
+        ];
+        let (active, others) = partition_net_lines(&nets, Some("eth0"));
+        assert_eq!(active.len(), 1);
+        assert_eq!(active[0].name, "eth0");
+        assert_eq!(others.len(), 2);
+    }
+
+    #[test]
+    fn test_no_active_interface_means_no_line_is_highlighted() {
+        let nets = vec![net("eth0", true), net("wlan0", true)];
+        let (active, others) = partition_net_lines(&nets, None);
+        assert!(active.is_empty());
+        assert_eq!(others.len(), 2);
+    }
+
+    #[test]
+    fn test_standard_mode_prefers_the_active_interface() {
+        let nets = vec![net("docker0", true), net("wlan0", true)];
+        let chosen = choose_net_line(&nets, Some("wlan0")).expect("a line");
+        assert_eq!(chosen.name, "wlan0");
+    }
+
+    #[test]
+    fn test_standard_mode_falls_back_to_the_first_up_interface() {
+        // This is the branch that could never fire: it tested the rendered line for the
+        // literal "[Up]", which is never present because the status is colourised. With
+        // no active interface, standard mode printed NO Net line at all.
+        let nets = vec![net("eth0", false), net("wlan0", true), net("eth1", true)];
+        let chosen = choose_net_line(&nets, None).expect("a line, not None");
+        assert_eq!(chosen.name, "wlan0");
+
+        // Same fallback when the active interface is known but absent from the list.
+        let chosen = choose_net_line(&nets, Some("ppp0")).expect("a line, not None");
+        assert_eq!(chosen.name, "wlan0");
+    }
+
+    #[test]
+    fn test_standard_mode_reports_nothing_when_every_interface_is_down() {
+        // Under-reporting beats asserting something false: no up interface means no line,
+        // rather than presenting a down one as the connection.
+        let nets = vec![net("eth0", false), net("eth1", false)];
+        assert!(choose_net_line(&nets, None).is_none());
+    }
 
     // ── should_show_logo ──────────────────────────────────────────────────────
 
