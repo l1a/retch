@@ -14,7 +14,7 @@
 # at release time, not by releases.
 
 Name:           retch
-Version:        0.10.0
+Version:        0.11.2
 Release:        1%{?dist}
 Summary:        A fast, feature-rich system information fetcher written in Rust
 
@@ -115,6 +115,9 @@ cargo test --release --locked --workspace
 %{fish_completions_dir}/retch.fish
 
 %changelog
+* Wed Sep 09 2026 Ken Tobias <634380+l1a@users.noreply.github.com> - 0.11.2-1
+- Update to 0.11.2
+
 * Mon Sep 07 2026 Ken Tobias <634380+l1a@users.noreply.github.com> - 0.10.0-1
 - Update to 0.10.0
 
