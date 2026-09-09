@@ -116,7 +116,45 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.11.1)
+## Current State (v0.11.2)
+- **v0.11.2 - `dns` reads `GetAdaptersAddresses` instead of spawning PowerShell (Windows)**
+  (`crates/sysinfo/src/network.rs`). The `--long` per-field sweep named this the single
+  slowest field on Windows by a wide margin.
+  - **Measured before it was touched**: `retch --fields dns` **3409 ms** against a ~322 ms
+    process-startup floor, from a hyperfine sweep of all 56 `--long` fields in which **41
+    were startup-bound**. Second was `battery` at 2531 ms. Everything else was noise.
+  - **`-NoProfile` is NOT the fix, and this was measured rather than assumed** - it was the
+    obvious one-line candidate, since this file records a ~642 ms profile cost. Bare
+    `powershell -Command exit` is **893 ms**; `-NoProfile` **878 ms**. dns 3005 vs 3058,
+    battery 2233 vs 2228. All inside noise. That ~642 ms figure is about **pwsh**
+    (PowerShell 7); these call Windows PowerShell 5.1, whose profile here is trivial. So
+    the cost is ~890 ms of interpreter startup plus ~2100 ms of cmdlet work, and only
+    removing the spawn removes it - the #146-#150 conclusion, re-derived.
+  - **The enabling detail: `GAA_FLAG_SKIP_DNS_SERVER` was set.** `GAA_FLAGS` was `0x0E` =
+    `SKIP_ANYCAST | SKIP_MULTICAST | SKIP_DNS_SERVER`, so `FirstDnsServerAddress` was
+    declared in the struct and **guaranteed null** - which is why the field spawned
+    PowerShell in the first place. Clearing that one bit (`0x06`) populates it. Worth
+    stating plainly because an earlier reading of this code claimed the DNS data was
+    "already fetched"; it was not, it was explicitly suppressed.
+  - **Output is byte-identical**, captured before and diffed after:
+    `DNS Server: 10.10.1.1, 100.101.255.254`. IPv4-only and lexicographically sorted, both
+    preserved deliberately so this is a pure performance change - the replaced query passed
+    `-AddressFamily IPv4`, and `Sort-Object -Unique` sorts as strings, which is why
+    `10.10.1.1` precedes `100.101.255.254`.
+  - **Result: `--fields dns` 3409 -> 385 ms (~8.9x), essentially the startup floor.**
+  - **But `--long` only went 3352 -> 3076 ms, and the model that predicted otherwise was
+    wrong.** Because fields collect concurrently, `dns` at 3409 ms looked like it set
+    `--long`'s wall clock, and 3409 ≈ 3352 seemed to confirm it. It did not: removing the
+    cost moved `--long` by ~8%. The `--fields`-based removal test that suggested a larger
+    win (6540 -> 2890 ms) does not model `--long`, exactly as the caveat recorded alongside
+    it warned. **`--long` on Windows is still 2.1x slower than `fastfetch -c all`**
+    (3076 vs 1467 ms), so NOTES §3's blocking condition is not cleared; `battery` is the
+    next target and this entry should not be read as having fixed the mode.
+  - 3 new unit tests over `parse_sockaddr`, keyed on byte fixtures rather than live
+    adapters so they assert the wire layout on every platform's CI. **Watched failing**
+    against the classic offset error (reading the IPv4 address at 0 instead of 4), which
+    reports `Some(2.0.0.53)` - the family and port read as an address.
+  - `retch-sysinfo` -> `0.1.61`; `retch-cli` -> `0.11.2`. Patch bump.
 - **v0.11.1 - three defects in the `Net` field, all from matching a formatted string**
   (`crates/sysinfo/src/network.rs`, `crates/sysinfo/src/win_iftable.rs` (new),
   `crates/sysinfo/src/io.rs`, `src/display.rs`). Found while implementing v0.11.0's
@@ -2205,6 +2243,26 @@ Adds over long:
     lifting them into CI is a port rather than a redesign. It still needs a crates.io token
     and an AUR SSH key as secrets, and it still means a bot commit to `main` - which is a
     deliberate trade against the gating just gained, not a free win.
+- **Windows `--long` is slower than fastfetch, and §3 calls that blocking.** Measured
+  2026-09-09 on arrakis: `retch --long` **3076 ms** vs `fastfetch -c all` **1467 ms**. The
+  standard mode is fine (327 vs 1361 ms, 4.2x faster); it is `--long` and `--short` that
+  are behind.
+  - **Per-field sweep (hyperfine, all 56 `--long` fields, `--fields {f}`)**: the process
+    startup floor is **~322 ms** and **41 of 56 fields sit within 20 ms of it**. The
+    outliers were `dns` 3409 ms, `battery` 2531 ms, `shell` 1284 ms, `public-ip` 518 ms.
+  - **`dns` is fixed in v0.11.2** (3409 -> 385 ms). **`battery` is the next target**: it
+    spawns `powershell -Command "Get-CimInstance Win32_Battery …"`. The native route is the
+    battery IOCTL interface (`GUID_DEVCLASS_BATTERY` via SetupAPI +
+    `IOCTL_BATTERY_QUERY_INFORMATION`) - more work than `dns` was, because
+    `GetSystemPowerStatus` alone does not give design/full-charge capacity.
+  - **Do not chase `shell`**: 1284 ms in isolation but **19 ms** when removed from the full
+    set, i.e. it overlaps and is not on the critical path. Recorded because the isolated
+    sweep alone points straight at it.
+  - **`-NoProfile` is not a shortcut for any of these** - measured, see the v0.11.2 entry.
+  - **A caveat on method**: `--fields <all 56 long fields>` measures 6540 ms while real
+    `--long` measures 3352 ms, and removing `dns` moved the former by 3650 ms but the
+    latter by only 276 ms. **The `--fields` harness does not model `--long`'s concurrency**;
+    confirm any predicted win against the real mode before believing it.
 - **Package repository submissions**: Submit retch to AUR (Arch User Repository) and nixpkgs so it appears in the [Repology](https://repology.org/project/retch/versions) packaging status widget. The Nix flake (contributed by @quixaq) is a useful starting point for the nixpkgs submission.
 - **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
 - **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
