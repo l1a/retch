@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788987390901,
+  "lastUpdate": 1788987480864,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4028,6 +4028,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1034346080.48
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "6c1e280cf5d410f32f6f429246ddf45e1e8dff89",
+          "message": "packaging: pin to 0.11.6, open 0.11.7 (#230)\n\nPost-release packaging commit as a normal gated PR: packaging/aur and\npackaging/copr pinned to the released v0.11.6, Cargo.toml opened on\n0.11.7 so `just pr`'s tag-equality check passes.\n\nsha256 02136d0d... verified three independent ways (sha256sum, python\nhashlib, openssl) against the real v0.11.6 tarball, and the tarball's\ndocs/retch.1 is byte-identical to the committed page at the tag.\n.SRCINFO came out container_file_t with no stray temp file, so the #203\nSELinux fix still holds on this synced tree.\n\nAlso corrects NOTES drift this release exposed: the v0.11.5 entry\ndescribes a version that never shipped. 0.11.5 was bumped on a branch\nand amended into 0.11.6 when the two changes were combined into one PR,\nso the released run is 0.11.3, 0.11.4, 0.11.6. The entry is relabelled\nrather than deleted, and its \"two documents\" count corrected to three --\nthe wiki carried the same claim.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T13:57:08-07:00",
+          "tree_id": "ac2d27a36d6106e6452294f8615c0344605b16eb",
+          "url": "https://github.com/l1a/retch/commit/6c1e280cf5d410f32f6f429246ddf45e1e8dff89"
+        },
+        "date": 1788987480864,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 301782254.32
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1028262376.5199999
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 5263148.7
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 25049727.299999997
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 501502539.68
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1030018911.8799999
           }
         ]
       }
