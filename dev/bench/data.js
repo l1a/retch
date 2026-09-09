@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788976648313,
+  "lastUpdate": 1788980644346,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3920,6 +3920,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1017135422.48
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "2930e138fc2f004b5c5a429884a13d7c47c85863",
+          "message": "deps: bump dirs to 7.0, toml to 1.1.5 (#227)\n\nConsolidates Dependabot #222 onto a gated branch so the version bump,\nNOTES entry and man regen it skips are actually done.\n\ndirs 6.0.0 -> 7.0.0 is a major bump, established from the source rather\nthan from a green build: lib.rs, lin.rs, mac.rs and wasm.rs are\nbyte-identical between the two versions, and the entire behavioural\nchange is one line in win.rs, where preference_dir() moves from local to\nroaming AppData. retch never calls preference_dir(); it uses only\nconfig_dir() and home_dir(), both unchanged on every platform.\n\nA caret range on 6.0 will not admit 7.0, so the spec widens in both\nmanifests. retch-sysinfo is bumped despite no .rs change because the\nmanifest of the published crate changes: leaving it at 0.1.61 would mean\nthe repo's 0.1.61 requires dirs 7.0 while crates.io's requires 6.0.\n\ntoml 1.1.4 -> 1.1.5 is lockfile-only: a DeValue::make_owned correctness\nfix plus two doc-comment links. DeValue appears nowhere in the workspace.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T12:03:11-07:00",
+          "tree_id": "cc83ef75f5d42dd65f85c05252e05b5d3e1e2ad5",
+          "url": "https://github.com/l1a/retch/commit/2930e138fc2f004b5c5a429884a13d7c47c85863"
+        },
+        "date": 1788980644346,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 299571379.16
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1019468013.7599999
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 5025905.4
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 23425670.0
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 437358892.74
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1020639684.1399999
           }
         ]
       }
