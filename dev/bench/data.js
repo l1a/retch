@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788928921610,
+  "lastUpdate": 1788929128380,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4364,6 +4364,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1339984466
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "9ce47daffaf03f7caa0f45dfe3cbe6c1fa0bfadf",
+          "message": "Fix three Net field defects from string matching (#224)\n\ndetect_networks returned pre-formatted, ANSI-colourised strings, so\ndisplay.rs recovered semantics from presentation by substring-matching\nthem. All three defects below are that one pattern.\n\n1. The active interface was matched with line.contains(active), against\n   the whole rendered line. \"Wi-Fi\" also matches the Windows pseudo-\n   interface \"Wi-Fi-Native WiFi Filter Driver-0000\", so both printed as\n   the active interface, both bright blue. This half is cross-platform:\n   on Linux \"eth0\" matches an \"eth0.100\" VLAN and any \"veth0...\" pair.\n\n2. Windows listed NDIS lightweight-filter instances as interfaces, each\n   carrying a copy of its adapter's counters - the duplicate Net line\n   with identical RX/TX. Excluded now on the same FilterInterface rule\n   net-io already used.\n\n3. The standard-mode fallback was dead code. It tested the line for a\n   literal \"[Up]\", but the status is colourised before the line is\n   built, so the bytes are [ ESC[32m Up ESC[39m ] and \"[Up]\" never\n   appears: measured 0 occurrences raw, 2 after stripping ANSI. With no\n   resolvable active interface, standard mode printed no Net line at all.\n\nFixed structurally rather than patched: detect_networks returns\nNetworkInterface { name, is_up, line }, so identity and status are facts\ninstead of inferences, and display.rs compares names exactly. Two pure\nhelpers carry the logic and are unit-tested without a terminal.\n\nGetIfTable2 moves into a shared win_iftable module used by both io.rs and\nnetwork.rs, so the 1352-byte MIB_IF_ROW2 and its layout guards exist once\nrather than twice - the win_setupapi precedent. Gated on test as well as\nwindows, so the classification rule runs on the Linux and macOS CI legs.\n\nAll three watched failing against the code that shipped. A fixture defect\nwas caught on the way: the first test helper wrote a plain \"[Up]\" into\nits line, which would have let the broken predicate pass.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-08T21:43:31-07:00",
+          "tree_id": "09232f9d9ca594665bc02463c8455f170a66550f",
+          "url": "https://github.com/l1a/retch/commit/9ce47daffaf03f7caa0f45dfe3cbe6c1fa0bfadf"
+        },
+        "date": 1788929128380,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 327802459.99999994
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1361122090.0
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 219992322.00000003
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 87569182.0
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 3352289250.0000005
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1482976360.0
           }
         ]
       }
