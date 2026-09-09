@@ -116,7 +116,53 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.11.3)
+## Current State (v0.11.4)
+- **v0.11.4 - `dirs` 6.0 -> 7.0 and `toml` 1.1.4 -> 1.1.5 (consolidated Dependabot #222)**
+  (chore; no runtime behaviour change). Rolls Dependabot's PR onto a gated branch so the
+  release hygiene it bypasses - version bump, NOTES entry, man regen - is actually done,
+  following the #167/v0.6.3, #184/v0.6.16, #188/v0.6.19, #199/v0.8.1, #207/v0.9.5 and
+  #216-217/v0.9.13 pattern.
+  - **`dirs` is a MAJOR bump and the only one of these that could have reached us**, so it was
+    established from the source rather than from a green build. Both crate versions were
+    downloaded and compared file by file: `src/lib.rs`, `src/lin.rs`, `src/mac.rs` and
+    `src/wasm.rs` are **byte-identical** between 6.0.0 and 7.0.0. The entire behavioural
+    change is **one line in `src/win.rs`**: `preference_dir()` moves from
+    `known_folder_local_app_data()` to `known_folder_roaming_app_data()`. The rest of the
+    diff is the `repository` URL moving to Codeberg.
+  - **retch never calls `preference_dir()`.** The whole workspace uses exactly two functions
+    from this crate - `dirs::config_dir()` (3 sites, all `retch-cli`: `config.rs`, `theme.rs`,
+    `display.rs`) and `dirs::home_dir()` (9 sites, mostly `retch-sysinfo`: `theme.rs`,
+    `terminal.rs`, `packages.rs`, `fetch.rs`). On Windows those are
+    `known_folder_roaming_app_data()` and `known_folder_profile()` respectively, and **both
+    are unchanged in 7.0.0**; on Linux and macOS the implementing files are byte-identical.
+    So the major bump is structurally unreachable from retch, not merely "compiles clean".
+  - **A `0.x`-style spec widening in TWO manifests, unlike every previous roll.** A caret
+    range on `6.0` will not admit `7.0`, so both `Cargo.toml` and
+    `crates/sysinfo/Cargo.toml` widen - the same shape as v0.6.4's `base64` and v0.9.5's
+    `icy_sixel`, but reaching the library crate as well as the CLI.
+  - **`retch-sysinfo` is therefore bumped to `0.1.62` despite no `.rs` file changing, and
+    that is deliberate.** v0.6.19 and v0.9.13 both left it alone for lockfile-only rolls
+    with the reasoning "no source change - only its transitive lockfile deps moved". That
+    reasoning does not extend here: the *manifest of the published crate* changes. Leaving
+    it at `0.1.61` would mean the repo's `0.1.61` requires `dirs 7.0` while the copy on
+    crates.io requires `6.0` - so `cargo install retch-cli` would resolve a dependency CI
+    never tested, and `just publish` would skip the crate as already-published and never
+    correct it. The root `=0.1.61` pin moves to `=0.1.62` with it.
+  - **`toml` 1.1.5 is lockfile-only** (the spec is `"1.1"`, and a caret range already admits
+    it). Its whole diff is two files: `src/de/parser/devalue.rs` adds `make_owned()` to
+    `DeInteger`/`DeFloat` and wires them into `DeValue::make_owned` (a borrowed-data
+    correctness fix), and `src/ser/mod.rs` changes two doc comments into intra-doc links.
+    retch's single call site is `toml::from_str` in `src/config.rs`, deserialising through
+    serde derive; **`DeValue` appears nowhere in the workspace**, so neither change is
+    reachable.
+  - `Cargo.lock` diff is exactly the two entries with **no transitive movement** -
+    `dirs-sys` stays at `0.5.0` - and `cargo tree -i dirs` shows a single `dirs v7.0.0`
+    shared by both crates rather than a duplicated major.
+  - **§8's dependency list omitted `dirs` entirely** and now names it. A reader of that list
+    would have concluded retch does not use the crate at all - noticed only because this PR
+    went looking for every place the dependency is recorded.
+  - `retch-sysinfo` -> `0.1.62` (manifest dependency requirement change); `retch-cli` ->
+    `0.11.4`. Patch bump.
 - **v0.11.3 - post-release: packaging pinned to 0.11.2, next cycle opened** (packaging only; no runtime change).
   - `packaging/aur` (PKGBUILD and .SRCINFO) and `packaging/copr/retch.spec` bumped to **0.11.2**, the version just released. Both track the last RELEASED tag, so they can only move after the tag exists.
   - `Cargo.toml` -> **0.11.3**, which is what lets this be a normal gated PR rather than a commit straight to `main`: `just pr`'s version check compares against the last tag, so the packaging bump passes as long as it travels with the next version bump.
@@ -3073,6 +3119,8 @@ SQLite open-mode defect.
 - `image` + `base64` — Graphical logo processing
 - `rusqlite` — RPM package counting
 - `chrono` — Date/time formatting
+- `dirs` — Home and config directory resolution (`home_dir`/`config_dir`; a direct
+  dependency of **both** crates, which is why a major bump widens two manifests)
 
 ---
 
