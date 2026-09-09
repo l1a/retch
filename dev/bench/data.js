@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788995644491,
+  "lastUpdate": 1788996032435,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13164,80 +13164,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "e8b380c97debf11a4a35306f669cf3e456ccd616",
-          "message": "Report default-route domain, not a VPN's (v0.6.11) (#176)\n\nUnder systemd-resolved /etc/resolv.conf is the stub file whose search\nlist is the merged set of every link's domains, so the Domain field --\nwhich took its first entry -- showed a split-tunnel VPN's domain\n(netbird.cloud) instead of the default route's (lan). It never\nconsidered interfaces at all.\n\nResolve the IP default-route interface from /proc/net/route and report\nthat link's own domain from resolvectl status. Keyed on the routing\ntable, not resolvectl's per-link 'Default Route:' flag, which is a DNS\nrouting flag and was yes for both links. When resolved manages the\ndefault link but it has no domain, report nothing rather than falling\nback to the merged list (which would resurrect the VPN domain); an\nunmanaged link still falls back, so static-resolv.conf hosts are\nunchanged. A full-tunnel VPN that is the default route reports its own\ndomain, as intended.\n\nFix two latent bugs in the same parser: all '~'-prefixed routing-only\ndomains are excluded (not just the exact catch-all '~.'), and wrapped\ncontinuation lines are no longer silently dropped.\n\nresolvectl is now needed by --long, so one OnceLock-cached invocation\nis shared with --full's domain-search rather than spawning twice.\n\nAssisted-By: Claude Fable 5",
-          "timestamp": "2026-07-26T08:39:18-07:00",
-          "tree_id": "8e30bf9598c906aed347fbd5c1c2ab33160360b0",
-          "url": "https://github.com/l1a/retch/commit/e8b380c97debf11a4a35306f669cf3e456ccd616"
-        },
-        "date": 1785081571051,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1003584402.15,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 440.07945800679516,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 71.52067801632286,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.9981494059841203,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 71.61735959951332,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 4653.24220422578,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1093.8416472394324,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 448.05679888282185,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 96077.80897851757,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 369.84924403828506,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "86f5803462d1608de8b7739c8dc6c69bc9c85a46",
           "message": "Give Domain Search one shape per source (v0.6.12) (#177)\n\nCI dry-run output showed 'eth0: <domain>' on Ubuntu but a bare\n'<domain>' on Fedora. The difference is not platform-driven: the same\nOS flips format between jobs. Ubuntu in the build matrix runs on a bare\nrunner and takes the resolvectl path; Ubuntu in full-test runs in a\ncontainer with no systemd-resolved and falls back to resolv.conf.\nFedora is always containerised, so it only looked different from\nUbuntu.\n\nGrouping differed too: the resolvectl path returns one entry per\ninterface with domains joined, while the fallback returned one entry\nper domain and the display prints one line per entry, so 'search a b c'\nemitted three separate bare lines.\n\nRender the fallback in the same '<scope>: a, b' shape, scoped 'global'\n-- labelled honestly rather than attributed to an interface, since\nresolv.conf's search list carries no attribution. The parser stays\nfaithful to the file; the shape is imposed at the detect layer. macOS\nroutes through the same formatter. The resolvectl path is unchanged.\n\nWindows is deliberately not fixed here and is documented in NOTES 6a:\nits Domain reads the AD/primary suffix rather than the connection\nsuffix, and Domain Search has no Windows arm at all. Both need\nGetAdaptersAddresses and cannot be verified live without a Windows box.\n\nAssisted-By: Claude Fable 5",
           "timestamp": "2026-07-26T19:35:39-07:00",
@@ -16847,6 +16773,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 379.2747676722822,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a8c5647b52caf2ca9bdfb86733b5aeb3d0d130d9",
+          "message": "deps: bump icy_sixel to 0.7 (#228) (#231)\n\nConsolidates Dependabot #228 onto a gated branch so the version bump,\nNOTES entry and man regen it skips are actually done.\n\nicy_sixel 0.6.0 -> 0.7.0 brings decoder streaming improvements and codec\nhardening. SixelImage::try_from_rgba and .encode() signatures remain fully\ncompatible in src/logo.rs.\n\nCargo.toml bumped to 0.11.8 (since main already carries unreleased 0.11.7)\nand icy_sixel widened to 0.7. docs/retch.1 regenerated for 0.11.8.\n\nAssisted-By: Gemini 3.8 Flash",
+          "timestamp": "2026-09-09T16:00:16-07:00",
+          "tree_id": "6497f82d4bad2064bded32821efe8e24bc3efd1a",
+          "url": "https://github.com/l1a/retch/commit/a8c5647b52caf2ca9bdfb86733b5aeb3d0d130d9"
+        },
+        "date": 1788996030048,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1257606645.9,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 618.5932941730587,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 152.70153201351428,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.6414360444468445,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 69.48204514650017,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6846.405261579593,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1143.7562707178063,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 523.8347862297179,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 127692.63932256991,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 410.7297315387078,
             "unit": "ns"
           }
         ]
