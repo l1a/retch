@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788932530019,
+  "lastUpdate": 1788932906621,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -8692,90 +8692,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "da6c74f858f9d84a8b3b076473c1026f04aef412",
-          "message": "Show ASCII logo without a TTY; fix CI dry-run (v0.6.6) (#171)\n\ndisplay.rs gated the logo purely on stdout_is_tty, so `retch --ascii-logo`\nrendered no logo when piped/redirected -- including CI's full-test \"Run\nfetcher (dry run)\" step, which showed no logo.\n\nExtract a pure `should_show_logo(config_show_logo, no_logo, ascii_logo,\nstdout_is_tty)` helper: `--no-logo` always wins; `--ascii-logo` now forces the\nlogo on regardless of TTY or config (ASCII is plain, pipe-safe text, mirroring\nhow --no-logo is always honored); auto mode is unchanged (default-on,\nTTY-gated). --chafa-logo/graphical modes are deliberately not forced (they emit\nterminal-only control sequences).\n\nUpdate the CI full-test dry-run to `cargo run --release -- --full --ascii-logo`\nso it exercises every field AND the ASCII-logo path. 4 new unit tests on the\nhelper; verified live that piped `--full --ascii-logo` shows the logo while\npiped `--full` alone still shows none.\n\nretch-cli -> 0.6.6; retch-sysinfo unchanged (0.1.46).\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-25T09:48:23-07:00",
-          "tree_id": "88dc56bcc4160f88dae2e60506f62a93c2ca7ea4",
-          "url": "https://github.com/l1a/retch/commit/da6c74f858f9d84a8b3b076473c1026f04aef412"
-        },
-        "date": 1784998942416,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1038999144.6,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 999.6228470589718,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 46.73278406653406,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946863536724677,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 46.692189249983166,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7827.775459817572,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 70991.91942310618,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4835.581142040937,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4922.758852723633,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1294646.4354527746,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 345.03450947098224,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 277.74205955393353,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "ada1356ee93539a36a2c996eaa23e24c481463a3",
           "message": "Add CI graphics-feature job (v0.6.7) (#172)\n\nThe default `build` matrix never compiles the optional `graphics` feature\n(base64/image/icy_sixel + the src/logo.rs inline-image paths), so a\ngraphics-only lint or API break could pass CI unseen -- as the base64\n0.22->0.23 bump nearly did. v0.6.5 closed this in the local `just check` gate;\nthis closes it in CI.\n\nAdd a dedicated `graphics-feature` job to rust.yml (one ubuntu runner, same\nnon-tag triggers as `build`) running:\n  cargo clippy --features graphics -- -D warnings\n  cargo build  --features graphics --verbose\n\nCI only, no runtime change. retch-cli -> 0.6.7; retch-sysinfo unchanged.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-25T10:40:12-07:00",
@@ -12875,6 +12791,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 266.8339186508475,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c667eb41429cc4fe301676274c44c32583970358",
+          "message": "Read Windows DNS servers natively, not via PowerShell (#225)\n\ndetect_dns spawned `powershell -Command \"Get-DnsClientServerAddress ...\"`.\nA per-field hyperfine sweep of all 56 --long fields made it the slowest\nby a wide margin: 3409 ms against a ~322 ms process-startup floor, with\n41 of the 56 fields startup-bound. It now reads GetAdaptersAddresses'\nper-adapter DNS list. Measured: 3409 -> 385 ms, ~8.9x.\n\nThe enabling detail is one flag bit. GAA_FLAGS was 0x0E, which is\nSKIP_ANYCAST | SKIP_MULTICAST | SKIP_DNS_SERVER, so FirstDnsServerAddress\nwas declared in the struct and guaranteed null - which is why this field\nshelled out in the first place. Clearing that bit populates it. Unicast\nis still requested, because detect_domain needs it.\n\n-NoProfile was measured and rejected before any code was written: bare\n`powershell -Command exit` costs 893 ms with a profile and 878 ms\nwithout, so this is ~890 ms of interpreter startup plus ~2100 ms of\ncmdlet work, not profile loading. The ~642 ms profile figure recorded\nelsewhere is about pwsh (PowerShell 7), not Windows PowerShell 5.1.\n\nOutput is byte-identical, captured before and diffed after. IPv4-only and\nthe lexicographic sort are both preserved deliberately - the replaced\nquery passed -AddressFamily IPv4 and Sort-Object sorts as strings - so\nthis is a pure performance change. Reporting IPv6 nameservers is a\nseparate behavioural decision.\n\nStated plainly because the opposite would be easy to assume: this does\nNOT fix --long. That mode went 3352 -> 3076 ms, about 8%, and remains\n2.1x slower than `fastfetch -c all` (1467 ms). dns looked like it set the\nwall clock because 3409 was so close to 3352; it did not. battery\n(~2531 ms) is the next target, and NOTES §3's blocking condition stands.\n\n3 parse_sockaddr tests over byte fixtures rather than live adapters,\nwatched failing against the classic offset error: reading the IPv4\naddress at offset 0 instead of 4 yields Some(2.0.0.53) - the address\nfamily and port read as an address.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-08T22:34:32-07:00",
+          "tree_id": "ad3d803aaad5a5f8face7f7be1846273baa6ec68",
+          "url": "https://github.com/l1a/retch/commit/c667eb41429cc4fe301676274c44c32583970358"
+        },
+        "date": 1788932905111,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 971232897.15,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 958.3418412950301,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 111.1908475255932,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946678330051061,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 52.548105947385736,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7884.017536424889,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70840.82478244255,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4795.889177147697,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4905.92394076742,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1054171.824529809,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 355.1731992577937,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 260.20427663070467,
             "unit": "ns"
           }
         ]
