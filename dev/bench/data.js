@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788987854318,
+  "lastUpdate": 1788987956508,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20014,70 +20014,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "fa886633f69e0ee0a7db86ea7dc9773ceec03be9",
-          "message": "Keep logo beside text in --long/--full (v0.6.8) (#173)\n\n* Keep logo beside text in --long/--full (v0.6.8)\n\nThe side-by-side vs. stacked layout decision (and the text-column width) was\ncomputed from the widest of ALL info lines. In --long/--full a single very long\nline -- a 150+ char Wi-Fi line, or the Net/Battery lines -- inflated the text\ncolumn past the terminal width and forced the logo to stack ABOVE the text,\neven though those long lines sit well BELOW the logo.\n\nExtract a pure `plan_layout(info_widths, logo_height, logo_width, term_width,\nshow_logo)` that considers only the info lines that actually sit BESIDE the\nlogo (the first `logo_height` rows). Long lines below the logo render at column\n0 with the full terminal width and no longer affect placement.\n\nLogo-type-agnostic: logo_height/logo_width come from the active logo, so it\nworks identically for ASCII, Chafa (both rendered as text `Lines`) and the\ngraphical image protocols (Kitty/iTerm2/Sixel -- height_lines + fixed image\ncolumn).\n\nVerified in a pseudo-terminal: --full renders the logo beside the text at\n140 cols (previously stacked) and correctly stacks at 90 cols. 7 new\nplan_layout unit tests. retch-cli -> 0.6.8; retch-sysinfo unchanged (0.1.46).\n\nAssisted-By: Claude Opus 4.8\n\n* CI: build-job dry run uses --full --ascii-logo too\n\nThe `build` job's \"Run fetcher (dry run)\" step still ran `cargo run -- --long`\n(no logo). Make it `cargo run -- --full --ascii-logo`, matching the full-test\ndry run, so every CI dry run exercises all fields and the logo/layout path.\n\nAssisted-By: Claude Opus 4.8\n\n* Split Wi-Fi into two lines; grayscale Apple logo\n\nTwo display tweaks requested on top of the layout fix (same PR):\n\n- Wi-Fi: the iw path builds a single \"{adapter} [{iface}] - {SSID} (band/rate)\"\n  string that ran 150+ chars and wrapped into the logo. Split on the \" - \"\n  boundary via a pure `split_wifi_line` into a `Wi-Fi` line (adapter hardware)\n  and a `Wi-Fi Link` line (live connection). Fallback detectors have no \" - \"\n  and stay one line. `Wi-Fi Link` is aliased to the `wifi` field key in\n  should_show (like dns/memory). 3 unit tests.\n\n- macOS/Apple ASCII logo: replace the legacy rainbow colour bands\n  (green/yellow/red/magenta/blue) with a 256-colour grey (silver) ramp,\n  matching the modern monochrome Apple logo. Graphical macos.png untouched.\n\nretch-cli stays 0.6.8 (same PR); retch-sysinfo unchanged.\n\nAssisted-By: Claude Opus 4.8\n\n* Fix graphical logo landing mid-text in --long/--full\n\nThe side-by-side path for image protocols (Kitty/iTerm2/Sixel) printed ALL the\ninfo lines first, then did `\\x1b[{n}A` to move back up and draw the image to the\nright of the top rows. For tall output (--long/--full) the info block is taller\nthan the viewport, so by the time the text finished the screen had scrolled and\nthe cursor-up was clamped at the top of the viewport -- the image was drawn in\nthe MIDDLE of the text, overlapping it (reported on kitty).\n\nDraw the image FIRST instead: move to the top of the logo column, bracket the\nimage draw with save/restore (\\x1b7/\\x1b8) so it lands at the correct row before\nany text is printed or the screen scrolls, then print the info lines\ntop-to-bottom at column 0. The terminal scrolls naturally and carries the\ncell-anchored image with it. Shared `render_graphical_side_by_side` helper for\nall three protocols. Verified the escape choreography (right/save/image/restore/\nCR/text) at the byte level in a kitty pty.\n\nretch-cli stays 0.6.8 (same PR).\n\nAssisted-By: Claude Opus 4.8\n\n* docs(NOTES): record graphical logo placement fix (v0.6.8)\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-25T17:31:49-07:00",
-          "tree_id": "9b82d07a4ddf3e53b29bc8579d9a7acdcf12908e",
-          "url": "https://github.com/l1a/retch/commit/fa886633f69e0ee0a7db86ea7dc9773ceec03be9"
-        },
-        "date": 1785028298087,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 103.9189948556677,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.947838278272153,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 104.33947423743555,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 83.63412907118939,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 48665.511983363525,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 498.5794557384913,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 745.5376633519681,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2142895335,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "b899b3ca3988eab8b8632cbb3b5263bf35322a76",
           "message": "Fix graphical logo placement after scroll (v0.6.9) (#174)\n\nThe v0.6.8 side-by-side choreography saved the cursor (DECSC), drew\nthe image, and restored (DECRC). With the prompt at the bottom of the\nscreen the draw scrolls the viewport, and DECSC/DECRC restore a\nviewport-relative position, so the info text landed below the logo\ninstead of beside it. Reproduced identically on Rio and kitty.\n\nReserve the logo rows with newlines first and cursor-up back to the\nimage-top row, so any scroll happens before the save and nothing\nbetween save and restore can scroll. Fresh-screen output unchanged.\n\nAlso refresh the stale in-repo packaging reference copies\n(PKGBUILD/package.nix 0.3.21 -> 0.6.8), per the tracked WIP task.\n\nAssisted-By: Claude Fable 5",
           "timestamp": "2026-07-26T07:32:00-07:00",
@@ -23197,6 +23133,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1003796470,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b44d7e9837aca35e5365a3e6944c9017f308cd0d",
+          "message": "Show Host first; add Vulkan, OpenGL and OpenCL fields (#229)\n\nTwo user requests in one change.\n\nHost now leads the output. It names which machine the output describes,\nwhich is what a reader needs first when comparing runs across boxes or\nreading a pasted screenshot. Nothing had ever asserted the field order --\ndisplay order is the print_line call sequence and the config `fields`\narray is a membership test, not an ordering -- so\ntest_host_is_listed_first pins it, watched failing beforehand. Two docs\n(and the wiki) claimed `fields` set the display order, which it never\ndid; all three corrected.\n\nNew vulkan/opengl/opencl fields close the last user-visible fastfetch gap\nin NOTES section 6. Each dlopens its loader rather than linking it, so a\nmachine without the library omits the field instead of failing to start.\nThis is the first dlopen-based probe in the codebase; every other dynamic\nload here is Windows.\n\nThe constraint was to report what is available without changing the\nuser's environment. That rules out the shortcut for OpenCL: Mesa's\nrusticl is opt-in via RUSTICL_ENABLE, and without it the ICD advertises\nOpenCL 3.0 while exposing zero devices. retch could setenv that for\nitself, but it would be a data race against the collection scope\n(set_var is unsafe in Rust 2024; this crate is 2021, so it compiles\nsilently) and it would report a device the user's programs cannot see.\nThe field reports the device it observes and says \"no device enabled\"\notherwise. fastfetch prints a bare \"OpenCL: 3.0\" in both states.\n\nMeasurement corrected two wrong numbers before they shipped:\nvkEnumerateInstanceVersion returns the loader version (1.4.341), not the\ndevice apiVersion fastfetch prints (1.4.354); and a Vulkan instance below\n1.2 silently ignores the pNext chain, returning empty driver fields with\nno error.\n\nVulkan and OpenGL output is byte-identical to fastfetch here. OpenGL uses\na headless EGL context, so it needs no display server.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T13:25:54-07:00",
+          "tree_id": "92c16f52395c927a326c3e6d0edb4778dc4cffee",
+          "url": "https://github.com/l1a/retch/commit/b44d7e9837aca35e5365a3e6944c9017f308cd0d"
+        },
+        "date": 1788987951070,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 183.3115559880543,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9549517216592847,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.58863776184599,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.77764525831938,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47148.10300702135,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 498.87502377423425,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 748.115406593492,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1195213875,
             "unit": "ns"
           }
         ]
