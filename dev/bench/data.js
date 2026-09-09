@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788982944705,
+  "lastUpdate": 1788985611004,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3974,6 +3974,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1020639684.1399999
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "b44d7e9837aca35e5365a3e6944c9017f308cd0d",
+          "message": "Show Host first; add Vulkan, OpenGL and OpenCL fields (#229)\n\nTwo user requests in one change.\n\nHost now leads the output. It names which machine the output describes,\nwhich is what a reader needs first when comparing runs across boxes or\nreading a pasted screenshot. Nothing had ever asserted the field order --\ndisplay order is the print_line call sequence and the config `fields`\narray is a membership test, not an ordering -- so\ntest_host_is_listed_first pins it, watched failing beforehand. Two docs\n(and the wiki) claimed `fields` set the display order, which it never\ndid; all three corrected.\n\nNew vulkan/opengl/opencl fields close the last user-visible fastfetch gap\nin NOTES section 6. Each dlopens its loader rather than linking it, so a\nmachine without the library omits the field instead of failing to start.\nThis is the first dlopen-based probe in the codebase; every other dynamic\nload here is Windows.\n\nThe constraint was to report what is available without changing the\nuser's environment. That rules out the shortcut for OpenCL: Mesa's\nrusticl is opt-in via RUSTICL_ENABLE, and without it the ICD advertises\nOpenCL 3.0 while exposing zero devices. retch could setenv that for\nitself, but it would be a data race against the collection scope\n(set_var is unsafe in Rust 2024; this crate is 2021, so it compiles\nsilently) and it would report a device the user's programs cannot see.\nThe field reports the device it observes and says \"no device enabled\"\notherwise. fastfetch prints a bare \"OpenCL: 3.0\" in both states.\n\nMeasurement corrected two wrong numbers before they shipped:\nvkEnumerateInstanceVersion returns the loader version (1.4.341), not the\ndevice apiVersion fastfetch prints (1.4.354); and a Vulkan instance below\n1.2 silently ignores the pNext chain, returning empty driver fields with\nno error.\n\nVulkan and OpenGL output is byte-identical to fastfetch here. OpenGL uses\na headless EGL context, so it needs no display server.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T13:25:54-07:00",
+          "tree_id": "92c16f52395c927a326c3e6d0edb4778dc4cffee",
+          "url": "https://github.com/l1a/retch/commit/b44d7e9837aca35e5365a3e6944c9017f308cd0d"
+        },
+        "date": 1788985611004,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 302694871.5800001
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1032095130.2799999
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 4084231.4
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 23128366.5
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 506795605.58000004
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1034346080.48
           }
         ]
       }
