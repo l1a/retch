@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788987480864,
+  "lastUpdate": 1788987854318,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4706,90 +4706,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "fd8164049e99da545e8fe98d3f0b76e8c09b6faa",
-          "message": "Fix AMD GPU names via libdrm amdgpu.ids (v0.6.10) (#175)\n\nThe Strix Halo iGPU (1002:1586) was reported as 'Radeon 880M / 890M':\nimprove_amd_gpu_name's first-substring-wins table matched the 'Strix'\n(Strix Point) entry against pci.ids' 'Strix Halo [...]' name, and\npci.ids cannot separate 1586's revision variants (8040S/8050S/8060S)\nat all.\n\nResolve AMD names on Linux through /usr/share/libdrm/amdgpu.ids first,\nkeyed by device id + revision from sysfs (how fastfetch does it), with\ngraceful fallback to the pci.ids + codename path. Order 'Strix Halo'\nbefore 'Strix' in the fallback table and add 'Krackan'.\n\nVerified live on Strix Halo: 'AMD Radeon 8060S Graphics (32 GB)'.\n\nAssisted-By: Claude Fable 5",
-          "timestamp": "2026-07-26T07:58:18-07:00",
-          "tree_id": "30c6fa2ba1ee6c45f748cc640eb4ed19adc3000a",
-          "url": "https://github.com/l1a/retch/commit/fd8164049e99da545e8fe98d3f0b76e8c09b6faa"
-        },
-        "date": 1785078338386,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1065589210.15,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2085.6202372588787,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 57.193453286335384,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.832509691432732,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 57.589738774684555,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 18208.853808913722,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 189250.18864367,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 12823.807600797734,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 12978.006344717143,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1405189.8313897199,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 364.9612738472558,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 285.0860329541812,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "e8b380c97debf11a4a35306f669cf3e456ccd616",
           "message": "Report default-route domain, not a VPN's (v0.6.11) (#176)\n\nUnder systemd-resolved /etc/resolv.conf is the stub file whose search\nlist is the merged set of every link's domains, so the Domain field --\nwhich took its first entry -- showed a split-tunnel VPN's domain\n(netbird.cloud) instead of the default route's (lan). It never\nconsidered interfaces at all.\n\nResolve the IP default-route interface from /proc/net/route and report\nthat link's own domain from resolvectl status. Keyed on the routing\ntable, not resolvectl's per-link 'Default Route:' flag, which is a DNS\nrouting flag and was yes for both links. When resolved manages the\ndefault link but it has no domain, report nothing rather than falling\nback to the merged list (which would resurrect the VPN domain); an\nunmanaged link still falls back, so static-resolv.conf hosts are\nunchanged. A full-tunnel VPN that is the default route reports its own\ndomain, as intended.\n\nFix two latent bugs in the same parser: all '~'-prefixed routing-only\ndomains are excluded (not just the exact catch-all '~.'), and wrapped\ncontinuation lines are no longer silently dropped.\n\nresolvectl is now needed by --long, so one OnceLock-cached invocation\nis shared with --full's domain-search rather than spawning twice.\n\nAssisted-By: Claude Fable 5",
           "timestamp": "2026-07-26T08:39:18-07:00",
@@ -8889,6 +8805,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 250.01986166783954,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6c1e280cf5d410f32f6f429246ddf45e1e8dff89",
+          "message": "packaging: pin to 0.11.6, open 0.11.7 (#230)\n\nPost-release packaging commit as a normal gated PR: packaging/aur and\npackaging/copr pinned to the released v0.11.6, Cargo.toml opened on\n0.11.7 so `just pr`'s tag-equality check passes.\n\nsha256 02136d0d... verified three independent ways (sha256sum, python\nhashlib, openssl) against the real v0.11.6 tarball, and the tarball's\ndocs/retch.1 is byte-identical to the committed page at the tag.\n.SRCINFO came out container_file_t with no stray temp file, so the #203\nSELinux fix still holds on this synced tree.\n\nAlso corrects NOTES drift this release exposed: the v0.11.5 entry\ndescribes a version that never shipped. 0.11.5 was bumped on a branch\nand amended into 0.11.6 when the two changes were combined into one PR,\nso the released run is 0.11.3, 0.11.4, 0.11.6. The entry is relabelled\nrather than deleted, and its \"two documents\" count corrected to three --\nthe wiki carried the same claim.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T13:57:08-07:00",
+          "tree_id": "ac2d27a36d6106e6452294f8615c0344605b16eb",
+          "url": "https://github.com/l1a/retch/commit/6c1e280cf5d410f32f6f429246ddf45e1e8dff89"
+        },
+        "date": 1788987852772,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 346879372.75,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2088.4289792922414,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 117.36279876266039,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.858926992089431,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 59.641736509643536,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 18065.180926512425,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 188226.80781958997,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12729.748310216706,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 12868.071025490874,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1434404.255116096,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 394.7611819618643,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 290.69140962044787,
             "unit": "ns"
           }
         ]
