@@ -115,6 +115,22 @@ const FIELDS: &[FieldDef] = &[
         key: "gpu",
         min_mode: Mode::Short,
     },
+    // Graphics/compute API versions. Full-mode: each opens a driver stack and, for
+    // OpenGL, creates a context — measured at ~100 ms combined on this hardware, which
+    // is too much to put in --long while NOTES.md §3 treats slower-than-fastfetch as
+    // blocking. See the v0.11.6 release entry for the measurement.
+    FieldDef {
+        key: "vulkan",
+        min_mode: Mode::Full,
+    },
+    FieldDef {
+        key: "opengl",
+        min_mode: Mode::Full,
+    },
+    FieldDef {
+        key: "opencl",
+        min_mode: Mode::Full,
+    },
     FieldDef {
         key: "motherboard",
         min_mode: Mode::Standard,
@@ -416,7 +432,7 @@ mod tests {
         assert_eq!(fields_for(Mode::Short).len(), 8, "short field count");
         assert_eq!(fields_for(Mode::Standard).len(), 19, "standard field count");
         assert_eq!(fields_for(Mode::Long).len(), 56, "long field count");
-        assert_eq!(fields_for(Mode::Full).len(), 65, "full field count");
+        assert_eq!(fields_for(Mode::Full).len(), 68, "full field count");
     }
 
     #[test]

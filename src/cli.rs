@@ -39,7 +39,7 @@ pub struct Cli {
     #[arg(long)]
     pub chafa_logo: bool,
 
-    /// Short output mode (OS, Kernel, Host, CPU, GPU, Memory, Disk)
+    /// Short output mode (Host, OS, Kernel, CPU, GPU, Memory, Disk)
     #[arg(short, long)]
     pub short: bool,
 

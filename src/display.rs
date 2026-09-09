@@ -555,13 +555,15 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         }
     };
 
-    // OS / system identity
+    // OS / system identity.
+    // Host leads: it names *which machine* this output describes, which is the first thing a
+    // reader needs when comparing runs from several boxes or reading a pasted screenshot.
+    if let Some(host) = &info.hostname {
+        print_line("Host", host);
+    }
     print_line("OS", &info.os);
     if let Some(kernel) = &info.kernel {
         print_line("Kernel", kernel);
-    }
-    if let Some(host) = &info.hostname {
-        print_line("Host", host);
     }
     if let Some(domain) = &info.domain {
         print_line("Domain", domain);
@@ -632,6 +634,15 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         for display in &info.displays {
             print_line("Display", display);
         }
+    }
+    if let Some(vulkan) = &info.vulkan {
+        print_line("Vulkan", vulkan);
+    }
+    if let Some(opengl) = &info.opengl {
+        print_line("OpenGL", opengl);
+    }
+    if let Some(opencl) = &info.opencl {
+        print_line("OpenCL", opencl);
     }
     if let Some(brightness) = &info.brightness {
         print_line("Brightness", brightness);

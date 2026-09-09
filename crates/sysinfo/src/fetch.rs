@@ -126,6 +126,12 @@ pub struct SystemInfo {
     pub cpu_usage: Option<String>,
     /// Physical disk models, sizes, and types.
     pub physical_disks: Vec<String>,
+    /// Vulkan API version and driver, e.g. `1.4.354 - radv [Mesa 26.1.8]`. Linux only.
+    pub vulkan: Option<String>,
+    /// OpenGL version string from a headless context. Linux only.
+    pub opengl: Option<String>,
+    /// OpenCL platform version, provider, and the device it exposes (if any). Linux only.
+    pub opencl: Option<String>,
     /// Per-disk read/write throughput over the collection window. Linux only.
     pub disk_io: Vec<String>,
     /// Per-interface RX/TX throughput over the collection window. Linux only.
@@ -443,6 +449,7 @@ impl SystemInfo {
             btrfs,
             zpool,
             (media, player),
+            gpu_apis,
         ) = std::thread::scope(|s| {
             let gpu_handle = if should_collect("gpu") {
                 Some(s.spawn(|| {
@@ -552,6 +559,16 @@ impl SystemInfo {
             } else {
                 None
             };
+            // Vulkan/OpenGL/OpenCL are collected together: all three dlopen a loader and
+            // talk to the same driver stack, so splitting them across threads would buy
+            // contention rather than overlap.
+            let gpu_apis_handle =
+                if should_collect("vulkan") || should_collect("opengl") || should_collect("opencl")
+                {
+                    Some(s.spawn(crate::gpu_api::detect_gpu_apis))
+                } else {
+                    None
+                };
 
             (
                 gpu_handle
@@ -593,6 +610,9 @@ impl SystemInfo {
                 media_handle
                     .map(|h| h.join().unwrap_or((None, None)))
                     .unwrap_or((None, None)),
+                gpu_apis_handle
+                    .map(|h| h.join().unwrap_or_default())
+                    .unwrap_or_default(),
             )
         });
 
@@ -1000,6 +1020,9 @@ impl SystemInfo {
             cpu_cache,
             cpu_usage,
             physical_disks,
+            vulkan: gpu_apis.vulkan,
+            opengl: gpu_apis.opengl,
+            opencl: gpu_apis.opencl,
             disk_io,
             net_io,
             physical_memory,

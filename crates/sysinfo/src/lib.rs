@@ -45,6 +45,7 @@ pub mod display;
 pub mod fetch;
 pub mod gamepad;
 pub mod gpu;
+pub mod gpu_api;
 pub mod input;
 pub mod io;
 pub mod media;

@@ -116,7 +116,113 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.11.4)
+## Current State (v0.11.6)
+- **v0.11.6 - `vulkan`, `opengl` and `opencl`: the last user-visible fastfetch gap**
+  (`crates/sysinfo/src/gpu_api.rs` (new), `crates/sysinfo/src/fetch.rs`, `src/fields.rs`,
+  `src/display.rs`). Closes the final §6 item; every group there is now closed.
+  - **The first `dlopen`-based probe in the codebase.** Every other dynamic load here is
+    Windows (`media.rs`'s `combase.dll` bootstrap); Unix code has always used `#[link]`.
+    Linking these three would be wrong: a machine without Vulkan must still run retch, and
+    `#[link(name = "vulkan")]` would refuse to start. A shared `dl` helper opens each
+    loader `RTLD_NOW | RTLD_LOCAL` - **local** so that loading a software OpenCL ICD cannot
+    shadow symbols a later probe resolves.
+  - **THE DESIGN CONSTRAINT, set by the user: report what is available WITHOUT changing the
+    user's environment.** That rules out the tempting shortcut for OpenCL. Mesa's rusticl is
+    opt-in via `RUSTICL_ENABLE`; without it the ICD registers a platform advertising
+    OpenCL 3.0 while exposing **zero devices**. retch could `setenv` that for itself before
+    loading the ICD and print a better-looking answer. It does not, for two reasons:
+    - **It would be a data race.** Fields are collected inside a `std::thread::scope`, and
+      mutating the environment while sibling threads read it is unsound. `std::env::set_var`
+      became `unsafe` in Rust 2024 for exactly this; this crate is edition 2021, where it
+      **still compiles silently** - a trap rather than a compile error.
+    - **It would report something false.** A device visible only because retch enabled it
+      for itself is not one the user's programs can use.
+    So `opencl` reports the device it actually observes and says `no device enabled` when
+    there is none. **fastfetch prints a bare `OpenCL: 3.0` in both states** - measured here
+    with and without the variable, byte-identical output - i.e. it reports a working stack
+    when nothing can run on it. Under-reporting beats asserting something false: the
+    `Users: 0` suppression (v0.6.1) and the v0.7.0 input classification, applied again.
+  - **Two findings that only measurement produced**, both of which would have shipped a
+    wrong number:
+    - **`vkEnumerateInstanceVersion` is NOT the version fastfetch prints.** It returns the
+      *loader* version - **1.4.341** here - while fastfetch reports the *device's*
+      `apiVersion`, **1.4.354**. The instance-only path is nearly free (0.39 ms) and
+      answers a different question, so the field creates an instance and reads
+      `VkPhysicalDeviceProperties2` instead.
+    - **A Vulkan instance below 1.2 SILENTLY IGNORES the `pNext` chain.** Requesting 1.0
+      returned the correct `apiVersion` with `driverName`/`driverInfo` as **empty strings
+      and no error anywhere** - a call that succeeded while producing nothing. Requesting
+      1.2 fills them (`radv` / `Mesa 26.1.8`). `format_vulkan` still renders correctly from
+      an unfilled chain rather than printing a dangling separator.
+  - **Device selection is load-bearing, not cosmetic.** Any Mesa system enumerates the
+    software rasteriser `llvmpipe` as a `CPU` device beside the real GPU - measured here:
+    the AMD 780M as `INTEGRATED_GPU` (1) and `llvmpipe` as `CPU` (4). Taking the first
+    enumerated device would report software rendering on a machine with a working GPU, so
+    `device_type_rank` orders discrete > integrated > virtual > other > CPU.
+  - **OpenGL uses headless EGL, which is what makes the no-environment-change rule
+    achievable.** `EGL_DEFAULT_DISPLAY` plus a surfaceless `eglMakeCurrent` needs no X or
+    Wayland connection. **The context choice decides the number printed**: passing no
+    attribute list yields the driver's default compatibility profile, matching fastfetch,
+    while a core-profile request reports a different string for the same machine
+    (`glxinfo -B` says `4.6 (Core Profile)` where this returns
+    `4.6 (Compatibility Profile)`). Documented at the call site so it is not "tidied".
+  - **`--full` only - and the honest measurement is more interesting than the prediction.**
+    The serial cost is real: against a `-s Title` baseline of ~0.9 ms, fastfetch pays
+    **31.1 ms** for Vulkan, **27.1 ms** for OpenGL and **23.6 ms** for OpenCL, ~80 ms
+    combined, and retch's own probes measure similarly. That is what put them in `--full`
+    rather than `--long`, since `--long` targets ~500 ms and NOTES §3 treats
+    slower-than-fastfetch as blocking.
+    **But the A/B against a binary built from `main`, interleaved and repeated, shows no
+    wall-clock cost at all**: `--full` **1.108 / 1.110 s** on the branch against
+    **1.102 / 1.113 s** on `main` - the pair moves in *both directions* across repeats,
+    which is the honest reading (noise, not a speedup and not a cost). `--long` is the
+    control and is untouched: **431.0 ms** branch vs **446.9 ms** main, and it collects
+    **0** of the three by construction.
+    **The work is nonetheless real, and CPU time is what shows it** - user time rises
+    0.068 s -> 0.122 s. It simply overlaps inside the existing concurrent scope, the
+    v0.10.0 `disk-io` result again. **Recorded rather than acted on: this suggests `--long`
+    might also absorb them for free.** That is a hypothesis about a mode with fewer
+    concurrent probes to hide behind, not a measurement of it - promote the stratum only
+    after measuring `--long` the same way.
+  - Strata golden count updated Full 65 -> 68. Vulkan/OpenGL output is **byte-identical to
+    fastfetch** on this machine; `opencl` is deliberately richer.
+  - Linux only: the loaders are opened by Linux sonames, and every other platform returns
+    an empty set rather than a wrong answer - the v0.5.0/v0.7.0 Linux-first precedent.
+  - 9 unit tests over the pure helpers. The `llvmpipe`-versus-GPU ordering, the
+    unfilled-driver-chain rendering, and the inert-versus-working OpenCL distinction each
+    have a case, since those are the three places a plausible-looking wrong answer could
+    ship.
+  - `retch-sysinfo` -> `0.1.63` (new public `gpu_api` module); `retch-cli` -> `0.11.6`.
+    Minor bump - new user-visible fields.
+
+- **v0.11.5 - `Host` is the first field, and two docs claimed an ordering feature that does
+  not exist** (`src/display.rs`; CLI-only, `retch-sysinfo` unchanged at `0.1.62`). User
+  request: `Host` should lead the output.
+  - **The change itself is one moved block**: the `Host` `print_line` now precedes `OS` in
+    the identity group, so every mode that shows the field leads with it. `Host` names *which
+    machine* the output describes, which is what a reader needs first when comparing runs
+    across boxes or reading a pasted screenshot.
+  - **Nothing had ever asserted the field order.** Display order is the `print_line` call
+    sequence in `display.rs` and nothing else - the config `fields` array is a **membership
+    test** (`should_show`), not an ordering. So the previous order held only by convention,
+    the same shape as the v0.9.2 `logo_column` regression that survived six months because no
+    test pinned the intended property. `test_host_is_listed_first` now pins it across
+    `--short` and standard mode, and was **watched failing** against the pre-change binary
+    with `expected `Host` to be the first field, got: "OS: Linux (Fedora Linux 44)"`.
+  - **Two documents described an ordering feature retch does not have**, both corrected here
+    and both pre-existing: `docs/retch.1.md` called `fields` "active fields and **their
+    display order**", and `README.md`'s generated-config comment called it an "**Ordered**
+    list of system information fields to display". A user reordering that array would have
+    seen nothing happen, with the docs insisting otherwise. Found only because this change
+    went looking for every place the order is recorded - the same sweep that found `dirs`
+    missing from §8 one release earlier.
+  - `src/cli.rs`'s `--short` help text and `src/main.rs`'s generated-config comment both
+    listed the old order and now match.
+  - The ANSI strip in the new test deliberately matches the whole `ESC [ ... <final byte>`
+    form rather than SGR (`m`) only: chafa opens a run with `\x1b[?25l`, and an SGR-only
+    strip leaves six characters behind - the measurement bug from the 2026-08-24 session,
+    where a uniform 6-column overflow was blamed on the renderer.
+  - `retch-cli` -> 0.11.5. Patch bump (display change, no new field or flag).
 - **v0.11.4 - `dirs` 6.0 -> 7.0 and `toml` 1.1.4 -> 1.1.5 (consolidated Dependabot #222)**
   (chore; no runtime behaviour change). Rolls Dependabot's PR onto a gated branch so the
   release hygiene it bypasses - version bump, NOTES entry, man regen - is actually done,
@@ -2351,7 +2457,12 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
   manufacturer or PCR state)
 
 ### GPU / Graphics
-- **OpenCL / OpenGL / Vulkan**: Highest supported API versions
+- ~~**OpenCL / OpenGL / Vulkan**: Highest supported API versions~~ — added in v0.11.6
+  (`vulkan`, `opengl`, `opencl` fields, Linux; `dlopen` of each loader, `--full`). This was
+  the **last remaining user-visible fastfetch gap**; every group in §6 is now closed.
+  retch reports strictly more than fastfetch on `opencl`: fastfetch prints the platform
+  version even when the platform exposes **no device**, which is the normal state for Mesa's
+  rusticl until `RUSTICL_ENABLE` is set.
 
 ### Storage & Filesystems
 - ~~**Btrfs**: Btrfs volume info~~ — added in v0.3.37 (`btrfs` field)
