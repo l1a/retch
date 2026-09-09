@@ -116,7 +116,13 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.11.7)
+## Current State (v0.11.8)
+- **v0.11.8 - dependency bump: `icy_sixel` 0.6 -> 0.7 (consolidated Dependabot #228)**
+  (chore; no runtime behavior change).
+  - Widened `icy_sixel` spec `"0.6"` -> `"0.7"` in `Cargo.toml` and updated `Cargo.lock` (0.6.0 -> 0.7.0).
+  - `icy_sixel` 0.7.0 updates internal encoder/decoder routines and hardening; `SixelImage::try_from_rgba` and `.encode()` signatures remain fully compatible.
+  - Regenerated `docs/retch.1` man page for v0.11.8.
+  - `retch-cli` -> 0.11.8; `retch-sysinfo` unchanged (`0.1.63`). Patch bump.
 - **v0.11.7 - post-release: packaging pinned to 0.11.6, next cycle opened** (packaging only; no runtime change).
   - `packaging/aur` (PKGBUILD and .SRCINFO) and `packaging/copr/retch.spec` bumped to **0.11.6**, the version just released. Both track the last RELEASED tag, so they can only move after the tag exists.
   - `Cargo.toml` -> **0.11.7**, which is what lets this be a normal gated PR rather than a commit straight to `main`: `just pr`'s version check compares against the last tag, so the packaging bump passes as long as it travels with the next version bump.
