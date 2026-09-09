@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788988679793,
+  "lastUpdate": 1788989277677,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -16812,70 +16812,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "fd8164049e99da545e8fe98d3f0b76e8c09b6faa",
-          "message": "Fix AMD GPU names via libdrm amdgpu.ids (v0.6.10) (#175)\n\nThe Strix Halo iGPU (1002:1586) was reported as 'Radeon 880M / 890M':\nimprove_amd_gpu_name's first-substring-wins table matched the 'Strix'\n(Strix Point) entry against pci.ids' 'Strix Halo [...]' name, and\npci.ids cannot separate 1586's revision variants (8040S/8050S/8060S)\nat all.\n\nResolve AMD names on Linux through /usr/share/libdrm/amdgpu.ids first,\nkeyed by device id + revision from sysfs (how fastfetch does it), with\ngraceful fallback to the pci.ids + codename path. Order 'Strix Halo'\nbefore 'Strix' in the fallback table and add 'Krackan'.\n\nVerified live on Strix Halo: 'AMD Radeon 8060S Graphics (32 GB)'.\n\nAssisted-By: Claude Fable 5",
-          "timestamp": "2026-07-26T07:58:18-07:00",
-          "tree_id": "30c6fa2ba1ee6c45f748cc640eb4ed19adc3000a",
-          "url": "https://github.com/l1a/retch/commit/fd8164049e99da545e8fe98d3f0b76e8c09b6faa"
-        },
-        "date": 1785079734439,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 121.75088685050828,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.743869320223359,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 139.9302936549227,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 93.68969540926379,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 41972.054951269165,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 559.9847909336966,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 836.0682041559827,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2531571285,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "e8b380c97debf11a4a35306f669cf3e456ccd616",
           "message": "Report default-route domain, not a VPN's (v0.6.11) (#176)\n\nUnder systemd-resolved /etc/resolv.conf is the stub file whose search\nlist is the merged set of every link's domains, so the Domain field --\nwhich took its first entry -- showed a split-tunnel VPN's domain\n(netbird.cloud) instead of the default route's (lan). It never\nconsidered interfaces at all.\n\nResolve the IP default-route interface from /proc/net/route and report\nthat link's own domain from resolvectl status. Keyed on the routing\ntable, not resolvectl's per-link 'Default Route:' flag, which is a DNS\nrouting flag and was yes for both links. When resolved manages the\ndefault link but it has no domain, report nothing rather than falling\nback to the merged list (which would resurrect the VPN domain); an\nunmanaged link still falls back, so static-resolv.conf hosts are\nunchanged. A full-tunnel VPN that is the default route reports its own\ndomain, as intended.\n\nFix two latent bugs in the same parser: all '~'-prefixed routing-only\ndomains are excluded (not just the exact catch-all '~.'), and wrapped\ncontinuation lines are no longer silently dropped.\n\nresolvectl is now needed by --long, so one OnceLock-cached invocation\nis shared with --full's domain-search rather than spawning twice.\n\nAssisted-By: Claude Fable 5",
           "timestamp": "2026-07-26T08:39:18-07:00",
@@ -19995,6 +19931,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1614856030,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6c1e280cf5d410f32f6f429246ddf45e1e8dff89",
+          "message": "packaging: pin to 0.11.6, open 0.11.7 (#230)\n\nPost-release packaging commit as a normal gated PR: packaging/aur and\npackaging/copr pinned to the released v0.11.6, Cargo.toml opened on\n0.11.7 so `just pr`'s tag-equality check passes.\n\nsha256 02136d0d... verified three independent ways (sha256sum, python\nhashlib, openssl) against the real v0.11.6 tarball, and the tarball's\ndocs/retch.1 is byte-identical to the committed page at the tag.\n.SRCINFO came out container_file_t with no stray temp file, so the #203\nSELinux fix still holds on this synced tree.\n\nAlso corrects NOTES drift this release exposed: the v0.11.5 entry\ndescribes a version that never shipped. 0.11.5 was bumped on a branch\nand amended into 0.11.6 when the two changes were combined into one PR,\nso the released run is 0.11.3, 0.11.4, 0.11.6. The entry is relabelled\nrather than deleted, and its \"two documents\" count corrected to three --\nthe wiki carried the same claim.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T13:57:08-07:00",
+          "tree_id": "ac2d27a36d6106e6452294f8615c0344605b16eb",
+          "url": "https://github.com/l1a/retch/commit/6c1e280cf5d410f32f6f429246ddf45e1e8dff89"
+        },
+        "date": 1788989273331,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 200.6183760580336,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 4.523860878219153,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 110.95124539546437,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 87.03938788183406,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45975.771642370426,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 536.297935543826,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 779.7490018010606,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2223791695,
             "unit": "ns"
           }
         ]
