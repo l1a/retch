@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788982392536,
+  "lastUpdate": 1788982944705,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19906,70 +19906,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "ada1356ee93539a36a2c996eaa23e24c481463a3",
-          "message": "Add CI graphics-feature job (v0.6.7) (#172)\n\nThe default `build` matrix never compiles the optional `graphics` feature\n(base64/image/icy_sixel + the src/logo.rs inline-image paths), so a\ngraphics-only lint or API break could pass CI unseen -- as the base64\n0.22->0.23 bump nearly did. v0.6.5 closed this in the local `just check` gate;\nthis closes it in CI.\n\nAdd a dedicated `graphics-feature` job to rust.yml (one ubuntu runner, same\nnon-tag triggers as `build`) running:\n  cargo clippy --features graphics -- -D warnings\n  cargo build  --features graphics --verbose\n\nCI only, no runtime change. retch-cli -> 0.6.7; retch-sysinfo unchanged.\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-25T10:40:12-07:00",
-          "tree_id": "ee5c8fdd3c4060bb2ec7f42369695582a0637e23",
-          "url": "https://github.com/l1a/retch/commit/ada1356ee93539a36a2c996eaa23e24c481463a3"
-        },
-        "date": 1785003611702,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 100.91297895977365,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9489816880984163,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 100.97571351197924,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.7093217325135,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46402.116832436164,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 492.14224721131166,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 739.3037858102687,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2340924195,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "fa886633f69e0ee0a7db86ea7dc9773ceec03be9",
           "message": "Keep logo beside text in --long/--full (v0.6.8) (#173)\n\n* Keep logo beside text in --long/--full (v0.6.8)\n\nThe side-by-side vs. stacked layout decision (and the text-column width) was\ncomputed from the widest of ALL info lines. In --long/--full a single very long\nline -- a 150+ char Wi-Fi line, or the Net/Battery lines -- inflated the text\ncolumn past the terminal width and forced the logo to stack ABOVE the text,\neven though those long lines sit well BELOW the logo.\n\nExtract a pure `plan_layout(info_widths, logo_height, logo_width, term_width,\nshow_logo)` that considers only the info lines that actually sit BESIDE the\nlogo (the first `logo_height` rows). Long lines below the logo render at column\n0 with the full terminal width and no longer affect placement.\n\nLogo-type-agnostic: logo_height/logo_width come from the active logo, so it\nworks identically for ASCII, Chafa (both rendered as text `Lines`) and the\ngraphical image protocols (Kitty/iTerm2/Sixel -- height_lines + fixed image\ncolumn).\n\nVerified in a pseudo-terminal: --full renders the logo beside the text at\n140 cols (previously stacked) and correctly stacks at 90 cols. 7 new\nplan_layout unit tests. retch-cli -> 0.6.8; retch-sysinfo unchanged (0.1.46).\n\nAssisted-By: Claude Opus 4.8\n\n* CI: build-job dry run uses --full --ascii-logo too\n\nThe `build` job's \"Run fetcher (dry run)\" step still ran `cargo run -- --long`\n(no logo). Make it `cargo run -- --full --ascii-logo`, matching the full-test\ndry run, so every CI dry run exercises all fields and the logo/layout path.\n\nAssisted-By: Claude Opus 4.8\n\n* Split Wi-Fi into two lines; grayscale Apple logo\n\nTwo display tweaks requested on top of the layout fix (same PR):\n\n- Wi-Fi: the iw path builds a single \"{adapter} [{iface}] - {SSID} (band/rate)\"\n  string that ran 150+ chars and wrapped into the logo. Split on the \" - \"\n  boundary via a pure `split_wifi_line` into a `Wi-Fi` line (adapter hardware)\n  and a `Wi-Fi Link` line (live connection). Fallback detectors have no \" - \"\n  and stay one line. `Wi-Fi Link` is aliased to the `wifi` field key in\n  should_show (like dns/memory). 3 unit tests.\n\n- macOS/Apple ASCII logo: replace the legacy rainbow colour bands\n  (green/yellow/red/magenta/blue) with a 256-colour grey (silver) ramp,\n  matching the modern monochrome Apple logo. Graphical macos.png untouched.\n\nretch-cli stays 0.6.8 (same PR); retch-sysinfo unchanged.\n\nAssisted-By: Claude Opus 4.8\n\n* Fix graphical logo landing mid-text in --long/--full\n\nThe side-by-side path for image protocols (Kitty/iTerm2/Sixel) printed ALL the\ninfo lines first, then did `\\x1b[{n}A` to move back up and draw the image to the\nright of the top rows. For tall output (--long/--full) the info block is taller\nthan the viewport, so by the time the text finished the screen had scrolled and\nthe cursor-up was clamped at the top of the viewport -- the image was drawn in\nthe MIDDLE of the text, overlapping it (reported on kitty).\n\nDraw the image FIRST instead: move to the top of the logo column, bracket the\nimage draw with save/restore (\\x1b7/\\x1b8) so it lands at the correct row before\nany text is printed or the screen scrolls, then print the info lines\ntop-to-bottom at column 0. The terminal scrolls naturally and carries the\ncell-anchored image with it. Shared `render_graphical_side_by_side` helper for\nall three protocols. Verified the escape choreography (right/save/image/restore/\nCR/text) at the byte level in a kitty pty.\n\nretch-cli stays 0.6.8 (same PR).\n\nAssisted-By: Claude Opus 4.8\n\n* docs(NOTES): record graphical logo placement fix (v0.6.8)\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-25T17:31:49-07:00",
@@ -23089,6 +23025,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2235022145,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2930e138fc2f004b5c5a429884a13d7c47c85863",
+          "message": "deps: bump dirs to 7.0, toml to 1.1.5 (#227)\n\nConsolidates Dependabot #222 onto a gated branch so the version bump,\nNOTES entry and man regen it skips are actually done.\n\ndirs 6.0.0 -> 7.0.0 is a major bump, established from the source rather\nthan from a green build: lib.rs, lin.rs, mac.rs and wasm.rs are\nbyte-identical between the two versions, and the entire behavioural\nchange is one line in win.rs, where preference_dir() moves from local to\nroaming AppData. retch never calls preference_dir(); it uses only\nconfig_dir() and home_dir(), both unchanged on every platform.\n\nA caret range on 6.0 will not admit 7.0, so the spec widens in both\nmanifests. retch-sysinfo is bumped despite no .rs change because the\nmanifest of the published crate changes: leaving it at 0.1.61 would mean\nthe repo's 0.1.61 requires dirs 7.0 while crates.io's requires 6.0.\n\ntoml 1.1.4 -> 1.1.5 is lockfile-only: a DeValue::make_owned correctness\nfix plus two doc-comment links. DeValue appears nowhere in the workspace.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T12:03:11-07:00",
+          "tree_id": "cc83ef75f5d42dd65f85c05252e05b5d3e1e2ad5",
+          "url": "https://github.com/l1a/retch/commit/2930e138fc2f004b5c5a429884a13d7c47c85863"
+        },
+        "date": 1788982940529,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 183.44929138551296,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948105323488802,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 102.5061660338209,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 82.70236937387642,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 50031.619329012676,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 497.2081108865876,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 741.5587664419601,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1003796470,
             "unit": "ns"
           }
         ]
