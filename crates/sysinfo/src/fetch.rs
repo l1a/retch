@@ -67,7 +67,7 @@ pub struct SystemInfo {
     /// Hardware component temperatures.
     pub temps: Vec<String>,
     /// Network interface statistics and status.
-    pub networks: Vec<String>,
+    pub networks: Vec<crate::network::NetworkInterface>,
     /// System boot time in ISO 8601 format.
     pub boot_time: String,
     /// Battery status (currently placeholder for future feature).

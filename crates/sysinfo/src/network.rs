@@ -112,9 +112,54 @@ pub fn detect_public_ip() -> Option<String> {
 }
 
 /// Builds the formatted list of network interfaces with IP addresses and RX/TX stats.
-pub fn detect_networks(active_interface: Option<&str>, local_ip: Option<&str>) -> Vec<String> {
+/// One network interface, as both the rendered display line and the facts about it.
+///
+/// **The two fields exist because returning only the string was the bug.** `display.rs`
+/// needed to know which entry was the active interface and which were up, and with nothing
+/// but a formatted, ANSI-colourised line to go on it resorted to `line.contains(active)`
+/// and `line.contains("[Up]")`. Both were wrong: the first matches any interface whose
+/// *rendered line* contains the active name as a substring (`Wi-Fi` matches
+/// `Wi-Fi-Native WiFi Filter Driver-0000`, and on Linux `eth0` matches `eth0.100`), and
+/// the second could never match at all, because the status is colourised, so the bytes are
+/// `[`+`\x1b[32m`+`Up`+`\x1b[39m`+`]` and the literal `[Up]` never appears.
+///
+/// Carrying the facts alongside the presentation makes both questions exact.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NetworkInterface {
+    /// Kernel/adapter interface name, exactly as the OS reports it (`eth0`, `Wi-Fi`).
+    /// This is the same vocabulary `active_interface` uses, so the two compare directly.
+    pub name: String,
+    /// Whether the interface is up, or has moved bytes.
+    pub is_up: bool,
+    /// The formatted display line, including the name, addresses, status and RX/TX.
+    pub line: String,
+}
+
+pub fn detect_networks(
+    active_interface: Option<&str>,
+    local_ip: Option<&str>,
+) -> Vec<NetworkInterface> {
+    // On Windows, NDIS lightweight filters bound to an adapter are reported as interfaces
+    // in their own right, each carrying a copy of that adapter's counters — so a single
+    // Wi-Fi card shows up as `Wi-Fi` plus several `Wi-Fi-<filter>-0000` entries with
+    // identical RX/TX. Drop them, on the same rule `net-io` uses, so an adapter is listed
+    // once. Computed before the loop because it is one table read, not one per interface.
+    #[cfg(target_os = "windows")]
+    let excluded = crate::win_iftable::excluded_interface_names();
+
     Networks::new_with_refreshed_list()
         .iter()
+        .filter(|(name, _)| {
+            #[cfg(target_os = "windows")]
+            {
+                !excluded.iter().any(|e| e == *name)
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                let _ = name;
+                true
+            }
+        })
         .map(|(name, data)| {
             let rx = format_bytes(data.total_received());
             let tx = format_bytes(data.total_transmitted());
@@ -174,7 +219,11 @@ pub fn detect_networks(active_interface: Option<&str>, local_ip: Option<&str>) -
                 String::new()
             };
 
-            format!("{}{} [{}] RX: {} TX: {}", name, ip_str, status, rx, tx)
+            NetworkInterface {
+                name: name.to_string(),
+                is_up,
+                line: format!("{}{} [{}] RX: {} TX: {}", name, ip_str, status, rx, tx),
+            }
         })
         .collect()
 }

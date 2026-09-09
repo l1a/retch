@@ -59,6 +59,12 @@ pub mod weather;
 pub mod wm;
 pub mod zfs;
 
+// Gated on `test` as well as `windows` so the pure interface-classification rule (which
+// decides whether a `GetIfTable2` row is a real adapter or an NDIS filter instance) is
+// exercised by the Linux and macOS CI legs too — it is the load-bearing half, and it needs
+// no Windows API to test.
+#[cfg(any(target_os = "windows", test))]
+pub(crate) mod win_iftable;
 #[cfg(target_os = "windows")]
 pub(crate) mod win_reg;
 #[cfg(target_os = "windows")]
