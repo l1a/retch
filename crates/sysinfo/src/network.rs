@@ -653,8 +653,17 @@ pub fn parse_netsh_output(stdout: &str) -> Option<String> {
 /// Returns the list of configured DNS nameserver addresses.
 ///
 /// Linux/macOS: parses `nameserver` lines from `/etc/resolv.conf`.
-/// Windows: runs PowerShell `Get-DnsClientServerAddress`.
+/// Windows: reads `GetAdaptersAddresses`' per-adapter DNS server list natively.
 /// Returns an empty `Vec` if nothing is found.
+///
+/// **This was the single slowest field in `--long` on Windows.** It spawned
+/// `powershell -Command "Get-DnsClientServerAddress …"`, measured at **3409 ms** against a
+/// ~322 ms process-startup floor — enough on its own to set `--long`'s wall clock
+/// (3352 ms) and put retch 2.3x behind fastfetch in that mode. `-NoProfile` was measured
+/// and is **not** the answer: bare `powershell -Command exit` costs 893 ms with a profile
+/// and 878 ms without, so it is ~890 ms of interpreter startup plus ~2100 ms of cmdlet
+/// work. Only removing the spawn removes the cost — the same conclusion #146-#150 reached
+/// for the other Windows probes.
 pub fn detect_dns() -> Vec<String> {
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
@@ -664,25 +673,9 @@ pub fn detect_dns() -> Vec<String> {
     }
     #[cfg(target_os = "windows")]
     {
-        if let Ok(output) = std::process::Command::new("powershell")
-            .args([
-                "-Command",
-                "Get-DnsClientServerAddress -AddressFamily IPv4 | Select-Object -ExpandProperty ServerAddresses | Sort-Object -Unique",
-            ])
-            .output()
-        {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                let servers: Vec<String> = stdout
-                    .lines()
-                    .map(|l| l.trim().to_string())
-                    .filter(|l| !l.is_empty())
-                    .collect();
-                if !servers.is_empty() {
-                    return servers;
-                }
-            }
-        }
+        windows_dns_servers()
     }
+    #[cfg(not(target_os = "windows"))]
     Vec::new()
 }
 
@@ -800,6 +793,66 @@ struct WinAdapterDnsInfo {
     dns_suffix: String,
     is_up: bool,
     is_loopback: bool,
+    /// Nameservers configured on this adapter, from `GetAdaptersAddresses`.
+    dns_servers: Vec<std::net::IpAddr>,
+}
+
+/// Windows `AF_INET`. Note `AF_INET6` is **23** on Windows, not 10 as on Linux.
+#[cfg(any(target_os = "windows", test))]
+const AF_INET: u16 = 2;
+/// Windows `AF_INET6`.
+#[cfg(any(target_os = "windows", test))]
+const AF_INET6: u16 = 23;
+
+/// Decodes a Win32 `sockaddr` into an IP address.
+///
+/// The family field is host-order `u16`; the address bytes that follow are in network
+/// order, which is the order `Ipv4Addr`/`Ipv6Addr` take them in, so no swapping is needed.
+/// `sockaddr_in` puts the 4 address bytes at offset 4 (after family and port);
+/// `sockaddr_in6` puts its 16 at offset 8 (after family, port and flowinfo).
+///
+/// Every access is bounds-checked against the length the OS reported rather than assumed
+/// from the family, so a short or truncated buffer yields `None` instead of reading past
+/// the end of it.
+#[cfg(any(target_os = "windows", test))]
+fn parse_sockaddr(bytes: &[u8]) -> Option<std::net::IpAddr> {
+    let family = u16::from_ne_bytes([*bytes.first()?, *bytes.get(1)?]);
+    match family {
+        AF_INET => {
+            let octets: [u8; 4] = bytes.get(4..8)?.try_into().ok()?;
+            Some(std::net::IpAddr::V4(octets.into()))
+        }
+        AF_INET6 => {
+            let octets: [u8; 16] = bytes.get(8..24)?.try_into().ok()?;
+            Some(std::net::IpAddr::V6(octets.into()))
+        }
+        _ => None,
+    }
+}
+
+/// Collects the machine's IPv4 nameservers from the adapter list.
+///
+/// **IPv4-only, deliberately**: the PowerShell query this replaces passed
+/// `-AddressFamily IPv4`, so restricting it here keeps the output byte-identical and makes
+/// this a pure performance change. Windows also hands out well-known placeholder v6
+/// servers (`fec0:0:0:ffff::1` and friends) on machines with no real v6 DNS, which would
+/// need filtering of their own. Reporting v6 nameservers — Linux already does, since
+/// `resolv.conf` lists them — is a separate, behavioural change.
+///
+/// Sorted as strings and de-duplicated, reproducing `Sort-Object -Unique`: that is a
+/// lexicographic sort, so `10.10.1.1` precedes `100.101.255.254`. Preserved for parity
+/// rather than because a numeric sort would be worse.
+#[cfg(target_os = "windows")]
+fn windows_dns_servers() -> Vec<String> {
+    let mut servers: Vec<String> = get_windows_adapters_dns_info()
+        .into_iter()
+        .flat_map(|adapter| adapter.dns_servers)
+        .filter(|ip| ip.is_ipv4())
+        .map(|ip| ip.to_string())
+        .collect();
+    servers.sort();
+    servers.dedup();
+    servers
 }
 
 /// Resolves the default route's DNS domain on Windows.
@@ -890,7 +943,7 @@ fn get_windows_adapters_dns_info() -> Vec<WinAdapterDnsInfo> {
         FirstUnicastAddress: *const std::ffi::c_void,
         FirstAnycastAddress: *const std::ffi::c_void,
         FirstMulticastAddress: *const std::ffi::c_void,
-        FirstDnsServerAddress: *const std::ffi::c_void,
+        FirstDnsServerAddress: *const IpAdapterDnsServerAddress,
         DnsSuffix: *const u16,
         Description: *const u16,
         FriendlyName: *const u16,
@@ -902,8 +955,36 @@ fn get_windows_adapters_dns_info() -> Vec<WinAdapterDnsInfo> {
         OperStatus: u32,
     }
 
+    /// `SOCKET_ADDRESS` — a pointer to a `sockaddr` plus its length.
+    #[repr(C)]
+    #[allow(non_snake_case)]
+    struct SocketAddress {
+        lpSockaddr: *const u8,
+        iSockaddrLength: i32,
+    }
+
+    /// `IP_ADAPTER_DNS_SERVER_ADDRESS_XP`, a singly-linked list per adapter.
+    ///
+    /// The header declares `Length`/`Reserved` inside a union with a `ULONGLONG Alignment`,
+    /// which is why the two `u32`s sit at offset 0 and the `Next` pointer at 8.
+    #[repr(C)]
+    #[allow(non_snake_case)]
+    struct IpAdapterDnsServerAddress {
+        Length: u32,
+        Reserved: u32,
+        Next: *const IpAdapterDnsServerAddress,
+        Address: SocketAddress,
+    }
+
     const AF_UNSPEC: u32 = 0;
-    const GAA_FLAGS: u32 = 0x0E;
+    /// `GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST`.
+    ///
+    /// **`GAA_FLAG_SKIP_DNS_SERVER` (0x08) used to be set here, and removing it is what
+    /// makes the native `dns` field possible.** With it, Windows leaves
+    /// `FirstDnsServerAddress` null — the field was declared in the struct below but could
+    /// never contain anything, which is why `detect_dns` had to spawn PowerShell instead.
+    /// Unicast is deliberately still requested (0x01 unset): `detect_domain` needs it.
+    const GAA_FLAGS: u32 = 0x06;
     const IF_TYPE_SOFTWARE_LOOPBACK: u32 = 24;
     const IF_OPER_STATUS_UP: u32 = 1;
 
@@ -1017,11 +1098,30 @@ fn get_windows_adapters_dns_info() -> Vec<WinAdapterDnsInfo> {
                 }
             }
 
+            // Walk this adapter's DNS server list. Each entry points at a `sockaddr` whose
+            // length the OS reports; `parse_sockaddr` is handed exactly that many bytes and
+            // bounds-checks within them, so a short or unfamiliar family is skipped rather
+            // than read past.
+            let mut dns_servers = Vec::new();
+            let mut dns_entry = adapter.FirstDnsServerAddress;
+            while !dns_entry.is_null() {
+                let entry = &*dns_entry;
+                if !entry.Address.lpSockaddr.is_null() && entry.Address.iSockaddrLength > 0 {
+                    let len = entry.Address.iSockaddrLength as usize;
+                    let bytes = std::slice::from_raw_parts(entry.Address.lpSockaddr, len);
+                    if let Some(ip) = parse_sockaddr(bytes) {
+                        dns_servers.push(ip);
+                    }
+                }
+                dns_entry = entry.Next;
+            }
+
             result.push(WinAdapterDnsInfo {
                 friendly_name,
                 dns_suffix,
                 is_up: adapter.OperStatus == IF_OPER_STATUS_UP,
                 is_loopback: adapter.IfType == IF_TYPE_SOFTWARE_LOOPBACK,
+                dns_servers,
             });
 
             curr = adapter.Next;
@@ -1322,6 +1422,77 @@ pub fn parse_resolvectl_search(content: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── parse_sockaddr ────────────────────────────────────────────────────────
+    //
+    // Byte fixtures rather than live adapters, so these assert the wire layout on every
+    // platform's CI rather than whatever this machine's DNS happens to be — the
+    // #155/v0.6.2 pattern. The bytes are laid out exactly as Windows hands them over.
+
+    /// `sockaddr_in` for 10.10.1.1: family (host order), port, then 4 address bytes.
+    fn sockaddr_in(octets: [u8; 4]) -> Vec<u8> {
+        let mut v = Vec::new();
+        v.extend_from_slice(&AF_INET.to_ne_bytes());
+        v.extend_from_slice(&53u16.to_be_bytes()); // sin_port
+        v.extend_from_slice(&octets); // sin_addr at offset 4
+        v.extend_from_slice(&[0u8; 8]); // sin_zero
+        v
+    }
+
+    /// `sockaddr_in6`: family, port, flowinfo, then the 16 address bytes at offset 8.
+    fn sockaddr_in6(octets: [u8; 16]) -> Vec<u8> {
+        let mut v = Vec::new();
+        v.extend_from_slice(&AF_INET6.to_ne_bytes());
+        v.extend_from_slice(&53u16.to_be_bytes());
+        v.extend_from_slice(&0u32.to_ne_bytes()); // sin6_flowinfo
+        v.extend_from_slice(&octets); // sin6_addr at offset 8
+        v.extend_from_slice(&0u32.to_ne_bytes()); // sin6_scope_id
+        v
+    }
+
+    #[test]
+    fn test_parse_sockaddr_reads_ipv4_at_offset_four() {
+        // The real nameserver this machine reported, so the fixture is not invented.
+        assert_eq!(
+            parse_sockaddr(&sockaddr_in([10, 10, 1, 1])),
+            Some("10.10.1.1".parse().unwrap())
+        );
+        assert_eq!(
+            parse_sockaddr(&sockaddr_in([100, 101, 255, 254])),
+            Some("100.101.255.254".parse().unwrap())
+        );
+    }
+
+    #[test]
+    fn test_parse_sockaddr_reads_ipv6_at_offset_eight() {
+        // fec0:0:0:ffff::1 — one of the placeholder servers Windows hands out when no real
+        // v6 nameserver is configured, which is exactly why v6 is filtered out upstream.
+        let mut o = [0u8; 16];
+        o[0] = 0xfe;
+        o[1] = 0xc0;
+        o[6] = 0xff;
+        o[7] = 0xff;
+        o[15] = 1;
+        assert_eq!(
+            parse_sockaddr(&sockaddr_in6(o)),
+            Some("fec0:0:0:ffff::1".parse().unwrap())
+        );
+    }
+
+    #[test]
+    fn test_parse_sockaddr_rejects_short_and_unknown_buffers() {
+        // A truncated buffer must yield None rather than read past the end of it: the
+        // length comes from the OS and is trusted for the slice, not for the family.
+        assert_eq!(parse_sockaddr(&[]), None);
+        assert_eq!(parse_sockaddr(&AF_INET.to_ne_bytes()), None);
+        assert_eq!(parse_sockaddr(&sockaddr_in([1, 2, 3, 4])[..7]), None);
+        assert_eq!(parse_sockaddr(&sockaddr_in6([0; 16])[..20]), None);
+        // AF_INET6 is 23 on Windows; 10 is the Linux value and must not be mistaken for it.
+        let mut wrong_family = sockaddr_in6([0; 16]);
+        wrong_family[0] = 10;
+        wrong_family[1] = 0;
+        assert_eq!(parse_sockaddr(&wrong_family), None);
+    }
 
     #[test]
     fn test_clean_domain() {
@@ -1734,12 +1905,14 @@ mod tests {
                 dns_suffix: "lan.home".to_string(),
                 is_up: true,
                 is_loopback: false,
+                dns_servers: Vec::new(),
             },
             WinAdapterDnsInfo {
                 friendly_name: "Ethernet".to_string(),
                 dns_suffix: "corp.internal".to_string(),
                 is_up: true,
                 is_loopback: false,
+                dns_servers: Vec::new(),
             },
         ];
 
@@ -1761,6 +1934,7 @@ mod tests {
             dns_suffix: "".to_string(),
             is_up: true,
             is_loopback: false,
+            dns_servers: Vec::new(),
         }];
         assert_eq!(
             resolve_windows_default_domain(
@@ -1786,24 +1960,28 @@ mod tests {
                 dns_suffix: "lan.home".to_string(),
                 is_up: true,
                 is_loopback: false,
+                dns_servers: Vec::new(),
             },
             WinAdapterDnsInfo {
                 friendly_name: "vEthernet".to_string(),
                 dns_suffix: "netbird.cloud".to_string(),
                 is_up: true,
                 is_loopback: false,
+                dns_servers: Vec::new(),
             },
             WinAdapterDnsInfo {
                 friendly_name: "Loopback Pseudo-Interface 1".to_string(),
                 dns_suffix: "ignore.me".to_string(),
                 is_up: true,
                 is_loopback: true,
+                dns_servers: Vec::new(),
             },
             WinAdapterDnsInfo {
                 friendly_name: "Disconnected".to_string(),
                 dns_suffix: "offline.local".to_string(),
                 is_up: false,
                 is_loopback: false,
+                dns_servers: Vec::new(),
             },
         ];
 
