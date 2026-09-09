@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788929436703,
+  "lastUpdate": 1788930090346,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -8638,90 +8638,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "586012cefc4c98dfa9ab5b227b0832620797265c",
-          "message": "Lint graphics feature in just check (v0.6.5) (#170)\n\nAdd `cargo clippy --features graphics -- -D warnings` to the `check` recipe\n(and therefore the `just pr` gate). The base64 0.22->0.23 bump surfaced that\nbase64/image/icy_sixel and their src/logo.rs call sites live behind the\noptional `graphics` feature, which the default `cargo clippy --workspace`\nnever compiles -- so a graphics-only lint or API break could pass the gate\nunseen. Targets retch-cli (which defines the feature), not --workspace.\n\nTooling only, no runtime change. Closes the LOCAL gate gap; CI still builds\ndefault features, so a CI graphics job would be a separate follow-up.\nretch-cli -> 0.6.5; retch-sysinfo unchanged (0.1.46).\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-25T09:33:31-07:00",
-          "tree_id": "f944cee1876f95b5314bfca44f0ba40a154033bb",
-          "url": "https://github.com/l1a/retch/commit/586012cefc4c98dfa9ab5b227b0832620797265c"
-        },
-        "date": 1784998053542,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 860615071.95,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 1006.063541994564,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.04261783352138,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9472888151751975,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.0568992621482,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7797.938550484408,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 71065.80395671036,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4847.61197166634,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4949.094591577263,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1331716.2395971012,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 345.1559450372036,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 269.60537866848324,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "da6c74f858f9d84a8b3b076473c1026f04aef412",
           "message": "Show ASCII logo without a TTY; fix CI dry-run (v0.6.6) (#171)\n\ndisplay.rs gated the logo purely on stdout_is_tty, so `retch --ascii-logo`\nrendered no logo when piped/redirected -- including CI's full-test \"Run\nfetcher (dry run)\" step, which showed no logo.\n\nExtract a pure `should_show_logo(config_show_logo, no_logo, ascii_logo,\nstdout_is_tty)` helper: `--no-logo` always wins; `--ascii-logo` now forces the\nlogo on regardless of TTY or config (ASCII is plain, pipe-safe text, mirroring\nhow --no-logo is always honored); auto mode is unchanged (default-on,\nTTY-gated). --chafa-logo/graphical modes are deliberately not forced (they emit\nterminal-only control sequences).\n\nUpdate the CI full-test dry-run to `cargo run --release -- --full --ascii-logo`\nso it exercises every field AND the ASCII-logo path. 4 new unit tests on the\nhelper; verified live that piped `--full --ascii-logo` shows the logo while\npiped `--full` alone still shows none.\n\nretch-cli -> 0.6.6; retch-sysinfo unchanged (0.1.46).\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-25T09:48:23-07:00",
@@ -12821,6 +12737,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 263.31913309653044,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9ce47daffaf03f7caa0f45dfe3cbe6c1fa0bfadf",
+          "message": "Fix three Net field defects from string matching (#224)\n\ndetect_networks returned pre-formatted, ANSI-colourised strings, so\ndisplay.rs recovered semantics from presentation by substring-matching\nthem. All three defects below are that one pattern.\n\n1. The active interface was matched with line.contains(active), against\n   the whole rendered line. \"Wi-Fi\" also matches the Windows pseudo-\n   interface \"Wi-Fi-Native WiFi Filter Driver-0000\", so both printed as\n   the active interface, both bright blue. This half is cross-platform:\n   on Linux \"eth0\" matches an \"eth0.100\" VLAN and any \"veth0...\" pair.\n\n2. Windows listed NDIS lightweight-filter instances as interfaces, each\n   carrying a copy of its adapter's counters - the duplicate Net line\n   with identical RX/TX. Excluded now on the same FilterInterface rule\n   net-io already used.\n\n3. The standard-mode fallback was dead code. It tested the line for a\n   literal \"[Up]\", but the status is colourised before the line is\n   built, so the bytes are [ ESC[32m Up ESC[39m ] and \"[Up]\" never\n   appears: measured 0 occurrences raw, 2 after stripping ANSI. With no\n   resolvable active interface, standard mode printed no Net line at all.\n\nFixed structurally rather than patched: detect_networks returns\nNetworkInterface { name, is_up, line }, so identity and status are facts\ninstead of inferences, and display.rs compares names exactly. Two pure\nhelpers carry the logic and are unit-tested without a terminal.\n\nGetIfTable2 moves into a shared win_iftable module used by both io.rs and\nnetwork.rs, so the 1352-byte MIB_IF_ROW2 and its layout guards exist once\nrather than twice - the win_setupapi precedent. Gated on test as well as\nwindows, so the classification rule runs on the Linux and macOS CI legs.\n\nAll three watched failing against the code that shipped. A fixture defect\nwas caught on the way: the first test helper wrote a plain \"[Up]\" into\nits line, which would have let the broken predicate pass.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-08T21:43:31-07:00",
+          "tree_id": "09232f9d9ca594665bc02463c8455f170a66550f",
+          "url": "https://github.com/l1a/retch/commit/9ce47daffaf03f7caa0f45dfe3cbe6c1fa0bfadf"
+        },
+        "date": 1788930088685,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 412529018.95,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 971.2512893757734,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 111.3831940989027,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9464581679986783,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 52.29375701902656,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7826.355986022905,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70196.17309492032,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4779.665247109153,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4871.304586465578,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1073074.5477437708,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 355.37697907526,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 266.8339186508475,
             "unit": "ns"
           }
         ]
