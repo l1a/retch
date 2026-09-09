@@ -116,7 +116,11 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.11.2)
+## Current State (v0.11.3)
+- **v0.11.3 - post-release: packaging pinned to 0.11.2, next cycle opened** (packaging only; no runtime change).
+  - `packaging/aur` (PKGBUILD and .SRCINFO) and `packaging/copr/retch.spec` bumped to **0.11.2**, the version just released. Both track the last RELEASED tag, so they can only move after the tag exists.
+  - `Cargo.toml` -> **0.11.3**, which is what lets this be a normal gated PR rather than a commit straight to `main`: `just pr`'s version check compares against the last tag, so the packaging bump passes as long as it travels with the next version bump.
+  - `retch-cli` -> 0.11.3. Patch bump.
 - **v0.11.2 - `dns` reads `GetAdaptersAddresses` instead of spawning PowerShell (Windows)**
   (`crates/sysinfo/src/network.rs`). The `--long` per-field sweep named this the single
   slowest field on Windows by a wide margin.
