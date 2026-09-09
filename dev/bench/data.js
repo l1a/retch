@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788931617701,
+  "lastUpdate": 1788932191402,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4418,6 +4418,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1482976360
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "c667eb41429cc4fe301676274c44c32583970358",
+          "message": "Read Windows DNS servers natively, not via PowerShell (#225)\n\ndetect_dns spawned `powershell -Command \"Get-DnsClientServerAddress ...\"`.\nA per-field hyperfine sweep of all 56 --long fields made it the slowest\nby a wide margin: 3409 ms against a ~322 ms process-startup floor, with\n41 of the 56 fields startup-bound. It now reads GetAdaptersAddresses'\nper-adapter DNS list. Measured: 3409 -> 385 ms, ~8.9x.\n\nThe enabling detail is one flag bit. GAA_FLAGS was 0x0E, which is\nSKIP_ANYCAST | SKIP_MULTICAST | SKIP_DNS_SERVER, so FirstDnsServerAddress\nwas declared in the struct and guaranteed null - which is why this field\nshelled out in the first place. Clearing that bit populates it. Unicast\nis still requested, because detect_domain needs it.\n\n-NoProfile was measured and rejected before any code was written: bare\n`powershell -Command exit` costs 893 ms with a profile and 878 ms\nwithout, so this is ~890 ms of interpreter startup plus ~2100 ms of\ncmdlet work, not profile loading. The ~642 ms profile figure recorded\nelsewhere is about pwsh (PowerShell 7), not Windows PowerShell 5.1.\n\nOutput is byte-identical, captured before and diffed after. IPv4-only and\nthe lexicographic sort are both preserved deliberately - the replaced\nquery passed -AddressFamily IPv4 and Sort-Object sorts as strings - so\nthis is a pure performance change. Reporting IPv6 nameservers is a\nseparate behavioural decision.\n\nStated plainly because the opposite would be easy to assume: this does\nNOT fix --long. That mode went 3352 -> 3076 ms, about 8%, and remains\n2.1x slower than `fastfetch -c all` (1467 ms). dns looked like it set the\nwall clock because 3409 was so close to 3352; it did not. battery\n(~2531 ms) is the next target, and NOTES §3's blocking condition stands.\n\n3 parse_sockaddr tests over byte fixtures rather than live adapters,\nwatched failing against the classic offset error: reading the IPv4\naddress at offset 0 instead of 4 yields Some(2.0.0.53) - the address\nfamily and port read as an address.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-08T22:34:32-07:00",
+          "tree_id": "ad3d803aaad5a5f8face7f7be1846273baa6ec68",
+          "url": "https://github.com/l1a/retch/commit/c667eb41429cc4fe301676274c44c32583970358"
+        },
+        "date": 1788932191402,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 439633034.0000001
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1688075533.9999998
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 338068822.0
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 99397112.00000003
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 2199871700.0
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1746464509.9999998
           }
         ]
       }
