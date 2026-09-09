@@ -123,19 +123,19 @@ You can generate a starting configuration with:
   - `keyboard`: Connected keyboard names, from `/proc/bus/input/devices`. A device is listed only when its class is unambiguous: peripherals paired through a Logitech Unifying/Bolt receiver are presented by the kernel with a merged capability set that is byte-identical for a keyboard and a mouse, so those are resolved via the HID++ driver's battery model name and, failing that, listed in neither `keyboard` nor `mouse` rather than guessed into the wrong one. Linux only. Long mode and above.
   - `mouse`: Connected pointing devices — mice, touchpads, and tablets — from `/proc/bus/input/devices`, de-duplicated by name. Subject to the same ambiguity rule as `keyboard`. Linux only. Long mode and above.
   - `memory`: System RAM usage and capacity.
-  - `phys-mem`: Physical RAM slot details — type (DDR5, LPDDR5, etc.), speed, and per-slot capacity. On Linux, shows the module's actual running speed alongside its rated speed when they differ (e.g. `4800 MT/s (rated 6000 MT/s)`, as when XMP/EXPO isn't enabled), parsed from dmidecode's "Configured Memory Speed". Requires root (`sudo`) to read DMI memory tables via `dmidecode`. On Windows, uses `Win32_PhysicalMemory` via PowerShell.
+  - `phys-mem`: Physical RAM slot details — type (DDR5, LPDDR5, etc.), speed, and per-slot capacity. On Linux, shows the module's actual running speed alongside its rated speed when they differ (e.g. `4800 MT/s (rated 6000 MT/s)`, as when XMP/EXPO isn't enabled), parsed from dmidecode's "Configured Memory Speed". Requires root (`sudo`) to read DMI memory tables via `dmidecode`. On Windows, reads the SMBIOS table natively via `GetSystemFirmwareTable`; no PowerShell and no elevation.
   - `swap`: System SWAP usage and capacity.
   - `uptime`: System uptime.
   - `procs`: Active process count.
   - `load`: Average system load.
   - `disk`: Mounted disk capacity, usage, and mountpoint.
-  - `phys-disk`: Physical disk model, size, and type (NVMe SSD, SSD, HDD). On Windows, uses `Get-PhysicalDisk` via PowerShell.
-  - `disk-io`: Per-disk read/write throughput in bytes per second, for physical whole disks only (partitions are excluded — their traffic is already counted against the parent device). Read from `/proc/diskstats`. Linux only. Long mode and above. See **I/O RATES** below for how the rate is measured.
+  - `phys-disk`: Physical disk model, size, and type (NVMe SSD, SSD, HDD). On Windows, uses native storage IOCTLs; no PowerShell and no administrator rights.
+  - `disk-io`: Per-disk read/write throughput in bytes per second, for physical whole disks only (partitions are excluded — their traffic is already counted against the parent device). On Linux, read from `/proc/diskstats` and named after the kernel device (`nvme0n1`). On Windows, read via the `IOCTL_DISK_PERFORMANCE` storage IOCTL and named after the drive index (`PhysicalDrive0`); no PowerShell and no administrator rights. Long mode and above. See **I/O RATES** below for how the rate is measured.
   - `btrfs`: Mounted btrfs filesystem label, subvolume, and space allocation (`btrfs filesystem show`/`usage`); one entry per mount point, so a filesystem mounted at both `/` and `/home` via separate subvolumes shows two entries. Snapshot count is shown when it can be read (`btrfs subvolume list -s`, requires root) and omitted otherwise. Linux only. Long mode and above.
   - `zpool`: Imported ZFS pool name, allocation, and health (`zpool list`). Linux and macOS with ZFS installed; empty if `zpool` is not present. Long mode and above.
   - `temp`: System temperature sensors.
   - `net`: Active network interfaces and local/public IP addresses.
-  - `net-io`: Per-interface RX/TX throughput in bytes per second, read from `/sys/class/net/<iface>/statistics`. Reports the default-route interface when it is known, otherwise every non-loopback interface that moved data during the window. Linux only. Long mode and above. See **I/O RATES** below.
+  - `net-io`: Per-interface RX/TX throughput in bytes per second, read from `/sys/class/net/<iface>/statistics` on Linux and from `GetIfTable2` on Windows (the same counters `Get-NetAdapterStatistics` reports, without the subprocess). Reports the default-route interface when it is known, otherwise every non-loopback interface that moved data during the window. On Windows, the NDIS lightweight-filter instances bound to an adapter — which report that adapter's counters a second time under names like `Wi-Fi-QoS Packet Scheduler-0000` — are excluded, so each adapter is counted once. Long mode and above. See **I/O RATES** below.
   - `public-ip`: Public IP address (queried over the network). Long mode and above.
   - `wifi`: Active Wi-Fi SSID, band frequency, channel, and link rates.
   - `dns`: Configured DNS nameservers (from `/etc/resolv.conf` on Linux/macOS).
@@ -217,6 +217,9 @@ Two consequences follow, and both are deliberate:
 A device that appears part-way through the run — a VPN interface coming up — is omitted
 rather than reported, since its lifetime counter is not a delta. Counter resets are
 clamped to zero for the same reason.
+
+Both fields are available on Linux and Windows. They are absent on other platforms rather
+than reported as zero, so a missing line never reads as an idle device.
 
 # PRIVILEGES
 
