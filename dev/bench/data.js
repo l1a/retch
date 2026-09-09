@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788996604127,
+  "lastUpdate": 1788997153992,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20068,70 +20068,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "fd8164049e99da545e8fe98d3f0b76e8c09b6faa",
-          "message": "Fix AMD GPU names via libdrm amdgpu.ids (v0.6.10) (#175)\n\nThe Strix Halo iGPU (1002:1586) was reported as 'Radeon 880M / 890M':\nimprove_amd_gpu_name's first-substring-wins table matched the 'Strix'\n(Strix Point) entry against pci.ids' 'Strix Halo [...]' name, and\npci.ids cannot separate 1586's revision variants (8040S/8050S/8060S)\nat all.\n\nResolve AMD names on Linux through /usr/share/libdrm/amdgpu.ids first,\nkeyed by device id + revision from sysfs (how fastfetch does it), with\ngraceful fallback to the pci.ids + codename path. Order 'Strix Halo'\nbefore 'Strix' in the fallback table and add 'Krackan'.\n\nVerified live on Strix Halo: 'AMD Radeon 8060S Graphics (32 GB)'.\n\nAssisted-By: Claude Fable 5",
-          "timestamp": "2026-07-26T07:58:18-07:00",
-          "tree_id": "30c6fa2ba1ee6c45f748cc640eb4ed19adc3000a",
-          "url": "https://github.com/l1a/retch/commit/fd8164049e99da545e8fe98d3f0b76e8c09b6faa"
-        },
-        "date": 1785080265838,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 104.9117335303991,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.949756195139035,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 101.1485513152032,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.57883807451604,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47174.63156960493,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 500.8658210645478,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 741.3340361837797,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2963082055,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "e8b380c97debf11a4a35306f669cf3e456ccd616",
           "message": "Report default-route domain, not a VPN's (v0.6.11) (#176)\n\nUnder systemd-resolved /etc/resolv.conf is the stub file whose search\nlist is the merged set of every link's domains, so the Domain field --\nwhich took its first entry -- showed a split-tunnel VPN's domain\n(netbird.cloud) instead of the default route's (lan). It never\nconsidered interfaces at all.\n\nResolve the IP default-route interface from /proc/net/route and report\nthat link's own domain from resolvectl status. Keyed on the routing\ntable, not resolvectl's per-link 'Default Route:' flag, which is a DNS\nrouting flag and was yes for both links. When resolved manages the\ndefault link but it has no domain, report nothing rather than falling\nback to the merged list (which would resurrect the VPN domain); an\nunmanaged link still falls back, so static-resolv.conf hosts are\nunchanged. A full-tunnel VPN that is the default route reports its own\ndomain, as intended.\n\nFix two latent bugs in the same parser: all '~'-prefixed routing-only\ndomains are excluded (not just the exact catch-all '~.'), and wrapped\ncontinuation lines are no longer silently dropped.\n\nresolvectl is now needed by --long, so one OnceLock-cached invocation\nis shared with --full's domain-search rather than spawning twice.\n\nAssisted-By: Claude Fable 5",
           "timestamp": "2026-07-26T08:39:18-07:00",
@@ -23251,6 +23187,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1533297765,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a8c5647b52caf2ca9bdfb86733b5aeb3d0d130d9",
+          "message": "deps: bump icy_sixel to 0.7 (#228) (#231)\n\nConsolidates Dependabot #228 onto a gated branch so the version bump,\nNOTES entry and man regen it skips are actually done.\n\nicy_sixel 0.6.0 -> 0.7.0 brings decoder streaming improvements and codec\nhardening. SixelImage::try_from_rgba and .encode() signatures remain fully\ncompatible in src/logo.rs.\n\nCargo.toml bumped to 0.11.8 (since main already carries unreleased 0.11.7)\nand icy_sixel widened to 0.7. docs/retch.1 regenerated for 0.11.8.\n\nAssisted-By: Gemini 3.8 Flash",
+          "timestamp": "2026-09-09T16:00:16-07:00",
+          "tree_id": "6497f82d4bad2064bded32821efe8e24bc3efd1a",
+          "url": "https://github.com/l1a/retch/commit/a8c5647b52caf2ca9bdfb86733b5aeb3d0d130d9"
+        },
+        "date": 1788997150402,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 182.52238082306,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.949257310890531,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 107.00353959508422,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.83662384105281,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47461.75901194834,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 492.33676081141346,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 760.3790098441928,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1711720125,
             "unit": "ns"
           }
         ]
