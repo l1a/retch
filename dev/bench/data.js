@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788976099250,
+  "lastUpdate": 1788976648313,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19852,70 +19852,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "da6c74f858f9d84a8b3b076473c1026f04aef412",
-          "message": "Show ASCII logo without a TTY; fix CI dry-run (v0.6.6) (#171)\n\ndisplay.rs gated the logo purely on stdout_is_tty, so `retch --ascii-logo`\nrendered no logo when piped/redirected -- including CI's full-test \"Run\nfetcher (dry run)\" step, which showed no logo.\n\nExtract a pure `should_show_logo(config_show_logo, no_logo, ascii_logo,\nstdout_is_tty)` helper: `--no-logo` always wins; `--ascii-logo` now forces the\nlogo on regardless of TTY or config (ASCII is plain, pipe-safe text, mirroring\nhow --no-logo is always honored); auto mode is unchanged (default-on,\nTTY-gated). --chafa-logo/graphical modes are deliberately not forced (they emit\nterminal-only control sequences).\n\nUpdate the CI full-test dry-run to `cargo run --release -- --full --ascii-logo`\nso it exercises every field AND the ASCII-logo path. 4 new unit tests on the\nhelper; verified live that piped `--full --ascii-logo` shows the logo while\npiped `--full` alone still shows none.\n\nretch-cli -> 0.6.6; retch-sysinfo unchanged (0.1.46).\n\nAssisted-By: Claude Opus 4.8",
-          "timestamp": "2026-07-25T09:48:23-07:00",
-          "tree_id": "88dc56bcc4160f88dae2e60506f62a93c2ca7ea4",
-          "url": "https://github.com/l1a/retch/commit/da6c74f858f9d84a8b3b076473c1026f04aef412"
-        },
-        "date": 1785000560761,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 101.21264455900527,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9476539675219144,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 101.65632664867357,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.95028678829861,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45098.658860261305,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 494.00467863660015,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 737.7903304680186,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2654876025,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "ada1356ee93539a36a2c996eaa23e24c481463a3",
           "message": "Add CI graphics-feature job (v0.6.7) (#172)\n\nThe default `build` matrix never compiles the optional `graphics` feature\n(base64/image/icy_sixel + the src/logo.rs inline-image paths), so a\ngraphics-only lint or API break could pass CI unseen -- as the base64\n0.22->0.23 bump nearly did. v0.6.5 closed this in the local `just check` gate;\nthis closes it in CI.\n\nAdd a dedicated `graphics-feature` job to rust.yml (one ubuntu runner, same\nnon-tag triggers as `build`) running:\n  cargo clippy --features graphics -- -D warnings\n  cargo build  --features graphics --verbose\n\nCI only, no runtime change. retch-cli -> 0.6.7; retch-sysinfo unchanged.\n\nAssisted-By: Claude Opus 4.8",
           "timestamp": "2026-07-25T10:40:12-07:00",
@@ -23035,6 +22971,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2032539180,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ed22db6127a77bde79ccb2655bb7a5d5b9d354af",
+          "message": "packaging: pin to 0.11.2, open 0.11.3 (#226)\n\npackaging/aur and packaging/copr track the last RELEASED tag, so they can\nonly be bumped once v0.11.2 exists. Bundling that with the next version bump\nis what makes this a normal gated PR: just pr's step 2 compares Cargo.toml\nagainst the last tag, not against this PR's parent, so opening 0.11.3\nsatisfies it. Previous releases sent this commit straight to main on the\nbelief that a PR was impossible.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T10:14:58-07:00",
+          "tree_id": "54e278233afa8b031e5b61425021697f4e46c445",
+          "url": "https://github.com/l1a/retch/commit/ed22db6127a77bde79ccb2655bb7a5d5b9d354af"
+        },
+        "date": 1788976644355,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 182.73316141001598,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9473667054202095,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 103.02723275597468,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.67946641861577,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47222.09144398027,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 496.93693711563793,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 743.5395483789903,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2235022145,
             "unit": "ns"
           }
         ]
