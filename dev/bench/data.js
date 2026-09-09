@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788986357950,
+  "lastUpdate": 1788986805366,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13056,80 +13056,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "b899b3ca3988eab8b8632cbb3b5263bf35322a76",
-          "message": "Fix graphical logo placement after scroll (v0.6.9) (#174)\n\nThe v0.6.8 side-by-side choreography saved the cursor (DECSC), drew\nthe image, and restored (DECRC). With the prompt at the bottom of the\nscreen the draw scrolls the viewport, and DECSC/DECRC restore a\nviewport-relative position, so the info text landed below the logo\ninstead of beside it. Reproduced identically on Rio and kitty.\n\nReserve the logo rows with newlines first and cursor-up back to the\nimage-top row, so any scroll happens before the save and nothing\nbetween save and restore can scroll. Fresh-screen output unchanged.\n\nAlso refresh the stale in-repo packaging reference copies\n(PKGBUILD/package.nix 0.3.21 -> 0.6.8), per the tracked WIP task.\n\nAssisted-By: Claude Fable 5",
-          "timestamp": "2026-07-26T07:32:00-07:00",
-          "tree_id": "a20285fab03aaf49bedc3f4d570f209aaf34e68d",
-          "url": "https://github.com/l1a/retch/commit/b899b3ca3988eab8b8632cbb3b5263bf35322a76"
-        },
-        "date": 1785077502072,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 820116568.85,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 395.14793417024663,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 60.60543499964352,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.675788223616813,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 60.54616688212104,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 4103.0608092151615,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 999.5315907361176,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 386.9479631067139,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 65755.43639424654,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 329.03581665244405,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "fd8164049e99da545e8fe98d3f0b76e8c09b6faa",
           "message": "Fix AMD GPU names via libdrm amdgpu.ids (v0.6.10) (#175)\n\nThe Strix Halo iGPU (1002:1586) was reported as 'Radeon 880M / 890M':\nimprove_amd_gpu_name's first-substring-wins table matched the 'Strix'\n(Strix Point) entry against pci.ids' 'Strix Halo [...]' name, and\npci.ids cannot separate 1586's revision variants (8040S/8050S/8060S)\nat all.\n\nResolve AMD names on Linux through /usr/share/libdrm/amdgpu.ids first,\nkeyed by device id + revision from sysfs (how fastfetch does it), with\ngraceful fallback to the pci.ids + codename path. Order 'Strix Halo'\nbefore 'Strix' in the fallback table and add 'Krackan'.\n\nVerified live on Strix Halo: 'AMD Radeon 8060S Graphics (32 GB)'.\n\nAssisted-By: Claude Fable 5",
           "timestamp": "2026-07-26T07:58:18-07:00",
@@ -16739,6 +16665,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 442.1548298277232,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b44d7e9837aca35e5365a3e6944c9017f308cd0d",
+          "message": "Show Host first; add Vulkan, OpenGL and OpenCL fields (#229)\n\nTwo user requests in one change.\n\nHost now leads the output. It names which machine the output describes,\nwhich is what a reader needs first when comparing runs across boxes or\nreading a pasted screenshot. Nothing had ever asserted the field order --\ndisplay order is the print_line call sequence and the config `fields`\narray is a membership test, not an ordering -- so\ntest_host_is_listed_first pins it, watched failing beforehand. Two docs\n(and the wiki) claimed `fields` set the display order, which it never\ndid; all three corrected.\n\nNew vulkan/opengl/opencl fields close the last user-visible fastfetch gap\nin NOTES section 6. Each dlopens its loader rather than linking it, so a\nmachine without the library omits the field instead of failing to start.\nThis is the first dlopen-based probe in the codebase; every other dynamic\nload here is Windows.\n\nThe constraint was to report what is available without changing the\nuser's environment. That rules out the shortcut for OpenCL: Mesa's\nrusticl is opt-in via RUSTICL_ENABLE, and without it the ICD advertises\nOpenCL 3.0 while exposing zero devices. retch could setenv that for\nitself, but it would be a data race against the collection scope\n(set_var is unsafe in Rust 2024; this crate is 2021, so it compiles\nsilently) and it would report a device the user's programs cannot see.\nThe field reports the device it observes and says \"no device enabled\"\notherwise. fastfetch prints a bare \"OpenCL: 3.0\" in both states.\n\nMeasurement corrected two wrong numbers before they shipped:\nvkEnumerateInstanceVersion returns the loader version (1.4.341), not the\ndevice apiVersion fastfetch prints (1.4.354); and a Vulkan instance below\n1.2 silently ignores the pNext chain, returning empty driver fields with\nno error.\n\nVulkan and OpenGL output is byte-identical to fastfetch here. OpenGL uses\na headless EGL context, so it needs no display server.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T13:25:54-07:00",
+          "tree_id": "92c16f52395c927a326c3e6d0edb4778dc4cffee",
+          "url": "https://github.com/l1a/retch/commit/b44d7e9837aca35e5365a3e6944c9017f308cd0d"
+        },
+        "date": 1788986802223,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1160288087.55,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 525.4126559250644,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 208.5587745534042,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9994442548563387,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 92.9080589122559,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 7329.382913758049,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1822.0908303450265,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 503.56376375559756,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 91544.96313414749,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 405.17091641725136,
             "unit": "ns"
           }
         ]
