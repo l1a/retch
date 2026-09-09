@@ -256,7 +256,7 @@ fn default_config_content() -> String {
 # logo = "arch"
 
 # Output modes (CLI only, but documented here for reference)
-# short = true     # OS, Kernel, Host, CPU, GPU, Memory, Disk
+# short = true     # Host, OS, Kernel, CPU, GPU, Memory, Disk
 # long = true      # Show all fields
 
 # Location for weather lookup (city name, ZIP code, or lat/lon coordinates).

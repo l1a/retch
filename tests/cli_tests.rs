@@ -228,3 +228,67 @@ fn test_generated_config_covers_all_registry_fields() {
         );
     }
 }
+
+/// Strip ANSI escape sequences so field labels can be read positionally.
+///
+/// Deliberately matches the whole `ESC [ ... <final byte>` form rather than SGR (`m`) only:
+/// chafa opens each run with `\x1b[?25l`, and an SGR-only strip silently leaves those six
+/// characters on the line — the measurement bug recorded in the 2026-08-24 session, where a
+/// uniform 6-column overflow was blamed on the renderer.
+fn strip_ansi(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c != '\x1b' {
+            out.push(c);
+            continue;
+        }
+        // Consume the introducer and everything up to the final byte (0x40..=0x7E).
+        if chars.next() != Some('[') {
+            continue;
+        }
+        for f in chars.by_ref() {
+            if ('\u{40}'..='\u{7E}').contains(&f) {
+                break;
+            }
+        }
+    }
+    out
+}
+
+/// `Host` is the first field printed, in every mode that shows it.
+///
+/// Display order is the `print_line` call sequence in `display.rs` — the config `fields` array
+/// is a membership test and does not reorder anything — so nothing but this test pins the
+/// order. It is the same shape as the v0.9.2 `logo_column` regression: a property that held
+/// only by accident for six months because nothing ever asserted it.
+#[test]
+fn test_host_is_listed_first() {
+    for args in [
+        ["--short", "--no-logo"].as_slice(),
+        ["--no-logo"].as_slice(),
+    ] {
+        let (stdout, _, success) = run_retch(args);
+        assert!(success, "retch {args:?} did not exit successfully");
+
+        let plain = strip_ansi(&stdout);
+        let first = plain
+            .lines()
+            .find(|l| !l.trim().is_empty())
+            .unwrap_or_else(|| panic!("retch {args:?} produced no output lines"));
+
+        // Assert Host is actually present rather than skipping when it is absent: a check
+        // that quietly passes on a missing field is a check that cannot fail.
+        assert!(
+            first.starts_with("Host:"),
+            "expected `Host` to be the first field for {args:?}, got: {first:?}"
+        );
+
+        let host = plain.find("\nHost:").expect("Host line missing");
+        let os = plain.find("\nOS:").expect("OS line missing");
+        assert!(
+            host < os,
+            "expected Host before OS for {args:?} (host at {host}, os at {os})"
+        );
+    }
+}

@@ -265,7 +265,7 @@ separator_color = "bright_black"
 # Temperature unit for weather: "fahrenheit" (default) or "celsius"
 # weather_unit = "fahrenheit"
 
-# Ordered list of system information fields to display
+# Which system information fields to display (selection only — this list does not reorder output)
 # Note: "phys-mem" requires root (sudo) on Linux to read DMI memory tables. On Windows, reads the SMBIOS table natively (no PowerShell).
 # Note: "btrfs" snapshot counts require root on Linux; the count is omitted (not shown as 0) when it can't be read.
 # Note: "editor", "desktop" and "wm" read environment variables, so they are absent under `sudo` (env_reset).
@@ -286,6 +286,7 @@ fields = [
     "net", "net-io", "public-ip", "wifi", "dns", "bluetooth", "battery", "power-adapter",
     "shell", "editor", "terminal", "terminal-font", "terminal-size", "desktop", "wm", "login-manager",
     "player", "media",
+    "vulkan", "opengl", "opencl",
     "wm-theme", "wallpaper", "terminal-theme", "theme", "icons", "cursor", "font", "users", "packages", "weather"
 ]
 ```

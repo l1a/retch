@@ -98,7 +98,7 @@ You can generate a starting configuration with:
 - **logo**: Distro name/ID to force override logo detection.
 - **weather_location**: Location for weather lookup. Accepts a city name (`"London"`), US ZIP code (`"10001"`), or lat/lon coordinates (`"48.8566,2.3522"`). If unset, your location is auto-detected from your outbound IP via ipinfo.io.
 - **weather_unit**: Temperature unit for the `weather` field. Accepts `"fahrenheit"` (default) or `"celsius"`. Can also be set via `--weather-unit` on the CLI.
-- **fields**: Array of strings representing active fields and their display order. Available fields are:
+- **fields**: Array of strings selecting which fields are shown. This is a membership test only — it does **not** reorder output; display order is fixed. Available fields are:
   - `os`: Operating system name.
   - `kernel`: Kernel version.
   - `host`: System host/product name.
@@ -111,6 +111,9 @@ You can generate a starting configuration with:
   - `cpu-cache`: CPU L1/L2/L3 cache sizes.
   - `cpu-usage`: Current CPU utilization percentage.
   - `gpu`: GPU model(s) and VRAM.
+  - `vulkan`: Vulkan API version, driver name and driver version, e.g. `1.4.354 - radv [Mesa 26.1.8]`. Linux only. Full mode only by default.
+  - `opengl`: OpenGL version string, read from a headless context, e.g. `4.6 (Compatibility Profile) Mesa 26.1.8`. Linux only. Full mode only by default.
+  - `opencl`: OpenCL platform version, provider, and the device it exposes. Reports `no device enabled` when a platform advertises a version but exposes no usable device — the normal state for Mesa's rusticl until `RUSTICL_ENABLE` is set. Linux only. Full mode only by default.
   - `motherboard`: Motherboard manufacturer and model.
   - `bios`: BIOS vendor and version.
   - `bootmgr`: Second-stage bootloader (GRUB, systemd-boot, etc.).
