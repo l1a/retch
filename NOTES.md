@@ -116,7 +116,13 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.11.6)
+## Current State (v0.11.7)
+- **v0.11.7 - post-release: packaging pinned to 0.11.6, next cycle opened** (packaging only; no runtime change).
+  - `packaging/aur` (PKGBUILD and .SRCINFO) and `packaging/copr/retch.spec` bumped to **0.11.6**, the version just released. Both track the last RELEASED tag, so they can only move after the tag exists.
+  - `Cargo.toml` -> **0.11.7**, which is what lets this be a normal gated PR rather than a commit straight to `main`: `just pr`'s version check compares against the last tag, so the packaging bump passes as long as it travels with the next version bump.
+  - **v0.11.6 rolled up three versions, not four**: 0.11.3, 0.11.4 and 0.11.6. There is no
+    0.11.5 release - see that entry below for why the number is skipped.
+  - `retch-cli` -> 0.11.7. Patch bump.
 - **v0.11.6 - `vulkan`, `opengl` and `opencl`: the last user-visible fastfetch gap**
   (`crates/sysinfo/src/gpu_api.rs` (new), `crates/sysinfo/src/fetch.rs`, `src/fields.rs`,
   `src/display.rs`). Closes the final §6 item; every group there is now closed.
@@ -195,8 +201,13 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
   - `retch-sysinfo` -> `0.1.63` (new public `gpu_api` module); `retch-cli` -> `0.11.6`.
     Minor bump - new user-visible fields.
 
-- **v0.11.5 - `Host` is the first field, and two docs claimed an ordering feature that does
-  not exist** (`src/display.rs`; CLI-only, `retch-sysinfo` unchanged at `0.1.62`). User
+- **v0.11.5 (never released; shipped inside v0.11.6) - `Host` is the first field, and three
+  docs claimed an ordering feature that does not exist**. This version number exists only in
+  this log: 0.11.5 was bumped on a feature branch and then amended into **0.11.6** when the
+  user asked for the two changes as one PR (#229), so `Cargo.toml` never carried 0.11.5 on
+  `main` and no tag or crates.io release bears it. The released run is 0.11.3, 0.11.4,
+  0.11.6. Kept as its own entry rather than merged into v0.11.6's, because the two changes
+  are unrelated and collapsing them would hide one. (`src/display.rs`; CLI-only, `retch-sysinfo` unchanged at `0.1.62`). User
   request: `Host` should lead the output.
   - **The change itself is one moved block**: the `Host` `print_line` now precedes `OS` in
     the identity group, so every mode that shows the field leads with it. `Host` names *which
@@ -209,8 +220,8 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
     test pinned the intended property. `test_host_is_listed_first` now pins it across
     `--short` and standard mode, and was **watched failing** against the pre-change binary
     with `expected `Host` to be the first field, got: "OS: Linux (Fedora Linux 44)"`.
-  - **Two documents described an ordering feature retch does not have**, both corrected here
-    and both pre-existing: `docs/retch.1.md` called `fields` "active fields and **their
+  - **Three documents described an ordering feature retch does not have**, all corrected
+    here and all pre-existing (the wiki's `Configuration-and-Theming.md` was the third): `docs/retch.1.md` called `fields` "active fields and **their
     display order**", and `README.md`'s generated-config comment called it an "**Ordered**
     list of system information fields to display". A user reordering that array would have
     seen nothing happen, with the docs insisting otherwise. Found only because this change
