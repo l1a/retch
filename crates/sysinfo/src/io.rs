@@ -197,10 +197,14 @@ pub fn select_net_rates(rates: Vec<IoRate>, active: Option<&str>) -> Vec<IoRate>
 
 /// Samples cumulative disk byte counters for physical whole disks.
 ///
-/// Linux only; returns an empty vector elsewhere, so the field is simply absent rather
-/// than wrong (same shape as `brightness`, `keyboard`, `tpm`). Partitions are excluded
-/// because their traffic is already counted against the parent device — reporting both
-/// would double the apparent throughput of every disk.
+/// Linux reads `/proc/diskstats`; Windows queries `IOCTL_DISK_PERFORMANCE` per
+/// `\\.\PhysicalDriveN`. Elsewhere this returns an empty vector, so the field is simply
+/// absent rather than wrong (same shape as `brightness`, `keyboard`, `tpm`).
+///
+/// Partitions are excluded on both platforms because their traffic is already counted
+/// against the parent device — reporting both would double every disk's apparent
+/// throughput. On Windows that falls out of addressing whole drives directly; on Linux it
+/// takes an explicit filter.
 pub fn sample_disk_io() -> Vec<IoCounters> {
     #[cfg(target_os = "linux")]
     {
@@ -210,7 +214,12 @@ pub fn sample_disk_io() -> Vec<IoCounters> {
         parse_diskstats(&content, is_physical_disk)
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "windows")]
+    {
+        win_ffi::sample_physical_drives()
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     {
         Vec::new()
     }
@@ -233,12 +242,19 @@ fn is_physical_disk(name: &str) -> bool {
 
 /// Samples cumulative network byte counters per interface.
 ///
-/// Reads `/sys/class/net/<iface>/statistics/{rx,tx}_bytes` directly rather than going
-/// through sysinfo, so the two samples are guaranteed to come from the same source and
-/// the same units as each other. Loopback is excluded — its traffic is the machine
-/// talking to itself and says nothing about network throughput.
+/// Linux reads `/sys/class/net/<iface>/statistics/{rx,tx}_bytes` directly rather than
+/// going through sysinfo, so the two samples are guaranteed to come from the same source
+/// and the same units as each other. Windows reads `InOctets`/`OutOctets` from
+/// `GetIfTable2`, which is the same source `Get-NetAdapterStatistics` reports and needs no
+/// subprocess. Empty on other platforms.
 ///
-/// Linux only; empty elsewhere.
+/// Loopback is excluded on both — its traffic is the machine talking to itself and says
+/// nothing about network throughput.
+///
+/// **The interface names must stay in the same vocabulary as `active_interface`**, or
+/// [`select_net_rates`] silently stops matching and falls through to its "everything that
+/// moved" branch. On Windows both are the adapter's friendly name (`Wi-Fi`): sysinfo
+/// reports it, and it is `MIB_IF_ROW2.Alias`.
 pub fn sample_net_io() -> Vec<IoCounters> {
     #[cfg(target_os = "linux")]
     {
@@ -266,7 +282,12 @@ pub fn sample_net_io() -> Vec<IoCounters> {
         out
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "windows")]
+    {
+        win_ffi::sample_interfaces()
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     {
         Vec::new()
     }
@@ -280,6 +301,338 @@ fn read_counter(path: &std::path::Path) -> Option<u64> {
         .trim()
         .parse::<u64>()
         .ok()
+}
+
+/// `IF_TYPE_SOFTWARE_LOOPBACK`, the `MIB_IF_ROW2.Type` value for a loopback interface.
+#[cfg(any(target_os = "windows", test))]
+const IF_TYPE_SOFTWARE_LOOPBACK: u32 = 24;
+
+/// `FilterInterface`, bit 1 of `MIB_IF_ROW2.InterfaceAndOperStatusFlags`.
+///
+/// The flags are a struct of `BOOLEAN` bitfields, so all eight live in one byte,
+/// least-significant first: bit 0 `HardwareInterface`, bit 1 `FilterInterface`,
+/// bit 2 `ConnectorPresent`.
+#[cfg(any(target_os = "windows", test))]
+const FILTER_INTERFACE_FLAG: u8 = 1 << 1;
+
+/// Decides whether a `GetIfTable2` row is a real interface worth reporting.
+///
+/// **This is the Windows equivalent of excluding partitions, and it is not cosmetic.**
+/// Every NDIS lightweight filter bound to an adapter gets its own row carrying that
+/// adapter's *identical* counters. Measured on a Wi-Fi-only machine: `Wi-Fi` plus
+/// `Wi-Fi-WFP Native MAC Layer LightWeight Filter-0000`,
+/// `Wi-Fi-Native WiFi Filter Driver-0000`, `Wi-Fi-QoS Packet Scheduler-0000` and
+/// `Wi-Fi-WFP 802.3 MAC Layer LightWeight Filter-0000` all reported `in=219996461
+/// out=32914969`. Reporting them all states the machine's throughput five times, under
+/// five names a reader would reasonably take for five devices.
+///
+/// **The rule is "exclude filter instances", NOT "keep hardware interfaces only"**, and
+/// the difference is load-bearing: on the same machine the `wt0` WireGuard tunnel reads
+/// `HardwareInterface = false, FilterInterface = false` while carrying real traffic, so
+/// keying on `HardwareInterface` would drop exactly the kind of interface the Linux side
+/// reports. Filter rows are the thing that is duplicated, so filter rows are what to drop.
+///
+/// Loopback is excluded to match the Linux arm dropping `lo`.
+#[cfg(any(target_os = "windows", test))]
+fn is_reportable_interface(if_type: u32, flags: u8) -> bool {
+    if_type != IF_TYPE_SOFTWARE_LOOPBACK && (flags & FILTER_INTERFACE_FLAG) == 0
+}
+
+/// Names a physical drive after its `\\.\PhysicalDriveN` index.
+///
+/// The Linux arm reports kernel device names (`nvme0n1`), so Windows reports the closest
+/// equivalent rather than the model string `phys-disk` shows — the two fields answer
+/// different questions, and a drive index is what identifies the device here.
+#[cfg(any(target_os = "windows", test))]
+fn physical_drive_name(index: u32) -> String {
+    format!("PhysicalDrive{index}")
+}
+
+/// Native Win32 bindings for the two counter sources.
+///
+/// Hand-written `extern "system"` declarations, matching the crate's Windows FFI house
+/// style (`win_reg.rs`, `disk.rs`) rather than pulling in a binding crate. The
+/// `CreateFileW`/`DeviceIoControl`/`CloseHandle` declarations duplicate `disk.rs`'s: they
+/// are declarations of the same OS entry points, carrying no logic that could drift, and
+/// sharing them would mean passing raw `HANDLE`s across module boundaries. The scan range
+/// they are used over *is* shared — see [`crate::disk::MAX_PHYSICAL_DRIVES`].
+#[cfg(target_os = "windows")]
+mod win_ffi {
+    use super::{is_reportable_interface, physical_drive_name, IoCounters};
+    use std::ffi::{c_void, OsStr};
+    use std::mem::size_of;
+    use std::os::windows::ffi::OsStrExt;
+    use std::ptr;
+
+    #[allow(clippy::upper_case_acronyms)]
+    type HANDLE = *mut c_void;
+    const INVALID_HANDLE_VALUE: HANDLE = -1isize as HANDLE;
+    const FILE_SHARE_READ: u32 = 0x0000_0001;
+    const FILE_SHARE_WRITE: u32 = 0x0000_0002;
+    const OPEN_EXISTING: u32 = 3;
+
+    /// `IOCTL_DISK_PERFORMANCE`, `CTL_CODE(IOCTL_DISK_BASE, 0x0008, METHOD_BUFFERED,
+    /// FILE_ANY_ACCESS)`.
+    ///
+    /// The access bits are zero, so — like the two IOCTLs `disk.rs` uses — it can be
+    /// issued on a handle opened with no access rights and needs no elevation. Confirmed
+    /// on Windows 11 from an unelevated shell before this code was written.
+    const IOCTL_DISK_PERFORMANCE: u32 = 0x0007_0020;
+
+    /// `DISK_PERFORMANCE`. Only the two byte counters are read; the rest of the struct is
+    /// declared so the layout — and therefore those two offsets — is right.
+    #[repr(C)]
+    #[derive(Default)]
+    struct DiskPerformance {
+        bytes_read: i64,
+        bytes_written: i64,
+        read_time: i64,
+        write_time: i64,
+        idle_time: i64,
+        read_count: u32,
+        write_count: u32,
+        queue_depth: u32,
+        split_count: u32,
+        query_time: i64,
+        storage_device_number: u32,
+        storage_manager_name: [u16; 8],
+    }
+
+    /// `MIB_IF_ROW2`. Every field is declared because the ones that matter sit 1208 and
+    /// 1280 bytes in — the offsets are only correct if everything ahead of them is.
+    #[repr(C)]
+    struct MibIfRow2 {
+        interface_luid: u64,
+        interface_index: u32,
+        interface_guid: [u8; 16],
+        alias: [u16; 257],
+        description: [u16; 257],
+        physical_address_length: u32,
+        physical_address: [u8; 32],
+        permanent_physical_address: [u8; 32],
+        mtu: u32,
+        if_type: u32,
+        tunnel_type: u32,
+        media_type: u32,
+        physical_medium_type: u32,
+        access_type: u32,
+        direction_type: u32,
+        interface_and_oper_status_flags: u8,
+        oper_status: u32,
+        admin_status: u32,
+        media_connect_state: u32,
+        network_guid: [u8; 16],
+        connection_type: u32,
+        transmit_link_speed: u64,
+        receive_link_speed: u64,
+        in_octets: u64,
+        in_ucast_pkts: u64,
+        in_nucast_pkts: u64,
+        in_discards: u64,
+        in_errors: u64,
+        in_unknown_protos: u64,
+        in_ucast_octets: u64,
+        in_multicast_octets: u64,
+        in_broadcast_octets: u64,
+        out_octets: u64,
+        out_ucast_pkts: u64,
+        out_nucast_pkts: u64,
+        out_discards: u64,
+        out_errors: u64,
+        out_ucast_octets: u64,
+        out_multicast_octets: u64,
+        out_broadcast_octets: u64,
+        out_qlen: u64,
+    }
+
+    /// `MIB_IF_TABLE2`. `Table` is declared `[MIB_IF_ROW2; 1]` as the header does; the
+    /// real row count is `num_entries` and the rows follow contiguously.
+    #[repr(C)]
+    struct MibIfTable2 {
+        num_entries: u32,
+        table: [MibIfRow2; 1],
+    }
+
+    extern "system" {
+        fn CreateFileW(
+            lp_file_name: *const u16,
+            dw_desired_access: u32,
+            dw_share_mode: u32,
+            lp_security_attributes: *mut c_void,
+            dw_creation_disposition: u32,
+            dw_flags_and_attributes: u32,
+            h_template_file: HANDLE,
+        ) -> HANDLE;
+
+        fn DeviceIoControl(
+            h_device: HANDLE,
+            dw_io_control_code: u32,
+            lp_in_buffer: *const c_void,
+            n_in_buffer_size: u32,
+            lp_out_buffer: *mut c_void,
+            n_out_buffer_size: u32,
+            lp_bytes_returned: *mut u32,
+            lp_overlapped: *mut c_void,
+        ) -> i32;
+
+        fn CloseHandle(h_object: HANDLE) -> i32;
+    }
+
+    #[link(name = "iphlpapi")]
+    extern "system" {
+        fn GetIfTable2(table: *mut *mut MibIfTable2) -> u32;
+        fn FreeMibTable(memory: *mut c_void);
+    }
+
+    /// Reads cumulative byte counters for every physical drive that answers.
+    ///
+    /// A drive that will not open, or whose IOCTL fails, is **skipped rather than
+    /// reported as zero**: `DISK_PERFORMANCE` counters can be turned off, and a confident
+    /// `0 B/s` for a disk that was never measured is worse than no line at all — the
+    /// `Users: 0` call (v0.6.1).
+    pub fn sample_physical_drives() -> Vec<IoCounters> {
+        (0..crate::disk::MAX_PHYSICAL_DRIVES)
+            .filter_map(query_drive_counters)
+            .collect()
+    }
+
+    /// Opens `\\.\PhysicalDrive{index}` with no access rights and queries its counters.
+    fn query_drive_counters(index: u32) -> Option<IoCounters> {
+        let path = format!(r"\\.\PhysicalDrive{index}");
+        let path_w: Vec<u16> = OsStr::new(&path).encode_wide().chain(Some(0)).collect();
+
+        // SAFETY: path_w is a valid null-terminated wide string. Zero desired access is
+        // sufficient for IOCTL_DISK_PERFORMANCE, which is FILE_ANY_ACCESS.
+        let handle = unsafe {
+            CreateFileW(
+                path_w.as_ptr(),
+                0,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                ptr::null_mut(),
+                OPEN_EXISTING,
+                0,
+                ptr::null_mut(),
+            )
+        };
+        if handle == INVALID_HANDLE_VALUE || handle.is_null() {
+            return None;
+        }
+
+        let mut perf = DiskPerformance::default();
+        let mut returned: u32 = 0;
+        // SAFETY: perf is a writable DiskPerformance passed with its own size; the IOCTL
+        // takes no input buffer.
+        let ok = unsafe {
+            DeviceIoControl(
+                handle,
+                IOCTL_DISK_PERFORMANCE,
+                ptr::null(),
+                0,
+                &mut perf as *mut _ as *mut c_void,
+                size_of::<DiskPerformance>() as u32,
+                &mut returned,
+                ptr::null_mut(),
+            )
+        };
+        // SAFETY: handle came from a successful CreateFileW and is closed exactly once.
+        unsafe {
+            CloseHandle(handle);
+        }
+
+        if ok == 0 || (returned as usize) < size_of::<DiskPerformance>() {
+            return None;
+        }
+        // Negative counters are not reachable from a working driver, but the field is a
+        // signed LARGE_INTEGER; clamp rather than wrap into an enormous u64.
+        Some(IoCounters {
+            device: physical_drive_name(index),
+            read: perf.bytes_read.max(0) as u64,
+            write: perf.bytes_written.max(0) as u64,
+        })
+    }
+
+    /// Reads cumulative per-interface byte counters via `GetIfTable2`.
+    pub fn sample_interfaces() -> Vec<IoCounters> {
+        let mut table: *mut MibIfTable2 = ptr::null_mut();
+        // SAFETY: GetIfTable2 allocates the table and writes its address into `table`.
+        let rc = unsafe { GetIfTable2(&mut table) };
+        if rc != 0 || table.is_null() {
+            return Vec::new();
+        }
+
+        // SAFETY: rc == 0 means the table is allocated and initialised. `table.table` is
+        // the first of `num_entries` contiguous rows.
+        let mut out = unsafe {
+            let count = (*table).num_entries as usize;
+            let rows = ptr::addr_of!((*table).table) as *const MibIfRow2;
+            (0..count)
+                .map(|i| &*rows.add(i))
+                .filter(|row| {
+                    is_reportable_interface(row.if_type, row.interface_and_oper_status_flags)
+                })
+                .map(|row| IoCounters {
+                    device: wide_to_string(&row.alias),
+                    read: row.in_octets,
+                    write: row.out_octets,
+                })
+                .filter(|c| !c.device.is_empty())
+                .collect::<Vec<_>>()
+        };
+
+        // SAFETY: the table was allocated by GetIfTable2 and is freed exactly once, after
+        // the last read of it above.
+        unsafe { FreeMibTable(table as *mut c_void) };
+
+        out.sort_by(|a, b| a.device.cmp(&b.device));
+        out
+    }
+
+    /// Decodes a fixed-size, null-padded UTF-16 field.
+    fn wide_to_string(buf: &[u16]) -> String {
+        let end = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+        String::from_utf16_lossy(&buf[..end]).trim().to_string()
+    }
+
+    #[cfg(test)]
+    mod layout {
+        use std::mem::{offset_of, size_of};
+
+        // These structs are read by fixed offset — MIB_IF_ROW2's counters sit past 1.2 KB
+        // of preceding fields, so a reorder or a padding change would silently read some
+        // other field's bytes as a byte count. The expected values were confirmed against
+        // live data before being pinned here: reading in/out_octets at these offsets
+        // reproduced `Get-NetAdapterStatistics`' per-adapter totals.
+        #[test]
+        fn ffi_struct_layout() {
+            assert_eq!(size_of::<super::DiskPerformance>(), 88);
+            assert_eq!(offset_of!(super::DiskPerformance, bytes_read), 0);
+            assert_eq!(offset_of!(super::DiskPerformance, bytes_written), 8);
+
+            assert_eq!(size_of::<super::MibIfRow2>(), 1352);
+            assert_eq!(offset_of!(super::MibIfRow2, alias), 28);
+            // `description` is what pins `alias`'s LENGTH, and it is not redundant with
+            // the offsets below it. A first attempt at this test omitted it and passed
+            // against an `alias` mutated to 256 WCHAR: the two lost bytes are swallowed by
+            // the padding before `physical_address_length` (4-byte aligned at 1056), so
+            // every later offset, and the total size, are unchanged. The mutation was
+            // real — `wide_to_string` would read one WCHAR short — and the check could not
+            // see it. Same family as every other entry in NOTES: an oracle answering a
+            // different question from the one asked.
+            assert_eq!(offset_of!(super::MibIfRow2, description), 542);
+            assert_eq!(offset_of!(super::MibIfRow2, if_type), 1128);
+            assert_eq!(
+                offset_of!(super::MibIfRow2, interface_and_oper_status_flags),
+                1152
+            );
+            assert_eq!(offset_of!(super::MibIfRow2, in_octets), 1208);
+            assert_eq!(offset_of!(super::MibIfRow2, out_octets), 1280);
+
+            // The rows must start at offset 8: NumEntries is a ULONG, and MIB_IF_ROW2's
+            // 8-byte alignment pads it out. Reading them at offset 4 would shear every
+            // field by four bytes.
+            assert_eq!(offset_of!(super::MibIfTable2, table), 8);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -477,6 +830,86 @@ mod tests {
         let selected = select_net_rates(rates, Some("eth0"));
         assert_eq!(selected.len(), 1);
         assert_eq!(selected[0].device, "eth0");
+    }
+
+    /// Verbatim `GetIfTable2` rows from a Windows 11 host (arrakis), as
+    /// `(alias, Type, InterfaceAndOperStatusFlags)`. Kept as data rather than reading the
+    /// live table so the test asserts against a fixed machine's interfaces rather than
+    /// whatever is plugged into the one running it — the #155/v0.6.2 pattern.
+    ///
+    /// The five `Wi-Fi*` rows all reported byte-identical counters
+    /// (`in=219996461 out=32914969`); so did the four `Local Area Connection* 6/7` pairs.
+    #[cfg(any(target_os = "windows", test))]
+    const IF_ROWS: &[(&str, u32, u8)] = &[
+        (
+            "Local Area Connection* 6-QoS Packet Scheduler-0000",
+            6,
+            0b0000_0010,
+        ),
+        ("Bluetooth Network Connection", 6, 0b0001_0000),
+        ("Ethernet", 6, 0b0000_0101),
+        ("Local Area Connection* 6", 6, 0b0000_0000),
+        ("Loopback Pseudo-Interface 1", 24, 0b0000_0000),
+        ("wt0", 53, 0b0000_0000),
+        (
+            "Wi-Fi-WFP Native MAC Layer LightWeight Filter-0000",
+            71,
+            0b0000_0010,
+        ),
+        ("Wi-Fi-Native WiFi Filter Driver-0000", 71, 0b0000_0010),
+        ("Wi-Fi-QoS Packet Scheduler-0000", 71, 0b0000_0010),
+        (
+            "Wi-Fi-WFP 802.3 MAC Layer LightWeight Filter-0000",
+            71,
+            0b0000_0010,
+        ),
+        ("Wi-Fi", 71, 0b0000_0101),
+        ("Teredo Tunneling Pseudo-Interface", 131, 0b0000_0000),
+    ];
+
+    #[test]
+    fn test_is_reportable_interface_drops_ndis_filter_duplicates() {
+        let kept: Vec<&str> = IF_ROWS
+            .iter()
+            .filter(|(_, if_type, flags)| is_reportable_interface(*if_type, *flags))
+            .map(|(alias, _, _)| *alias)
+            .collect();
+        // Every `Wi-Fi-<filter>-0000` row carries the SAME counters as `Wi-Fi`; keeping
+        // them reports this machine's throughput five times under five names.
+        assert_eq!(
+            kept,
+            vec![
+                "Bluetooth Network Connection",
+                "Ethernet",
+                "Local Area Connection* 6",
+                "wt0",
+                "Wi-Fi",
+                "Teredo Tunneling Pseudo-Interface",
+            ]
+        );
+        assert_eq!(kept.iter().filter(|a| a.starts_with("Wi-Fi")).count(), 1);
+    }
+
+    #[test]
+    fn test_is_reportable_interface_keeps_a_non_hardware_tunnel() {
+        // wt0 (WireGuard) is HardwareInterface=false, FilterInterface=false and moved
+        // real bytes. Filtering on HardwareInterface instead would drop it — this is the
+        // case that decides which flag the rule keys on, so it is pinned separately.
+        assert!(is_reportable_interface(53, 0b0000_0000));
+        // The physical Wi-Fi adapter (HardwareInterface|ConnectorPresent) also survives.
+        assert!(is_reportable_interface(71, 0b0000_0101));
+    }
+
+    #[test]
+    fn test_is_reportable_interface_drops_loopback() {
+        // Matches the Linux arm skipping `lo`.
+        assert!(!is_reportable_interface(IF_TYPE_SOFTWARE_LOOPBACK, 0));
+    }
+
+    #[test]
+    fn test_physical_drive_name_matches_the_device_path() {
+        assert_eq!(physical_drive_name(0), "PhysicalDrive0");
+        assert_eq!(physical_drive_name(31), "PhysicalDrive31");
     }
 
     #[test]

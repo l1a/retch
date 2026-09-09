@@ -273,8 +273,9 @@ separator_color = "bright_black"
 # Note: "weather" requires network access; shown in full mode only by default.
 # Note: "domain-search" queries resolvectl; shown in full mode only by default.
 # Note: "disk-io" and "net-io" are rates averaged over the run's own collection window
-#       (Linux only). They add no wall-clock in --long/--full; requesting one on its own
-#       tops the window up to ~100 ms so the reading is a measurement, not sampling noise.
+#       (Linux and Windows). They add no wall-clock in --long/--full; requesting one on its
+#       own tops the window up to ~100 ms so the reading is a measurement, not sampling
+#       noise. On Windows both read native counters - no PowerShell, no admin.
 fields = [
     "os", "kernel", "host", "domain", "domain-search", "chassis", "init", "locale",
     "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage", "gpu",

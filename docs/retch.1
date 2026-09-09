@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.10.2" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.11.0" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -192,7 +192,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]memory\fP`: System RAM usage and capacity\.
 .IP \(bu 4
-`\f[CR]phys\-mem\fP`: Physical RAM slot details \-\- type (DDR5, LPDDR5, etc\.), speed, and per\-slot capacity\. On Linux, shows the module's actual running speed alongside its rated speed when they differ (e\.g\. `\f[CR]4800 MT/s (rated 6000 MT/s)\fP`, as when XMP/EXPO isn't enabled), parsed from dmidecode's "Configured Memory Speed"\. Requires root (`\f[CR]sudo\fP`) to read DMI memory tables via `\f[CR]dmidecode\fP`\. On Windows, uses `\f[CR]Win32_PhysicalMemory\fP` via PowerShell\.
+`\f[CR]phys\-mem\fP`: Physical RAM slot details \-\- type (DDR5, LPDDR5, etc\.), speed, and per\-slot capacity\. On Linux, shows the module's actual running speed alongside its rated speed when they differ (e\.g\. `\f[CR]4800 MT/s (rated 6000 MT/s)\fP`, as when XMP/EXPO isn't enabled), parsed from dmidecode's "Configured Memory Speed"\. Requires root (`\f[CR]sudo\fP`) to read DMI memory tables via `\f[CR]dmidecode\fP`\. On Windows, reads the SMBIOS table natively via `\f[CR]GetSystemFirmwareTable\fP`; no PowerShell and no elevation\.
 .IP \(bu 4
 `\f[CR]swap\fP`: System SWAP usage and capacity\.
 .IP \(bu 4
@@ -204,9 +204,9 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]disk\fP`: Mounted disk capacity, usage, and mountpoint\.
 .IP \(bu 4
-`\f[CR]phys\-disk\fP`: Physical disk model, size, and type (NVMe SSD, SSD, HDD)\. On Windows, uses `\f[CR]Get\-PhysicalDisk\fP` via PowerShell\.
+`\f[CR]phys\-disk\fP`: Physical disk model, size, and type (NVMe SSD, SSD, HDD)\. On Windows, uses native storage IOCTLs; no PowerShell and no administrator rights\.
 .IP \(bu 4
-`\f[CR]disk\-io\fP`: Per\-disk read/write throughput in bytes per second, for physical whole disks only (partitions are excluded \-\- their traffic is already counted against the parent device)\. Read from `\f[CR]/proc/diskstats\fP`\. Linux only\. Long mode and above\. See \fBI/O RATES\fP below for how the rate is measured\.
+`\f[CR]disk\-io\fP`: Per\-disk read/write throughput in bytes per second, for physical whole disks only (partitions are excluded \-\- their traffic is already counted against the parent device)\. On Linux, read from `\f[CR]/proc/diskstats\fP` and named after the kernel device (`\f[CR]nvme0n1\fP`)\. On Windows, read via the `\f[CR]IOCTL_DISK_PERFORMANCE\fP` storage IOCTL and named after the drive index (`\f[CR]PhysicalDrive0\fP`); no PowerShell and no administrator rights\. Long mode and above\. See \fBI/O RATES\fP below for how the rate is measured\.
 .IP \(bu 4
 `\f[CR]btrfs\fP`: Mounted btrfs filesystem label, subvolume, and space allocation (`\f[CR]btrfs filesystem show\fP`/`\f[CR]usage\fP`); one entry per mount point, so a filesystem mounted at both `\f[CR]/\fP` and `\f[CR]/home\fP` via separate subvolumes shows two entries\. Snapshot count is shown when it can be read (`\f[CR]btrfs subvolume list \-s\fP`, requires root) and omitted otherwise\. Linux only\. Long mode and above\.
 .IP \(bu 4
@@ -216,7 +216,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]net\fP`: Active network interfaces and local/public IP addresses\.
 .IP \(bu 4
-`\f[CR]net\-io\fP`: Per\-interface RX/TX throughput in bytes per second, read from `\f[CR]/sys/class/net/<iface>/statistics\fP`\. Reports the default\-route interface when it is known, otherwise every non\-loopback interface that moved data during the window\. Linux only\. Long mode and above\. See \fBI/O RATES\fP below\.
+`\f[CR]net\-io\fP`: Per\-interface RX/TX throughput in bytes per second, read from `\f[CR]/sys/class/net/<iface>/statistics\fP` on Linux and from `\f[CR]GetIfTable2\fP` on Windows (the same counters `\f[CR]Get\-NetAdapterStatistics\fP` reports, without the subprocess)\. Reports the default\-route interface when it is known, otherwise every non\-loopback interface that moved data during the window\. On Windows, the NDIS lightweight\-filter instances bound to an adapter \-\- which report that adapter's counters a second time under names like `\f[CR]Wi\-Fi\-QoS Packet Scheduler\-0000\fP` \-\- are excluded, so each adapter is counted once\. Long mode and above\. See \fBI/O RATES\fP below\.
 .IP \(bu 4
 `\f[CR]public\-ip\fP`: Public IP address (queried over the network)\. Long mode and above\.
 .IP \(bu 4
@@ -344,6 +344,9 @@ situation in which either field adds measurable wall\-clock time\.
 A device that appears part\-way through the run \-\- a VPN interface coming up \-\- is omitted
 rather than reported, since its lifetime counter is not a delta\. Counter resets are
 clamped to zero for the same reason\.
+.PP
+Both fields are available on Linux and Windows\. They are absent on other platforms rather
+than reported as zero, so a missing line never reads as an idle device\.
 
 .SH "PRIVILEGES"
 .PP

@@ -116,7 +116,96 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.10.2)
+## Current State (v0.11.0)
+- **v0.11.0 - `disk-io` and `net-io` on Windows** (`crates/sysinfo/src/io.rs`,
+  `crates/sysinfo/src/disk.rs`). Both fields shipped Linux-only in v0.10.0 and returned
+  nothing on Windows; they now read native counters there, with no subprocess and no
+  elevation. **Nothing outside the two `sample_*` functions changed**: the rate maths, the
+  100 ms floor, the sampling window in `fetch.rs`, `fields.rs` and `display.rs` were
+  already platform-independent, which is why this is an arm rather than a redesign.
+  - **THE FINDING: `GetIfTable2` reports one row per NDIS filter instance, carrying the
+    adapter's counters again.** On this machine `Wi-Fi` appeared five times - as itself and
+    as `Wi-Fi-WFP Native MAC Layer LightWeight Filter-0000`,
+    `Wi-Fi-Native WiFi Filter Driver-0000`, `Wi-Fi-QoS Packet Scheduler-0000` and
+    `Wi-Fi-WFP 802.3 MAC Layer LightWeight Filter-0000` - every one reporting
+    `in=219996461 out=32914969`, byte-identical. Reporting them all states the machine's
+    throughput **five times**, under five names a reader would take for five devices. It is
+    the Windows form of the partition double-counting the Linux arm already excludes.
+  - **The rule is "exclude `FilterInterface`", NOT "keep `HardwareInterface` only", and the
+    difference is load-bearing.** The obvious filter is the wrong one: the `wt0` WireGuard
+    tunnel reads `HardwareInterface = false, FilterInterface = false` while carrying real
+    traffic, so keying on `HardwareInterface` drops exactly the kind of interface the Linux
+    side reports. **Watched failing against that mutation** - the kept set collapsed to
+    `["Ethernet", "Wi-Fi"]`, losing `wt0`, the Bluetooth PAN and the LAC interfaces.
+  - **`GetIfTable2`, not `GetIfTable`**: the older `MIB_IFROW` carries **32-bit** octet
+    counters, which wrap every 4 GB. This adapter had already moved 216 GB, so the legacy
+    table would produce a plausible-looking figure from a wrapped counter rather than an
+    obvious failure.
+  - **The names must match `active_interface` or `select_net_rates` silently stops
+    selecting** and falls through to its "every interface that moved" branch. Checked
+    rather than assumed: sysinfo reports `Wi-Fi` and `MIB_IF_ROW2.Alias` is `Wi-Fi`, so no
+    translation layer is needed - and the coupling is now stated in the doc comment,
+    because nothing would fail loudly if it broke.
+  - **`IOCTL_DISK_PERFORMANCE` is `FILE_ANY_ACCESS`**, so - like the two IOCTLs v0.3.46
+    chose for `phys-disk` - it answers on a handle opened with **zero** desired access and
+    needs no administrator rights. Confirmed from an unelevated shell before the code was
+    written, since designing around an IOCTL that turns out to need elevation is the
+    expensive way to discover this.
+  - **The drive-scan range is now shared** (`disk::MAX_PHYSICAL_DRIVES`) rather than a
+    second local `32`: had the two ranges drifted, `phys-disk` and `disk-io` would disagree
+    about which disks exist on a multi-disk machine. Same reasoning as sharing
+    `is_virtual_block_name` on Linux.
+  - **A layout test of mine could not fail, and finding that out is the useful part.** The
+    `MIB_IF_ROW2` counters sit 1208 and 1280 bytes into the struct, so the offsets are only
+    right if everything ahead of them is. The first version of the assertion set **passed
+    against an `alias` array mutated from 257 to 256 `WCHAR`**: the two lost bytes are
+    swallowed by the padding before `physical_address_length` (4-byte aligned at 1056), so
+    the size and every later offset are genuinely unchanged - while `wide_to_string` would
+    read one `WCHAR` short. Pinning `description`'s offset (542) closes it, and the
+    re-mutated run then failed correctly with `left: 540, right: 542`. Recorded because the
+    mutation "passing" reads exactly like the test being sound.
+  - **Cross-checked against independent oracles under a time-bounded load**, because
+    agreement on an idle machine proves nothing (the v0.10.0 lesson):
+    - Disk, against `Get-Counter '\PhysicalDisk(0 C:)\Disk Write Bytes/sec'` during a
+      sustained 25 s flushed write: retch **229.5 / 236.3 / 199.9 MB/s** against the
+      counter's **221.7 / 191.0 / 215.7 MB/s** over its own overlapping windows. Both read
+      0 B/s idle.
+    - Net, against `Get-NetAdapterStatistics` deltas during a looped download: retch
+      **68.1 / 66.3 MB/s** against **57.3 / 53.8 MB/s**. **The first attempt at this check
+      was worthless and is worth recording**: a `Start-Job` download had not begun before
+      the measurement, so retch and the oracle agreed at ~0 - a check that passed while
+      measuring nothing, which is what the v0.10.0 entry warns about in the same words. A
+      single 50 MB fetch completes in 1.23 s here, far shorter than the window, so the load
+      has to loop until a deadline.
+    - Exact agreement is not expected and is not claimed: retch's window is its own
+      collection window (~100 ms when the field is requested alone) while the oracle's is
+      the whole invocation, so a third sample read 1.5 vs 39.6 MB/s when retch's window
+      landed in the gap between two downloads. Magnitude agreement under load, plus 0/0 at
+      idle, is the claim.
+  - **Perf: no cost, and the control run is what shows it.** Interleaved and repeated,
+    branch vs a binary built from `main`: `--long` **6843.5 ± 59.3** vs **7046.4 ± 131.1**
+    ms, then on the repeat **6847.7 ± 108.1** vs **6833.0 ± 85.1** - the pair moves in
+    *both directions*, so it is inside the noise. Standard mode is the control, since
+    neither field is collected there, and it swings the same ±8 ms both ways (438.3 vs
+    446.7, then 446.1 vs 438.2). Absolute `--long` read ~6.8 s in this session against the
+    2.77 s recorded on 2026-09-08 on the same box; that is unrelated to this change (`main`
+    measures the same) and is not investigated here.
+  - Two pre-existing man-page claims corrected in passing, both false since v0.3.46/v0.3.47
+    and contradicted by README: `phys-disk` and `phys-mem` no longer say they use
+    PowerShell on Windows.
+  - **Found and deliberately NOT fixed: the `net` field itself lists filter
+    pseudo-interfaces.** A `--long` run shows `Net: Wi-Fi-Native WiFi Filter Driver-0000`
+    beside the real `Wi-Fi`, with duplicate RX/TX totals. It is the same duplication, one
+    field over, but it comes from sysinfo's interface list rather than `GetIfTable2`, so
+    fixing it means cross-referencing the two in `detect_networks` - a separate change with
+    its own blast radius. Out of scope here; recorded rather than silently dropped.
+  - 5 new unit tests over pure helpers, keyed on a **verbatim `GetIfTable2` fixture** from
+    this machine (alias, `Type`, flags) so no test depends on the interfaces of whatever
+    machine runs it - the #155/v0.6.2 pattern. Plus `size_of`/`offset_of!` layout guards
+    for both structs, per the v0.3.51 convention.
+  - `retch-sysinfo` -> `0.1.59` (library behaviour change); `retch-cli` -> `0.11.0`. Minor
+    bump - new user-visible fields on a platform that had none, matching v0.6.0's call for
+    Windows `domain`/`terminal-size`.
 - **v0.10.2 - Windows Bluetooth counted classic devices only, so every LE peripheral was
   invisible** (`crates/sysinfo/src/bluetooth.rs`, `crates/sysinfo/src/win_setupapi.rs`).
   Closes the first §6a open item, reported 2026-07-13 as "shows only 1 of 2 connected
@@ -1985,9 +2074,10 @@ Adds over standard:
 - `brightness` (Linux), `power-adapter` (Linux), `login-manager` (Linux) — new v0.5.0 fastfetch-gap fields
 - `keyboard` (Linux), `mouse` (Linux), `tpm` (Linux) — new v0.7.0 fastfetch-gap fields
 - `player`, `media` — new v0.8.0 fastfetch-gap fields (100% native FFI / socket communication, zero subprocess forking)
-- `disk-io`, `net-io` — new v0.10.0 fastfetch-gap fields (Linux). Throughput rates measured
-  across the run's own collection window rather than a dedicated sleep, so they add no
-  wall-clock in `--long`/`--full`; see the v0.10.0 release entry
+- `disk-io`, `net-io` — new v0.10.0 fastfetch-gap fields (Linux; Windows added in v0.11.0).
+  Throughput rates measured across the run's own collection window rather than a dedicated
+  sleep, so they add no wall-clock in `--long`/`--full`; see the v0.10.0 and v0.11.0
+  release entries
 
 ### `--full`
 Long plus everything slow, verbose, or cosmetic. Suitable for reporting, screenshots, or deep diagnostics. Users should expect multi-second runtimes.
@@ -2112,11 +2202,15 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - ~~**Btrfs**: Btrfs volume info~~ — added in v0.3.37 (`btrfs` field)
 - ~~**Zpool**: ZFS storage pool info~~ — added in v0.3.37 (`zpool` field)
 - ~~**DiskIO**: Disk I/O throughput~~ — added in v0.10.0 (`disk-io` field, Linux;
-  `/proc/diskstats`, rate averaged over the run's own collection window)
+  `/proc/diskstats`, rate averaged over the run's own collection window) and extended to
+  Windows in v0.11.0 (`IOCTL_DISK_PERFORMANCE`, no admin). **fastfetch reports no DiskIO on
+  Windows at all**, so retch is ahead of it on this field there.
 
 ### Network
 - ~~**NetIO**: Network I/O throughput~~ — added in v0.10.0 (`net-io` field, Linux;
-  `/sys/class/net/*/statistics`, same sampling window as `disk-io`)
+  `/sys/class/net/*/statistics`, same sampling window as `disk-io`) and extended to Windows
+  in v0.11.0 (`GetIfTable2`, NDIS filter instances excluded so each adapter is counted
+  once). fastfetch reports NetIO on Windows and pays ~0.59 s for it there.
 
 ### Desktop Environment & UI
 - ~~**WMTheme**: Window manager theme~~ — added in v0.9.0 (`wm-theme` field; KWin, Xfwm4, Openbox, Fluxbox, IceWM, GTK/Mutter, Aqua, Windows themes)
@@ -2155,7 +2249,19 @@ Windows 11, Windows Terminal).
   Now enumerates Bluetooth device nodes via SetupAPI and reads `System.Devices.Connected`,
   covering both transports, with dual-mode devices de-duplicated by address.
 
+- ~~**`disk-io` and `net-io` are Linux-only**~~ — fixed v0.11.0. Both now read native
+  Windows counters (`IOCTL_DISK_PERFORMANCE`, `GetIfTable2`) with no subprocess and no
+  elevation. The non-obvious half was that `GetIfTable2` returns a row per NDIS filter
+  instance carrying the adapter's counters again, so an adapter is reported once only by
+  excluding `FilterInterface` rows — and *not* by keeping `HardwareInterface` rows, which
+  would drop tunnel interfaces like WireGuard's.
+
 **Open**
+- **The `net` field lists NDIS filter pseudo-interfaces on Windows.** A `--long` run shows
+  `Net: Wi-Fi-Native WiFi Filter Driver-0000` alongside the real `Wi-Fi`, duplicating its
+  RX/TX totals. Found while implementing `net-io` in v0.11.0, which excludes them; `net`
+  builds its list from sysinfo rather than `GetIfTable2`, so the same filter cannot simply
+  be reused — it needs the two cross-referenced in `detect_networks`.
 - **Logo renders above the text, not beside it (upper-right)** on Windows Terminal
   (CLI/rendering, retch-cli `src/`). Likely terminal-detection / cursor-positioning specific
   to Windows Terminal.

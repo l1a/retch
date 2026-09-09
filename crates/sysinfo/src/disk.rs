@@ -426,15 +426,24 @@ fn format_size(bytes: u64) -> String {
 /// `FILE_ANY_ACCESS` query IOCTLs are used, so no elevation is required.
 #[cfg(target_os = "windows")]
 fn detect_windows() -> Vec<String> {
-    // Physical drive numbers are contiguous from 0 in the common case, but a removed
-    // disk can leave a gap; scan a fixed range and skip any drive that won't open.
-    // A failed CreateFileW on a nonexistent device returns immediately, so this is
-    // still orders of magnitude cheaper than spawning PowerShell.
-    const MAX_DRIVES: u32 = 32;
-    (0..MAX_DRIVES)
+    (0..MAX_PHYSICAL_DRIVES)
         .filter_map(win_ffi::query_physical_drive)
         .collect()
 }
+
+/// How many `\\.\PhysicalDriveN` indices to probe.
+///
+/// Physical drive numbers are contiguous from 0 in the common case, but a removed disk
+/// can leave a gap, so a fixed range is scanned and anything that will not open is
+/// skipped. A failed `CreateFileW` on a nonexistent device returns immediately, so this
+/// is still orders of magnitude cheaper than spawning PowerShell.
+///
+/// Shared with [`crate::io::sample_disk_io`] rather than duplicated: if the two scanned
+/// different ranges, `phys-disk` and `disk-io` would disagree about which disks exist on
+/// a machine with more than one of them — the same drift that sharing
+/// [`is_virtual_block_name`] prevents on Linux.
+#[cfg(target_os = "windows")]
+pub(crate) const MAX_PHYSICAL_DRIVES: u32 = 32;
 
 /// Classifies and formats a single physical disk into its display label, mirroring
 /// the columns the old `Get-PhysicalDisk` parser used (model, size, media type, bus).
