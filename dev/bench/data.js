@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789062206485,
+  "lastUpdate": 1789062497698,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4416,6 +4416,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 735900861.9200002
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "bc63b79acb04f2fda7d3794adbeb4e39b1100c79",
+          "message": "Add vulkan, opengl and opencl on macOS (#238)\n\nCloses the second NOTES section 6c gap; the whole section 6 GPU-API\ngroup now reports on all three platforms.\n\nVulkan and OpenCL are the same code as Linux and Windows - those APIs\nare identical and only the loader filename differs, so mod dl and the\ntwo *_LIB constants simply widened. OpenGL needed a third module: Linux\nuses headless EGL, Windows needs WGL against a hidden window, and macOS\nuses CGL, which needs no window at all.\n\nThe CGL profile attribute decides the version reported. Omitting it, or\nrequesting the legacy profile, yields \"2.1 Metal - 90.5\" on a machine\nthat reports \"4.1 Metal - 90.5\" through a core profile - a silently\nhalved but perfectly plausible answer. Pinned by a test and watched\nfailing both as an assertion and in the live binary.\n\nmacOS system frameworks do not dlopen by short name; the absolute\nframework path is required or the field silently disappears.\n\nVulkan reports nothing on a stock Mac, which is correct - the platform\nships no Vulkan, only MoltenVK if a user installs it, and fastfetch\nprints no line here either.\n\nOpenGL output is byte-identical to fastfetch; OpenCL is deliberately\nricher, as on Linux. Stderr suppression stays Linux-only, with the\nmacOS no-op measured at 0 bytes rather than assumed.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T10:47:28-07:00",
+          "tree_id": "0a28263a93b2ec1421310329e0504de227481903",
+          "url": "https://github.com/l1a/retch/commit/bc63b79acb04f2fda7d3794adbeb4e39b1100c79"
+        },
+        "date": 1789062497698,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 564691529.5600002
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 725982604.96
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 31996617.44
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 47816684.24
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 694450290.88
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 711878928.38
           }
         ]
       }
