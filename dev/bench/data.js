@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789017180616,
+  "lastUpdate": 1789017672401,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20284,70 +20284,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "3738fdb3ff66b18fc121092f4f086ea51ac0dc30",
-          "message": "Fix release tooling: publish-check and nix hashes (v0.6.13) (#178)\n\npublish-check failed on every release: the retch-cli dry run cannot\nresolve its '=0.1.x' retch-sysinfo pin until sysinfo is actually on the\nindex, and a dry run never uploads. It now checks the sparse index via\na new crates_io_has_version.py helper and skips that leg with an\nexplanation instead of dying on 'failed to select a version'. Both\npublish recipes also skip retch-sysinfo when its version is already\npublished, which is the normal state for a CLI-only release.\n\ncalculate_nix_hashes.py was silently emitting a wrong cargoHash. Its\nsubstitutions matched only 'lib.fakeHash', so once package.nix held\nreal values they became no-ops, the temp build kept the previous\nrelease's hashes, it failed on a source-hash mismatch rather than the\nintended cargoHash mismatch, and the lenient parser returned that stale\nsource hash. That is why the published v0.6.12 cargoHash equals\nv0.6.8's hash. Patterns now match a literal hash too, are line-anchored,\nand hard-error when they match nothing; the parser only accepts a hash\nreported against our own dummy.\n\nRefresh the in-repo packaging reference copies to the released v0.6.12.\npackage.nix keeps the genuine src hash but resets cargoHash to\nlib.fakeHash rather than carrying the corrupt value -- recompute with\n'just nix-update' on a machine with Nix.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-07-26T20:14:41-07:00",
-          "tree_id": "195de4a24b9c74a5d3bbc3288e0a4ce21ab48a89",
-          "url": "https://github.com/l1a/retch/commit/3738fdb3ff66b18fc121092f4f086ea51ac0dc30"
-        },
-        "date": 1785124461475,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 105.0091275535387,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9483946253149678,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 101.13453455239613,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.20218085595783,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47053.52991014561,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 496.8400327613311,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 758.0345424638696,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2631057420,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "29c90fa282c281f6c5a2b797544c5babf5e957ce",
           "message": "fix(net): resolve Windows connection DNS domain and search list (#181)\n\n* fix(net): resolve Windows connection DNS domain\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(net): read Windows interface registry search list\n\nAssisted-By: Gemini 3.6 Flash",
           "timestamp": "2026-08-07T23:10:01-07:00",
@@ -23467,6 +23403,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1560099910,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4177d9e00046a70192f51926772a91595d2f74cd",
+          "message": "Read the battery device instead of spawning PowerShell (#234)\n\nbattery was the last PowerShell spawn in --long on Windows and the slowest\nfield on the platform: a per-field sweep measured it at ~2531 ms against a\n~322 ms process-startup floor. It now reads the battery device directly\nover the GUID_DEVICE_BATTERY interface with IOCTL_BATTERY_QUERY_TAG and\nIOCTL_BATTERY_QUERY_INFORMATION.\n\nThe headline is the mode rather than the field. Windows --long measures\n668.0 ms (min 604) against `fastfetch -c all` at 1330-1477 ms - roughly 2x\nfaster, where it had been 1.3-2.3x slower. NOTES §3's blocking condition\nis now satisfied for --long on Windows. The field itself went from ~2209 ms\nover the startup floor to about 10 ms: --fields battery is 324.2 ms against\na --fields os floor of 314.4 ms. --short remains behind and is a startup\nproblem rather than a probe problem.\n\nIt also reports strictly more than the spawn did. Win32_Battery returned\nDesignCapacity, FullChargeCapacity and Manufacturer as empty on this\nmachine, so ~2.5 s of PowerShell bought a model name and nothing else. The\ndevice answers all of them:\n\n  before: 42% (3h 28m remaining, discharging)\n  after:  40% (2h 54m remaining, discharging, 98% health) [ASUSTeK ASUS Battery]\n\nAccess rights were measured, not copied from the MSDN sample. These IOCTLs\nare FILE_READ_ACCESS: a zero-access handle fails them with\nERROR_ACCESS_DENIED, unlike the FILE_ANY_ACCESS storage IOCTLs v0.3.46\nchose for phys-disk. GENERIC_READ alone suffices and is what this uses; the\nusual sample asks for GENERIC_READ | GENERIC_WRITE. No elevation either\nway.\n\nwin_setupapi gained device-interface path enumeration. It previously\nreturned only friendly names, which cannot be opened; a path is what\nCreateFileW takes, so this is the entry point for any probe that needs to\ntalk to a device rather than name it.\n\nTwo layout notes, both learned the hard way. SP_DEVICE_INTERFACE_DETAIL_-\nDATA_W wants cbSize = 8 but its DevicePath starts at offset 4; using one\nconstant for both chopped two characters off every path, and the only\nsymptom was CreateFileW failing on a device that plainly exists - which\nreads as \"no battery\" rather than as a parsing bug. And BATTERY_INFORMATION\nis 36 bytes, not the 32 predicted, though the probe returned correct\ncapacities regardless: the values validated the layout, the prediction did\nnot. Layout guard watched failing against the wrong prediction.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T21:43:32-07:00",
+          "tree_id": "a980caa011385a4856e59d03ea1090fc25789008",
+          "url": "https://github.com/l1a/retch/commit/4177d9e00046a70192f51926772a91595d2f74cd"
+        },
+        "date": 1789017668640,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 183.1161433599343,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.961570118215288,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.12290521113741,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.34966146151488,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46663.105020089475,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 494.32113616109666,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 742.5380189167149,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1088751500,
             "unit": "ns"
           }
         ]
