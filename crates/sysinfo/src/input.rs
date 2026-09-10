@@ -215,11 +215,68 @@ fn hidpp_model_name(sysfs: &str) -> Option<String> {
     None
 }
 
+/// HID usage page 1, "Generic Desktop" — the page that carries keyboards and pointers.
+///
+/// Vendor-defined pages (`0xFF00` and up) dominate a real Mac's HID list: of the 27
+/// interfaces on the development machine, 20 sat on vendor pages carrying backlight,
+/// sensor and management endpoints. Filtering to page 1 is what separates input devices
+/// from everything else the HID stack exposes.
+pub const HID_PAGE_GENERIC_DESKTOP: i64 = 1;
+/// HID usage 6 on page 1 — Keyboard.
+pub const HID_USAGE_KEYBOARD: i64 = 6;
+/// HID usage 2 on page 1 — Mouse.
+pub const HID_USAGE_MOUSE: i64 = 2;
+
+/// Classifies macOS HID interfaces into `(keyboards, mice)`, de-duplicated by name.
+///
+/// **This is deliberately simpler than the Linux classifier, because macOS gives better
+/// data.** The v0.7.0 Linux finding still holds — on a Logitech unifying receiver no
+/// kernel-visible capability separates a keyboard from a mouse, and fastfetch gets it
+/// wrong in both directions there — but macOS does not present the problem in that form:
+/// it publishes **one `IOHIDDevice` per HID interface**, each with its own `PrimaryUsage`,
+/// so the role is stated rather than inferred. There is no ambiguous case to resolve and
+/// so no need for the HID++ `model_name` tiebreak or the "report neither" fallback.
+///
+/// A composite device therefore appears in **both** lists, and that is correct rather than
+/// a bug: `Apple Internal Keyboard / Trackpad` genuinely is a keyboard and a pointing
+/// device, and it publishes an interface for each. Verified against fastfetch on the same
+/// machine, which lists exactly the same two names under both fields.
+///
+/// Pure and injectable for the usual reason — the test feeds it a verbatim fixture from a
+/// real machine rather than consulting whatever is plugged into the one running it.
+pub fn classify_hid_interfaces(interfaces: &[(String, i64, i64)]) -> (Vec<String>, Vec<String>) {
+    let mut keyboards: Vec<String> = Vec::new();
+    let mut mice: Vec<String> = Vec::new();
+
+    for (name, page, usage) in interfaces {
+        if *page != HID_PAGE_GENERIC_DESKTOP {
+            continue;
+        }
+        let name = name.trim();
+        if name.is_empty() {
+            continue;
+        }
+        let target = match *usage {
+            HID_USAGE_KEYBOARD => &mut keyboards,
+            HID_USAGE_MOUSE => &mut mice,
+            _ => continue,
+        };
+        // One physical peripheral can publish several interfaces with the same role and
+        // the same product string; listing it repeatedly is noise, matching the Linux
+        // arm's de-duplication.
+        if !target.iter().any(|n| n == name) {
+            target.push(name.to_string());
+        }
+    }
+    (keyboards, mice)
+}
+
 /// Detects connected keyboards and pointing devices as `(keyboards, mice)`.
 ///
-/// Linux only; returns two empty vectors elsewhere, so both fields simply do not render.
-/// Reads one file (`/proc/bus/input/devices`) plus, only for ambiguous devices, a small sysfs
-/// lookup — no subprocess, no elevation.
+/// Linux reads `/proc/bus/input/devices` plus, only for ambiguous devices, a small sysfs
+/// lookup. macOS enumerates IOKit `IOHIDDevice` interfaces and reads their primary usage.
+/// Returns two empty vectors elsewhere, so both fields simply do not render. No subprocess
+/// and no elevation on either platform.
 pub fn detect_input_devices() -> (Vec<String>, Vec<String>) {
     #[cfg(target_os = "linux")]
     {
@@ -229,9 +286,155 @@ pub fn detect_input_devices() -> (Vec<String>, Vec<String>) {
         let devices = parse_input_devices(&content);
         classify_input_devices_with(&devices, hidpp_model_name)
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "macos")]
+    {
+        classify_hid_interfaces(&crate::macos_ffi::get_hid_interfaces())
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
         (Vec::new(), Vec::new())
+    }
+}
+
+#[cfg(test)]
+mod macos_tests {
+    use super::*;
+
+    /// Verbatim `(Product, PrimaryUsagePage, PrimaryUsage)` triples read from an M3 Pro
+    /// MacBook Pro, trimmed to the interfaces that matter plus a representative sample of
+    /// the vendor-page noise. The real machine reported 27 interfaces, 20 of them on
+    /// vendor-defined pages.
+    ///
+    /// A fixture rather than a live enumeration for the #155/v0.6.2 reason: a test must not
+    /// depend on what is plugged into the machine running it.
+    fn fixture() -> Vec<(String, i64, i64)> {
+        [
+            // Vendor-defined pages (0xFF00 = 65280, 0xFF0C = 65292) — must all be ignored.
+            ("Apple Internal Keyboard / Trackpad", 65280, 3),
+            ("Apple Internal Keyboard / Trackpad", 65280, 13),
+            ("Keyboard Backlight", 65280, 15),
+            ("BTM", 65280, 72),
+            ("ktobias's Magic Keyboard", 65280, 75),
+            ("USB Receiver", 65280, 1),
+            // Consumer page (12) — a headset and a webcam, neither an input device here.
+            ("Headset", 12, 1),
+            ("Logitech BRIO", 12, 1),
+            // Generic Desktop (1): the ones that count.
+            ("Apple Internal Keyboard / Trackpad", 1, 6), // keyboard interface
+            ("Apple Internal Keyboard / Trackpad", 1, 2), // trackpad interface
+            ("ktobias's Magic Keyboard", 1, 6),
+            ("USB Receiver", 1, 2),
+            ("USB Receiver", 1, 6),
+        ]
+        .into_iter()
+        .map(|(n, p, u)| (n.to_string(), p, u))
+        .collect()
+    }
+
+    #[test]
+    fn test_classify_hid_interfaces_matches_the_real_machine() {
+        let (keyboards, mice) = classify_hid_interfaces(&fixture());
+        assert_eq!(
+            keyboards,
+            vec![
+                "Apple Internal Keyboard / Trackpad",
+                "ktobias's Magic Keyboard",
+                "USB Receiver",
+            ]
+        );
+        assert_eq!(
+            mice,
+            vec!["Apple Internal Keyboard / Trackpad", "USB Receiver"]
+        );
+    }
+
+    /// A composite device belongs in **both** lists, and this pins that as intended.
+    ///
+    /// The Linux arm deliberately reports such a device in *neither* list, because there a
+    /// merged receiver endpoint is genuinely ambiguous (v0.7.0). macOS is not the same
+    /// case: it publishes one interface per role, so `Apple Internal Keyboard / Trackpad`
+    /// appearing under both is the kernel stating a fact, not a guess.
+    #[test]
+    fn test_composite_device_is_listed_under_both_roles() {
+        let (keyboards, mice) = classify_hid_interfaces(&fixture());
+        let composite = "Apple Internal Keyboard / Trackpad";
+        assert!(keyboards.iter().any(|n| n == composite));
+        assert!(mice.iter().any(|n| n == composite));
+    }
+
+    /// Vendor pages carry backlight, sensor and management endpoints that share their
+    /// product name with a real input device, and none of them may be reported.
+    ///
+    /// **This assertion alone does NOT prove the page filter is load-bearing**, and that is
+    /// worth stating because the first version of this test was exactly that and could not
+    /// fail: every vendor-page entry in the fixture happens to carry a usage the *usage*
+    /// filter already rejects, so deleting the page check left the result unchanged. The
+    /// synthetic test below is what actually pins it.
+    #[test]
+    fn test_vendor_page_devices_are_not_reported() {
+        let (keyboards, mice) = classify_hid_interfaces(&fixture());
+        for list in [&keyboards, &mice] {
+            assert!(!list.iter().any(|n| n == "Keyboard Backlight"));
+            assert!(!list.iter().any(|n| n == "BTM"));
+            assert!(!list.iter().any(|n| n == "Headset"));
+            assert!(!list.iter().any(|n| n == "Logitech BRIO"));
+        }
+    }
+
+    /// Pins the page filter with a case only it can reject.
+    ///
+    /// **Synthetic, and labelled as such** — no interface on the development machine
+    /// paired a vendor page with usage 2 or 6. It is nonetheless the case that matters:
+    /// HID usage numbers are **page-relative**, so usage 6 on a vendor-defined page means
+    /// whatever that vendor decided, not "keyboard". Without the page check such an
+    /// interface is reported as input hardware.
+    ///
+    /// **Watched failing**: removing the page filter makes this report
+    /// `["Vendor Widget"]` for both fields.
+    #[test]
+    fn test_page_filter_rejects_a_vendor_usage_that_collides_with_keyboard() {
+        let interfaces = vec![
+            ("Vendor Widget".to_string(), 65280, HID_USAGE_KEYBOARD),
+            ("Vendor Widget".to_string(), 65280, HID_USAGE_MOUSE),
+            (
+                "Real Keyboard".to_string(),
+                HID_PAGE_GENERIC_DESKTOP,
+                HID_USAGE_KEYBOARD,
+            ),
+        ];
+        let (keyboards, mice) = classify_hid_interfaces(&interfaces);
+        assert_eq!(keyboards, vec!["Real Keyboard"]);
+        assert!(mice.is_empty());
+    }
+
+    #[test]
+    fn test_names_are_deduplicated_and_blanks_dropped() {
+        let interfaces = vec![
+            ("Dup".to_string(), 1, 6),
+            ("Dup".to_string(), 1, 6),
+            ("  ".to_string(), 1, 6),
+            ("Trimmed  ".to_string(), 1, 2),
+            ("Trimmed".to_string(), 1, 2),
+        ];
+        let (keyboards, mice) = classify_hid_interfaces(&interfaces);
+        assert_eq!(keyboards, vec!["Dup"]);
+        assert_eq!(mice, vec!["Trimmed"]);
+    }
+
+    /// Usages other than Keyboard(6)/Mouse(2) on page 1 — Pointer(1), Joystick(4),
+    /// Gamepad(5), Keypad(7) — are not reported by either field. Gamepads have their own
+    /// field, and reporting a joystick as a mouse would be wrong.
+    #[test]
+    fn test_other_generic_desktop_usages_are_not_input_devices() {
+        let interfaces = vec![
+            ("Joystick".to_string(), 1, 4),
+            ("Gamepad".to_string(), 1, 5),
+            ("Pointer".to_string(), 1, 1),
+            ("Keypad".to_string(), 1, 7),
+        ];
+        let (keyboards, mice) = classify_hid_interfaces(&interfaces);
+        assert!(keyboards.is_empty());
+        assert!(mice.is_empty());
     }
 }
 

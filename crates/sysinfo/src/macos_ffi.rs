@@ -497,6 +497,88 @@ pub fn get_block_storage_io() -> Vec<(String, u64, u64)> {
     out
 }
 
+// ─── HID input devices — IOHIDDevice ─────────────────────────────────────────
+
+/// One HID interface as IOKit reports it: `(product, usage_page, usage)`.
+///
+/// Returned as raw numbers rather than a classified kind so the classification stays a
+/// **pure function** in `input.rs` that a unit test can exercise against a fixture — the
+/// `parse_xrandr_displays_with` pattern, and for the same reason: a test must not depend
+/// on what happens to be plugged into the machine running it.
+pub type HidInterface = (String, i64, i64);
+
+/// Enumerate HID interfaces, as `(product, PrimaryUsagePage, PrimaryUsage)`.
+///
+/// **macOS exposes one `IOHIDDevice` per HID *interface*, not per physical device**, and
+/// that is what makes the macOS classification simpler than the Linux one. A composite
+/// peripheral publishes a separate interface for each role it implements, each carrying
+/// its own `PrimaryUsage`, so the kernel states the role directly instead of leaving it to
+/// be inferred from capability bitmaps.
+///
+/// Interfaces with no `Product` string are skipped — several Apple internal SPU/SPMI
+/// endpoints expose none, and a device that cannot be named cannot usefully be listed.
+pub fn get_hid_interfaces() -> Vec<HidInterface> {
+    let mut out = Vec::new();
+    unsafe {
+        let class = CString::new("IOHIDDevice").unwrap();
+        let matching = IOServiceMatching(class.as_ptr());
+        if matching.is_null() {
+            return out;
+        }
+        let mut iter: IOIterator = MACH_PORT_NULL;
+        // IOServiceGetMatchingServices consumes `matching`; do not release it.
+        if IOServiceGetMatchingServices(IOKIT_MAIN_PORT, matching as CFDictionaryRef, &mut iter)
+            != 0
+        {
+            return out;
+        }
+        loop {
+            let service = IOIteratorNext(iter);
+            if service == MACH_PORT_NULL {
+                break;
+            }
+            if let Some(product) = iokit_property_as_string(service, "Product") {
+                let page = iokit_property_as_i64(service, "PrimaryUsagePage");
+                let usage = iokit_property_as_i64(service, "PrimaryUsage");
+                if let (Some(page), Some(usage)) = (page, usage) {
+                    out.push((product, page, usage));
+                }
+            }
+            IOObjectRelease(service);
+        }
+        IOObjectRelease(iter);
+    }
+    out
+}
+
+/// Read an IOKit registry property as a signed integer.
+///
+/// Distinct from [`iokit_property_as_u64`], which rejects zero and negative values because
+/// its callers treat those as "absent". A HID usage of `0` is a legitimate reading, so this
+/// preserves it.
+unsafe fn iokit_property_as_i64(entry: IOService, key: &str) -> Option<i64> {
+    if entry == MACH_PORT_NULL {
+        return None;
+    }
+    let val = with_cfstring(key, |k| {
+        IORegistryEntryCreateCFProperty(entry, k, kCFAllocatorDefault, 0)
+    });
+    if val.is_null() {
+        return None;
+    }
+    let _owned = OwnedCF(val);
+    if CFGetTypeID(val) != CFNumberGetTypeID() {
+        return None;
+    }
+    let mut out: i64 = 0;
+    CFNumberGetValue(
+        val as CFNumberRef,
+        4, /* kCFNumberSInt64Type */
+        &mut out as *mut i64 as *mut c_void,
+    )
+    .then_some(out)
+}
+
 // ─── CoreAudio ───────────────────────────────────────────────────────────────
 
 #[repr(C)]
