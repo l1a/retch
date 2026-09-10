@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789015483735,
+  "lastUpdate": 1789015842689,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4937,12 +4937,12 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - fastfetch",
             "unit": "ns",
-            "value": 1136130798.0
+            "value": 1136130798
           },
           {
             "name": "CLI execution - retch --short",
             "unit": "ns",
-            "value": 221995244.0
+            "value": 221995244
           },
           {
             "name": "CLI execution - fastfetch -c none",
@@ -4952,7 +4952,7 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch --long",
             "unit": "ns",
-            "value": 474118054.0
+            "value": 474118054
           },
           {
             "name": "CLI execution - fastfetch -c all",
@@ -4963,90 +4963,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Linux x64 Benchmarks": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "29c90fa282c281f6c5a2b797544c5babf5e957ce",
-          "message": "fix(net): resolve Windows connection DNS domain and search list (#181)\n\n* fix(net): resolve Windows connection DNS domain\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(net): read Windows interface registry search list\n\nAssisted-By: Gemini 3.6 Flash",
-          "timestamp": "2026-08-07T23:10:01-07:00",
-          "tree_id": "1430e5590c797113f0e21a4cdab22e90bfe90ce4",
-          "url": "https://github.com/l1a/retch/commit/29c90fa282c281f6c5a2b797544c5babf5e957ce"
-        },
-        "date": 1786169840677,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 840025414.25,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2264.1692549759964,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 61.682724971992194,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.05076655561969,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 60.423274967882186,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 21084.558796897792,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 212071.0019799914,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 14784.293540213836,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 14985.961679274938,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1528746.905436138,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 360.27358877255864,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 272.4679477539933,
-            "unit": "ns"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -9159,6 +9075,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 274.6505128407351,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4177d9e00046a70192f51926772a91595d2f74cd",
+          "message": "Read the battery device instead of spawning PowerShell (#234)\n\nbattery was the last PowerShell spawn in --long on Windows and the slowest\nfield on the platform: a per-field sweep measured it at ~2531 ms against a\n~322 ms process-startup floor. It now reads the battery device directly\nover the GUID_DEVICE_BATTERY interface with IOCTL_BATTERY_QUERY_TAG and\nIOCTL_BATTERY_QUERY_INFORMATION.\n\nThe headline is the mode rather than the field. Windows --long measures\n668.0 ms (min 604) against `fastfetch -c all` at 1330-1477 ms - roughly 2x\nfaster, where it had been 1.3-2.3x slower. NOTES §3's blocking condition\nis now satisfied for --long on Windows. The field itself went from ~2209 ms\nover the startup floor to about 10 ms: --fields battery is 324.2 ms against\na --fields os floor of 314.4 ms. --short remains behind and is a startup\nproblem rather than a probe problem.\n\nIt also reports strictly more than the spawn did. Win32_Battery returned\nDesignCapacity, FullChargeCapacity and Manufacturer as empty on this\nmachine, so ~2.5 s of PowerShell bought a model name and nothing else. The\ndevice answers all of them:\n\n  before: 42% (3h 28m remaining, discharging)\n  after:  40% (2h 54m remaining, discharging, 98% health) [ASUSTeK ASUS Battery]\n\nAccess rights were measured, not copied from the MSDN sample. These IOCTLs\nare FILE_READ_ACCESS: a zero-access handle fails them with\nERROR_ACCESS_DENIED, unlike the FILE_ANY_ACCESS storage IOCTLs v0.3.46\nchose for phys-disk. GENERIC_READ alone suffices and is what this uses; the\nusual sample asks for GENERIC_READ | GENERIC_WRITE. No elevation either\nway.\n\nwin_setupapi gained device-interface path enumeration. It previously\nreturned only friendly names, which cannot be opened; a path is what\nCreateFileW takes, so this is the entry point for any probe that needs to\ntalk to a device rather than name it.\n\nTwo layout notes, both learned the hard way. SP_DEVICE_INTERFACE_DETAIL_-\nDATA_W wants cbSize = 8 but its DevicePath starts at offset 4; using one\nconstant for both chopped two characters off every path, and the only\nsymptom was CreateFileW failing on a device that plainly exists - which\nreads as \"no battery\" rather than as a parsing bug. And BATTERY_INFORMATION\nis 36 bytes, not the 32 predicted, though the probe returned correct\ncapacities regardless: the values validated the layout, the prediction did\nnot. Layout guard watched failing against the wrong prediction.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T21:43:32-07:00",
+          "tree_id": "a980caa011385a4856e59d03ea1090fc25789008",
+          "url": "https://github.com/l1a/retch/commit/4177d9e00046a70192f51926772a91595d2f74cd"
+        },
+        "date": 1789015840711,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 809046288.95,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2067.196939397623,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 114.36702460834113,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.870312778866516,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 59.67201327138112,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 18212.103579766896,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 191019.49283045236,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12787.298029764866,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 12898.186517774655,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1428083.5527333203,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 385.6270052067445,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 281.8423805414148,
             "unit": "ns"
           }
         ]
