@@ -35,9 +35,11 @@ All six are offline, deterministic and free:
   4. The `url` derives its version from the same place the check reads, and is a
      `refs/tags/` archive URL -- not a branch tarball, which would silently change content
      under a fixed sha256.
-  5. `cargo install` still passes `--locked`. Homebrew builds with network access and no
-     vendoring, so `Cargo.lock` is the only thing pinning resolution to what CI tested.
-     The formula's own comment says so; a comment is not a guard.
+  5. `cargo install` still uses `*std_cargo_args`, and does NOT add a second `--locked`.
+     `std_cargo_args` is what supplies `--locked`; Homebrew builds with network access and
+     no vendoring, so `Cargo.lock` is the only thing pinning resolution to what CI tested.
+     Checking for the literal flag would be wrong both ways -- it would pass for a formula
+     that dropped `std_cargo_args`, and would demand the duplicate cargo rejects.
   6. The formula still installs the COMMITTED `docs/retch.1` rather than regenerating it.
      The AUR PKGBUILD regenerated its own with mandown and shipped a page footed `$DATE` /
      `retch $pkgver` for months. The tarball already carries a correct page.
@@ -196,12 +198,31 @@ def check(
     if not SHA256_RE.fullmatch(sha):
         problems.append(f"sha256 is not a 64-character hex digest: {sha!r}")
 
-    # 5. --locked survives.
-    if not re.search(r'"cargo",\s*"install",\s*"--locked"', body):
-        problems.append(
-            "`cargo install` no longer passes --locked — Homebrew builds with network "
-            "access and no vendoring, so Cargo.lock is the only thing pinning resolution"
-        )
+    # 5. Resolution stays pinned, and the flag is not duplicated.
+    #
+    # `std_cargo_args` expands to `--locked --root <prefix> --path .`, so it is what
+    # supplies --locked. Asserting the literal flag instead would be wrong in both
+    # directions: it would pass for a formula that dropped std_cargo_args (unpinning
+    # resolution), and it would demand the duplicate that cargo rejects with
+    # "the argument '--locked' cannot be used multiple times" -- which is exactly how the
+    # first version of this formula failed in CI.
+    cargo_install = re.search(r'system\s+"cargo",\s*"install"([^\n]*)', body)
+    if not cargo_install:
+        problems.append("the formula no longer runs `cargo install`")
+    else:
+        args = cargo_install.group(1)
+        if "std_cargo_args" not in args:
+            problems.append(
+                "`cargo install` no longer uses *std_cargo_args — that is what supplies "
+                "--locked, and Cargo.lock is the only thing pinning resolution in a "
+                "network-enabled Homebrew build"
+            )
+        if '"--locked"' in args:
+            problems.append(
+                "`cargo install` passes an explicit --locked on top of std_cargo_args, "
+                "which already includes it — cargo rejects the duplicate with "
+                "\"the argument '--locked' cannot be used multiple times\""
+            )
 
     # 6. The committed man page, not a regenerated one.
     if 'man1.install "docs/retch.1"' not in body:
@@ -230,7 +251,7 @@ class Retch < Formula
   license "GPL-3.0-or-later"
 
   def install
-    system "cargo", "install", "--locked", *std_cargo_args
+    system "cargo", "install", *std_cargo_args
     man1.install "docs/retch.1"
   end
 end
@@ -297,9 +318,21 @@ def _self_test() -> int:
         True,
     )
     expect(
-        "dropped --locked is caught",
+        "dropped std_cargo_args is caught",
         check(
-            _GOOD_FORMULA.replace('"install", "--locked"', '"install"'),
+            _GOOD_FORMULA.replace('"install", *std_cargo_args', '"install"'),
+            _GOOD_PKGBUILD,
+            _GOOD_SPEC,
+            _GOOD_CARGO,
+        ),
+        True,
+    )
+    # The regression the brew CI job actually caught: std_cargo_args already carries
+    # --locked, and cargo rejects the duplicate.
+    expect(
+        "a duplicated --locked is caught",
+        check(
+            _GOOD_FORMULA.replace('"install", *std_cargo_args', '"install", "--locked", *std_cargo_args'),
             _GOOD_PKGBUILD,
             _GOOD_SPEC,
             _GOOD_CARGO,

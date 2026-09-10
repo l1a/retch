@@ -43,10 +43,17 @@ class Retch < Formula
   depends_on "rust" => :build
 
   def install
-    # `--locked` is load-bearing, for the same reason the COPR spec says never to drop it:
-    # Homebrew builds with network access and no vendored dependencies, so Cargo.lock is
-    # the only thing pinning resolution to what CI actually tested.
-    system "cargo", "install", "--locked", *std_cargo_args
+    # `std_cargo_args` ALREADY passes `--locked` (along with `--root` and `--path`), so it
+    # must not be repeated: cargo rejects a duplicate outright with
+    # "the argument '--locked' cannot be used multiple times". Found by the `brew` CI job;
+    # the formula parsed and the guard passed, and only a real install surfaced it.
+    #
+    # `--locked` is load-bearing here for the same reason the COPR spec says never to drop
+    # it: Homebrew builds with network access and no vendored dependencies, so Cargo.lock
+    # is the only thing pinning resolution to what CI actually tested. That is why
+    # brew_check.py asserts `std_cargo_args` is still used rather than merely looking for
+    # the flag — dropping it would silently unpin resolution.
+    system "cargo", "install", *std_cargo_args
 
     # Install the COMMITTED man page rather than regenerating it. The AUR PKGBUILD
     # regenerated its own with mandown and shipped a page footed `$DATE` / `retch $pkgver`

@@ -176,6 +176,15 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
     decide whether a drifted packaging file can reach a commit, and until now a PR touching
     only a guard matched no filter and got no packaging verification at all — the v0.9.6
     `Justfile` hole, one directory over.
+  - **`std_cargo_args` already passes `--locked`, and CI is what found that too.** The
+    formula's first version added an explicit one, and cargo rejected it outright:
+    *"the argument '--locked' cannot be used multiple times"*. The formula parsed, the
+    offline guard passed, and only a real install surfaced it. **The guard was asserting
+    the wrong thing** and now asserts the right one: that `*std_cargo_args` is still used
+    (that is what supplies `--locked`) and that no second `--locked` is added. Checking
+    for the literal flag was wrong in *both* directions — it would pass for a formula that
+    dropped `std_cargo_args` and unpinned resolution, and it demanded the duplicate cargo
+    refuses.
   - **`brew install <path>` does not work any more, and CI is what found it.** The obvious
     invocation — `brew install --build-from-source ./packaging/homebrew/retch.rb` — is
     rejected outright by modern Homebrew: *"Homebrew requires formulae to be in a tap"*.
