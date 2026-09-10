@@ -116,7 +116,53 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.0)
+## Current State (v0.17.1)
+- **v0.17.1 - macOS `domain` and `dns` reported a split-tunnel VPN instead of the default
+  route** (`crates/sysinfo/src/network.rs`, `crates/sysinfo/src/macos_ffi.rs`,
+  `crates/sysinfo/build.rs`). Closes the last NOTES §6c gap, and **§6a's long-standing
+  "UNCONFIRMED" marking on this item was wrong in the safe direction: it is a real bug**,
+  and it is the v0.6.11 Linux bug in macOS form.
+  - **Confirmed with measurement, not inference.** The default route on the test host is
+    `en9` (`State:/Network/Global/IPv4` → `PrimaryInterface = en9`,
+    `Router = 10.10.1.1`). Two sources disagree:
+
+    | source | servers | domain |
+    |---|---|---|
+    | `State:/Network/Global/DNS` — what `/etc/resolv.conf` mirrors | `100.101.255.254` (the VPN) | search `netbird.cloud, lan` |
+    | the **primary service** (`en9`, the default route) | **`10.10.1.1`** | **`lan`** |
+
+    retch reported the first row. It now reports the second: `Domain: lan`,
+    `DNS Server: 10.10.1.1`.
+  - **§6a's description of the cause was also wrong.** It said `/etc/resolv.conf` on macOS
+    "reflects only the *primary* service". It does not — it mirrors the **merged**
+    resolver, which is why it names the VPN *instead of* the primary service. The
+    distinction matters: the old wording suggested resolv.conf was merely incomplete, when
+    in fact it answers a different question.
+  - **`SystemConfiguration` was NOT already linked**, contrary to §6a's note that it was
+    ("the SystemConfiguration framework that `macos_ffi.rs` already links"). The only
+    mention in the crate was a *comment*. `build.rs` now links it.
+  - **The load-bearing rule, exactly as in v0.6.11: a resolvable primary service is
+    authoritative even when it lists nothing.** Falling back to the merged view when the
+    default route happens to have no domain of its own is precisely what resurrects the
+    VPN's domain. `get_primary_service_dns` therefore returns `Some(ScDnsConfig::default())`
+    rather than `None` in that case, and only a machine with **no default route at all**
+    falls back to `resolv.conf`. This is the `DefaultRouteDomain::Managed(None)` call
+    transplanted.
+  - `State:` is read before `Setup:` because the former carries what DHCP actually
+    supplied and the latter only manual overrides — measured: `Setup:` is null on a DHCP
+    service.
+  - **`domain-search` is deliberately NOT changed**, and that is a decision rather than an
+    omission. `domain` is singular and should name the default route's domain; the
+    *search list* is genuinely both entries — the machine really will search
+    `netbird.cloud` and `lan` — so reporting the merged list there is correct. Narrowing
+    it to the primary service would under-report a real behaviour.
+  - **Tests are machine-independent by construction.** They do not assert *which* servers
+    are reported, only that `detect_dns`/`detect_domain` equal what configd says the
+    primary service uses — the coupling a regression breaks. On a plain single-interface
+    CI runner the two sources agree and the test still passes; on any host with a
+    supplemental resolver they diverge and it fails.
+  - `retch-sysinfo` -> `0.1.72` (new public `get_primary_service_dns`, `ScDnsConfig`);
+    `retch-cli` -> `0.17.1`. Patch bump - a bug fix, matching the v0.6.11 call.
 - **v0.17.0 - `login-manager`, `brightness` and `power-adapter` on macOS** (`fetch.rs`,
   `macos_ffi.rs`). Closes the fourth NOTES §6c gap — the same three fields the v0.5.0 PR
   added for Linux, now grouped the same way.
@@ -3055,15 +3101,12 @@ Windows 11, Windows Terminal).
   to Windows Terminal.
 - **`chafa` mode doesn't work on Windows even when requested on the CLI** (CLI). Investigate
   PATH resolution, protocol-detection override, and Windows spawn/path handling.
-- **macOS reads a weaker DNS source than it should** (latent; no demonstrated miss).
-  `detect_domain`/`detect_domain_search` read `/etc/resolv.conf`, which on macOS is a legacy
-  compatibility file maintained by configd that reflects only the *primary* service and is
-  documented as non-authoritative. The authoritative source is configd itself
-  (`scutil --dns`, or the SystemConfiguration framework that `macos_ffi.rs` already links).
-  The CI macOS runner printed no `Domain`/`Domain Search`, but its `DNS Server` is
-  `192.168.64.1` (a NAT'd VM network), so "genuinely no search domain configured" is equally
-  consistent with the evidence — this is *not* confirmed as a bug, only as a weak source.
-  Requires a Mac to distinguish; do not change it blind.
+- ~~**macOS reads a weaker DNS source than it should** (latent; no demonstrated miss)~~ —
+  **CONFIRMED as a real bug and fixed in v0.17.1.** It was not latent: on a host with a
+  split-tunnel VPN, `domain` and `dns` reported the VPN's values rather than the default
+  route's. Two details in the original entry were also wrong — `/etc/resolv.conf` mirrors
+  the **merged** resolver rather than "only the primary service", and SystemConfiguration
+  was **not** already linked by `macos_ffi.rs`. See the v0.17.1 entry.
 
 **Deliberately not implemented on Windows** (no faithful native source): `load` (no
 load-average equivalent), `editor` (env-only `$VISUAL`/`$EDITOR`), conhost `terminal-font`
@@ -3113,23 +3156,19 @@ SQLite open-mode defect.
 ## 6c. macOS cross-platform parity — known issues / backlog
 
 Existing `retch` fields that behave worse (or not at all) on macOS than on Linux/Windows.
-The macOS counterpart to §6a, and **new in v0.14.0** — until then these gaps existed only
-as scattered `- [ ]` lines in frozen WIP.md session entries, which is precisely how they
-went unworked for so long. Derived from the code's own `cfg` gates rather than from prose,
-so the list is complete as of the version noted.
+The macOS counterpart to §6a, added in v0.14.0 — until then these gaps existed only as
+scattered `- [ ]` lines in frozen WIP.md session entries, which is precisely how they went
+unworked for so long. Derived from the code's own `cfg` gates rather than from prose.
+
+**Every field-parity gap in this section is now closed** (v0.14.0 - v0.17.1). What remains
+is one defect found while closing them, and one deliberate decision.
 
 **Fixed**
 - ~~**`disk-io` and `net-io` are Linux/Windows-only**~~ — fixed v0.14.0. IOKit
   `IOBlockStorageDriver` statistics and `sysctl(NET_RT_IFLIST2)`. The non-obvious half was
   that the natural network source, `getifaddrs`, carries **32-bit** counters that wrap
   every 4 GiB — and the development machine sat at 77% of that ceiling, so it would have
-  wrapped mid-session and reported a plausible wrong rate. See the v0.14.0 entry.
-
-- ~~**`keyboard` and `mouse` have no macOS arm**~~ — fixed v0.16.0. IOKit `IOHIDDevice`
-  interfaces, filtered to usage page 1. The v0.7.0 receiver ambiguity does not arise on
-  macOS, which publishes one interface per role; a composite keyboard-and-trackpad is
-  correctly listed under both fields, and retch finds a connected Bluetooth keyboard that
-  fastfetch misses.
+  wrapped mid-session and reported a plausible wrong rate.
 - ~~**`vulkan`, `opengl`, `opencl` have no macOS arm**~~ — fixed v0.15.0. Vulkan and
   OpenCL are the same code as Linux/Windows (only the loader filename differs); OpenGL
   needed a third mechanism, CGL, which unlike EGL and WGL needs no window at all. Two
@@ -3138,6 +3177,28 @@ so the list is complete as of the version noted.
   **macOS system frameworks do not `dlopen` by short name**, so the absolute framework
   path is required or the field silently disappears. Vulkan reports nothing on a stock
   Mac, which is correct.
+- ~~**`keyboard` and `mouse` have no macOS arm**~~ — fixed v0.16.0. IOKit `IOHIDDevice`
+  interfaces, filtered to usage page 1. The v0.7.0 receiver ambiguity does not arise on
+  macOS, which publishes one interface per role; a composite keyboard-and-trackpad is
+  correctly listed under both fields, and retch finds a connected Bluetooth keyboard that
+  fastfetch misses.
+- ~~**`login-manager`, `brightness` and `power-adapter` have no macOS arm**~~ — fixed
+  v0.17.0. The documented brightness path does not exist on Apple Silicon;
+  `AppleARMBacklight` carries it. macOS reports adapter **wattage** where Linux reports a
+  name, and `loginwindow` is reported with its version.
+- ~~**macOS reads a weaker DNS source than it should**~~ — **CONFIRMED and fixed in
+  v0.17.1.** It was never latent: `domain` and `dns` reported a split-tunnel VPN's values
+  rather than the default route's. Both now come from the default route's own network
+  service via SystemConfiguration. `domain-search` deliberately still reports the merged
+  search list, because that is genuinely what the machine searches.
+
+**Decided — `tpm` stays absent on macOS**
+Macs have a **Secure Enclave**, not a TPM. They are not the same thing: the field reports a
+TPM *specification* version (`2.0` / `1.2`), and a Secure Enclave has no such version to
+report. Labelling one as the other would be an approximate-but-wrong answer of exactly the
+kind §6a and the v0.7.0 input classification both reject, and fastfetch reports no TPM on
+macOS either. **This is now a decision rather than an open question** — reopen it only if a
+Secure Enclave field is wanted under its own name, which is a different feature.
 
 **Open**
 - **`Bluetooth` reports `Off` while Bluetooth devices are connected** (NEW, found
@@ -3147,30 +3208,20 @@ so the list is complete as of the version noted.
   `IOClass`, `Built-In` and **`BluetoothTransportConnected = Yes`**. The `.unwrap_or(false)`
   then turns "could not read" into a confident `Off`, which is wrong on a machine with a
   connected Bluetooth keyboard. The three chipset-name properties it tries
-  (`HardwareTransportCurrentSetting`, `ProductName`, `ChipsetString`) are all absent too.
-  - **Not fixed blind.** `BluetoothTransportConnected` is the obvious replacement, but
-    whether it tracks the *radio* being switched off could not be confirmed here: doing so
-    means toggling Bluetooth off, which would disconnect the keyboard in use. Confirm that
-    property changes to `No` with the radio off before relying on it.
-  - **The safe partial fix, independent of that question**: stop reporting `Off` when the
-    property is absent. Under-reporting beats asserting something false — the `Users: 0`
-    call (v0.6.1). fastfetch reports connected devices here and retch reports `Off`.
-- ~~**`login-manager`, `brightness` and `power-adapter` have no macOS arm**~~ — fixed
-  v0.17.0. The documented brightness path does not exist on Apple Silicon;
-  `AppleARMBacklight` carries it. macOS reports adapter **wattage** where Linux reports a
-  name, and `loginwindow` is reported with its version.
-- **`tpm` — probably correct as absent, but decide deliberately.** Macs have a Secure
-  Enclave, not a TPM. Reporting a Secure Enclave under a `TPM` label would be the kind of
-  approximate-but-wrong answer §6a and the v0.7.0 input work both reject. Left absent
-  unless a deliberate decision says otherwise.
-- **macOS reads a weaker DNS source than it should** — see the same entry in §6a. Still
-  unconfirmed as a *defect*; `/etc/resolv.conf` on macOS is a legacy configd compatibility
-  file reflecting only the primary service, and `scutil --dns` / SystemConfiguration is
-  authoritative. Needs a Mac on a network that actually hands out a search domain to tell a
-  weak source from a genuinely empty one. **Do not change it blind.**
+  (`HardwareTransportCurrentSetting`, `ProductName`, `ChipsetString`) are all absent too,
+  yet the field still prints a name — so that comes from a fallback elsewhere and is worth
+  tracing at the same time.
+  - **Deliberately not fixed blind.** `BluetoothTransportConnected` is the obvious
+    replacement, but whether it tracks the *radio* being switched off could not be
+    confirmed on the development machine: doing so means toggling Bluetooth off, which
+    would disconnect the keyboard in use. **Confirm that property reads `No` with the radio
+    off before relying on it.**
+  - **The safe partial fix is independent of that question**: stop reporting `Off` when the
+    property cannot be read at all. Under-reporting beats asserting something false — the
+    `Users: 0` call (v0.6.1). fastfetch reports the connected device here; retch says `Off`.
 
-**Long tail** (not field parity, but macOS-specific and tracked in §5): code signing and
-notarization, and a Homebrew tap/formula.
+**Long tail** (not field parity, tracked in §5): a **Homebrew tap/formula**, which is now a
+stated prerequisite for the next publish round, and macOS code signing / notarization.
 
 ---
 

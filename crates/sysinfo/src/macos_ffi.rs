@@ -700,6 +700,156 @@ pub fn get_power_adapter_watts() -> Option<i64> {
     }
 }
 
+// ─── DNS — SystemConfiguration dynamic store ─────────────────────────────────
+
+#[link(name = "CoreFoundation", kind = "framework")]
+extern "C" {
+    fn CFArrayGetTypeID() -> usize;
+    fn CFArrayGetCount(array: CFArrayRef) -> isize;
+    fn CFArrayGetValueAtIndex(array: CFArrayRef, index: isize) -> *const c_void;
+}
+
+/// Opaque `CFArrayRef`.
+pub type CFArrayRef = *const c_void;
+
+#[link(name = "SystemConfiguration", kind = "framework")]
+extern "C" {
+    fn SCDynamicStoreCreate(
+        allocator: CFAllocatorRef,
+        name: CFStringRef,
+        callout: *const c_void,
+        context: *const c_void,
+    ) -> *const c_void;
+    fn SCDynamicStoreCopyValue(store: *const c_void, key: CFStringRef) -> CFTypeRef;
+}
+
+/// The DNS configuration belonging to one network service.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ScDnsConfig {
+    /// Nameserver addresses, in configd's own order.
+    pub servers: Vec<String>,
+    /// Search domain list, if the service defines one.
+    pub search: Vec<String>,
+    /// The service's own domain name.
+    pub domain: Option<String>,
+}
+
+/// Read the **default route's own** DNS configuration from the dynamic store.
+///
+/// **This is the whole point of the module: `/etc/resolv.conf` on macOS is not this.**
+/// That file is configd's legacy compatibility view and mirrors
+/// `State:/Network/Global/DNS`, the *merged* resolver — which on a machine with a
+/// split-tunnel VPN names the VPN's server and domain even though the VPN is not the
+/// default route. Measured on a host whose default route is `en9`:
+///
+/// | source | servers | domain |
+/// |---|---|---|
+/// | `State:/Network/Global/DNS` (≡ resolv.conf) | `100.101.255.254` (VPN) | search `netbird.cloud, lan` |
+/// | the primary service (`en9`) | `10.10.1.1` | `lan` |
+///
+/// So this resolves `State:/Network/Global/IPv4` → `PrimaryService`, then reads that
+/// service's own `.../DNS` dictionary. `State:` is consulted before `Setup:` because the
+/// former carries what DHCP actually supplied while the latter holds only manual
+/// overrides (measured: `Setup:` is null on a DHCP service).
+///
+/// Returns `None` when there is no default route at all — an offline machine — so the
+/// caller can fall back to `resolv.conf` rather than reporting nothing.
+pub fn get_primary_service_dns() -> Option<ScDnsConfig> {
+    unsafe {
+        let name = with_cfstring_owned("retch");
+        let store = SCDynamicStoreCreate(
+            kCFAllocatorDefault,
+            name.0 as CFStringRef,
+            ptr::null(),
+            ptr::null(),
+        );
+        drop(name);
+        if store.is_null() {
+            return None;
+        }
+        let _store = OwnedCF(store);
+
+        let service = {
+            let global = copy_store_value(store, "State:/Network/Global/IPv4")?;
+            cf_dict_string(global.0 as CFDictionaryRef, "PrimaryService")?
+        };
+
+        // `State:` first: it is what DHCP supplied. `Setup:` holds manual overrides only.
+        for prefix in ["State:", "Setup:"] {
+            let key = format!("{prefix}/Network/Service/{service}/DNS");
+            let Some(dns) = copy_store_value(store, &key) else {
+                continue;
+            };
+            let dict = dns.0 as CFDictionaryRef;
+            let config = ScDnsConfig {
+                servers: cf_dict_string_array(dict, "ServerAddresses"),
+                search: cf_dict_string_array(dict, "SearchDomains"),
+                domain: cf_dict_string(dict, "DomainName"),
+            };
+            if !config.servers.is_empty() || !config.search.is_empty() || config.domain.is_some() {
+                return Some(config);
+            }
+        }
+        // A resolvable primary service with no DNS of its own is a real state, and it is
+        // reported as such (an empty config) rather than by falling back to the merged
+        // view — falling back is exactly what would resurrect the VPN's values. Same call
+        // as the Linux `DefaultRouteDomain::Managed(None)` case in v0.6.11.
+        Some(ScDnsConfig::default())
+    }
+}
+
+/// `SCDynamicStoreCopyValue` wrapped so the result is released on every path.
+unsafe fn copy_store_value(store: *const c_void, key: &str) -> Option<OwnedCF> {
+    let value = with_cfstring(key, |k| SCDynamicStoreCopyValue(store, k));
+    (!value.is_null()).then_some(OwnedCF(value))
+}
+
+/// Build a CFString the caller owns, for the cases where a borrow will not do.
+unsafe fn with_cfstring_owned(s: &str) -> OwnedCF {
+    let cs = CString::new(s).unwrap_or_default();
+    OwnedCF(
+        CFStringCreateWithCString(kCFAllocatorDefault, cs.as_ptr(), kCFStringEncodingUTF8)
+            as CFTypeRef,
+    )
+}
+
+/// Read a string out of a CFDictionary.
+unsafe fn cf_dict_string(dict: CFDictionaryRef, key: &str) -> Option<String> {
+    if dict.is_null() {
+        return None;
+    }
+    let value = with_cfstring(key, |k| CFDictionaryGetValue(dict, k));
+    if value.is_null() || CFGetTypeID(value) != CFStringGetTypeID() {
+        return None;
+    }
+    cf_string_to_rust(value as CFStringRef).filter(|s| !s.trim().is_empty())
+}
+
+/// Read an array of strings out of a CFDictionary, skipping non-string members.
+unsafe fn cf_dict_string_array(dict: CFDictionaryRef, key: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    if dict.is_null() {
+        return out;
+    }
+    let value = with_cfstring(key, |k| CFDictionaryGetValue(dict, k));
+    if value.is_null() || CFGetTypeID(value) != CFArrayGetTypeID() {
+        return out;
+    }
+    let array = value as CFArrayRef;
+    for i in 0..CFArrayGetCount(array) {
+        let item = CFArrayGetValueAtIndex(array, i);
+        if !item.is_null() && CFGetTypeID(item) == CFStringGetTypeID() {
+            if let Some(s) = cf_string_to_rust(item as CFStringRef) {
+                let s = s.trim().to_string();
+                if !s.is_empty() {
+                    out.push(s);
+                }
+            }
+        }
+    }
+    out
+}
+
 // ─── CoreAudio ───────────────────────────────────────────────────────────────
 
 #[repr(C)]

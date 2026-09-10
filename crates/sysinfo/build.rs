@@ -9,5 +9,10 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=CoreGraphics");
         println!("cargo:rustc-link-lib=framework=CoreWLAN");
         println!("cargo:rustc-link-lib=framework=AppKit");
+        // SystemConfiguration is the authoritative source for the default route's own DNS
+        // configuration. /etc/resolv.conf on macOS is configd's legacy compatibility file
+        // and mirrors the *merged* resolver, so it reports a split-tunnel VPN's servers
+        // and domain in preference to the default route's (see v0.17.1 in NOTES.md).
+        println!("cargo:rustc-link-lib=framework=SystemConfiguration");
     }
 }
