@@ -145,7 +145,7 @@ You can generate a starting configuration with:
   - `domain`: Configured DNS domain name. On Linux, the domain of the interface carrying the default route (via `resolvectl`), so a split-tunnel VPN's domain is not reported unless the VPN is the default route; falls back to the `domain` or first `search` entry in `/etc/resolv.conf`. Long mode and above.
   - `domain-search`: DNS search domain lists, one entry per scope, formatted as `scope: a, b`. The scope is the interface name when per-interface data is available (from `resolvectl status`), or `global` when falling back to `/etc/resolv.conf`'s `search` list, which carries no interface attribution. Full mode only.
   - `bluetooth`: Bluetooth adapter details and connected device count/names.
-  - `battery`: Battery capacity, vendor/model, time remaining, and health.
+  - `battery`: Battery capacity, vendor/model, time remaining, and health. On Windows this reads the battery device directly (`IOCTL_BATTERY_QUERY_INFORMATION`) rather than via PowerShell — no subprocess and no elevation. Health is shown only when it is below 99%.
   - `power-adapter`: AC power adapter name and connection state (from `/sys/class/power_supply` `Mains` supply). Linux only. Long mode and above.
   - `shell`: Currently running shell name and version (e.g. bash, zsh, fish, nu). Detected from the process tree; falls back to `$SHELL` (login shell).
   - `editor`: Default editor from `$VISUAL` / `$EDITOR`.
