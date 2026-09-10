@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789050765187,
+  "lastUpdate": 1789051251850,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13434,80 +13434,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "464951f8ff41455093d91045e621a17b81124684",
-          "message": "fix(display): parse monitor vendor and panel model from EDID on Windows (#183)\n\n* fix(display): parse monitor EDID on Windows\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(display): extract monitor vendor and model on Windows\n\nAssisted-By: Gemini 3.6 Flash",
-          "timestamp": "2026-08-08T07:48:08-07:00",
-          "tree_id": "5029838743a7e4449bedecce22a3d07443557dd7",
-          "url": "https://github.com/l1a/retch/commit/464951f8ff41455093d91045e621a17b81124684"
-        },
-        "date": 1786201718740,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1044942354.1,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 442.71995074038495,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 129.71114627271874,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.8503182678453818,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 64.4682397353408,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 4551.943069322353,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1108.264912009218,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 424.08503244143185,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 73836.30687221131,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 346.78347690902854,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "622cf3b843fc5f6286cad91442e7bd41af2fdf12",
           "message": "Bump 4 deps and fix man page font-run strip (#184)\n\nConsolidates Dependabot #182 onto a gated branch so the release-hygiene\nsteps Dependabot skips (version bump, NOTES entry, man regen) are done.\n\nDependencies (cargo-dependencies group, lockfile-only — every spec is a\ncaret range, so Cargo.toml is untouched):\n  clap          4.6.4 -> 4.6.5  (clap_builder 4.6.2 -> 4.6.5)\n  toml          1.1.3 -> 1.1.4  (toml_parser  1.1.2 -> 1.1.3)\n  clap_complete 4.6.7 -> 4.6.8\n  base64        0.23.0 -> 0.23.1\n\nThe resulting Cargo.lock is byte-identical to what Dependabot generated.\n\nAlso fixes the `just man` font-collapsing sed, which has never worked on\nany platform. mandown emits redundant \\fB\\fB...\\fP\\fP runs and the recipe\ncarried `s/\\fB\\fB/\\fB/g` to strip them, but GNU sed reads \\f as the\nform-feed escape rather than backslash-then-f, so the pattern only ever\nmatched form feeds that groff output never contains. This is why\ndocs/retch.1 kept flip-flopping between machines: v0.6.2 concluded the\nstrip merely \"didn't take effect on Windows\", when in fact Linux was not\nstripping anything either — its mandown build just doesn't emit the\ndoubled runs. Matching the backslash as [\\] and carrying it out through a\ncapture group keeps any backslash escape off the replacement side.\n\nWith the fix, `just man` on Windows reproduces byte-for-byte the file a\nLinux `just man` produces, so the regen check in `just pr` no longer\ndepends on which machine last ran it. The regenerated page drops 21\ndoubled font runs and changes nothing else but the version footer.\n\nretch-sysinfo unchanged at 0.1.51; no Rust source touched.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-09T07:06:33-07:00",
@@ -17117,6 +17043,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 360.13268031737437,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d9c95abdb4afb03a77a881741c68173c407aa441",
+          "message": "Gate CPU refresh and load average by field (#235)\n\nTwo sysinfo calls in `collect()` ran on every invocation regardless of\nwhich fields were selected, and both reached for Windows performance\ncounters, whose first touch in a process costs ~180-195 ms.\n\n`System::load_average()` was ungated. It is now gated on the `load`\nfield and skipped outright on Windows, where sysinfo has no native\nsource and synthesises one from a PDH `\\System\\Cpu Queue Length`\ncounter sampled every 5 *seconds* into a process-local static seeded at\nzero -- so it has always returned 0.00 there and the caller's\n`avg.one > 0.0` guard has always discarded it. NOTES 6a has listed\n`load` as not implemented on Windows for a long time; the code did not\nknow.\n\n`CpuRefreshKind::everything()` became `cpu_refresh_kind()`, which asks\nonly for what a selected field reads. `everything()` sets `frequency`,\nand `windows/cpu.rs::init_cpus` calls `get_frequencies()` only when it\nis set: dropping it took `System::new_with_specifics` from 195.5 ms to\n0.5 ms with the CPU line unchanged, since brand and core count come\nfrom the static CPU list. `cpu-freq` still requests frequency;\n`cpu-usage` requests usage off Windows only, as the Windows arm has\ndiffed its own GetSystemTimes samples since v0.3.49. `cpu-cache` leaves\nthe gate entirely -- `detect_cpu_cache()` never touches `sys`.\n\nWindows, hyperfine after warmup, fastfetch 2.65.2:\n\n  --short   239.5 -> 50.6 ms   (fastfetch -c none 78.0)\n  default   348.0 -> 142.0 ms  (fastfetch 1188)\n  --long    502.0 -> 286.4 ms  (fastfetch -c all 1312)\n  --full     1.692 -> 1.445 s  (fastfetch -c all 1.334)\n\nOutput is unchanged on every platform, verified by diffing the rendered\nfield labels of the before and after binaries across all four modes.\n\nThe prior diagnosis in NOTES 6a -- that this was process startup -- was\nwrong, and is corrected there rather than deleted. Its per-field sweep\nused `--fields os` as the baseline, which pays the same ~200 ms, so\ndifferencing cancelled the constant being hunted. The real floor is\n`retch --version` at 17.9 ms against `fastfetch --version` at 46.8 ms.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T07:19:03-07:00",
+          "tree_id": "000f572e01652cb5b27e8e4af3aa02ebdd25a2a5",
+          "url": "https://github.com/l1a/retch/commit/d9c95abdb4afb03a77a881741c68173c407aa441"
+        },
+        "date": 1789051249237,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1241325912.55,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 629.8765727277369,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 178.82793575779039,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.920923547920885,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 91.19328148357461,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5886.94786896408,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1525.164921194009,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 608.1817099333445,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 99186.35185225753,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 485.0790972038866,
             "unit": "ns"
           }
         ]
