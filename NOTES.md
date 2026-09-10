@@ -116,7 +116,63 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.12.0)
+## Current State (v0.13.0)
+- **v0.13.0 - `opengl` on Windows, via WGL against a hidden window**
+  (`crates/sysinfo/src/gpu_api.rs`). Completes the Windows half of the §6 GPU-API group:
+  all three now report there, and §6a's `opengl` item is closed.
+  - **Byte-identical to fastfetch**: `4.6.0 Compatibility Profile Context
+    25.20.32.06.251214`. With Vulkan already matching in v0.12.0 and OpenCL deliberately
+    richer, retch now reports at least as much as fastfetch on all three, on both platforms.
+  - **This is a different mechanism, not a wider `cfg`, which is why it is its own module.**
+    Vulkan and OpenCL share one implementation across platforms because those APIs are
+    identical and only the loader filename differs. OpenGL cannot: the Linux path takes a
+    context from EGL with no window and no display server, and **stock Windows ships no
+    EGL**. Windows has no headless equivalent in the base OS — WGL needs a device context, a
+    device context needs a window, and a window needs a registered class. So the Windows
+    arm registers a class, creates a 1x1 window, sets a pixel format, creates a context,
+    reads `GL_VERSION`, and tears all of it down.
+  - **The window is created hidden and never shown, and that was measured rather than
+    asserted.** It is created without `WS_VISIBLE` and `ShowWindow` is never called. A fetch
+    tool that flashed a window on every run would be broken, so this was checked with
+    `FindWindowEx` + `IsWindowVisible` polling across 60 back-to-back probe runs: the window
+    was **observed 134869 times in 722764 polls and was VISIBLE 0 times**. The observation
+    count is the important half - it is the positive control proving the check could see the
+    window at all. Without it, "0 visible" would have been another check that cannot fail,
+    the family this file keeps recording. **Counting `conhost` processes is NOT a valid
+    oracle for this** (`~/AGENTS.md`, arrakis): `CREATE_NO_WINDOW` still spawns a console.
+  - **`RegisterClassW`/`CreateWindowExW`/`GetDC` are wrapped in a guard type that unwinds on
+    drop**, in the reverse of acquisition order. Releasing them by hand at each `?` is how a
+    window or a class leaks, and a leaked class makes a second registration in the same
+    process fail - which would present as "no OpenGL" rather than as an error.
+  - **The pixel format must be set before `wglCreateContext`**, and its absence presents as
+    a null context handle rather than an error code that says so. `wglMakeCurrent(NULL,
+    NULL)` before `wglDeleteContext` for the same class of reason: deleting a context that
+    is current to the calling thread is documented to fail, which would leak it.
+  - **The context choice decides the string printed**, exactly as on Linux.
+    `wglCreateContext` yields the driver's highest *compatibility* profile, which is what
+    fastfetch reports. A core profile would need `wglCreateContextAttribsARB` and would
+    print a different string for the same machine, so the plain call is deliberate.
+  - `user32` and `gdi32` are **linked**, not loaded at runtime, unlike the graphics loaders:
+    they are core OS libraries present wherever the binary can run at all, and `display.rs`
+    already links `user32` on the same grounds. `opengl32` *is* loaded at runtime, because a
+    machine with no OpenGL ICD is a real case that must yield an absent field.
+  - Layout guards for `PIXELFORMATDESCRIPTOR` (40 bytes) and `WNDCLASSW` (72 bytes),
+    **watched failing** against a mutated size. `nSize` is filled from `size_of`, so struct
+    drift would hand `ChoosePixelFormat` a wrong size silently rather than fail to compile.
+  - **Perf: a real cost of ~65-90 ms on `--full`, and the isolated figure is much larger
+    than that.** The probe alone measures **878.3 ms against a 410.7 ms floor** - roughly
+    **470 ms**, three to four times what `vulkan` (+139) or `opencl` (+120) cost, because
+    creating a window and a GL context is heavier than querying a loader. Most of it
+    overlaps inside the concurrent scope: interleaved and repeated against a binary built
+    from `main`, `--full` came out **6891.9 vs 6801.2 ms** and **6853.0 vs 6788.1 ms**
+    (spreads ~50 ms, minimums agreeing with the means), so the branch is slower in **both**
+    passes by 65-90 ms. Not noise, and not free - the v0.12.0 reading again.
+    **The first attempt at this measurement was too noisy to quote** (±499 ms, with
+    hyperfine flagging an 8.0 s first run) and was re-run with more warmup rather than
+    reported; the machine had just finished 60 back-to-back probe runs for the window-
+    visibility check above.
+  - `retch-sysinfo` -> `0.1.65`; `retch-cli` -> `0.13.0`. Minor bump - a new user-visible
+    field on a platform that lacked it, the v0.6.0 / v0.11.0 / v0.12.0 precedent.
 - **v0.12.0 - `vulkan` and `opencl` on Windows** (`crates/sysinfo/src/gpu_api.rs`). v0.11.6
   closed the last §6 fastfetch gap on Linux and, in doing so, opened a Windows parity gap:
   fastfetch reports all three APIs on Windows and retch reported none.
@@ -2524,8 +2580,9 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 ### GPU / Graphics
 - ~~**OpenCL / OpenGL / Vulkan**: Highest supported API versions~~ — added in v0.11.6
-  (`vulkan`, `opengl`, `opencl` fields, Linux; `dlopen` of each loader, `--full`), and
-  `vulkan`/`opencl` extended to Windows in v0.12.0. This was
+  (`vulkan`, `opengl`, `opencl` fields, Linux; `dlopen` of each loader, `--full`), extended
+  to Windows in v0.12.0 (`vulkan`, `opencl`) and v0.13.0 (`opengl`, via WGL) — so the whole
+  group now reports on both platforms. This was
   the **last remaining user-visible fastfetch gap**; every group in §6 is now closed.
   retch reports strictly more than fastfetch on `opencl`: fastfetch prints the platform
   version even when the platform exposes **no device**, which is the normal state for Mesa's
@@ -2605,14 +2662,13 @@ Windows 11, Windows Terminal).
   loader filename differs (`vulkan-1.dll` / `OpenCL.dll` against the Linux sonames), which
   is why `mod dl` gained a Windows backend rather than the probes being duplicated.
 
+- ~~**`opengl` has no Windows implementation**~~ — fixed v0.13.0, and it needed a different
+  mechanism rather than a wider `cfg`: WGL against a window created hidden and never shown,
+  because stock Windows has no EGL and therefore no headless context. Output is
+  byte-identical to fastfetch. **The whole §6 GPU-API group now reports on Windows as well
+  as Linux.**
+
 **Open**
-- **`opengl` has no Windows implementation.** Not a missing filename: the Linux path gets a
-  headless context through EGL, and **stock Windows ships no `libEGL.dll`** — verified on a
-  Windows 11 box carrying `vulkan-1.dll`, `opengl32.dll` and `OpenCL.dll` but no EGL. It
-  needs WGL against a hidden window (create a dummy window class, set a pixel format, make a
-  context current, read `GL_VERSION`), which is a different mechanism rather than a wider
-  `cfg`. fastfetch reports `4.6.0 Compatibility Profile Context 25.20.32.06.251214` here, so
-  the gap is visible to anyone comparing the two.
 - **Windows `--full` and `--long` are slower than fastfetch** (~6.8 s and ~2.2–3.0 s against
   `fastfetch -c all` at ~1.7 s), which NOTES §3 treats as blocking. A per-field sweep
   (2026-09-09) put the startup floor at ~322 ms with 41 of 56 `--long` fields inside 20 ms of
