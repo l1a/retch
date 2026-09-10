@@ -116,7 +116,56 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.11.8)
+## Current State (v0.12.0)
+- **v0.12.0 - `vulkan` and `opencl` on Windows** (`crates/sysinfo/src/gpu_api.rs`). v0.11.6
+  closed the last §6 fastfetch gap on Linux and, in doing so, opened a Windows parity gap:
+  fastfetch reports all three APIs on Windows and retch reported none.
+  - **The probes are the same code, because the APIs are.** Vulkan and OpenCL are identical
+    across platforms; only the loader's *filename* differs. So `mod dl` gained a Windows
+    backend (`LoadLibraryA`/`GetProcAddress`/`FreeLibrary`, the `media.rs` `combase.dll`
+    precedent) and the two `mod vulkan` / `mod opencl` bodies widened to
+    `cfg(any(linux, windows))` unchanged. **A second copy of the
+    `VkPhysicalDeviceProperties2` offset arithmetic is exactly the drift that the shared
+    `win_setupapi` and `win_iftable` modules exist to prevent**, so the split is one `dl`
+    module and two `*_LIB` constants.
+  - **Vulkan output is byte-identical to fastfetch** on this machine:
+    `1.4.329 - AMD proprietary driver [25.20.32.06 (LLPC)]`. **OpenCL is deliberately
+    richer**, as on Linux: `2.1 AMD-APP (3661.0) - AMD Accelerated Parallel Processing
+    (gfx1151)` against fastfetch's bare `2.1 AMD-APP (3661.0)`.
+  - **`opengl` is NOT included, and that is a mechanism difference rather than a missing
+    filename.** The Linux path gets a headless context via EGL (`EGL_DEFAULT_DISPLAY` plus
+    a surfaceless `eglMakeCurrent`), and **stock Windows ships no `libEGL.dll`** - verified
+    on this box, which has `vulkan-1.dll`, `opengl32.dll` and `OpenCL.dll` in `System32`
+    and no EGL at all. Windows OpenGL needs WGL against a hidden window, which is separate
+    work rather than a wider `cfg`; tracked in §6a.
+  - **The stderr suppression is Linux-only, and the Windows no-op is justified by
+    measurement rather than assumed.** The Linux `SuppressStderr` exists for one driver:
+    rusticl prints a "Patched Mesa libclc not detected" warning on every enumeration. That
+    driver does not exist on Windows, and a `--full` run plus an isolated `--fields opencl`
+    run each wrote **0 bytes** to stderr here. `test_cli_full_mode` asserts exactly this and
+    runs on the Windows CI leg, so a future leak fails loudly instead of silently spraying a
+    driver's diagnostics into the terminal. Reimplementing the `dup2` dance on the CRT for a
+    problem no observation shows would also have silenced every other thread for its
+    duration.
+  - **Perf: a real cost, stated as such.** Interleaved and repeated against a binary built
+    from `main`: `--full` **6879.7 -> 6754.9 ms** and, on the repeat, **6825.8 -> 6767.9** -
+    the branch is slower in **both** passes, so unlike the v0.10.0/v0.11.6 results this is
+    **not** noise. It matches the isolated probe costs (vulkan **+139 ms**, opencl
+    **+120 ms** over a ~312 ms floor) overlapping inside the concurrent scope. `--long` is
+    the control and moves both ways (2957.9 vs 2932.7, then 2921.3 vs 3004.0), confirming
+    the fields are `--full`-only by construction. **Context, not an excuse**: Windows
+    `--full` is ~6.8 s against `fastfetch -c all` at ~1.7 s for reasons that predate this
+    change (`battery` alone is ~2.5 s), so §6a's perf item is where that belongs.
+  - 4 new unit tests. The loader-filename guards are the ones that matter: a typo there
+    **fails silently**, reporting "not installed" on a machine that has the API. **Watched
+    failing** against `vulkan1.dll` - the test reports the mismatch while the binary just
+    prints nothing, which is the whole argument for pinning them. The other two cover an
+    AMD platform string (a non-Mesa `CL_PLATFORM_VERSION` phrasing, with a parenthesised
+    build number that must not be mistaken for the driver descriptor
+    `shorten_device_name` strips) and a bare device name with no descriptor at all - the
+    branch every Linux fixture missed, since Mesa always appends one.
+  - `retch-sysinfo` -> `0.1.64`; `retch-cli` -> `0.12.0`. Minor bump - new user-visible
+    fields on a platform that had none, the v0.6.0 and v0.11.0 precedent.
 - **v0.11.8 - dependency bump: `icy_sixel` 0.6 -> 0.7 (consolidated Dependabot #228)**
   (chore; no runtime behavior change).
   - Widened `icy_sixel` spec `"0.6"` -> `"0.7"` in `Cargo.toml` and updated `Cargo.lock` (0.6.0 -> 0.7.0).
@@ -2475,7 +2524,8 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 ### GPU / Graphics
 - ~~**OpenCL / OpenGL / Vulkan**: Highest supported API versions~~ — added in v0.11.6
-  (`vulkan`, `opengl`, `opencl` fields, Linux; `dlopen` of each loader, `--full`). This was
+  (`vulkan`, `opengl`, `opencl` fields, Linux; `dlopen` of each loader, `--full`), and
+  `vulkan`/`opencl` extended to Windows in v0.12.0. This was
   the **last remaining user-visible fastfetch gap**; every group in §6 is now closed.
   retch reports strictly more than fastfetch on `opencl`: fastfetch prints the platform
   version even when the platform exposes **no device**, which is the normal state for Mesa's
@@ -2550,7 +2600,28 @@ Windows 11, Windows Terminal).
   keyed on a literal `[Up]` that the colourised line never contains, was also missed. See
   the v0.11.1 entry.
 
+- ~~**`vulkan` and `opencl` are Linux-only**~~ — fixed v0.12.0. The Vulkan and OpenCL APIs
+  are identical across platforms, so the probes are literally the same code; only the
+  loader filename differs (`vulkan-1.dll` / `OpenCL.dll` against the Linux sonames), which
+  is why `mod dl` gained a Windows backend rather than the probes being duplicated.
+
 **Open**
+- **`opengl` has no Windows implementation.** Not a missing filename: the Linux path gets a
+  headless context through EGL, and **stock Windows ships no `libEGL.dll`** — verified on a
+  Windows 11 box carrying `vulkan-1.dll`, `opengl32.dll` and `OpenCL.dll` but no EGL. It
+  needs WGL against a hidden window (create a dummy window class, set a pixel format, make a
+  context current, read `GL_VERSION`), which is a different mechanism rather than a wider
+  `cfg`. fastfetch reports `4.6.0 Compatibility Profile Context 25.20.32.06.251214` here, so
+  the gap is visible to anyone comparing the two.
+- **Windows `--full` and `--long` are slower than fastfetch** (~6.8 s and ~2.2–3.0 s against
+  `fastfetch -c all` at ~1.7 s), which NOTES §3 treats as blocking. A per-field sweep
+  (2026-09-09) put the startup floor at ~322 ms with 41 of 56 `--long` fields inside 20 ms of
+  it; `dns` was the pole and was fixed in v0.11.2, leaving **`battery` at ~2531 ms** as the
+  next target — it still spawns `powershell -Command "Get-CimInstance Win32_Battery …"`.
+  The native route is `GUID_DEVCLASS_BATTERY` via SetupAPI plus
+  `IOCTL_BATTERY_QUERY_INFORMATION`; `GetSystemPowerStatus` alone does not give design or
+  full-charge capacity. **Confirm any predicted win against the real mode, not against
+  `--fields`** — that harness mispredicted the `dns` win by an order of magnitude.
 - **Logo renders above the text, not beside it (upper-right)** on Windows Terminal
   (CLI/rendering, retch-cli `src/`). Likely terminal-detection / cursor-positioning specific
   to Windows Terminal.

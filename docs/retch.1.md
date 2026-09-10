@@ -111,9 +111,9 @@ You can generate a starting configuration with:
   - `cpu-cache`: CPU L1/L2/L3 cache sizes.
   - `cpu-usage`: Current CPU utilization percentage.
   - `gpu`: GPU model(s) and VRAM.
-  - `vulkan`: Vulkan API version, driver name and driver version, e.g. `1.4.354 - radv [Mesa 26.1.8]`. Linux only. Full mode only by default.
-  - `opengl`: OpenGL version string, read from a headless context, e.g. `4.6 (Compatibility Profile) Mesa 26.1.8`. Linux only. Full mode only by default.
-  - `opencl`: OpenCL platform version, provider, and the device it exposes. Reports `no device enabled` when a platform advertises a version but exposes no usable device — the normal state for Mesa's rusticl until `RUSTICL_ENABLE` is set. Linux only. Full mode only by default.
+  - `vulkan`: Vulkan API version, driver name and driver version, e.g. `1.4.354 - radv [Mesa 26.1.8]`. Linux and Windows. Full mode only by default.
+  - `opengl`: OpenGL version string, read from a headless context, e.g. `4.6 (Compatibility Profile) Mesa 26.1.8`. Linux only — the headless path uses EGL, which stock Windows does not provide. Full mode only by default.
+  - `opencl`: OpenCL platform version, provider, and the device it exposes. Reports `no device enabled` when a platform advertises a version but exposes no usable device — the normal state for Mesa's rusticl until `RUSTICL_ENABLE` is set. Linux and Windows. Full mode only by default.
   - `motherboard`: Motherboard manufacturer and model.
   - `bios`: BIOS vendor and version.
   - `bootmgr`: Second-stage bootloader (GRUB, systemd-boot, etc.).

@@ -34,7 +34,9 @@
 //! classification.
 
 #[cfg(target_os = "linux")]
-use std::ffi::{c_char, c_int, c_void, CStr};
+use std::ffi::c_int;
+#[cfg(any(target_os = "linux", target_os = "windows"))]
+use std::ffi::{c_char, c_void, CStr};
 
 /// Versions reported by each graphics/compute API present on the system.
 ///
@@ -149,9 +151,17 @@ pub fn cstr_field(buf: &[u8]) -> String {
 }
 
 // ---------------------------------------------------------------------------
-// Linux implementation
+// Runtime loader — one interface, two backends
 // ---------------------------------------------------------------------------
 
+/// Runtime library loading, presenting the same `open`/`sym`/`close` interface on every
+/// platform so the probes above it need no `cfg` of their own.
+///
+/// The probes are the same code on Linux and Windows — the Vulkan and OpenCL APIs are
+/// identical, and only the loader's *name* differs — so the platform split lives here
+/// rather than being duplicated per API. A second copy of the
+/// `VkPhysicalDeviceProperties2` offset arithmetic is exactly the drift that the shared
+/// `win_setupapi` and `win_iftable` modules exist to prevent.
 #[cfg(target_os = "linux")]
 mod dl {
     use super::*;
@@ -192,7 +202,71 @@ mod dl {
     }
 }
 
+/// Windows backend for the loader interface above.
+///
+/// `LoadLibraryA` rather than `LoadLibraryW`: the names are ASCII DLL filenames resolved
+/// through the standard search order, so widening them would buy nothing and would mean
+/// converting a `CStr` the callers already hold. `media.rs`'s `combase.dll` bootstrap is
+/// the precedent for loading a system DLL at runtime rather than linking it.
+///
+/// There is no `RTLD_LOCAL` equivalent to worry about — Windows does not have the global
+/// symbol namespace that flag exists to avoid polluting.
+#[cfg(target_os = "windows")]
+mod dl {
+    use super::*;
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn LoadLibraryA(lp_lib_file_name: *const c_char) -> *mut c_void;
+        fn GetProcAddress(h_module: *mut c_void, lp_proc_name: *const c_char) -> *mut c_void;
+        fn FreeLibrary(h_module: *mut c_void) -> i32;
+    }
+
+    /// Open a DLL by name, or `None` if it is not installed.
+    ///
+    /// A missing loader is the normal answer on a machine without that API — a headless
+    /// server, or one with no GPU driver — not an error.
+    pub fn open(name: &CStr) -> Option<*mut c_void> {
+        // SAFETY: `name` is a valid NUL-terminated C string for the duration of the call.
+        // A null return is the documented "not found" answer and is handled.
+        let h = unsafe { LoadLibraryA(name.as_ptr()) };
+        (!h.is_null()).then_some(h)
+    }
+
+    /// Resolve an exported symbol, or `None` if the DLL does not export it.
+    pub fn sym(handle: *mut c_void, name: &CStr) -> Option<*mut c_void> {
+        // SAFETY: `handle` came from `open` above and has not been freed; `name` is a
+        // valid NUL-terminated C string.
+        let p = unsafe { GetProcAddress(handle, name.as_ptr()) };
+        (!p.is_null()).then_some(p)
+    }
+
+    /// Release a handle opened by [`open`].
+    pub fn close(handle: *mut c_void) {
+        // SAFETY: `handle` came from `open` and is not used afterwards.
+        unsafe {
+            FreeLibrary(handle);
+        }
+    }
+}
+
+/// The Vulkan loader's filename on this platform.
 #[cfg(target_os = "linux")]
+const VULKAN_LIB: &CStr = c"libvulkan.so.1";
+/// `vulkan-1.dll` is the Khronos loader's fixed name on Windows, installed by every
+/// conformant driver into `System32`.
+#[cfg(target_os = "windows")]
+const VULKAN_LIB: &CStr = c"vulkan-1.dll";
+
+/// The OpenCL ICD loader's filename on this platform.
+#[cfg(target_os = "linux")]
+const OPENCL_LIB: &CStr = c"libOpenCL.so.1";
+/// `OpenCL.dll` is the Khronos ICD loader on Windows; vendor drivers register themselves
+/// with it rather than being opened directly.
+#[cfg(target_os = "windows")]
+const OPENCL_LIB: &CStr = c"OpenCL.dll";
+
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 mod vulkan {
     use super::dl;
     use super::*;
@@ -256,7 +330,7 @@ mod vulkan {
     /// Returns `None` when Vulkan is absent, no instance can be created, or no device is
     /// present — all normal on a headless or GPU-less machine.
     pub fn detect() -> Option<String> {
-        let lib = dl::open(c"libvulkan.so.1")?;
+        let lib = dl::open(VULKAN_LIB)?;
         let result = detect_with(lib);
         dl::close(lib);
         result
@@ -503,7 +577,7 @@ mod opengl {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 mod opencl {
     use super::dl;
     use super::*;
@@ -521,13 +595,16 @@ mod opencl {
     type ClGetDeviceInfo =
         unsafe extern "C" fn(*mut c_void, u32, usize, *mut c_void, *mut usize) -> i32;
 
+    #[cfg(target_os = "linux")]
     extern "C" {
         fn dup(oldfd: c_int) -> c_int;
         fn dup2(oldfd: c_int, newfd: c_int) -> c_int;
         fn close(fd: c_int) -> c_int;
         fn open(path: *const c_char, flags: c_int) -> c_int;
     }
+    #[cfg(target_os = "linux")]
     const STDERR_FILENO: c_int = 2;
+    #[cfg(target_os = "linux")]
     const O_WRONLY: c_int = 1;
 
     /// Silences `stderr` for its lifetime, restoring the original on drop.
@@ -546,10 +623,12 @@ mod opencl {
     /// collection scope. Moving the probe out of the concurrent scope would make the
     /// suppression provably safe, but costs ~100 ms serially and pushes `--full` past
     /// `fastfetch -c all` (1.02 s here), which NOTES.md §3 treats as blocking.
+    #[cfg(target_os = "linux")]
     struct SuppressStderr {
         saved: c_int,
     }
 
+    #[cfg(target_os = "linux")]
     impl SuppressStderr {
         fn new() -> Option<Self> {
             // SAFETY: plain fd manipulation. Every call's result is checked, and the
@@ -571,6 +650,7 @@ mod opencl {
         }
     }
 
+    #[cfg(target_os = "linux")]
     impl Drop for SuppressStderr {
         fn drop(&mut self) {
             // SAFETY: `self.saved` is a live descriptor duplicated from stderr in `new`.
@@ -585,11 +665,31 @@ mod opencl {
     ///
     /// The device count is the point: see the module docs for why a platform advertising a
     /// version while exposing no device is reported as such rather than as a bare version.
+    /// No-op stand-in on Windows.
+    ///
+    /// The Linux suppression exists for one specific driver: Mesa's rusticl prints a
+    /// "Patched Mesa libclc not detected" warning to stderr on every enumeration. That
+    /// driver does not exist on Windows, where the ICD loader dispatches to vendor DLLs
+    /// instead. **Rather than assume the Windows ICDs are equally quiet, this is checked**
+    /// — `test_cli_full_mode` asserts retch writes nothing to stderr, and it runs on the
+    /// Windows CI leg. Adding suppression here pre-emptively would mean reimplementing the
+    /// `dup2` dance on the CRT to solve a problem no observation has shown to exist, while
+    /// silencing every other thread's diagnostics for the duration.
+    #[cfg(target_os = "windows")]
+    struct SuppressStderr;
+
+    #[cfg(target_os = "windows")]
+    impl SuppressStderr {
+        fn new() -> Option<Self> {
+            None
+        }
+    }
+
     pub fn detect() -> Option<String> {
         // Held across the whole probe: the driver can write to stderr at dlopen, at
         // platform enumeration, or at device enumeration, and rusticl does so at the last.
         let _quiet = SuppressStderr::new();
-        let lib = dl::open(c"libOpenCL.so.1")?;
+        let lib = dl::open(OPENCL_LIB)?;
         let out = detect_with(lib);
         dl::close(lib);
         out
@@ -711,10 +811,6 @@ mod opencl {
 }
 
 /// Detect Vulkan, OpenGL and OpenCL versions.
-///
-/// Linux only for now: the loaders are opened by their Linux sonames. Every other platform
-/// returns an empty set rather than a wrong answer, matching the v0.5.0/v0.7.0 precedent
-/// for Linux-first field groups.
 #[cfg(target_os = "linux")]
 pub fn detect_gpu_apis() -> GpuApis {
     GpuApis {
@@ -724,8 +820,30 @@ pub fn detect_gpu_apis() -> GpuApis {
     }
 }
 
-/// Non-Linux stub: reports nothing rather than guessing.
-#[cfg(not(target_os = "linux"))]
+/// Windows: Vulkan and OpenCL, but not OpenGL.
+///
+/// The Vulkan and OpenCL probes are the *same code* as Linux — those APIs are identical
+/// across platforms and only the loader filename differs, which is why the split lives in
+/// [`dl`] and the two `*_LIB` constants rather than in duplicated probes.
+///
+/// **OpenGL is absent here deliberately, not by oversight.** The Linux path gets a headless
+/// context through EGL (`EGL_DEFAULT_DISPLAY` plus a surfaceless `eglMakeCurrent`), and
+/// **stock Windows ships no `libEGL.dll`** — checked on a Windows 11 box that has
+/// `vulkan-1.dll`, `opengl32.dll` and `OpenCL.dll` in `System32` but no EGL at all. A
+/// Windows OpenGL version therefore needs WGL against a hidden window, which is a different
+/// mechanism rather than a different library name, so it is tracked as separate work
+/// (NOTES.md §6a) instead of being half-done here.
+#[cfg(target_os = "windows")]
+pub fn detect_gpu_apis() -> GpuApis {
+    GpuApis {
+        vulkan: vulkan::detect(),
+        opengl: None,
+        opencl: opencl::detect(),
+    }
+}
+
+/// Other platforms: reports nothing rather than guessing.
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
 pub fn detect_gpu_apis() -> GpuApis {
     GpuApis::default()
 }
@@ -733,6 +851,58 @@ pub fn detect_gpu_apis() -> GpuApis {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The loader filenames are the one part of the Windows arm with no runtime guard: a
+    /// typo does not fail, it makes the probe report "not installed", which is
+    /// indistinguishable from a machine that genuinely has no Vulkan. Pin them.
+    ///
+    /// `vulkan-1.dll` and `OpenCL.dll` are the Khronos loaders' fixed names on Windows —
+    /// not vendor DLLs, which register themselves behind these. Confirmed present in
+    /// `System32` on the machine this was developed against.
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_windows_loader_names_are_the_khronos_loaders() {
+        assert_eq!(VULKAN_LIB.to_str().unwrap(), "vulkan-1.dll");
+        assert_eq!(OPENCL_LIB.to_str().unwrap(), "OpenCL.dll");
+    }
+
+    /// The Linux sonames, pinned for the same reason and to keep the two arms visibly
+    /// paired — a change to one should prompt a look at the other.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_linux_loader_sonames() {
+        assert_eq!(VULKAN_LIB.to_str().unwrap(), "libvulkan.so.1");
+        assert_eq!(OPENCL_LIB.to_str().unwrap(), "libOpenCL.so.1");
+    }
+
+    /// The AMD platform string this machine reports, run through the same formatter the
+    /// Linux Mesa strings go through.
+    ///
+    /// Windows drivers phrase `CL_PLATFORM_VERSION` differently from Mesa — AMD's carries
+    /// a build number in parentheses — so this pins that the `OpenCL ` prefix strip still
+    /// does the right thing on a non-Mesa string, and that the parenthesised build number
+    /// is **not** mistaken for the device descriptor `shorten_device_name` strips.
+    #[test]
+    fn test_format_opencl_handles_a_windows_vendor_platform_string() {
+        assert_eq!(
+            format_opencl(
+                "OpenCL 2.1 AMD-APP (3661.0)",
+                "AMD Accelerated Parallel Processing",
+                Some("gfx1151"),
+            ),
+            "2.1 AMD-APP (3661.0) - AMD Accelerated Parallel Processing (gfx1151)"
+        );
+    }
+
+    /// A device name with no parenthesised driver descriptor must survive intact.
+    ///
+    /// The Linux fixtures all have one (Mesa appends `(radeonsi, phoenix, ACO, …)`), so
+    /// nothing pinned the other branch until Windows produced a bare `gfx1151`.
+    #[test]
+    fn test_shorten_device_name_leaves_a_bare_name_alone() {
+        assert_eq!(shorten_device_name("gfx1151"), "gfx1151");
+        assert_eq!(shorten_device_name("  gfx1151  "), "gfx1151");
+    }
 
     #[test]
     fn test_format_vulkan_version_decodes_packed_fields() {
