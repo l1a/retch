@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789008318223,
+  "lastUpdate": 1789008736447,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -9070,90 +9070,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "86f5803462d1608de8b7739c8dc6c69bc9c85a46",
-          "message": "Give Domain Search one shape per source (v0.6.12) (#177)\n\nCI dry-run output showed 'eth0: <domain>' on Ubuntu but a bare\n'<domain>' on Fedora. The difference is not platform-driven: the same\nOS flips format between jobs. Ubuntu in the build matrix runs on a bare\nrunner and takes the resolvectl path; Ubuntu in full-test runs in a\ncontainer with no systemd-resolved and falls back to resolv.conf.\nFedora is always containerised, so it only looked different from\nUbuntu.\n\nGrouping differed too: the resolvectl path returns one entry per\ninterface with domains joined, while the fallback returned one entry\nper domain and the display prints one line per entry, so 'search a b c'\nemitted three separate bare lines.\n\nRender the fallback in the same '<scope>: a, b' shape, scoped 'global'\n-- labelled honestly rather than attributed to an interface, since\nresolv.conf's search list carries no attribution. The parser stays\nfaithful to the file; the shape is imposed at the detect layer. macOS\nroutes through the same formatter. The resolvectl path is unchanged.\n\nWindows is deliberately not fixed here and is documented in NOTES 6a:\nits Domain reads the AD/primary suffix rather than the connection\nsuffix, and Domain Search has no Windows arm at all. Both need\nGetAdaptersAddresses and cannot be verified live without a Windows box.\n\nAssisted-By: Claude Fable 5",
-          "timestamp": "2026-07-26T19:35:39-07:00",
-          "tree_id": "b11c193d8bdb824b38e28d4104d2b63b410c8fea",
-          "url": "https://github.com/l1a/retch/commit/86f5803462d1608de8b7739c8dc6c69bc9c85a46"
-        },
-        "date": 1785120566133,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1058097126.85,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 1001.3898370014716,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.214493917150236,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946786110990075,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.42449656389265,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7853.45010320865,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 72100.31786747466,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4830.142077484622,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4946.334653356458,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1093077.1841839862,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 338.47373114511004,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 280.1944794997878,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "3738fdb3ff66b18fc121092f4f086ea51ac0dc30",
           "message": "Fix release tooling: publish-check and nix hashes (v0.6.13) (#178)\n\npublish-check failed on every release: the retch-cli dry run cannot\nresolve its '=0.1.x' retch-sysinfo pin until sysinfo is actually on the\nindex, and a dry run never uploads. It now checks the sparse index via\na new crates_io_has_version.py helper and skips that leg with an\nexplanation instead of dying on 'failed to select a version'. Both\npublish recipes also skip retch-sysinfo when its version is already\npublished, which is the normal state for a CLI-only release.\n\ncalculate_nix_hashes.py was silently emitting a wrong cargoHash. Its\nsubstitutions matched only 'lib.fakeHash', so once package.nix held\nreal values they became no-ops, the temp build kept the previous\nrelease's hashes, it failed on a source-hash mismatch rather than the\nintended cargoHash mismatch, and the lenient parser returned that stale\nsource hash. That is why the published v0.6.12 cargoHash equals\nv0.6.8's hash. Patterns now match a literal hash too, are line-anchored,\nand hard-error when they match nothing; the parser only accepts a hash\nreported against our own dummy.\n\nRefresh the in-repo packaging reference copies to the released v0.6.12.\npackage.nix keeps the genuine src hash but resets cargoHash to\nlib.fakeHash rather than carrying the corrupt value -- recompute with\n'just nix-update' on a machine with Nix.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-07-26T20:14:41-07:00",
@@ -13253,6 +13169,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 269.0792701162694,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d04552064e70e6ee8da3b00f340b41c54fec621b",
+          "message": "Add Vulkan and OpenCL on Windows (#232)\n\nv0.11.6 closed the last fastfetch gap on Linux and, in doing so, opened a\nWindows parity gap: fastfetch reports all three graphics APIs on Windows\nand retch reported none.\n\nThe probes are the same code, because the APIs are. Vulkan and OpenCL are\nidentical across platforms and only the loader's filename differs, so\n`mod dl` gained a Windows backend (LoadLibraryA/GetProcAddress/\nFreeLibrary, following media.rs's combase.dll precedent) and the vulkan\nand opencl modules widened to cfg(any(linux, windows)) unchanged. A\nsecond copy of the VkPhysicalDeviceProperties2 offset arithmetic is\nexactly the drift the shared win_setupapi and win_iftable modules exist\nto prevent.\n\nVulkan output is byte-identical to fastfetch here:\n  1.4.329 - AMD proprietary driver [25.20.32.06 (LLPC)]\nOpenCL is deliberately richer, as on Linux:\n  2.1 AMD-APP (3661.0) - AMD Accelerated Parallel Processing (gfx1151)\nagainst fastfetch's bare \"2.1 AMD-APP (3661.0)\".\n\nopengl is NOT included, and that is a mechanism difference rather than a\nmissing filename. The Linux path gets a headless context through EGL, and\nstock Windows ships no libEGL.dll - verified on a box that has\nvulkan-1.dll, opengl32.dll and OpenCL.dll in System32 and no EGL at all.\nWindows OpenGL needs WGL against a hidden window; tracked in NOTES §6a.\n\nThe stderr suppression stays Linux-only and the Windows no-op is measured\nrather than assumed: it exists for rusticl's libclc warning, a driver that\ndoes not exist on Windows, and a --full run plus an isolated --fields\nopencl run each wrote 0 bytes to stderr. test_cli_full_mode asserts that\nand runs on the Windows CI leg.\n\nPerf is a real cost and is not described otherwise. Interleaved and\nrepeated against a binary built from main, --full went 6879.7 -> 6754.9 ms\nand then 6825.8 -> 6767.9 ms: slower on the branch in both passes, so\nunlike the v0.10.0 and v0.11.6 results this is not noise. It matches the\nisolated probe costs (vulkan +139 ms, opencl +120 ms over a ~312 ms floor)\noverlapping in the concurrent scope. --long is the control and moves both\ndirections, confirming the fields stay --full-only.\n\n4 new unit tests. The loader-filename guards are the ones that matter: a\ntypo there fails silently, reporting \"not installed\" on a machine that has\nthe API. Watched failing against vulkan1.dll - the test reports the\nmismatch while the binary simply prints nothing.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T19:38:03-07:00",
+          "tree_id": "269e2f86ccdf2993b443f59a3fedfbe7e70e22ea",
+          "url": "https://github.com/l1a/retch/commit/d04552064e70e6ee8da3b00f340b41c54fec621b"
+        },
+        "date": 1789008735182,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 405485842.7,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 973.8097760406599,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 113.00232916269992,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.94698780156344,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 58.62896064554444,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7850.18514537179,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70711.82257295339,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4793.523752671232,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4868.889153978637,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1109468.7615039947,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 353.33728554439244,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 253.0005201583511,
             "unit": "ns"
           }
         ]
