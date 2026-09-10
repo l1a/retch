@@ -176,13 +176,23 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
     decide whether a drifted packaging file can reach a commit, and until now a PR touching
     only a guard matched no filter and got no packaging verification at all — the v0.9.6
     `Justfile` hole, one directory over.
-  - **`brew test` is sandboxed with the network restricted, and that killed the first
-    test block.** It asserted on `retch --short`, which includes the `net` field, which
-    resolves the local IP with a UDP-connect — that blocks in the sandbox and the block
-    dies on `Timeout::Error` with nothing in the output pointing at the cause. Replaced
-    with `--fields os`, which proves the binary can probe the machine while touching only
-    local system calls (3.4 ms against `--short`'s 31 ms). **Third defect the `brew` CI
-    job caught that no amount of local reading would have.**
+  - **The formula's test block must ANSI-strip before matching, and my first diagnosis of
+    why it failed was wrong.** The assertion `assert_match(/OS:/, ...)` fails because
+    **retch colourises even when piped**, so the label and its colon are separated by
+    escapes: `\e[38;2;0;255;255mOS\e[39m\e[38;2;128;128;128m:\e[39m …`.
+    - **The wrong diagnosis is the part worth recording.** The first failure's backtrace
+      contained `Timeout::Error.handle_timeout`, which read as "the sandbox blocked a
+      network call" — and `--short` does include `net`, which resolves the local IP with a
+      UDP-connect, so a plausible mechanism was right there. It was not the cause: those
+      `timeout.rb` frames are Homebrew's `run_test` wrapper and appear in **every** failed
+      test block. The real cause was the same ANSI mismatch both times. An oracle answering
+      a different question, and a plausible mechanism is exactly what makes that stick.
+    - The strip matches the whole `ESC [ … <final byte>` form, not SGR (`m`) only — chafa
+      opens a run with `\e[?25l` and an SGR-only strip leaves six characters behind, the
+      measurement bug recorded in v0.9.2 and again in v0.11.5.
+    - `--fields os` is kept over `--short` regardless: it is 3.4 ms against 31 ms and
+      touches no network, which is the right property for a sandboxed test even though it
+      was not what was failing.
   - **`std_cargo_args` already passes `--locked`, and CI is what found that too.** The
     formula's first version added an explicit one, and cargo rejected it outright:
     *"the argument '--locked' cannot be used multiple times"*. The formula parsed, the
@@ -3025,6 +3035,13 @@ Adds over long:
     `--long` measures 3352 ms, and removing `dns` moved the former by 3650 ms but the
     latter by only 276 ms. **The `--fields` harness does not model `--long`'s concurrency**;
     confirm any predicted win against the real mode before believing it.
+- **retch ignores `NO_COLOR`, and has no `--no-color` flag.** Noticed while writing the
+  Homebrew formula's test block (v0.17.2), which had to strip ANSI itself. `NO_COLOR` is a
+  widely honoured convention and retch emits colour even when stdout is not a terminal —
+  note that is deliberate for the *logo* (v0.6.6 forces `--ascii-logo` on when piped) but
+  the field colouring is a separate question. A `--no-color` flag, or honouring `NO_COLOR`,
+  would make retch easier to consume from scripts and test harnesses. Not urgent; recorded
+  rather than dropped.
 - **Package repository submissions**: Submit retch to AUR (Arch User Repository) and nixpkgs so it appears in the [Repology](https://repology.org/project/retch/versions) packaging status widget. The Nix flake (contributed by @quixaq) is a useful starting point for the nixpkgs submission.
 - **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
 - ~~**Homebrew tap / formula**~~ — done in v0.17.2 as `packaging/homebrew/retch.rb` plus

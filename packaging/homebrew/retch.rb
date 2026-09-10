@@ -77,14 +77,19 @@ class Retch < Formula
 
     # `--fields os` proves it can actually probe the machine — the thing that would break
     # under a missing framework link — while touching nothing but local system calls.
+    # (It is also 3.4 ms against `--short`'s 31 ms, and reaches no network at all.)
     #
-    # **NOT `--short`**, which was the first version of this and timed out in CI.
-    # `brew test` runs sandboxed with the network restricted, and `--short` includes the
-    # `net` field, which resolves the local IP with a UDP-connect. That blocks in the
-    # sandbox and the whole test block dies on `Timeout::Error` with nothing pointing at
-    # the cause. `--fields os` is 3.4 ms against `--short`'s 31 ms and reaches no network
-    # at all.
-    assert_match(/OS:/, shell_output("#{bin}/retch --fields os --no-logo"))
+    # **THE OUTPUT MUST BE ANSI-STRIPPED BEFORE MATCHING.** retch colourises even when
+    # piped, so the label and its colon are separated by escapes and a literal `/OS:/`
+    # never matches:
+    #   "\e[38;2;0;255;255mOS\e[39m\e[38;2;128;128;128m:\e[39m \e[...mmacOS 26.6.2"
+    # Two earlier versions of this test failed on exactly that.
+    #
+    # The pattern matches the whole `ESC [ ... <final byte>` form rather than SGR (`m`)
+    # only: chafa opens a run with `\e[?25l`, and an SGR-only strip leaves six characters
+    # behind — the measurement bug recorded in v0.9.2 and re-recorded in v0.11.5.
+    plain = shell_output("#{bin}/retch --fields os --no-logo").gsub(/\e\[[0-9;?]*[a-zA-Z]/, "")
+    assert_match(/OS:/, plain)
 
     # The man page must be installed and carry a real version footer — the `$DATE` /
     # `$pkgver` defect the AUR package shipped for months would pass a mere existence check.
