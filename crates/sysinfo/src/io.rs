@@ -198,13 +198,15 @@ pub fn select_net_rates(rates: Vec<IoRate>, active: Option<&str>) -> Vec<IoRate>
 /// Samples cumulative disk byte counters for physical whole disks.
 ///
 /// Linux reads `/proc/diskstats`; Windows queries `IOCTL_DISK_PERFORMANCE` per
-/// `\\.\PhysicalDriveN`. Elsewhere this returns an empty vector, so the field is simply
+/// `\\.\PhysicalDriveN`; macOS reads the `Statistics` dictionary off each IOKit
+/// `IOBlockStorageDriver`. Elsewhere this returns an empty vector, so the field is simply
 /// absent rather than wrong (same shape as `brightness`, `keyboard`, `tpm`).
 ///
-/// Partitions are excluded on both platforms because their traffic is already counted
-/// against the parent device — reporting both would double every disk's apparent
-/// throughput. On Windows that falls out of addressing whole drives directly; on Linux it
-/// takes an explicit filter.
+/// Partitions are excluded on all three because their traffic is already counted against
+/// the parent device — reporting both would double every disk's apparent throughput. On
+/// Windows that falls out of addressing whole drives directly, and on macOS out of the
+/// counters living on the driver above the whole-disk media; on Linux it takes an
+/// explicit filter.
 pub fn sample_disk_io() -> Vec<IoCounters> {
     #[cfg(target_os = "linux")]
     {
@@ -219,7 +221,19 @@ pub fn sample_disk_io() -> Vec<IoCounters> {
         win_ffi::sample_physical_drives()
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+    #[cfg(target_os = "macos")]
+    {
+        crate::macos_ffi::get_block_storage_io()
+            .into_iter()
+            .map(|(device, read, write)| IoCounters {
+                device,
+                read,
+                write,
+            })
+            .collect()
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
     {
         Vec::new()
     }
@@ -246,15 +260,17 @@ fn is_physical_disk(name: &str) -> bool {
 /// going through sysinfo, so the two samples are guaranteed to come from the same source
 /// and the same units as each other. Windows reads `InOctets`/`OutOctets` from
 /// `GetIfTable2`, which is the same source `Get-NetAdapterStatistics` reports and needs no
-/// subprocess. Empty on other platforms.
+/// subprocess. macOS reads `if_data64` from `sysctl(NET_RT_IFLIST2)` — see [`mac_ffi`] for
+/// why the obvious `getifaddrs` route is wrong. Empty on other platforms.
 ///
-/// Loopback is excluded on both — its traffic is the machine talking to itself and says
-/// nothing about network throughput.
+/// Loopback is excluded on all three — its traffic is the machine talking to itself and
+/// says nothing about network throughput.
 ///
 /// **The interface names must stay in the same vocabulary as `active_interface`**, or
 /// [`select_net_rates`] silently stops matching and falls through to its "everything that
 /// moved" branch. On Windows both are the adapter's friendly name (`Wi-Fi`): sysinfo
-/// reports it, and it is `MIB_IF_ROW2.Alias`.
+/// reports it, and it is `MIB_IF_ROW2.Alias`. On macOS both are the BSD interface name
+/// (`en9`): sysinfo reports it, and `if_indextoname` returns it.
 pub fn sample_net_io() -> Vec<IoCounters> {
     #[cfg(target_os = "linux")]
     {
@@ -287,7 +303,12 @@ pub fn sample_net_io() -> Vec<IoCounters> {
         win_ffi::sample_interfaces()
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+    #[cfg(target_os = "macos")]
+    {
+        mac_ffi::sample_interfaces()
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
     {
         Vec::new()
     }
@@ -483,6 +504,123 @@ mod win_ffi {
             assert_eq!(offset_of!(super::DiskPerformance, bytes_read), 0);
             assert_eq!(offset_of!(super::DiskPerformance, bytes_written), 8);
         }
+    }
+}
+
+/// macOS per-interface byte counters via `sysctl(NET_RT_IFLIST2)`.
+///
+/// **This deliberately does NOT use `getifaddrs`, and the reason is the whole point of
+/// this module.** `getifaddrs` hands back `struct if_data`, whose `ifi_ibytes`/`ifi_obytes`
+/// are **32-bit** and therefore wrap every 4 GiB. That is not a theoretical concern: the
+/// machine this was written on read `en0 ibytes = 3_317_575_680`, i.e. 77% of the way to
+/// the ceiling on a single boot, so the wrap would have landed inside an ordinary session
+/// and produced a plausible-looking wrong rate rather than an obvious failure.
+///
+/// `NET_RT_IFLIST2` returns `if_msghdr2` records carrying `if_data64`, whose counters are
+/// genuinely 64-bit. It is the source `netstat -ib` itself reads; verified against it
+/// under a sustained download (this 60.89 MB/s vs netstat 59.54 MB/s over overlapping
+/// windows, both 0 B/s idle).
+///
+/// This is the exact shape of the `GetIfTable` vs `GetIfTable2` decision recorded in the
+/// v0.11.0 entry — the older call is easier to reach for and silently wraps.
+#[cfg(target_os = "macos")]
+mod mac_ffi {
+    use super::IoCounters;
+    use std::ffi::{c_void, CStr};
+
+    /// `NET_RT_IFLIST2` — the routing-table op that returns 64-bit interface counters.
+    pub(super) const NET_RT_IFLIST2: i32 = 6;
+    /// `RTM_IFINFO2` — the message type carrying an `if_msghdr2`.
+    pub(super) const RTM_IFINFO2: u8 = 0x12;
+
+    /// Reads the interface list into cumulative counters.
+    ///
+    /// Loopback is excluded, matching the Linux and Windows arms: its traffic is the
+    /// machine talking to itself and says nothing about network throughput. Every other
+    /// interface is reported, exactly as on Linux — [`super::select_net_rates`] narrows to
+    /// the default-route interface when one is known, so the extras only ever surface in
+    /// its fallback branch.
+    ///
+    /// Names come from `if_indextoname` rather than by parsing the trailing `sockaddr_dl`.
+    /// That keeps the vocabulary identical to `active_interface`'s (`en9` here, confirmed
+    /// against the live `Net` field) without this module having to know the sockaddr
+    /// layout at all.
+    pub(super) fn sample_interfaces() -> Vec<IoCounters> {
+        let mut out = Vec::new();
+        let mut mib: [i32; 6] = [libc::CTL_NET, libc::PF_ROUTE, 0, 0, NET_RT_IFLIST2, 0];
+
+        // SAFETY: the two-call sizing pattern. The first call writes only `len`; the
+        // second fills a buffer of exactly that size. `mib` is a valid 6-element array.
+        unsafe {
+            let mut len: libc::size_t = 0;
+            if libc::sysctl(
+                mib.as_mut_ptr(),
+                6,
+                std::ptr::null_mut(),
+                &mut len,
+                std::ptr::null_mut(),
+                0,
+            ) != 0
+                || len == 0
+            {
+                return out;
+            }
+            let mut buf = vec![0u8; len];
+            if libc::sysctl(
+                mib.as_mut_ptr(),
+                6,
+                buf.as_mut_ptr() as *mut c_void,
+                &mut len,
+                std::ptr::null_mut(),
+                0,
+            ) != 0
+            {
+                return out;
+            }
+            // The second call can report a shorter length than the first reserved.
+            buf.truncate(len);
+
+            let hdr_size = std::mem::size_of::<libc::if_msghdr2>();
+            let mut off = 0usize;
+            while off + hdr_size <= buf.len() {
+                let hdr = &*(buf.as_ptr().add(off) as *const libc::if_msghdr2);
+                let msglen = hdr.ifm_msglen as usize;
+                // A zero msglen would not advance the cursor: bail rather than spin.
+                if msglen == 0 {
+                    break;
+                }
+                // NOTE: read these fields by COPY, never by reference. `if_data64` is
+                // 4-byte aligned but its counters are `u64`, so `&hdr.ifm_data.ifi_ibytes`
+                // is a misaligned reference — undefined behaviour even if never
+                // dereferenced, and rejected by rustc as E0793. Copying into the struct
+                // literal below is what keeps this sound.
+                if hdr.ifm_type == RTM_IFINFO2 {
+                    let mut namebuf = [0i8; libc::IF_NAMESIZE];
+                    let np = libc::if_indextoname(hdr.ifm_index as u32, namebuf.as_mut_ptr());
+                    if !np.is_null() {
+                        let name = CStr::from_ptr(namebuf.as_ptr())
+                            .to_string_lossy()
+                            .to_string();
+                        if !is_loopback(&name) {
+                            out.push(IoCounters {
+                                device: name,
+                                read: hdr.ifm_data.ifi_ibytes,
+                                write: hdr.ifm_data.ifi_obytes,
+                            });
+                        }
+                    }
+                }
+                off += msglen;
+            }
+        }
+        out.sort_by(|a, b| a.device.cmp(&b.device));
+        out
+    }
+
+    /// True for the loopback interface. macOS names it `lo0`; the prefix test also covers
+    /// any additional `loN` the kernel may present.
+    pub(super) fn is_loopback(name: &str) -> bool {
+        name.starts_with("lo")
     }
 }
 
@@ -711,5 +849,60 @@ mod tests {
         let selected = select_net_rates(rates, Some("ppp0"));
         assert_eq!(selected.len(), 1);
         assert_eq!(selected[0].device, "wt0");
+    }
+
+    /// The macOS counters must be 64-bit, and this is the test that says so.
+    ///
+    /// `getifaddrs`' `if_data` carries **32-bit** byte counters that wrap every 4 GiB;
+    /// `NET_RT_IFLIST2`'s `if_data64` does not. The wrap is not hypothetical — the machine
+    /// this was developed on sat at 3.09 GiB on `en0`, so the obvious source would have
+    /// wrapped mid-session and reported a plausible wrong rate instead of failing.
+    ///
+    /// This asserts the property by *type*: the annotated bindings below stop compiling if
+    /// a future `libc` ever narrowed these fields, rather than silently reintroducing the
+    /// wrap. A value assertion could not catch that; only the type can.
+    ///
+    /// **The bindings must be copies, not references.** `if_data64` is 4-byte aligned
+    /// while `ifi_ibytes` is a `u64`, so `&data.ifi_ibytes` is a misaligned reference —
+    /// which is undefined behaviour *even if never dereferenced*, and rustc rejects it
+    /// outright (E0793). The first version of this test used `size_of_val(&field)` and
+    /// failed to compile for exactly that reason. The production sampler is safe for the
+    /// same reason this test now is: it copies the field into a struct literal rather than
+    /// borrowing it.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_macos_interface_counters_are_64_bit() {
+        let data: libc::if_data64 = unsafe { std::mem::zeroed() };
+        let ibytes: u64 = data.ifi_ibytes;
+        let obytes: u64 = data.ifi_obytes;
+        assert_eq!(ibytes, 0);
+        assert_eq!(obytes, 0);
+
+        // The narrow source, pinned so the distinction this module exists for stays
+        // visible: `if_data`'s counters are u32 and wrap every 4 GiB.
+        let narrow: libc::if_data = unsafe { std::mem::zeroed() };
+        let narrow_ibytes: u32 = narrow.ifi_ibytes;
+        assert_eq!(narrow_ibytes, 0);
+    }
+
+    /// Pins the two sysctl constants. A wrong `NET_RT_IFLIST2` returns the *32-bit*
+    /// `NET_RT_IFLIST` (5) layout, and a wrong `RTM_IFINFO2` matches no record at all —
+    /// both of which present as "this Mac has no interfaces", not as an error.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_macos_sysctl_constants() {
+        assert_eq!(mac_ffi::NET_RT_IFLIST2, 6);
+        assert_eq!(mac_ffi::RTM_IFINFO2, 0x12);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_macos_loopback_is_excluded() {
+        assert!(mac_ffi::is_loopback("lo0"));
+        assert!(mac_ffi::is_loopback("lo"));
+        assert!(!mac_ffi::is_loopback("en0"));
+        assert!(!mac_ffi::is_loopback("utun100"));
+        // `llw0` (low-latency WLAN) starts with `l` but is a real interface.
+        assert!(!mac_ffi::is_loopback("llw0"));
     }
 }

@@ -273,7 +273,7 @@ separator_color = "bright_black"
 # Note: "weather" requires network access; shown in full mode only by default.
 # Note: "domain-search" queries resolvectl; shown in full mode only by default.
 # Note: "disk-io" and "net-io" are rates averaged over the run's own collection window
-#       (Linux and Windows). They add no wall-clock in --long/--full; requesting one on its
+#       (Linux, Windows and macOS). They add no wall-clock in --long/--full; requesting one on its
 #       own tops the window up to ~100 ms so the reading is a measurement, not sampling
 #       noise. On Windows both read native counters - no PowerShell, no admin.
 # Note: "vulkan", "opengl" and "opencl" work on Linux and Windows. All three are full mode
