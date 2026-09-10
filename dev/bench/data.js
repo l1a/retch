@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789056228182,
+  "lastUpdate": 1789056616444,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -9286,90 +9286,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "622cf3b843fc5f6286cad91442e7bd41af2fdf12",
-          "message": "Bump 4 deps and fix man page font-run strip (#184)\n\nConsolidates Dependabot #182 onto a gated branch so the release-hygiene\nsteps Dependabot skips (version bump, NOTES entry, man regen) are done.\n\nDependencies (cargo-dependencies group, lockfile-only — every spec is a\ncaret range, so Cargo.toml is untouched):\n  clap          4.6.4 -> 4.6.5  (clap_builder 4.6.2 -> 4.6.5)\n  toml          1.1.3 -> 1.1.4  (toml_parser  1.1.2 -> 1.1.3)\n  clap_complete 4.6.7 -> 4.6.8\n  base64        0.23.0 -> 0.23.1\n\nThe resulting Cargo.lock is byte-identical to what Dependabot generated.\n\nAlso fixes the `just man` font-collapsing sed, which has never worked on\nany platform. mandown emits redundant \\fB\\fB...\\fP\\fP runs and the recipe\ncarried `s/\\fB\\fB/\\fB/g` to strip them, but GNU sed reads \\f as the\nform-feed escape rather than backslash-then-f, so the pattern only ever\nmatched form feeds that groff output never contains. This is why\ndocs/retch.1 kept flip-flopping between machines: v0.6.2 concluded the\nstrip merely \"didn't take effect on Windows\", when in fact Linux was not\nstripping anything either — its mandown build just doesn't emit the\ndoubled runs. Matching the backslash as [\\] and carrying it out through a\ncapture group keeps any backslash escape off the replacement side.\n\nWith the fix, `just man` on Windows reproduces byte-for-byte the file a\nLinux `just man` produces, so the regen check in `just pr` no longer\ndepends on which machine last ran it. The regenerated page drops 21\ndoubled font runs and changes nothing else but the version footer.\n\nretch-sysinfo unchanged at 0.1.51; no Rust source touched.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-09T07:06:33-07:00",
-          "tree_id": "15f29415e43f3e3f4f04318b070cc8c16695ac9a",
-          "url": "https://github.com/l1a/retch/commit/622cf3b843fc5f6286cad91442e7bd41af2fdf12"
-        },
-        "date": 1786285232062,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1013099844.45,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 1008.5912420835151,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 106.46295309264194,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9470098654509913,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.10557452284657,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7892.331646081899,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 71037.25291722805,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4813.070214455876,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4908.830435930313,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1051847.3857629416,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 361.65776665887074,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 290.39936029327635,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "30f2bc0d85fda967af17b3472e2784627296f331",
           "message": "fix(justfile): make install and man recipes portable (#185)\n\nAssisted-By: Gemini 3.6 Flash",
           "timestamp": "2026-08-10T13:24:44-07:00",
@@ -13469,6 +13385,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 265.84533113362465,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "876c5b07f8659d597149772767b2f7d127068383",
+          "message": "packaging: pin to 0.13.2, open 0.13.3 (#236)\n\npackaging/aur and packaging/copr track the last RELEASED tag, so they can\nonly be bumped once v0.13.2 exists. Bundling that with the next version bump\nis what makes this a normal gated PR: just pr's step 2 compares Cargo.toml\nagainst the last tag, not against this PR's parent, so opening 0.13.3\nsatisfies it. Previous releases sent this commit straight to main on the\nbelief that a PR was impossible.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T08:57:33-07:00",
+          "tree_id": "387f2a1e0f0d0d26ac63bf7cabeaeec732e932a1",
+          "url": "https://github.com/l1a/retch/commit/876c5b07f8659d597149772767b2f7d127068383"
+        },
+        "date": 1789056613737,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1019996424.5,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 985.5992706102003,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 113.27670696715263,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946733136422479,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 59.143744118043244,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7914.791611083361,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 69960.96425565355,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4803.417078803279,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4893.966524681651,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1062981.7155970754,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 361.20843033273815,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 276.358850287988,
             "unit": "ns"
           }
         ]
