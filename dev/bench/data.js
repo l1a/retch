@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789064820743,
+  "lastUpdate": 1789065122086,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17406,70 +17406,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "1177d194785c63e2058a99f5cffa5ef33577d9cb",
-          "message": "ci: disable Claude Code Review workflow (#187)\n\nThe claude-review job no longer runs on pull requests: the\n`pull_request` trigger is replaced with `workflow_dispatch` and the\njob carries `if: false`, so it is off by default but can still be\ninvoked manually if wanted.\n\nBumps retch-cli 0.6.16 -> 0.6.17 (patch), refreshes Cargo.lock,\nregenerates docs/retch.1 for the new version footer, and updates the\nNOTES.md Current State header and release log.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-11T08:18:19-07:00",
-          "tree_id": "5edf46dce11e5ab7293d0a0411af8f9341a70b2b",
-          "url": "https://github.com/l1a/retch/commit/1177d194785c63e2058a99f5cffa5ef33577d9cb"
-        },
-        "date": 1786463419890,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 236.75824400898165,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.877188501085049,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 123.60434721342199,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 107.21250577749213,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 43746.95337147356,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 576.982935317888,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 824.400282028277,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3205428210,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "1d0dc367f9ad44e2a04cc045891998fa9d9b1aae",
           "message": "fix: unprivileged Packages, sudo Rio, logo aspect (#189)\n\nThree defects found by diffing `sudo retch --full` against a plain run.\n\nPackages appeared only under sudo. The RPM SQLite database was opened\nread-write; it is root-owned inside a root-owned directory, so SQLite\ncould not create its journal sidecars and every *query* failed with\n\"attempt to write a readonly database\" — not the open(), which is why\nthe existing warning never fired and the field vanished silently. Now\nopened read-only over a `file:...?immutable=1` URI, and the query error\nis reported instead of swallowed.\n\nRio lost all graphics support under sudo: it was identified only by\nTERM_PROGRAM, which env_reset drops. `is_rio_terminal` now also accepts\nTERM=rio/xterm-rio, which sudo preserves.\n\nThe Kitty logo was stretched ~3x vertically. `c=26,r=10` was hardcoded\nand Kitty forces an image into that rectangle, while display.rs assumed\na fixed 40-column width and derived the row count a third way. A single\npure `fit_logo_cells` now feeds all three protocol emitters and\nplan_layout. Passing both correct values still left a 9% stretch from\ncell quantisation, so the Kitty spec carries only the limiting dimension\nand lets Kitty derive the other — measured 0.0% aspect error in a PTY.\n\nThe chafa box widens 28 -> 45 columns (row cap unchanged at 10) so wide\nlockup assets stay legible: the Fedora logo goes from 4 rows to 7. The\nside-by-side threshold is unaffected (45 + 45 <= 95), pinned by a test.\n\nAlso fixes a test-isolation defect the change exposed: once\nsupports_iterm2 read TERM, the host's TERM leaked into a test that\nguarded only TERM_PROGRAM, failing on a Rio box and passing on CI.\n\nDocuments the privilege trade-off in both directions (root-only\nphys-mem and btrfs snapshot counts; user-only editor/desktop/wm) in a\nnew NOTES section, README, and a man-page PRIVILEGES section.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-11T17:52:19-07:00",
@@ -20589,6 +20525,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1644991710,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1ee2c5241b06f37ce8b1b3efd943205a6cb1c825",
+          "message": "Add keyboard and mouse on macOS (#239)\n\nCloses the third NOTES section 6c gap.\n\nThe v0.7.0 finding still holds - on a unifying receiver no kernel-visible\nsignal separates a keyboard from a mouse - but macOS does not present the\nproblem in that form. It publishes one IOHIDDevice per HID interface, each\nwith its own PrimaryUsage, so the role is stated rather than inferred.\nThere is no ambiguous case, so no HID++ tiebreak and no under-reporting\nfallback are needed. A composite device is listed under both fields, which\nis correct: an internal keyboard-and-trackpad genuinely is both.\n\nretch lists a connected Bluetooth Magic Keyboard that fastfetch misses,\nverified genuinely connected rather than merely paired via\nsystem_profiler, since v0.10.2 recorded the opposite error on Windows.\n\nA test of mine could not fail: the first vendor-page assertion passed with\nthe page filter deleted, because every vendor-page interface in the\nfixture carries a usage the usage filter already rejects. Replaced with a\nsynthetic case pairing a vendor page with usage 6, labelled as such.\n\nRecords a new section 6c item found along the way: the macOS Bluetooth\nfield reports Off while devices are connected, because the property it\nreads no longer exists and unwrap_or(false) turns that into a claim.\nDeliberately not fixed blind - confirming the replacement property means\ntoggling the radio, which would disconnect the keyboard in use.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T11:04:15-07:00",
+          "tree_id": "2d1a45838a04419824ebea438feb8a37aa6724d0",
+          "url": "https://github.com/l1a/retch/commit/1ee2c5241b06f37ce8b1b3efd943205a6cb1c825"
+        },
+        "date": 1789065118635,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 176.09781736934576,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.816679498487859,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 100.7951657671551,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 75.53262161172518,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 33761.35249602519,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 450.6702572109871,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 654.9058208698676,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1434412805,
             "unit": "ns"
           }
         ]
