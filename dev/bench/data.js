@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789009717086,
+  "lastUpdate": 1789010195941,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4850,6 +4850,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1744876384
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "b98586fcaf91d5bbfb79234a923b28c446efe3ad",
+          "message": "Add OpenGL on Windows via WGL (#233)\n\nCompletes the Windows half of the GPU-API group: all three now report\nthere, and NOTES §6a's opengl item is closed. Output is byte-identical to\nfastfetch - 4.6.0 Compatibility Profile Context 25.20.32.06.251214.\n\nThis needed a different mechanism rather than a wider cfg, which is why it\nis its own module. Vulkan and OpenCL share one implementation across\nplatforms because those APIs are identical and only the loader filename\ndiffers. OpenGL cannot: the Linux path takes a context from EGL with no\nwindow and no display server, and stock Windows ships no EGL. Windows has\nno headless equivalent in the base OS - WGL needs a device context, a DC\nneeds a window, and a window needs a registered class. So the Windows arm\nregisters a class, creates a 1x1 window, sets a pixel format, creates a\ncontext, reads GL_VERSION, and tears it all down.\n\nThe window is created hidden and never shown, and that was measured rather\nthan asserted. FindWindowEx plus IsWindowVisible were polled across 60\nback-to-back probe runs: the window was observed 134869 times in 722764\npolls and was VISIBLE 0 times. The observation count is the important half\n- it is the positive control proving the check could see the window at\nall. Counting conhost processes is not a valid oracle for this, per\n~/AGENTS.md: CREATE_NO_WINDOW still spawns a console.\n\nThe OS handles are wrapped in a guard type that unwinds on drop, in the\nreverse of acquisition order. Releasing them by hand at each ? is how a\nwindow or class leaks, and a leaked class makes a second registration in\nthe same process fail - which would present as \"no OpenGL\" rather than as\nan error. The pixel format must be set before wglCreateContext, whose\nabsence presents as a null handle rather than an error code; and\nwglMakeCurrent(NULL, NULL) precedes wglDeleteContext because deleting a\ncontext current to the calling thread is documented to fail.\n\nuser32 and gdi32 are linked rather than loaded at runtime, unlike the\ngraphics loaders: they are core OS libraries present wherever the binary\nruns at all, and display.rs already links user32 on the same grounds.\nopengl32 is loaded at runtime, because a machine with no OpenGL ICD is a\nreal case that must yield an absent field.\n\nPerf is a real cost of ~65-90 ms on --full, and the isolated figure is\nmuch larger: the probe alone measures 878.3 ms against a 410.7 ms floor,\n3-4x what vulkan or opencl cost, because a window plus a GL context is\nheavier than a loader query. Most of it overlaps in the concurrent scope.\nInterleaved and repeated against a main binary, --full came out 6891.9 vs\n6801.2 ms and 6853.0 vs 6788.1 ms - slower in both passes, so not noise.\nThe first attempt at that measurement was too noisy to quote and was\nre-run rather than reported.\n\nLayout guards for PIXELFORMATDESCRIPTOR (40 bytes) and WNDCLASSW (72),\nwatched failing against a mutated size: nSize is filled from size_of, so\nstruct drift would hand ChoosePixelFormat a wrong size silently.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T20:14:36-07:00",
+          "tree_id": "de374859311d050c1382c91af1769de281270bf7",
+          "url": "https://github.com/l1a/retch/commit/b98586fcaf91d5bbfb79234a923b28c446efe3ad"
+        },
+        "date": 1789010195941,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 454157182.00000006
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1502601721.9999998
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 339514092.00000006
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 101874942.0
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 2279051618.0
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1704666718.0
           }
         ]
       }
