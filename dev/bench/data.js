@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789010224002,
+  "lastUpdate": 1789010507115,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4922,90 +4922,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "3738fdb3ff66b18fc121092f4f086ea51ac0dc30",
-          "message": "Fix release tooling: publish-check and nix hashes (v0.6.13) (#178)\n\npublish-check failed on every release: the retch-cli dry run cannot\nresolve its '=0.1.x' retch-sysinfo pin until sysinfo is actually on the\nindex, and a dry run never uploads. It now checks the sparse index via\na new crates_io_has_version.py helper and skips that leg with an\nexplanation instead of dying on 'failed to select a version'. Both\npublish recipes also skip retch-sysinfo when its version is already\npublished, which is the normal state for a CLI-only release.\n\ncalculate_nix_hashes.py was silently emitting a wrong cargoHash. Its\nsubstitutions matched only 'lib.fakeHash', so once package.nix held\nreal values they became no-ops, the temp build kept the previous\nrelease's hashes, it failed on a source-hash mismatch rather than the\nintended cargoHash mismatch, and the lenient parser returned that stale\nsource hash. That is why the published v0.6.12 cargoHash equals\nv0.6.8's hash. Patterns now match a literal hash too, are line-anchored,\nand hard-error when they match nothing; the parser only accepts a hash\nreported against our own dummy.\n\nRefresh the in-repo packaging reference copies to the released v0.6.12.\npackage.nix keeps the genuine src hash but resets cargoHash to\nlib.fakeHash rather than carrying the corrupt value -- recompute with\n'just nix-update' on a machine with Nix.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-07-26T20:14:41-07:00",
-          "tree_id": "195de4a24b9c74a5d3bbc3288e0a4ce21ab48a89",
-          "url": "https://github.com/l1a/retch/commit/3738fdb3ff66b18fc121092f4f086ea51ac0dc30"
-        },
-        "date": 1785122527472,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 998423215,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2149.4261472949097,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 58.09461986365087,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.803225648711525,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 57.90217213627731,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 18201.671124513054,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 188633.92064181136,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 12840.865700171309,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 12932.731194540582,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1397404.421149382,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 374.0184479414416,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 281.1254569473734,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "29c90fa282c281f6c5a2b797544c5babf5e957ce",
           "message": "fix(net): resolve Windows connection DNS domain and search list (#181)\n\n* fix(net): resolve Windows connection DNS domain\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(net): read Windows interface registry search list\n\nAssisted-By: Gemini 3.6 Flash",
           "timestamp": "2026-08-07T23:10:01-07:00",
@@ -9105,6 +9021,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 263.34726042697923,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b98586fcaf91d5bbfb79234a923b28c446efe3ad",
+          "message": "Add OpenGL on Windows via WGL (#233)\n\nCompletes the Windows half of the GPU-API group: all three now report\nthere, and NOTES §6a's opengl item is closed. Output is byte-identical to\nfastfetch - 4.6.0 Compatibility Profile Context 25.20.32.06.251214.\n\nThis needed a different mechanism rather than a wider cfg, which is why it\nis its own module. Vulkan and OpenCL share one implementation across\nplatforms because those APIs are identical and only the loader filename\ndiffers. OpenGL cannot: the Linux path takes a context from EGL with no\nwindow and no display server, and stock Windows ships no EGL. Windows has\nno headless equivalent in the base OS - WGL needs a device context, a DC\nneeds a window, and a window needs a registered class. So the Windows arm\nregisters a class, creates a 1x1 window, sets a pixel format, creates a\ncontext, reads GL_VERSION, and tears it all down.\n\nThe window is created hidden and never shown, and that was measured rather\nthan asserted. FindWindowEx plus IsWindowVisible were polled across 60\nback-to-back probe runs: the window was observed 134869 times in 722764\npolls and was VISIBLE 0 times. The observation count is the important half\n- it is the positive control proving the check could see the window at\nall. Counting conhost processes is not a valid oracle for this, per\n~/AGENTS.md: CREATE_NO_WINDOW still spawns a console.\n\nThe OS handles are wrapped in a guard type that unwinds on drop, in the\nreverse of acquisition order. Releasing them by hand at each ? is how a\nwindow or class leaks, and a leaked class makes a second registration in\nthe same process fail - which would present as \"no OpenGL\" rather than as\nan error. The pixel format must be set before wglCreateContext, whose\nabsence presents as a null handle rather than an error code; and\nwglMakeCurrent(NULL, NULL) precedes wglDeleteContext because deleting a\ncontext current to the calling thread is documented to fail.\n\nuser32 and gdi32 are linked rather than loaded at runtime, unlike the\ngraphics loaders: they are core OS libraries present wherever the binary\nruns at all, and display.rs already links user32 on the same grounds.\nopengl32 is loaded at runtime, because a machine with no OpenGL ICD is a\nreal case that must yield an absent field.\n\nPerf is a real cost of ~65-90 ms on --full, and the isolated figure is\nmuch larger: the probe alone measures 878.3 ms against a 410.7 ms floor,\n3-4x what vulkan or opencl cost, because a window plus a GL context is\nheavier than a loader query. Most of it overlaps in the concurrent scope.\nInterleaved and repeated against a main binary, --full came out 6891.9 vs\n6801.2 ms and 6853.0 vs 6788.1 ms - slower in both passes, so not noise.\nThe first attempt at that measurement was too noisy to quote and was\nre-run rather than reported.\n\nLayout guards for PIXELFORMATDESCRIPTOR (40 bytes) and WNDCLASSW (72),\nwatched failing against a mutated size: nSize is filled from size_of, so\nstruct drift would hand ChoosePixelFormat a wrong size silently.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T20:14:36-07:00",
+          "tree_id": "de374859311d050c1382c91af1769de281270bf7",
+          "url": "https://github.com/l1a/retch/commit/b98586fcaf91d5bbfb79234a923b28c446efe3ad"
+        },
+        "date": 1789010504596,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1084219843.3,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2017.1231710839515,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 112.2514214911707,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.865475876127687,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 59.699401829438536,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 17841.448742585686,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 185028.43478315082,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12538.570121171757,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 12720.327001622674,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1412431.994969851,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 401.69353133980985,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 274.6505128407351,
             "unit": "ns"
           }
         ]
