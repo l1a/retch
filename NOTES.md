@@ -116,7 +116,75 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.13.1)
+## Current State (v0.13.2)
+- **v0.13.2 - Windows `--short` is now FASTER than fastfetch, and the previous diagnosis in
+  this file was wrong** (`crates/sysinfo/src/fetch.rs`). Two ungated `sysinfo` calls were
+  paying for Windows performance-counter setup on every run, in every mode, for values that
+  either were not displayed or could not be correct. Nothing about process startup was
+  involved.
+  - **Measured, same session, hyperfine 8-15 runs after warmup, fastfetch 2.65.2:**
+
+    | Mode | before | after | fastfetch | verdict |
+    |------|--------|-------|-----------|---------|
+    | `--short` vs `-c none` | 239.5 ms | **50.6 ms** | 78.0 ms | **retch 1.5x faster** (was 3.1x slower) |
+    | default vs default     | 348.0 ms | **142.0 ms** | 1188 ms | **retch 8.4x faster** (was 3.4x) |
+    | `--long` vs `-c all`   | 502.0 ms | **286.4 ms** | 1312 ms | **retch 4.6x faster** (was 2.6x) |
+    | `--full` vs `-c all`   | 1.692 s | **1.445 s** | 1.334 s | still 1.08x slower |
+
+    A tighter `--short`-only run put it at **218.0 -> 38.7 ms** against fastfetch's 67.5 ms.
+    Compare the ratios rather than the absolutes across runs; the machine drifts.
+  - **The two costs, both the same underlying thing.** Windows `sysinfo` reaches for PDH
+    performance counters, and the first touch in a process costs ~180-195 ms - paid once, by
+    whichever call gets there first, which is why they looked like one mystery constant:
+    1. **`System::load_average()` was called unconditionally.** It is now gated on the `load`
+       field *and* skipped outright on Windows. `sysinfo` has no native load average there,
+       so it synthesises one: `init_load_avg()` opens a PDH query on
+       `\System\Cpu Queue Length` and registers a callback that decays a **process-local
+       static**, with `SAMPLING_INTERVAL = 5` **seconds** between samples. The static starts
+       at zero and retch exits long before the first callback fires, so it has **always**
+       returned `0.00, 0.00, 0.00`, and the caller's `avg.one > 0.0` guard has always turned
+       that into `None`. §6a has listed `load` as "deliberately not implemented on Windows"
+       for a long time; the code simply did not know it.
+    2. **`RefreshKind::with_cpu(CpuRefreshKind::everything())`** became
+       `cpu_refresh_kind()`, which asks only for what a selected field reads. `everything()`
+       sets `frequency`, and `windows/cpu.rs::init_cpus` calls `get_frequencies()` **only**
+       when that flag is set. Dropping it took `System::new_with_specifics` from **195.5 ms
+       to 0.5 ms** while the CPU line rendered identically - brand and core count come from
+       the *static* CPU list, which `with_cpu` populates whatever refresh kind it is handed.
+       `cpu-freq` still asks for `.with_frequency()`; `cpu-usage` asks for
+       `.with_cpu_usage()` off Windows only, since the Windows arm has diffed its own
+       `GetSystemTimes` samples since v0.3.49 and never read sysinfo's.
+  - **`cpu-cache` left the CPU-refresh gate entirely.** `detect_cpu_cache()` is a free
+    function that reads its own source and touches `sys` zero times, so it never needed the
+    CPU list; it had been dragging in `everything()` for nothing.
+  - **Output is unchanged on every platform, and that was verified rather than assumed.**
+    The set of rendered field labels was captured from the before and after binaries across
+    all four modes and diffed: identical. `Load` is filtered at display time by
+    `print_line`'s own `should_show`, so gating collection could not have removed a line that
+    was being shown.
+  - **THE OLD §6a ENTRY WAS CONFIDENTLY WRONG, and the way it got there is the lesson.** It
+    read: "the per-field sweep put the process-startup floor at ~314-322 ms and found 41 of
+    56 `--long` fields within 20 ms of it, so the fields are effectively free and *the floor
+    itself is the cost*." Every number in that sentence was real. The conclusion was not.
+    - **The sweep's baseline was `--fields os`, which pays the load-average cost too.** So
+      the ~314 ms "floor" was ~200 ms of PDH plus ~17 ms of actual startup, and *every* field
+      measurement had the same ~200 ms inside it. Subtracting the baseline is exactly what
+      hid the constant: a differencing harness cannot see a cost its own control shares.
+      "41 of 56 fields within 20 ms of the floor" is the fingerprint of that, read backwards.
+    - **The real floor is `retch --version` = 17.9 ms**, against `fastfetch --version` at
+      **46.8 ms**. retch starts ~2.6x *faster* than fastfetch. Startup was never the problem,
+      and a single measurement of the one command that does no probing would have said so.
+    - **What found it was absolute elapsed-time marks from process start**, printed under an
+      env guard, rather than any further differencing. The first mark alone
+      (`System::new_with_specifics` at 195.5 ms) ended the investigation.
+    - Same family as `~/AGENTS.md` §10/§11/§15 - **the oracle answered a different
+      question.** Here the control run was the thing that lied, which is the hardest shape to
+      notice, because the harness looks like it is working and every individual number it
+      reports is true.
+  - 5 new unit tests on the two extracted helpers (`cpu_refresh_kind`, `should_probe_load`),
+    all four of which were **watched failing** first: mutating `with_frequency()` away and
+    dropping the Windows guard each failed exactly the test meant to catch it.
+
 - **v0.13.1 - `battery` reads the device instead of spawning PowerShell (Windows), and
   Windows `--long` is now FASTER than fastfetch** (`crates/sysinfo/src/battery.rs`,
   `crates/sysinfo/src/win_setupapi.rs`). The last PowerShell spawn in `--long` is gone.
@@ -2719,6 +2787,18 @@ Windows 11, Windows Terminal).
   startup floor. The per-field sweep that located it is worth reusing: time each field with
   `--fields <name>`, but **confirm the predicted win against the real mode** — that harness
   mispredicted the `dns` win by an order of magnitude in v0.11.2.
+- ~~**Windows `--short` is slower than fastfetch, and no probe explains it**~~ — fixed
+  v0.13.2, and **the diagnosis in this entry was wrong**, which is why it is quoted rather
+  than deleted. It read: "the per-field sweep put the process-startup floor at ~314–322 ms
+  and found 41 of 56 `--long` fields within 20 ms of it, so the fields are effectively free
+  and *the floor itself is the cost*... it is startup, not probing." Every number was real
+  and the conclusion was not: the sweep's `--fields os` baseline **also** paid the ~200 ms
+  of Windows PDH setup it was looking for, so subtracting the baseline cancelled the very
+  constant under investigation — and "41 of 56 fields within 20 ms of the floor" is that
+  cancellation seen from the other side. The true floor is `retch --version` at **17.9 ms**
+  against `fastfetch --version` at **46.8 ms**; retch starts ~2.6× *faster*. `--short` now
+  measures **50.6 ms against `fastfetch -c none` at 78.0 ms**. See the v0.13.2 entry for the
+  two ungated `sysinfo` calls and the full before/after table.
 - ~~**`opengl` has no Windows implementation**~~ — fixed v0.13.0, and it needed a different
   mechanism rather than a wider `cfg`: WGL against a window created hidden and never shown,
   because stock Windows has no EGL and therefore no headless context. Output is
@@ -2726,18 +2806,17 @@ Windows 11, Windows Terminal).
   as Linux.**
 
 **Open**
-- **Windows `--short` is slower than fastfetch, and no probe explains it.** `--short`
-  measures ~314–338 ms against `fastfetch -c none` at ~99 ms. The per-field sweep put the
-  process-startup floor at ~314–322 ms and found **41 of 56 `--long` fields within 20 ms of
-  it**, so in `--short` the fields are effectively free and *the floor itself is the cost*.
-  Nothing in the field-level work touches this; it is startup, not probing. NOTES §3 treats
-  slower-than-fastfetch as blocking, so this remains open even though `--long` no longer is.
-- **Windows `--full` is slower than fastfetch** (~6.9 s against `fastfetch -c all` at
-  ~1.3–1.5 s). Unlike `--long`, this was never traced to a single pole; the `--full`-only
-  fields (`weather` with its network timeout, the `vulkan`/`opengl`/`opencl` group at a
-  combined few hundred ms, all sensors rather than the consolidated view) are the obvious
-  candidates but **that is a hypothesis, not a measurement** — a `--full` per-field sweep
-  has not been run.
+- **Windows `--full` is marginally slower than fastfetch** — **1.445 s against
+  `fastfetch -c all` at 1.334 s** (v0.13.2, 6 runs after warmup), i.e. **1.08×**. The
+  **~6.9 s figure previously recorded here is stale and should not be quoted**: it predates
+  the `dns` (v0.11.2), `battery` (v0.13.1) and CPU/load (v0.13.2) work, each of which
+  removed cost that `--full` also paid. This was never traced to a single pole and still has
+  not been; the `--full`-only fields (`weather` with its network timeout, the
+  `vulkan`/`opengl`/`opencl` group, all sensors rather than the consolidated view) are the
+  obvious candidates but **that is a hypothesis, not a measurement**. If a sweep is run,
+  read the v0.13.2 entry in §Current State first: the previous `--short` sweep reached a
+  confident wrong conclusion because its `--fields os` baseline shared the cost it was
+  hunting, and a `--full` sweep built the same way would fail the same way.
 - **Logo renders above the text, not beside it (upper-right)** on Windows Terminal
   (CLI/rendering, retch-cli `src/`). Likely terminal-detection / cursor-positioning specific
   to Windows Terminal.
@@ -2756,6 +2835,13 @@ Windows 11, Windows Terminal).
 **Deliberately not implemented on Windows** (no faithful native source): `load` (no
 load-average equivalent), `editor` (env-only `$VISUAL`/`$EDITOR`), conhost `terminal-font`
 (only Windows Terminal has a parseable config).
+
+Since v0.13.2 the `load` exclusion is **enforced in code** rather than being a property of
+the data: `should_probe_load()` skips `System::load_average()` on Windows outright. It had
+been called on every run and had always returned `0.00, 0.00, 0.00` — sysinfo synthesises a
+Windows load average from a PDH counter sampled every 5 *seconds* into a process-local
+static, so a fetch tool can never observe anything but the zero it starts at. The call was
+free of output consequences and cost ~183–194 ms.
 
 ---
 

@@ -191,6 +191,61 @@ pub struct SystemInfo {
     pub terminal_theme: Option<String>,
 }
 
+/// Builds the `CpuRefreshKind` for a run, or `None` when no selected field needs the
+/// sysinfo CPU list at all.
+///
+/// The two flags inside `CpuRefreshKind` are the expensive ones, and neither is needed
+/// for the `cpu` field itself: brand and core count come from the *static* CPU list,
+/// which `RefreshKind::with_cpu` populates whatever refresh kind it is handed
+/// (sysinfo builds it on the first refresh regardless — `unix/linux/cpu.rs` guards it
+/// with `if first || refresh_kind.cpu_usage()`, and `windows/cpu.rs::init_cpus` reads
+/// the brand via `GetSystemInfo` unconditionally).
+///
+/// Frequency is what costs: on Windows `init_cpus` calls `get_frequencies()` only when
+/// `refresh_kind.frequency()` is set, and that first touch of the performance-counter
+/// machinery measured ~195 ms on arrakis — paid by every run, including `--short`,
+/// which does not display a frequency. Asking only for what a selected field reads
+/// drops `System::new_with_specifics` to ~0.5 ms there.
+fn cpu_refresh_kind(
+    want_cpu: bool,
+    want_freq: bool,
+    want_usage: bool,
+) -> Option<sysinfo::CpuRefreshKind> {
+    if !(want_cpu || want_freq || want_usage) {
+        return None;
+    }
+    let mut kind = sysinfo::CpuRefreshKind::nothing();
+    if want_freq {
+        kind = kind.with_frequency();
+    }
+    // Only the non-Windows `cpu-usage` arm reads sysinfo's counters; Windows diffs its
+    // own `GetSystemTimes` samples (see the `cpu_usage` block below), so asking sysinfo
+    // to prime a reading nothing consumes would be pure cost.
+    if want_usage && !cfg!(target_os = "windows") {
+        kind = kind.with_cpu_usage();
+    }
+    Some(kind)
+}
+
+/// Whether to call `System::load_average()` at all.
+///
+/// Two reasons to skip it, and the second is Windows-only:
+///
+/// 1. It was ungated, so a run that never displays `Load` still paid for it — `load` is
+///    `min_mode: Standard` in `retch-cli`'s field table, so `--short` and any narrow
+///    `--fields` selection excludes it.
+/// 2. On Windows the answer is always `0.0, 0.0, 0.0`. sysinfo has no native
+///    load-average source there, so it synthesises one: `init_load_avg()` opens a PDH
+///    query on `\System\Cpu Queue Length` and registers a callback that decays a
+///    process-local static, with `SAMPLING_INTERVAL = 5` **seconds** between samples.
+///    The static starts at zero and retch exits long before the first callback fires,
+///    so the caller's `avg.one > 0.0` guard has never once been true on Windows — while
+///    the PDH setup itself measured ~183–194 ms. That is why NOTES §6a lists `load`
+///    under "deliberately not implemented on Windows"; this makes the code agree.
+fn should_probe_load(want_load: bool) -> bool {
+    want_load && !cfg!(target_os = "windows")
+}
+
 impl SystemInfo {
     /// Collects system information using sysinfo and environment probes.
     ///
@@ -212,13 +267,14 @@ impl SystemInfo {
         };
 
         let mut refresh_kind = sysinfo::RefreshKind::nothing();
-        if should_collect("cpu")
-            || should_collect("cpu usage")
-            || should_collect("cpu-usage")
-            || should_collect("cpu cache")
-            || should_collect("cpu-cache")
-        {
-            refresh_kind = refresh_kind.with_cpu(sysinfo::CpuRefreshKind::everything());
+        // `cpu-cache` is deliberately absent: `detect_cpu_cache()` reads its own source
+        // and never touches `sys`, so it never needed the CPU list.
+        if let Some(cpu_kind) = cpu_refresh_kind(
+            should_collect("cpu"),
+            should_collect("cpu-freq"),
+            should_collect("cpu-usage"),
+        ) {
+            refresh_kind = refresh_kind.with_cpu(cpu_kind);
         }
         if should_collect("memory")
             || should_collect("swap")
@@ -389,7 +445,7 @@ impl SystemInfo {
             0
         };
 
-        let load_avg = {
+        let load_avg = if should_probe_load(should_collect("load")) {
             let avg = System::load_average();
             if avg.one > 0.0 || avg.five > 0.0 {
                 Some(format!(
@@ -399,6 +455,8 @@ impl SystemInfo {
             } else {
                 None
             }
+        } else {
+            None
         };
 
         // Windows: sample cumulative CPU times before the concurrent probes run, so CPU
@@ -1889,6 +1947,61 @@ mod win_cpu {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn cpu_refresh_kind_is_none_when_no_cpu_field_is_selected() {
+        assert!(cpu_refresh_kind(false, false, false).is_none());
+    }
+
+    #[test]
+    fn cpu_refresh_kind_for_plain_cpu_asks_for_neither_flag() {
+        // Brand and core count come from the static CPU list. Asking for frequency here
+        // is what made every `--short` run pay ~195 ms of performance-counter setup on
+        // Windows for a field it does not display.
+        let kind = cpu_refresh_kind(true, false, false).expect("cpu selected");
+        assert!(!kind.frequency(), "plain `cpu` must not request frequency");
+        assert!(!kind.cpu_usage(), "plain `cpu` must not request cpu usage");
+    }
+
+    #[test]
+    fn cpu_refresh_kind_asks_for_frequency_only_for_cpu_freq() {
+        let kind = cpu_refresh_kind(false, true, false).expect("cpu-freq selected");
+        assert!(
+            kind.frequency(),
+            "`cpu-freq` reads Cpu::frequency() and must request it"
+        );
+    }
+
+    #[test]
+    fn cpu_refresh_kind_asks_for_usage_only_off_windows() {
+        let kind = cpu_refresh_kind(false, false, true).expect("cpu-usage selected");
+        if cfg!(target_os = "windows") {
+            // The Windows arm diffs its own GetSystemTimes samples and never reads
+            // sysinfo's counters, so priming them would be unread cost.
+            assert!(!kind.cpu_usage());
+        } else {
+            // The Unix arm deltas against this baseline; without it the reading is zero.
+            assert!(kind.cpu_usage());
+        }
+        assert!(!kind.frequency(), "cpu-usage must not drag in frequency");
+    }
+
+    #[test]
+    fn load_is_probed_only_when_selected_and_never_on_windows() {
+        assert!(
+            !should_probe_load(false),
+            "an unselected `load` must not be probed on any platform"
+        );
+        if cfg!(target_os = "windows") {
+            assert!(
+                !should_probe_load(true),
+                "sysinfo's Windows load average samples every 5 s from a zeroed static,                  so it can only ever report 0.00 in a process this short-lived"
+            );
+        } else {
+            assert!(should_probe_load(true));
+        }
+    }
+
     use super::*;
 
     #[cfg(target_os = "linux")]
