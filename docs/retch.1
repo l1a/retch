@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.16.0" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.17.0" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -184,7 +184,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]display\fP`: Connected monitor displays with refresh rates and resolution\.
 .IP \(bu 4
-`\f[CR]brightness\fP`: Current backlight brightness as a percentage (from `\f[CR]/sys/class/backlight\fP`)\. Linux only\. Long mode and above\.
+`\f[CR]brightness\fP`: Current backlight brightness as a percentage\. Linux reads `\f[CR]/sys/class/backlight\fP`; macOS reads the IOKit `\f[CR]AppleARMBacklight\fP` service's `\f[CR]IODisplayParameters\fP` (the classic `\f[CR]IODisplayConnect\fP` path does not exist on Apple Silicon)\. Internal panel only on both \-\- an external display has no backlight service\. Linux and macOS\. Long mode and above\.
 .IP \(bu 4
 `\f[CR]audio\fP`: Audio card controller and active sound servers (PipeWire, PulseAudio, ALSA, CoreAudio, Windows Audio)\.
 .IP \(bu 4
@@ -238,7 +238,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]battery\fP`: Battery capacity, vendor/model, time remaining, and health\. On Windows this reads the battery device directly (`\f[CR]IOCTL_BATTERY_QUERY_INFORMATION\fP`) rather than via PowerShell \-\- no subprocess and no elevation\. Health is shown only when it is below 99%\.
 .IP \(bu 4
-`\f[CR]power\-adapter\fP`: AC power adapter name and connection state (from `\f[CR]/sys/class/power_supply\fP` `\f[CR]Mains\fP` supply)\. Linux only\. Long mode and above\.
+`\f[CR]power\-adapter\fP`: The attached AC power adapter\. Linux reports the supply's \fBname\fP and connection state (from `\f[CR]/sys/class/power_supply\fP` `\f[CR]Mains\fP`); macOS reports its \fBwattage\fP (from `\f[CR]IOPSCopyExternalPowerAdapterDetails\fP`, e\.g\. `\f[CR]96W (connected)\fP`), because macOS exposes wattage but no adapter name and Linux the reverse\. On macOS the field is absent when nothing is plugged in \-\- that call returns nothing on battery, so absence is the unplugged signal\. Linux and macOS\. Long mode and above\.
 .IP \(bu 4
 `\f[CR]shell\fP`: Currently running shell name and version (e\.g\. bash, zsh, fish, nu)\. Detected from the process tree; falls back to `\f[CR]$SHELL\fP` (login shell)\.
 .IP \(bu 4
@@ -254,7 +254,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]wm\fP`: Window manager name (e\.g\. Mutter, KWin, Sway)\. Hidden when identical to Desktop\.
 .IP \(bu 4
-`\f[CR]login\-manager\fP`: Active display/login manager (GDM, SDDM, LightDM, greetd, \.\.\.), resolved from the `\f[CR]display\-manager\.service\fP` systemd unit\. Linux only\. Long mode and above\.
+`\f[CR]login\-manager\fP`: Active display/login manager\. On Linux, resolved from the `\f[CR]display\-manager\.service\fP` systemd unit (GDM, SDDM, LightDM, greetd, \.\.\.)\. On macOS there is only ever one \-\- `\f[CR]loginwindow\fP` \-\- so the field reports it with its version, e\.g\. `\f[CR]Login Window 9\.0\fP`\. Linux and macOS\. Long mode and above\.
 .IP \(bu 4
 `\f[CR]player\fP`: Active media player name and playback status (e\.g\. Spotify (Playing), VLC media player)\. Long mode and above\.
 .IP \(bu 4

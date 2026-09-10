@@ -579,6 +579,127 @@ unsafe fn iokit_property_as_i64(entry: IOService, key: &str) -> Option<i64> {
     .then_some(out)
 }
 
+// ─── Backlight brightness — AppleARMBacklight ────────────────────────────────
+
+/// Read the internal display's backlight level as `(value, min, max)`.
+///
+/// **The classic `IODisplayConnect` / `IODisplayParameters` path does not exist on Apple
+/// Silicon** — probed here, along with `AppleBacklightDisplay`, `AppleCLCD2` and
+/// `IOMobileFramebufferShim`, and all four returned nothing. The service that does carry
+/// it is **`AppleARMBacklight`**, whose `IODisplayParameters` dictionary holds a nested
+/// `brightness` sub-dictionary with `value`, `min` and `max` keys.
+///
+/// Returned as the raw triple rather than a percentage so the arithmetic stays in a pure,
+/// unit-tested helper rather than being buried in FFI. Measured on an M3 Pro:
+/// `value = 32768, min = 0, max = 65536`.
+///
+/// An external display has no `AppleARMBacklight` service, so this reports the internal
+/// panel only — which is the same scope as the Linux arm's first `/sys/class/backlight`
+/// device.
+pub fn get_backlight_brightness() -> Option<(i64, i64, i64)> {
+    unsafe {
+        let class = CString::new("AppleARMBacklight").unwrap();
+        let matching = IOServiceMatching(class.as_ptr());
+        if matching.is_null() {
+            return None;
+        }
+        let mut iter: IOIterator = MACH_PORT_NULL;
+        if IOServiceGetMatchingServices(IOKIT_MAIN_PORT, matching as CFDictionaryRef, &mut iter)
+            != 0
+        {
+            return None;
+        }
+        let mut found = None;
+        loop {
+            let service = IOIteratorNext(iter);
+            if service == MACH_PORT_NULL {
+                break;
+            }
+            if found.is_none() {
+                let params = with_cfstring("IODisplayParameters", |k| {
+                    IORegistryEntryCreateCFProperty(service, k, kCFAllocatorDefault, 0)
+                });
+                if !params.is_null() {
+                    let _owned = OwnedCF(params);
+                    if CFGetTypeID(params) == CFDictionaryGetTypeID() {
+                        // `brightness` is a sub-dictionary, borrowed from its parent —
+                        // "Get" semantics, so it must not be released.
+                        let brightness = with_cfstring("brightness", |k| {
+                            CFDictionaryGetValue(params as CFDictionaryRef, k)
+                        });
+                        if !brightness.is_null()
+                            && CFGetTypeID(brightness) == CFDictionaryGetTypeID()
+                        {
+                            let dict = brightness as CFDictionaryRef;
+                            if let (Some(value), Some(min), Some(max)) = (
+                                cf_dict_i64(dict, "value"),
+                                cf_dict_i64(dict, "min"),
+                                cf_dict_i64(dict, "max"),
+                            ) {
+                                found = Some((value, min, max));
+                            }
+                        }
+                    }
+                }
+            }
+            IOObjectRelease(service);
+            if found.is_some() {
+                break;
+            }
+        }
+        IOObjectRelease(iter);
+        found
+    }
+}
+
+/// Read a signed integer out of a CFDictionary by string key.
+///
+/// Sibling of [`cf_dict_u64`]; separate because a brightness `min` of `0` is meaningful
+/// and must not be conflated with "absent".
+unsafe fn cf_dict_i64(dict: CFDictionaryRef, key: &str) -> Option<i64> {
+    if dict.is_null() {
+        return None;
+    }
+    let value = with_cfstring(key, |k| CFDictionaryGetValue(dict, k));
+    if value.is_null() || CFGetTypeID(value) != CFNumberGetTypeID() {
+        return None;
+    }
+    let mut out: i64 = 0;
+    CFNumberGetValue(
+        value as CFNumberRef,
+        4, /* kCFNumberSInt64Type */
+        &mut out as *mut i64 as *mut c_void,
+    )
+    .then_some(out)
+}
+
+// ─── Power adapter — IOPowerSources ──────────────────────────────────────────
+
+#[link(name = "IOKit", kind = "framework")]
+extern "C" {
+    fn IOPSCopyExternalPowerAdapterDetails() -> CFDictionaryRef;
+}
+
+/// Wattage of the attached external power adapter, or `None` when nothing is attached.
+///
+/// `IOPSCopyExternalPowerAdapterDetails` returns NULL when the machine is on battery, so
+/// absence *is* the "unplugged" signal — there is no separate connected flag to read, and
+/// no adapter name to report either. Measured on an M3 Pro on mains: `Watts = 96`,
+/// `Current = 4800`, `FamilyCode` — and **no `Name` key at all**, which is why the macOS
+/// arm reports wattage where the Linux arm reports a name.
+///
+/// fastfetch reports `96W` on the same machine, agreeing with this reading.
+pub fn get_power_adapter_watts() -> Option<i64> {
+    unsafe {
+        let details = IOPSCopyExternalPowerAdapterDetails();
+        if details.is_null() {
+            return None;
+        }
+        let _owned = OwnedCF(details as CFTypeRef);
+        cf_dict_i64(details, "Watts")
+    }
+}
+
 // ─── CoreAudio ───────────────────────────────────────────────────────────────
 
 #[repr(C)]

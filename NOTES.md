@@ -116,7 +116,50 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.16.0)
+## Current State (v0.17.0)
+- **v0.17.0 - `login-manager`, `brightness` and `power-adapter` on macOS** (`fetch.rs`,
+  `macos_ffi.rs`). Closes the fourth NOTES §6c gap — the same three fields the v0.5.0 PR
+  added for Linux, now grouped the same way.
+  - **`brightness`: the documented IOKit path does not exist on Apple Silicon.** Probed
+    `IODisplayConnect`, `AppleBacklightDisplay`, `AppleCLCD2` and `IOMobileFramebufferShim`
+    — all four returned nothing. The service that carries it is **`AppleARMBacklight`**,
+    whose `IODisplayParameters` holds a nested `brightness` sub-dictionary
+    (`value`/`min`/`max`). Measured: `32768 / 0 / 65536` = 50%.
+    - The triple is **rebased onto a zero floor** and handed to the existing
+      `brightness_percent(cur, max)` helper, so the percentage arithmetic lives in one
+      tested place rather than two. macOS reports `min = 0` in practice, but a nonzero
+      floor would inflate the figure and the shared helper takes only two arguments.
+    - **retch is ahead of fastfetch here: fastfetch reports no Brightness at all on this
+      machine.**
+    - **Verification limit, recorded rather than papered over:** the arithmetic is
+      checkable (32768/65536 is exactly 50%) but there is **no independent oracle on this
+      machine** for whether that IOKit value tracks the UI slider — fastfetch reports
+      nothing to compare against, and confirming it would mean changing the user's display
+      brightness. The reading is trusted on the raw triple alone.
+  - **`power-adapter`: macOS and Linux have opposite facts available, so they format
+    differently.** `IOPSCopyExternalPowerAdapterDetails` exposes `Watts` (96 here),
+    `Current` and `FamilyCode` but **no `Name`**; Linux's sysfs `Mains` supply exposes a
+    name and an `online` flag but no wattage. So macOS reports `96W (connected)` where
+    Linux reports `AC (connected)` — and macOS finally reports the wattage §6 recorded as
+    "not yet reported". fastfetch agrees at `96W`.
+    - The call returns NULL on battery, so **absence is the unplugged signal**; there is no
+      separate flag, and nothing to name, so the field is simply absent. A non-positive
+      wattage is dropped rather than printed, since `0W (connected)` describes no real
+      adapter.
+  - **`login-manager`: macOS has exactly one and always has.** There is no choice to
+    detect, so the informative part is the version — `Login Window 9.0`, matching
+    fastfetch. Read from `loginwindow.app`'s `Info.plist`, which on macOS 26 is **plain
+    XML** (verified: it begins `<?xml ve`, not `bplist`), so a small pure scanner suffices
+    and neither a plist dependency nor a `defaults` subprocess is needed — the crate's
+    zero-subprocess policy for detection.
+    - **The scanner guards against borrowing the next key's value.** A key whose value is
+      not a string (`<true/>`) would otherwise return the *following* key's string — a
+      confidently wrong version rather than an absent one. Pinned by a test.
+  - 6 new unit tests over the pure helpers. `brightness_percent`'s existing test was
+    widened from Linux-only to cover macOS, since both arms now share it.
+  - `retch-sysinfo` -> `0.1.71` (new public `get_backlight_brightness`,
+    `get_power_adapter_watts`); `retch-cli` -> `0.17.0`. Minor bump - new user-visible
+    fields on a platform that had none.
 - **v0.16.0 - `keyboard` and `mouse` on macOS, where the classification problem does not
   exist** (`crates/sysinfo/src/input.rs`, `crates/sysinfo/src/macos_ffi.rs`). Closes the
   third NOTES §6c gap.
@@ -2866,7 +2909,7 @@ Adds over long:
 Below is a comparison of information gathered by `fastfetch` that is currently missing in `retch`.
 
 ### Hardware
-- ~~**Brightness**: Monitor brightness level~~ — added in v0.5.0 (`brightness` field, Linux; `/sys/class/backlight`)
+- ~~**Brightness**: Monitor brightness level~~ — added in v0.5.0 (`brightness` field, Linux; `/sys/class/backlight`) and macOS in v0.17.0 (IOKit `AppleARMBacklight`). **fastfetch reports no Brightness on macOS**, so retch is ahead of it there
 - ~~**Keyboard**: Connected keyboards~~ — added in v0.7.0 (`keyboard` field, Linux;
   `/proc/bus/input/devices`) and macOS in v0.16.0 (IOKit `IOHIDDevice`, usage page 1 /
   usage 6). Devices whose class the kernel cannot express — merged HID++
@@ -2875,7 +2918,7 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - ~~**Mouse**: Connected mice~~ — added in v0.7.0 (`mouse` field, Linux; same source, covers
   mice, touchpads and tablets, de-duplicated by name) and macOS in v0.16.0 (usage page 1 /
   usage 2). On macOS the merged-receiver ambiguity does not arise — one interface per role
-- ~~**PowerAdapter**: Charger name and wattage~~ — added in v0.5.0 (`power-adapter` field, Linux; `/sys/class/power_supply` `Mains`. Name + connection state; wattage not yet reported)
+- ~~**PowerAdapter**: Charger name and wattage~~ — added in v0.5.0 (`power-adapter` field, Linux; `/sys/class/power_supply` `Mains`. Name + connection state) and macOS in v0.17.0 (`IOPSCopyExternalPowerAdapterDetails`). **Wattage is now reported on macOS**, which exposes it but no adapter name — the reverse of Linux
 - ~~**TPM**: Trusted Platform Module device info~~ — added in v0.7.0 (`tpm` field, Linux;
   `/sys/class/tpm` `tpm_version_major`. Specification version only — `2.0`/`1.2` — not the
   manufacturer or PCR state)
@@ -2912,7 +2955,7 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 
 ### Desktop Environment & UI
 - ~~**WMTheme**: Window manager theme~~ — added in v0.9.0 (`wm-theme` field; KWin, Xfwm4, Openbox, Fluxbox, IceWM, GTK/Mutter, Aqua, Windows themes)
-- ~~**LM**: Login manager (GDM, SDDM, etc.)~~ — added in v0.5.0 (`login-manager` field, Linux; `display-manager.service` systemd unit)
+- ~~**LM**: Login manager (GDM, SDDM, etc.)~~ — added in v0.5.0 (`login-manager` field, Linux; `display-manager.service` systemd unit) and macOS in v0.17.0 (`loginwindow` plus its version)
 - ~~**Wallpaper**: Current wallpaper file path~~ — added in v0.9.0 (`wallpaper` field; GNOME/Cinnamon/Budgie/MATE, KDE Plasma, XFCE, Hyprland, Sway, Feh, Nitrogen, macOS AppKit FFI, Windows registry FFI)
 - ~~**TerminalTheme**: Terminal foreground/background colors and themes~~ — added in v0.9.0 (`terminal-theme` field; Kitty, Alacritty, WezTerm, Foot, Windows Terminal, Konsole, Ptyxis, iTerm2, Apple Terminal)
 
@@ -3112,10 +3155,10 @@ so the list is complete as of the version noted.
   - **The safe partial fix, independent of that question**: stop reporting `Off` when the
     property is absent. Under-reporting beats asserting something false — the `Users: 0`
     call (v0.6.1). fastfetch reports connected devices here and retch reports `Off`.
-- **`login-manager`, `brightness` and `power-adapter` have no macOS arm** (`fetch.rs`,
-  Linux-only since v0.5.0). `loginwindow` is fixed on macOS so the first is close to a
-  constant; brightness via IOKit/DisplayServices; power adapter via IOPowerSources, and
-  `battery.rs` already has a macOS arm whose plumbing can be reused.
+- ~~**`login-manager`, `brightness` and `power-adapter` have no macOS arm**~~ — fixed
+  v0.17.0. The documented brightness path does not exist on Apple Silicon;
+  `AppleARMBacklight` carries it. macOS reports adapter **wattage** where Linux reports a
+  name, and `loginwindow` is reported with its version.
 - **`tpm` — probably correct as absent, but decide deliberately.** Macs have a Secure
   Enclave, not a TPM. Reporting a Secure Enclave under a `TPM` label would be the kind of
   approximate-but-wrong answer §6a and the v0.7.0 input work both reject. Left absent
