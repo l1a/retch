@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789052459318,
+  "lastUpdate": 1789055907224,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4136,6 +4136,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1027409874.3
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "876c5b07f8659d597149772767b2f7d127068383",
+          "message": "packaging: pin to 0.13.2, open 0.13.3 (#236)\n\npackaging/aur and packaging/copr track the last RELEASED tag, so they can\nonly be bumped once v0.13.2 exists. Bundling that with the next version bump\nis what makes this a normal gated PR: just pr's step 2 compares Cargo.toml\nagainst the last tag, not against this PR's parent, so opening 0.13.3\nsatisfies it. Previous releases sent this commit straight to main on the\nbelief that a PR was impossible.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T08:57:33-07:00",
+          "tree_id": "387f2a1e0f0d0d26ac63bf7cabeaeec732e932a1",
+          "url": "https://github.com/l1a/retch/commit/876c5b07f8659d597149772767b2f7d127068383"
+        },
+        "date": 1789055907224,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 332442946.12
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1101184025.32
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 7583614.78
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 30217669.680000003
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 590363991.32
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1105301553.92
           }
         ]
       }
