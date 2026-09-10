@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789064284323,
+  "lastUpdate": 1789064420285,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4524,6 +4524,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 729050199.9000001
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "a49bc080a0818239b038099299f0b576322b9d1c",
+          "message": "Add login-manager, brightness and power-adapter on macOS (#240)\n\nCloses the fourth NOTES section 6c gap - the same three fields v0.5.0\nadded for Linux, grouped the same way.\n\nThe documented IOKit brightness path does not exist on Apple Silicon:\nIODisplayConnect, AppleBacklightDisplay, AppleCLCD2 and\nIOMobileFramebufferShim all return nothing. AppleARMBacklight carries it,\nin a nested IODisplayParameters/brightness sub-dictionary. The triple is\nrebased onto a zero floor and handed to the existing brightness_percent\nhelper so the arithmetic stays in one tested place. fastfetch reports no\nBrightness at all here, so retch is ahead of it.\n\nmacOS and Linux have opposite facts available for the power adapter:\nmacOS exposes Watts but no Name, Linux the reverse. So macOS reports\n\"96W (connected)\" and finally reports the wattage section 6 recorded as\nnot yet reported. The call returns NULL on battery, so absence is the\nunplugged signal.\n\nmacOS has exactly one login manager, so the informative part is its\nversion. loginwindow's Info.plist is plain XML on macOS 26, so a small\npure scanner suffices - no plist dependency and no subprocess. It guards\nagainst borrowing the next key's value, which would yield a confidently\nwrong version rather than an absent one.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T11:19:27-07:00",
+          "tree_id": "e0292b25168a92d954d635ffbe1452d24976de2f",
+          "url": "https://github.com/l1a/retch/commit/a49bc080a0818239b038099299f0b576322b9d1c"
+        },
+        "date": 1789064420285,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 630142963.1200001
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 719635800.82
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 32746590.10000001
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 48999206.699999996
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 707246138.4000002
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 732885346.7
           }
         ]
       }
