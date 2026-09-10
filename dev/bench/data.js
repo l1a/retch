@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789005330170,
+  "lastUpdate": 1789008036592,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4796,6 +4796,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1752114606.0
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "d04552064e70e6ee8da3b00f340b41c54fec621b",
+          "message": "Add Vulkan and OpenCL on Windows (#232)\n\nv0.11.6 closed the last fastfetch gap on Linux and, in doing so, opened a\nWindows parity gap: fastfetch reports all three graphics APIs on Windows\nand retch reported none.\n\nThe probes are the same code, because the APIs are. Vulkan and OpenCL are\nidentical across platforms and only the loader's filename differs, so\n`mod dl` gained a Windows backend (LoadLibraryA/GetProcAddress/\nFreeLibrary, following media.rs's combase.dll precedent) and the vulkan\nand opencl modules widened to cfg(any(linux, windows)) unchanged. A\nsecond copy of the VkPhysicalDeviceProperties2 offset arithmetic is\nexactly the drift the shared win_setupapi and win_iftable modules exist\nto prevent.\n\nVulkan output is byte-identical to fastfetch here:\n  1.4.329 - AMD proprietary driver [25.20.32.06 (LLPC)]\nOpenCL is deliberately richer, as on Linux:\n  2.1 AMD-APP (3661.0) - AMD Accelerated Parallel Processing (gfx1151)\nagainst fastfetch's bare \"2.1 AMD-APP (3661.0)\".\n\nopengl is NOT included, and that is a mechanism difference rather than a\nmissing filename. The Linux path gets a headless context through EGL, and\nstock Windows ships no libEGL.dll - verified on a box that has\nvulkan-1.dll, opengl32.dll and OpenCL.dll in System32 and no EGL at all.\nWindows OpenGL needs WGL against a hidden window; tracked in NOTES §6a.\n\nThe stderr suppression stays Linux-only and the Windows no-op is measured\nrather than assumed: it exists for rusticl's libclc warning, a driver that\ndoes not exist on Windows, and a --full run plus an isolated --fields\nopencl run each wrote 0 bytes to stderr. test_cli_full_mode asserts that\nand runs on the Windows CI leg.\n\nPerf is a real cost and is not described otherwise. Interleaved and\nrepeated against a binary built from main, --full went 6879.7 -> 6754.9 ms\nand then 6825.8 -> 6767.9 ms: slower on the branch in both passes, so\nunlike the v0.10.0 and v0.11.6 results this is not noise. It matches the\nisolated probe costs (vulkan +139 ms, opencl +120 ms over a ~312 ms floor)\noverlapping in the concurrent scope. --long is the control and moves both\ndirections, confirming the fields stay --full-only.\n\n4 new unit tests. The loader-filename guards are the ones that matter: a\ntypo there fails silently, reporting \"not installed\" on a machine that has\nthe API. Watched failing against vulkan1.dll - the test reports the\nmismatch while the binary simply prints nothing.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T19:38:03-07:00",
+          "tree_id": "269e2f86ccdf2993b443f59a3fedfbe7e70e22ea",
+          "url": "https://github.com/l1a/retch/commit/d04552064e70e6ee8da3b00f340b41c54fec621b"
+        },
+        "date": 1789008036592,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 442132026.0
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1805084406.0000002
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 349413468.00000006
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 100404428.0
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 2226251594.0
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1744876384.0
           }
         ]
       }
