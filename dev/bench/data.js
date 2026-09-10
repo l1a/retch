@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789064656393,
+  "lastUpdate": 1789064806329,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20608,70 +20608,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "30f2bc0d85fda967af17b3472e2784627296f331",
-          "message": "fix(justfile): make install and man recipes portable (#185)\n\nAssisted-By: Gemini 3.6 Flash",
-          "timestamp": "2026-08-10T13:24:44-07:00",
-          "tree_id": "0ebf13827d71fe02fbbdd12b0eb83ccbacbc2ab8",
-          "url": "https://github.com/l1a/retch/commit/30f2bc0d85fda967af17b3472e2784627296f331"
-        },
-        "date": 1786395989448,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 178.28849241152517,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9479128471771228,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 98.64858170586919,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.594537456887,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47332.34581624769,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 493.6745606746399,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 754.8703240191269,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2449318685,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "521364f30839992fda65499538a01a44bc4f11bb",
           "message": "fix(display): constrain graphic logo height, normalize audio, and wrap lines to terminal width (#186)\n\n* fix(display): reduce logo height and wrap long info lines\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(display): constrain graphic logo height and wrap below-logo lines to full terminal width\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(sysinfo): normalize and deduplicate Windows audio device names\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(sysinfo): evaluate soundwire before streaming filter in normalize_win_audio_device\n\nAssisted-By: Gemini 3.6 Flash",
           "timestamp": "2026-08-10T14:10:09-07:00",
@@ -23791,6 +23727,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2238230610,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bc63b79acb04f2fda7d3794adbeb4e39b1100c79",
+          "message": "Add vulkan, opengl and opencl on macOS (#238)\n\nCloses the second NOTES section 6c gap; the whole section 6 GPU-API\ngroup now reports on all three platforms.\n\nVulkan and OpenCL are the same code as Linux and Windows - those APIs\nare identical and only the loader filename differs, so mod dl and the\ntwo *_LIB constants simply widened. OpenGL needed a third module: Linux\nuses headless EGL, Windows needs WGL against a hidden window, and macOS\nuses CGL, which needs no window at all.\n\nThe CGL profile attribute decides the version reported. Omitting it, or\nrequesting the legacy profile, yields \"2.1 Metal - 90.5\" on a machine\nthat reports \"4.1 Metal - 90.5\" through a core profile - a silently\nhalved but perfectly plausible answer. Pinned by a test and watched\nfailing both as an assertion and in the live binary.\n\nmacOS system frameworks do not dlopen by short name; the absolute\nframework path is required or the field silently disappears.\n\nVulkan reports nothing on a stock Mac, which is correct - the platform\nships no Vulkan, only MoltenVK if a user installs it, and fastfetch\nprints no line here either.\n\nOpenGL output is byte-identical to fastfetch; OpenCL is deliberately\nricher, as on Linux. Stderr suppression stays Linux-only, with the\nmacOS no-op measured at 0 bytes rather than assumed.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T10:47:28-07:00",
+          "tree_id": "0a28263a93b2ec1421310329e0504de227481903",
+          "url": "https://github.com/l1a/retch/commit/bc63b79acb04f2fda7d3794adbeb4e39b1100c79"
+        },
+        "date": 1789064802170,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 183.5848669620278,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9478283332384967,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.53125317199056,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.253827588473,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45245.57976814189,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 493.9242704438793,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 747.2800066585869,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1186526570,
             "unit": "ns"
           }
         ]
