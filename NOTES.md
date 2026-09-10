@@ -176,6 +176,14 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
     decide whether a drifted packaging file can reach a commit, and until now a PR touching
     only a guard matched no filter and got no packaging verification at all — the v0.9.6
     `Justfile` hole, one directory over.
+  - **Homebrew installs bash completions to `etc/bash_completion.d`, not the freedesktop
+    `share/bash-completion/completions`** the AUR and COPR packages use. `zsh_completion`
+    and `fish_completion` are where you would expect (`share/zsh/site-functions`,
+    `share/fish/vendor_completions.d`); bash is the odd one. The first payload check
+    asserted the freedesktop path and reported the completion missing on a package that
+    installs it perfectly well. The step now also **prints the whole installed tree before
+    failing**, so the next such mismatch is diagnosable from the log rather than costing a
+    round trip — the lesson from the `aur` job's `zipman` failure in v0.7.0.
   - **The formula's test block must ANSI-strip before matching, and my first diagnosis of
     why it failed was wrong.** The assertion `assert_match(/OS:/, ...)` fails because
     **retch colourises even when piped**, so the label and its colon are separated by

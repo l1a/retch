@@ -402,9 +402,29 @@ jobs:
             echo "::error::man page .TH contains a literal \$ — the v0.7.0 footer defect"; exit 1
           fi
           # Completions for all three shells the formula generates.
-          for f in "$PREFIX/share/bash-completion/completions/retch" \
+          #
+          # NOTE THE BASH PATH. Homebrew's `bash_completion` is `etc/bash_completion.d`,
+          # NOT the freedesktop `share/bash-completion/completions` that the AUR and COPR
+          # packages install into. Asserting the freedesktop path reports the completion
+          # missing on a package that installs it perfectly well — which is what the first
+          # version of this step did.
+          MISSING=0
+          for f in "$PREFIX/etc/bash_completion.d/retch" \
                    "$PREFIX/share/zsh/site-functions/_retch" \
                    "$PREFIX/share/fish/vendor_completions.d/retch.fish"; do
-            test -s "$f" || { echo "::error::missing or empty completion: $f"; exit 1; }
+            if [ -s "$f" ]; then
+              echo "  ok  $f ($(wc -c < "$f" | tr -d ' ') bytes)"
+            else
+              echo "::error::missing or empty completion: $f"
+              MISSING=1
+            fi
           done
+          # Print what IS there before failing. An assertion about a built artefact that
+          # does not say what it actually saw costs a whole round trip to diagnose — the
+          # lesson from the `aur` job's zipman failure (v0.7.0).
+          if [ "$MISSING" -ne 0 ]; then
+            echo "--- everything actually installed under the prefix ---"
+            find "$PREFIX" -type f | sed "s|^$PREFIX/||" | sort
+            exit 1
+          fi
           echo "payload verified: binary, man page, three completion files"
