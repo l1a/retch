@@ -276,10 +276,11 @@ separator_color = "bright_black"
 #       (Linux, Windows and macOS). They add no wall-clock in --long/--full; requesting one on its
 #       own tops the window up to ~100 ms so the reading is a measurement, not sampling
 #       noise. On Windows both read native counters - no PowerShell, no admin.
-# Note: "vulkan", "opengl" and "opencl" work on Linux and Windows. All three are full mode
-#       only, and each is simply absent when its loader is not installed. OpenGL needs a
-#       context: Linux uses headless EGL, Windows uses WGL on a window created hidden and
-#       never shown.
+# Note: "vulkan", "opengl" and "opencl" work on Linux, Windows and macOS. All three are
+#       full mode only, and each is simply absent when its loader is not installed - which
+#       on macOS is the normal state for Vulkan, since it exists there only via MoltenVK.
+#       OpenGL needs a context: Linux uses headless EGL, Windows uses WGL on a window
+#       created hidden and never shown, macOS uses CGL and needs no window at all.
 fields = [
     "os", "kernel", "host", "domain", "domain-search", "chassis", "init", "locale",
     "arch", "cpu", "cpu-freq", "cpu-cache", "cpu-usage", "gpu",

@@ -33,9 +33,9 @@
 //! false, the same call as the `Users: 0` suppression (v0.6.1) and the v0.7.0 input
 //! classification.
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::ffi::c_int;
-#[cfg(any(target_os = "linux", target_os = "windows"))]
+#[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
 use std::ffi::{c_char, c_void, CStr};
 
 /// Versions reported by each graphics/compute API present on the system.
@@ -162,7 +162,7 @@ pub fn cstr_field(buf: &[u8]) -> String {
 /// rather than being duplicated per API. A second copy of the
 /// `VkPhysicalDeviceProperties2` offset arithmetic is exactly the drift that the shared
 /// `win_setupapi` and `win_iftable` modules exist to prevent.
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 mod dl {
     use super::*;
 
@@ -257,6 +257,21 @@ const VULKAN_LIB: &CStr = c"libvulkan.so.1";
 /// conformant driver into `System32`.
 #[cfg(target_os = "windows")]
 const VULKAN_LIB: &CStr = c"vulkan-1.dll";
+/// macOS has **no Vulkan at all** out of the box — there is no system loader and no
+/// driver. Vulkan exists only through MoltenVK, a Vulkan-to-Metal translation layer, and
+/// only once a user installs it (the LunarG SDK, or Homebrew).
+///
+/// This names the **Khronos loader**, `libvulkan.1.dylib`, which the SDK installs into
+/// `/usr/local/lib` — a directory `dlopen` searches by default. Naming the loader rather
+/// than `libMoltenVK.dylib` is deliberate: the loader is the entry point a portable Vulkan
+/// application actually uses, so its presence is what "this machine has Vulkan" means. A
+/// bare MoltenVK with no loader is reported as absent, which under-reports rather than
+/// claiming an API that ordinary Vulkan software could not reach — the v0.11.6 rule.
+///
+/// On a stock Mac this simply fails to open and the field is absent, which is correct:
+/// fastfetch prints no Vulkan line here either.
+#[cfg(target_os = "macos")]
+const VULKAN_LIB: &CStr = c"libvulkan.1.dylib";
 
 /// The OpenCL ICD loader's filename on this platform.
 #[cfg(target_os = "linux")]
@@ -265,8 +280,16 @@ const OPENCL_LIB: &CStr = c"libOpenCL.so.1";
 /// with it rather than being opened directly.
 #[cfg(target_os = "windows")]
 const OPENCL_LIB: &CStr = c"OpenCL.dll";
+/// macOS ships OpenCL as a **framework**, and the full path is required.
+///
+/// **A bare `dlopen("OpenCL")` fails**, as does `libOpenCL.dylib` — verified on macOS 26.
+/// System frameworks live in the dyld shared cache rather than on disk, so the file does
+/// not exist to `stat` but the framework path still resolves through `dlopen`. Apple has
+/// deprecated OpenCL in favour of Metal, but it is still present and still functional.
+#[cfg(target_os = "macos")]
+const OPENCL_LIB: &CStr = c"/System/Library/Frameworks/OpenCL.framework/OpenCL";
 
-#[cfg(any(target_os = "linux", target_os = "windows"))]
+#[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
 mod vulkan {
     use super::dl;
     use super::*;
@@ -887,7 +910,159 @@ mod opengl {
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "windows"))]
+/// macOS: `GL_VERSION` from a headless CGL context.
+///
+/// **A third mechanism, which is why this is a third module rather than a wider `cfg`.**
+/// Linux takes a context from EGL, Windows needs WGL against a hidden window, and macOS
+/// has neither: it has CGL, which creates a context with **no window and no surface at
+/// all**. That makes the macOS path the simplest of the three — there is no window class
+/// to register and nothing that could flash on screen, so the visibility check the Windows
+/// arm needs (v0.13.0) has no analogue here.
+///
+/// **THE DECISION THAT SETS THE NUMBER: the pixel format's profile attribute.** Measured
+/// on this machine, all four variants in one run:
+///
+/// | requested profile | `GL_VERSION` |
+/// |---|---|
+/// | no profile attribute | `2.1 Metal - 90.5` |
+/// | `kCGLOGLPVersion_Legacy` | `2.1 Metal - 90.5` |
+/// | `kCGLOGLPVersion_3_2_Core` | `4.1 Metal - 90.5` |
+/// | `kCGLOGLPVersion_GL4_Core` | `4.1 Metal - 90.5` |
+///
+/// So the default — no attribute — reports **2.1**, less than half the version the machine
+/// actually supports, and fastfetch reports `4.1 Metal - 90.5`. Apple caps OpenGL at 4.1
+/// and only exposes it through a core profile; the legacy profile is frozen at 2.1. This
+/// requests `GL4_Core` deliberately, and the table is recorded here because the same
+/// choice on Linux (v0.11.6) and Windows (v0.13.0) changed only the profile *label*, while
+/// here it changes the version itself.
+#[cfg(target_os = "macos")]
+mod opengl {
+    use super::dl;
+    use super::*;
+
+    /// Framework path — a bare `dlopen("OpenGL")` does not resolve. See [`OPENCL_LIB`] for
+    /// why the full path is required for system frameworks.
+    const OPENGL_FRAMEWORK: &CStr = c"/System/Library/Frameworks/OpenGL.framework/OpenGL";
+
+    /// `kCGLPFAAccelerated` — require a hardware renderer rather than the software one.
+    pub(super) const KCGLPFA_ACCELERATED: u32 = 73;
+    /// `kCGLPFAOpenGLProfile` — the attribute whose value decides the reported version.
+    pub(super) const KCGLPFA_OPENGL_PROFILE: u32 = 99;
+    /// `kCGLOGLPVersion_GL4_Core` — the highest profile Apple offers (OpenGL 4.1).
+    pub(super) const KCGL_OGLP_VERSION_GL4_CORE: u32 = 0x4100;
+    /// `GL_VERSION`.
+    const GL_VERSION: u32 = 0x1F02;
+
+    type CGLChoosePixelFormat = unsafe extern "C" fn(*const u32, *mut *mut c_void, *mut i32) -> i32;
+    type CGLCreateContext = unsafe extern "C" fn(*mut c_void, *mut c_void, *mut *mut c_void) -> i32;
+    type CGLSetCurrentContext = unsafe extern "C" fn(*mut c_void) -> i32;
+    type CGLDestroyContext = unsafe extern "C" fn(*mut c_void) -> i32;
+    type CGLDestroyPixelFormat = unsafe extern "C" fn(*mut c_void) -> i32;
+    type GlGetString = unsafe extern "C" fn(u32) -> *const c_char;
+
+    /// Unwinds the CGL objects in reverse order of acquisition, on every exit path.
+    ///
+    /// Releasing by hand at each `?` is how a context or a pixel format leaks, and a leaked
+    /// *current* context would keep the GPU objects alive for the rest of the process — the
+    /// same reasoning as the Windows arm's window/class guard, minus the window.
+    struct CglGuard {
+        set_current: CGLSetCurrentContext,
+        destroy_context: CGLDestroyContext,
+        destroy_pixel_format: CGLDestroyPixelFormat,
+        context: *mut c_void,
+        pixel_format: *mut c_void,
+    }
+
+    impl Drop for CglGuard {
+        fn drop(&mut self) {
+            // SAFETY: each pointer was produced by the matching CGL create call and is
+            // destroyed exactly once. Clearing the current context before destroying it is
+            // required — destroying a context that is current to the calling thread is
+            // documented to fail, which would leak it.
+            unsafe {
+                if !self.context.is_null() {
+                    (self.set_current)(std::ptr::null_mut());
+                    (self.destroy_context)(self.context);
+                }
+                if !self.pixel_format.is_null() {
+                    (self.destroy_pixel_format)(self.pixel_format);
+                }
+            }
+        }
+    }
+
+    /// Read `GL_VERSION`, or `None` when OpenGL is unavailable.
+    pub fn detect() -> Option<String> {
+        let lib = dl::open(OPENGL_FRAMEWORK)?;
+        let result = probe(lib);
+        dl::close(lib);
+        result
+    }
+
+    fn probe(lib: *mut c_void) -> Option<String> {
+        // SAFETY: every symbol is resolved from the OpenGL framework and transmuted to the
+        // signature Apple documents for it; a missing symbol yields None and aborts here.
+        unsafe {
+            let choose: CGLChoosePixelFormat =
+                std::mem::transmute(dl::sym(lib, c"CGLChoosePixelFormat")?);
+            let create: CGLCreateContext = std::mem::transmute(dl::sym(lib, c"CGLCreateContext")?);
+            let set_current: CGLSetCurrentContext =
+                std::mem::transmute(dl::sym(lib, c"CGLSetCurrentContext")?);
+            let destroy_context: CGLDestroyContext =
+                std::mem::transmute(dl::sym(lib, c"CGLDestroyContext")?);
+            let destroy_pixel_format: CGLDestroyPixelFormat =
+                std::mem::transmute(dl::sym(lib, c"CGLDestroyPixelFormat")?);
+            let gl_get_string: GlGetString = std::mem::transmute(dl::sym(lib, c"glGetString")?);
+
+            // NUL-terminated attribute list, as CGL expects.
+            let attrs: [u32; 4] = [
+                KCGLPFA_ACCELERATED,
+                KCGLPFA_OPENGL_PROFILE,
+                KCGL_OGLP_VERSION_GL4_CORE,
+                0,
+            ];
+            let mut pixel_format: *mut c_void = std::ptr::null_mut();
+            let mut count: i32 = 0;
+            if choose(attrs.as_ptr(), &mut pixel_format, &mut count) != 0
+                || pixel_format.is_null()
+                || count == 0
+            {
+                return None;
+            }
+
+            let mut context: *mut c_void = std::ptr::null_mut();
+            let err = create(pixel_format, std::ptr::null_mut(), &mut context);
+
+            // Guard is armed with whatever succeeded, so an early return still unwinds.
+            let guard = CglGuard {
+                set_current,
+                destroy_context,
+                destroy_pixel_format,
+                context: if err == 0 {
+                    context
+                } else {
+                    std::ptr::null_mut()
+                },
+                pixel_format,
+            };
+
+            if err != 0 || context.is_null() {
+                return None;
+            }
+            if set_current(context) != 0 {
+                return None;
+            }
+            let raw = gl_get_string(GL_VERSION);
+            let version = (!raw.is_null())
+                .then(|| CStr::from_ptr(raw).to_string_lossy().trim().to_string())
+                .filter(|s| !s.is_empty());
+            drop(guard);
+            version
+        }
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
 mod opencl {
     use super::dl;
     use super::*;
@@ -975,20 +1150,23 @@ mod opencl {
     ///
     /// The device count is the point: see the module docs for why a platform advertising a
     /// version while exposing no device is reported as such rather than as a bare version.
-    /// No-op stand-in on Windows.
+    /// No-op stand-in on Windows and macOS.
     ///
     /// The Linux suppression exists for one specific driver: Mesa's rusticl prints a
     /// "Patched Mesa libclc not detected" warning to stderr on every enumeration. That
     /// driver does not exist on Windows, where the ICD loader dispatches to vendor DLLs
-    /// instead. **Rather than assume the Windows ICDs are equally quiet, this is checked**
-    /// — `test_cli_full_mode` asserts retch writes nothing to stderr, and it runs on the
-    /// Windows CI leg. Adding suppression here pre-emptively would mean reimplementing the
-    /// `dup2` dance on the CRT to solve a problem no observation has shown to exist, while
-    /// silencing every other thread's diagnostics for the duration.
-    #[cfg(target_os = "windows")]
+    /// instead, nor on macOS, where Apple's own framework is the only implementation.
+    /// **Rather than assume those stacks are equally quiet, both were checked** — a probe
+    /// running the full platform *and* device enumeration wrote **0 bytes** to stderr on
+    /// each, and `test_cli_full_mode` asserts retch writes nothing to stderr and runs on
+    /// both CI legs, so a future leak fails loudly instead of silently spraying a driver's
+    /// diagnostics into the terminal. Adding suppression pre-emptively would mean
+    /// reimplementing the `dup2` dance to solve a problem no observation has shown to
+    /// exist, while silencing every other thread's diagnostics for the duration.
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     struct SuppressStderr;
 
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     impl SuppressStderr {
         fn new() -> Option<Self> {
             None
@@ -1152,8 +1330,33 @@ pub fn detect_gpu_apis() -> GpuApis {
     }
 }
 
+/// macOS: all three, with Vulkan normally absent.
+///
+/// The Vulkan and OpenCL probes are the *same code* as Linux and Windows — those APIs are
+/// identical across platforms and only the loader's filename differs, which is why the
+/// split lives in [`dl`] and the two `*_LIB` constants. **OpenGL is a genuinely different
+/// mechanism** and has its own module: CGL, which yields a context with no window and no
+/// surface, where Linux uses EGL and Windows needs WGL against a hidden window.
+///
+/// **Vulkan will report nothing on a stock Mac, and that is correct.** macOS has no system
+/// Vulkan; it exists only via MoltenVK once a user installs it. fastfetch prints no Vulkan
+/// line here either. The probe is still wired up so that a machine *with* the SDK reports
+/// accurately, and a failed `dlopen` of a missing library is the cheapest possible answer.
+///
+/// **OpenGL and OpenCL are both deprecated by Apple in favour of Metal** but are still
+/// shipped and still functional. Reporting the version they actually return is the honest
+/// answer; retch does not editorialise about deprecation in the field value.
+#[cfg(target_os = "macos")]
+pub fn detect_gpu_apis() -> GpuApis {
+    GpuApis {
+        vulkan: vulkan::detect(),
+        opengl: opengl::detect(),
+        opencl: opencl::detect(),
+    }
+}
+
 /// Other platforms: reports nothing rather than guessing.
-#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+#[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
 pub fn detect_gpu_apis() -> GpuApis {
     GpuApis::default()
 }
@@ -1318,5 +1521,46 @@ mod tests {
         assert_eq!(cstr_field(&[0u8; 16]), "");
         // No NUL at all: use the whole buffer rather than reading past it.
         assert_eq!(cstr_field(b"abcd"), "abcd");
+    }
+
+    /// macOS loader names, pinned for the same reason as the Windows ones: a typo here
+    /// does not fail, it makes the probe report "not installed" — indistinguishable from a
+    /// machine that genuinely lacks the API.
+    ///
+    /// **The framework paths must be absolute.** A bare `dlopen("OpenCL")` does *not*
+    /// resolve on macOS — verified on macOS 26 — because system frameworks live in the
+    /// dyld shared cache rather than on disk. Shortening either of these to a bare name
+    /// would silently disable the field on every Mac.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_macos_loader_names() {
+        assert_eq!(VULKAN_LIB.to_str().unwrap(), "libvulkan.1.dylib");
+        assert_eq!(
+            OPENCL_LIB.to_str().unwrap(),
+            "/System/Library/Frameworks/OpenCL.framework/OpenCL"
+        );
+        // The framework path is absolute precisely because the short name does not work.
+        assert!(OPENCL_LIB.to_str().unwrap().starts_with('/'));
+    }
+
+    /// The CGL profile attribute is the single value that decides the OpenGL version
+    /// reported on macOS, so it is pinned.
+    ///
+    /// Measured on an M3 Pro, all four variants in one run: no attribute and
+    /// `kCGLOGLPVersion_Legacy` both yield **`2.1 Metal - 90.5`**, while
+    /// `kCGLOGLPVersion_3_2_Core` and `kCGLOGLPVersion_GL4_Core` yield
+    /// **`4.1 Metal - 90.5`** — which is what fastfetch reports. Dropping this attribute
+    /// would silently halve the reported version on every Mac while still producing a
+    /// perfectly plausible-looking string, which is exactly the failure mode this repo
+    /// keeps recording.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_macos_cgl_requests_a_core_profile() {
+        // 0x4100 is kCGLOGLPVersion_GL4_Core; 0x1000 is kCGLOGLPVersion_Legacy, which
+        // caps at OpenGL 2.1 and must not be what we ask for.
+        assert_eq!(opengl::KCGL_OGLP_VERSION_GL4_CORE, 0x4100);
+        assert_ne!(opengl::KCGL_OGLP_VERSION_GL4_CORE, 0x1000);
+        assert_eq!(opengl::KCGLPFA_OPENGL_PROFILE, 99);
+        assert_eq!(opengl::KCGLPFA_ACCELERATED, 73);
     }
 }

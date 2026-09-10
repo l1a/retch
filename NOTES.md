@@ -116,7 +116,74 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.14.0)
+## Current State (v0.15.0)
+- **v0.15.0 - `vulkan`, `opengl` and `opencl` on macOS, and the profile attribute that
+  halves the answer** (`crates/sysinfo/src/gpu_api.rs`). Closes the second NOTES §6c gap.
+  The whole §6 GPU-API group now reports on all three platforms.
+  - **Vulkan and OpenCL are the *same code* as Linux and Windows** — those APIs are
+    identical across platforms and only the loader's filename differs, so `mod dl` (raw
+    `dlopen`/`dlsym`, unchanged) simply widened to macOS along with the two `*_LIB`
+    constants. That is the v0.12.0 argument applied a third time: a second copy of the
+    `VkPhysicalDeviceProperties2` offset arithmetic is exactly the drift the shared modules
+    exist to prevent.
+  - **OpenGL is a genuinely different mechanism and therefore a third module.** Linux takes
+    a headless context from EGL; Windows needs WGL against a hidden window; macOS has
+    neither and uses **CGL**, which creates a context with **no window and no surface at
+    all**. That makes macOS the simplest of the three — there is nothing that could flash
+    on screen, so the window-visibility check v0.13.0 needed on Windows has no analogue.
+  - **THE FINDING: the CGL profile attribute decides the version, and the default is
+    wrong.** Measured on an M3 Pro, all four variants in one run:
+
+    | requested profile | `GL_VERSION` |
+    |---|---|
+    | no profile attribute | `2.1 Metal - 90.5` |
+    | `kCGLOGLPVersion_Legacy` | `2.1 Metal - 90.5` |
+    | `kCGLOGLPVersion_3_2_Core` | **`4.1 Metal - 90.5`** |
+    | `kCGLOGLPVersion_GL4_Core` | **`4.1 Metal - 90.5`** |
+
+    So writing the obvious thing — omit the attribute — reports **2.1**, less than half the
+    version the machine supports, as a perfectly plausible-looking string. Apple caps
+    OpenGL at 4.1 and exposes it only through a core profile; the legacy profile is frozen
+    at 2.1. **Watched failing both ways**: mutating the constant to
+    `kCGLOGLPVersion_Legacy` fails the pinning test *and* makes the live binary print
+    `OpenGL: 2.1 Metal - 90.5`. On Linux (v0.11.6) and Windows (v0.13.0) the same choice
+    changed only the profile *label*; here it changes the number.
+  - **macOS system frameworks do not `dlopen` by short name.** `dlopen("OpenCL")` and
+    `dlopen("libOpenCL.dylib")` both fail; the full
+    `/System/Library/Frameworks/OpenCL.framework/OpenCL` path is required, because
+    frameworks live in the dyld shared cache rather than on disk. **Watched failing**:
+    shortening the constant makes the `OpenCL` line disappear entirely — a silent
+    disable, not an error.
+  - **Vulkan reports nothing on a stock Mac, and that is the correct answer.** There is no
+    system Vulkan on macOS; it exists only through MoltenVK once a user installs it.
+    Probed for `libvulkan.1.dylib`, `libvulkan.dylib`, `libMoltenVK.dylib` and the
+    absolute `/usr/local/lib` path — **all four absent**, and fastfetch prints no Vulkan
+    line here either. The constant names the **Khronos loader** rather than MoltenVK
+    deliberately: the loader is what a portable Vulkan application actually uses, so a bare
+    MoltenVK with no loader is reported absent rather than claiming an API ordinary Vulkan
+    software could not reach — the v0.11.6 under-report rule.
+  - **The stderr suppression stays Linux-only, and the macOS no-op is measured rather than
+    assumed** — the v0.12.0 standard. Apple's framework is the only OpenCL implementation
+    on the platform, so Mesa's rusticl libclc warning cannot arise; a probe running full
+    platform *and* device enumeration wrote **0 bytes** to stderr, as did `retch --full`.
+    `test_cli_full_mode` asserts this and runs on the macOS CI leg.
+  - **Output against fastfetch on the same machine**: `OpenGL: 4.1 Metal - 90.5` is
+    **byte-identical**; `OpenCL: 1.2 (Jul 31 2026 20:36:30) - Apple (Apple M3 Pro)` is
+    deliberately **richer** than fastfetch's bare `1.2 (Jul 31 2026 20:36:30)`, matching
+    the Linux behaviour; Vulkan is absent on both.
+  - **Perf: a small real cost on `--full`, stated as such.** Two interleaved passes against
+    a `main` binary: **1.270 vs 1.264 s** and, reversed, **1.274 vs 1.260 s** — the branch
+    is slower in both, by 6-14 ms, and user time rises consistently (0.163 -> 0.170 s and
+    0.163 -> 0.167 s), which is the honest signal. The control is `--long`, where none of
+    the three is collected: it moves **7 ms in the opposite direction**, so the effect is
+    at the edge of measurability rather than comfortably inside noise.
+    Isolated, the group costs **~42 ms** over a `--fields os` floor of **3.6 ms**.
+    **`--fields vulkan` costs the same ~46 ms as the other two even though Vulkan is
+    absent**, and that is pre-existing rather than new: `fetch.rs` collects all three
+    together on purpose, because they dlopen loaders into the same driver stack and
+    splitting them across threads would buy contention rather than overlap.
+  - `retch-sysinfo` -> `0.1.69`; `retch-cli` -> `0.15.0`. Minor bump - new user-visible
+    fields on a platform that had none, the v0.6.0 / v0.11.0 / v0.12.0 precedent.
 - **v0.14.0 - `disk-io` and `net-io` on macOS, and the obvious network source was the
   wrong one** (`crates/sysinfo/src/io.rs`, `crates/sysinfo/src/macos_ffi.rs`). Both fields
   shipped Linux-only in v0.10.0, gained Windows arms in v0.11.0, and returned nothing on
@@ -2773,8 +2840,10 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ### GPU / Graphics
 - ~~**OpenCL / OpenGL / Vulkan**: Highest supported API versions~~ — added in v0.11.6
   (`vulkan`, `opengl`, `opencl` fields, Linux; `dlopen` of each loader, `--full`), extended
-  to Windows in v0.12.0 (`vulkan`, `opencl`) and v0.13.0 (`opengl`, via WGL) — so the whole
-  group now reports on both platforms. This was
+  to Windows in v0.12.0 (`vulkan`, `opencl`) and v0.13.0 (`opengl`, via WGL), and to macOS
+  in v0.15.0 (`opengl` via CGL; `vulkan`/`opencl` the same code as elsewhere) — so the
+  whole group now reports on all three platforms. On macOS `vulkan` is normally absent and
+  correctly so: the platform ships no Vulkan, only MoltenVK if a user installs it. This was
   the **last remaining user-visible fastfetch gap**; every group in §6 is now closed.
   retch reports strictly more than fastfetch on `opencl`: fastfetch prints the platform
   version even when the platform exposes **no device**, which is the normal state for Mesa's
@@ -2970,14 +3039,16 @@ so the list is complete as of the version noted.
   every 4 GiB — and the development machine sat at 77% of that ceiling, so it would have
   wrapped mid-session and reported a plausible wrong rate. See the v0.14.0 entry.
 
+- ~~**`vulkan`, `opengl`, `opencl` have no macOS arm**~~ — fixed v0.15.0. Vulkan and
+  OpenCL are the same code as Linux/Windows (only the loader filename differs); OpenGL
+  needed a third mechanism, CGL, which unlike EGL and WGL needs no window at all. Two
+  traps: **the CGL profile attribute decides the version** — the default and legacy
+  profiles report `2.1` where a core profile reports `4.1` on the same machine — and
+  **macOS system frameworks do not `dlopen` by short name**, so the absolute framework
+  path is required or the field silently disappears. Vulkan reports nothing on a stock
+  Mac, which is correct.
+
 **Open**
-- **`vulkan`, `opengl`, `opencl` have no macOS arm** (`gpu_api.rs` is Linux + Windows).
-  Vulkan exists only through MoltenVK, which is not present on a stock system; OpenGL (CGL)
-  and OpenCL are both deprecated by Apple but still shipped. **Decide what "available"
-  means before coding**: the v0.11.6 rule — report what is available *without changing the
-  user's environment*, and under-report rather than assert something false — is the
-  governing constraint, and it is what makes the MoltenVK case a judgement call rather than
-  a lookup.
 - **`keyboard` and `mouse` have no macOS arm** (`input.rs` is Linux-only). IOKit HID is the
   source. **Read the v0.7.0 entry first**: on a unifying receiver no kernel-visible signal
   separates a keyboard from a mouse, fastfetch gets it wrong in both directions on that
