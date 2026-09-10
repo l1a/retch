@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789062497698,
+  "lastUpdate": 1789062785341,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17298,70 +17298,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "30f2bc0d85fda967af17b3472e2784627296f331",
-          "message": "fix(justfile): make install and man recipes portable (#185)\n\nAssisted-By: Gemini 3.6 Flash",
-          "timestamp": "2026-08-10T13:24:44-07:00",
-          "tree_id": "0ebf13827d71fe02fbbdd12b0eb83ccbacbc2ab8",
-          "url": "https://github.com/l1a/retch/commit/30f2bc0d85fda967af17b3472e2784627296f331"
-        },
-        "date": 1786395437879,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 224.95997343909144,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.356716185290162,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 121.82534390862558,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 101.89986099014689,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 42457.353200982136,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 579.5978188273092,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 809.777811353262,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2943433875,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "521364f30839992fda65499538a01a44bc4f11bb",
           "message": "fix(display): constrain graphic logo height, normalize audio, and wrap lines to terminal width (#186)\n\n* fix(display): reduce logo height and wrap long info lines\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(display): constrain graphic logo height and wrap below-logo lines to full terminal width\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(sysinfo): normalize and deduplicate Windows audio device names\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(sysinfo): evaluate soundwire before streaming filter in normalize_win_audio_device\n\nAssisted-By: Gemini 3.6 Flash",
           "timestamp": "2026-08-10T14:10:09-07:00",
@@ -20481,6 +20417,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 779822130,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4241edfab5176835d7c0d9e97352207843fd3a01",
+          "message": "Add disk-io and net-io on macOS (#237)\n\nBoth fields shipped Linux-only in v0.10.0 and gained Windows arms in\nv0.11.0; on macOS they returned nothing. Nothing above the two sample_*\nfunctions changed - the rate arithmetic, the 100 ms floor and the\nsampling window were already platform-independent.\n\nDisk counters come from the IOKit IOBlockStorageDriver \"Statistics\"\ndictionary, the source iostat reads. The BSD name is on the child\nIOMedia rather than the driver, so partitions cannot be double-counted.\n\nNetwork counters come from sysctl(NET_RT_IFLIST2), deliberately NOT\ngetifaddrs: struct if_data carries 32-bit byte counters that wrap every\n4 GiB, and this machine was already at 77% of that ceiling on a single\nboot, so the wrap would have produced a plausible wrong rate rather than\nan obvious failure. A test pins the 64-bit-ness by type, since a value\nassertion cannot catch a narrowing.\n\nVerified against independent oracles under time-bounded load: disk\n947 MB/s vs iostat 896 MB/s, net 60.89 MB/s vs netstat 59.54 MB/s, both\n0 B/s idle. Perf A/B over four interleaved passes flips direction and is\nsmaller than main's spread against itself.\n\nAdds NOTES section 6c, the macOS parity list, which did not exist.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T10:25:22-07:00",
+          "tree_id": "04f39ff5848789f11d27207ae26ccdba54f9ca06",
+          "url": "https://github.com/l1a/retch/commit/4241edfab5176835d7c0d9e97352207843fd3a01"
+        },
+        "date": 1789062781540,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 134.3019479002008,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.2097673742891146,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 84.40586058717727,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 56.988881034395185,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 28919.074440584925,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 333.3076384652304,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 464.0150190668663,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1241688695,
             "unit": "ns"
           }
         ]
