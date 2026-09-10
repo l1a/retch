@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789008036592,
+  "lastUpdate": 1789008318223,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4770,7 +4770,7 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch",
             "unit": "ns",
-            "value": 472576770.0
+            "value": 472576770
           },
           {
             "name": "CLI execution - fastfetch",
@@ -4785,17 +4785,17 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - fastfetch -c none",
             "unit": "ns",
-            "value": 115759162.0
+            "value": 115759162
           },
           {
             "name": "CLI execution - retch --long",
             "unit": "ns",
-            "value": 2424949476.0
+            "value": 2424949476
           },
           {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
-            "value": 1752114606.0
+            "value": 1752114606
           }
         ]
       },
@@ -4824,7 +4824,7 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch",
             "unit": "ns",
-            "value": 442132026.0
+            "value": 442132026
           },
           {
             "name": "CLI execution - fastfetch",
@@ -4839,106 +4839,22 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - fastfetch -c none",
             "unit": "ns",
-            "value": 100404428.0
+            "value": 100404428
           },
           {
             "name": "CLI execution - retch --long",
             "unit": "ns",
-            "value": 2226251594.0
+            "value": 2226251594
           },
           {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
-            "value": 1744876384.0
+            "value": 1744876384
           }
         ]
       }
     ],
     "Linux x64 Benchmarks": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "86f5803462d1608de8b7739c8dc6c69bc9c85a46",
-          "message": "Give Domain Search one shape per source (v0.6.12) (#177)\n\nCI dry-run output showed 'eth0: <domain>' on Ubuntu but a bare\n'<domain>' on Fedora. The difference is not platform-driven: the same\nOS flips format between jobs. Ubuntu in the build matrix runs on a bare\nrunner and takes the resolvectl path; Ubuntu in full-test runs in a\ncontainer with no systemd-resolved and falls back to resolv.conf.\nFedora is always containerised, so it only looked different from\nUbuntu.\n\nGrouping differed too: the resolvectl path returns one entry per\ninterface with domains joined, while the fallback returned one entry\nper domain and the display prints one line per entry, so 'search a b c'\nemitted three separate bare lines.\n\nRender the fallback in the same '<scope>: a, b' shape, scoped 'global'\n-- labelled honestly rather than attributed to an interface, since\nresolv.conf's search list carries no attribution. The parser stays\nfaithful to the file; the shape is imposed at the detect layer. macOS\nroutes through the same formatter. The resolvectl path is unchanged.\n\nWindows is deliberately not fixed here and is documented in NOTES 6a:\nits Domain reads the AD/primary suffix rather than the connection\nsuffix, and Domain Search has no Windows arm at all. Both need\nGetAdaptersAddresses and cannot be verified live without a Windows box.\n\nAssisted-By: Claude Fable 5",
-          "timestamp": "2026-07-26T19:35:39-07:00",
-          "tree_id": "b11c193d8bdb824b38e28d4104d2b63b410c8fea",
-          "url": "https://github.com/l1a/retch/commit/86f5803462d1608de8b7739c8dc6c69bc9c85a46"
-        },
-        "date": 1785120160549,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1355592969.05,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 1734.6257491662825,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 47.31681059022244,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 3.907900241166536,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 46.70973604880344,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 16238.110827764094,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 163930.2450248493,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 11392.577128705972,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 11566.065329223778,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1160993.7349277844,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 281.4502083495637,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 211.715987431943,
-            "unit": "ns"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -9051,6 +8967,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 261.6726558909014,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d04552064e70e6ee8da3b00f340b41c54fec621b",
+          "message": "Add Vulkan and OpenCL on Windows (#232)\n\nv0.11.6 closed the last fastfetch gap on Linux and, in doing so, opened a\nWindows parity gap: fastfetch reports all three graphics APIs on Windows\nand retch reported none.\n\nThe probes are the same code, because the APIs are. Vulkan and OpenCL are\nidentical across platforms and only the loader's filename differs, so\n`mod dl` gained a Windows backend (LoadLibraryA/GetProcAddress/\nFreeLibrary, following media.rs's combase.dll precedent) and the vulkan\nand opencl modules widened to cfg(any(linux, windows)) unchanged. A\nsecond copy of the VkPhysicalDeviceProperties2 offset arithmetic is\nexactly the drift the shared win_setupapi and win_iftable modules exist\nto prevent.\n\nVulkan output is byte-identical to fastfetch here:\n  1.4.329 - AMD proprietary driver [25.20.32.06 (LLPC)]\nOpenCL is deliberately richer, as on Linux:\n  2.1 AMD-APP (3661.0) - AMD Accelerated Parallel Processing (gfx1151)\nagainst fastfetch's bare \"2.1 AMD-APP (3661.0)\".\n\nopengl is NOT included, and that is a mechanism difference rather than a\nmissing filename. The Linux path gets a headless context through EGL, and\nstock Windows ships no libEGL.dll - verified on a box that has\nvulkan-1.dll, opengl32.dll and OpenCL.dll in System32 and no EGL at all.\nWindows OpenGL needs WGL against a hidden window; tracked in NOTES §6a.\n\nThe stderr suppression stays Linux-only and the Windows no-op is measured\nrather than assumed: it exists for rusticl's libclc warning, a driver that\ndoes not exist on Windows, and a --full run plus an isolated --fields\nopencl run each wrote 0 bytes to stderr. test_cli_full_mode asserts that\nand runs on the Windows CI leg.\n\nPerf is a real cost and is not described otherwise. Interleaved and\nrepeated against a binary built from main, --full went 6879.7 -> 6754.9 ms\nand then 6825.8 -> 6767.9 ms: slower on the branch in both passes, so\nunlike the v0.10.0 and v0.11.6 results this is not noise. It matches the\nisolated probe costs (vulkan +139 ms, opencl +120 ms over a ~312 ms floor)\noverlapping in the concurrent scope. --long is the control and moves both\ndirections, confirming the fields stay --full-only.\n\n4 new unit tests. The loader-filename guards are the ones that matter: a\ntypo there fails silently, reporting \"not installed\" on a machine that has\nthe API. Watched failing against vulkan1.dll - the test reports the\nmismatch while the binary simply prints nothing.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T19:38:03-07:00",
+          "tree_id": "269e2f86ccdf2993b443f59a3fedfbe7e70e22ea",
+          "url": "https://github.com/l1a/retch/commit/d04552064e70e6ee8da3b00f340b41c54fec621b"
+        },
+        "date": 1789008316396,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 988106580.35,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2018.8093542743995,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 111.68793942519494,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.867714448454323,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 59.87931881094634,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 17814.50061476666,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 185189.4005141326,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12569.501058900643,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 12733.742307949822,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1415873.5144037425,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 396.0158370793275,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 263.34726042697923,
             "unit": "ns"
           }
         ]
