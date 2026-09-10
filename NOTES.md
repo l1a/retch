@@ -116,7 +116,48 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.15.0)
+## Current State (v0.16.0)
+- **v0.16.0 - `keyboard` and `mouse` on macOS, where the classification problem does not
+  exist** (`crates/sysinfo/src/input.rs`, `crates/sysinfo/src/macos_ffi.rs`). Closes the
+  third NOTES §6c gap.
+  - **The v0.7.0 finding still holds, and macOS simply does not present it.** On Linux a
+    peripheral behind a unifying receiver arrives with a merged capability set that is
+    byte-identical for a keyboard and a mouse, so the classifier consults the HID++
+    battery `model_name` and reports the device in *neither* field when that is absent
+    too. macOS publishes **one `IOHIDDevice` per HID interface**, each with its own
+    `PrimaryUsage`, so the role is *stated* rather than inferred. There is no ambiguous
+    case, and therefore no tiebreak and no under-reporting fallback.
+  - **A composite device is listed under both fields, and that is correct rather than a
+    bug.** `Apple Internal Keyboard / Trackpad` publishes a usage-6 interface and a
+    usage-2 interface; it genuinely is both. Pinned by a test so a future "fix" does not
+    de-duplicate it away.
+  - **retch finds a keyboard fastfetch misses.** On this machine retch lists three
+    keyboards to fastfetch's two — the extra one is a Bluetooth `Magic Keyboard`.
+    **Verified genuinely connected, not merely paired**, via `system_profiler
+    SPBluetoothDataType`, which lists it under `Connected:`. That check matters because
+    v0.10.2 recorded the opposite error on Windows, where paired-but-idle devices were
+    being counted as connected.
+  - **A TEST OF MINE COULD NOT FAIL, and finding that out is the useful part.** The first
+    version of the vendor-page test asserted that `Keyboard Backlight` and `BTM` are not
+    reported — and **passed with the page filter deleted**, because every vendor-page
+    interface in the fixture happens to carry a usage the *usage* filter already rejects.
+    The two filters overlapped on this machine's data, so the fixture could not
+    distinguish them. Replaced with a **synthetic** case pairing a vendor page with usage
+    6, labelled as synthetic since no real interface here does that; it fails correctly
+    with `left: ["Vendor Widget", "Real Keyboard"]`. HID usages are page-relative, so this
+    is a real collision rather than a contrived one. Same family as every other entry
+    here: a check that cannot fail is not a check.
+  - Filtering to usage page 1 ("Generic Desktop") is what separates input devices from the
+    rest of the HID stack — 20 of this machine's 27 interfaces sit on vendor-defined pages
+    carrying backlight, sensor and management endpoints. Usages other than Keyboard(6) and
+    Mouse(2) are ignored: gamepads have their own field, and reporting a joystick as a
+    mouse would be wrong.
+  - `iokit_property_as_i64` is new alongside the existing `iokit_property_as_u64`, which
+    rejects zero and negative values because its callers treat those as absent. **A HID
+    usage of 0 is a legitimate reading**, so the new helper preserves it.
+  - `retch-sysinfo` -> `0.1.70` (new public `get_hid_interfaces`, `classify_hid_interfaces`);
+    `retch-cli` -> `0.16.0`. Minor bump - new user-visible fields on a platform that had
+    none.
 - **v0.15.0 - `vulkan`, `opengl` and `opencl` on macOS, and the profile attribute that
   halves the answer** (`crates/sysinfo/src/gpu_api.rs`). Closes the second NOTES §6c gap.
   The whole §6 GPU-API group now reports on all three platforms.
@@ -2827,11 +2868,13 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 ### Hardware
 - ~~**Brightness**: Monitor brightness level~~ — added in v0.5.0 (`brightness` field, Linux; `/sys/class/backlight`)
 - ~~**Keyboard**: Connected keyboards~~ — added in v0.7.0 (`keyboard` field, Linux;
-  `/proc/bus/input/devices`). Devices whose class the kernel cannot express — merged HID++
+  `/proc/bus/input/devices`) and macOS in v0.16.0 (IOKit `IOHIDDevice`, usage page 1 /
+  usage 6). Devices whose class the kernel cannot express — merged HID++
   receiver endpoints — are deliberately listed in neither `keyboard` nor `mouse`; see the
   v0.7.0 release entry for the evidence
 - ~~**Mouse**: Connected mice~~ — added in v0.7.0 (`mouse` field, Linux; same source, covers
-  mice, touchpads and tablets, de-duplicated by name)
+  mice, touchpads and tablets, de-duplicated by name) and macOS in v0.16.0 (usage page 1 /
+  usage 2). On macOS the merged-receiver ambiguity does not arise — one interface per role
 - ~~**PowerAdapter**: Charger name and wattage~~ — added in v0.5.0 (`power-adapter` field, Linux; `/sys/class/power_supply` `Mains`. Name + connection state; wattage not yet reported)
 - ~~**TPM**: Trusted Platform Module device info~~ — added in v0.7.0 (`tpm` field, Linux;
   `/sys/class/tpm` `tpm_version_major`. Specification version only — `2.0`/`1.2` — not the
@@ -3039,6 +3082,11 @@ so the list is complete as of the version noted.
   every 4 GiB — and the development machine sat at 77% of that ceiling, so it would have
   wrapped mid-session and reported a plausible wrong rate. See the v0.14.0 entry.
 
+- ~~**`keyboard` and `mouse` have no macOS arm**~~ — fixed v0.16.0. IOKit `IOHIDDevice`
+  interfaces, filtered to usage page 1. The v0.7.0 receiver ambiguity does not arise on
+  macOS, which publishes one interface per role; a composite keyboard-and-trackpad is
+  correctly listed under both fields, and retch finds a connected Bluetooth keyboard that
+  fastfetch misses.
 - ~~**`vulkan`, `opengl`, `opencl` have no macOS arm**~~ — fixed v0.15.0. Vulkan and
   OpenCL are the same code as Linux/Windows (only the loader filename differs); OpenGL
   needed a third mechanism, CGL, which unlike EGL and WGL needs no window at all. Two
@@ -3049,10 +3097,21 @@ so the list is complete as of the version noted.
   Mac, which is correct.
 
 **Open**
-- **`keyboard` and `mouse` have no macOS arm** (`input.rs` is Linux-only). IOKit HID is the
-  source. **Read the v0.7.0 entry first**: on a unifying receiver no kernel-visible signal
-  separates a keyboard from a mouse, fastfetch gets it wrong in both directions on that
-  hardware, and under-reporting was chosen deliberately over guessing.
+- **`Bluetooth` reports `Off` while Bluetooth devices are connected** (NEW, found
+  2026-09-10 while adding the macOS input arm; `macos_ffi.rs::get_bluetooth_state`).
+  `iokit_property_as_bool(service, "BluetoothControllerPowerIsOn")` returns `None` on
+  macOS 26 — **the property does not exist**; `IOBluetoothHCIController` exposes only
+  `IOClass`, `Built-In` and **`BluetoothTransportConnected = Yes`**. The `.unwrap_or(false)`
+  then turns "could not read" into a confident `Off`, which is wrong on a machine with a
+  connected Bluetooth keyboard. The three chipset-name properties it tries
+  (`HardwareTransportCurrentSetting`, `ProductName`, `ChipsetString`) are all absent too.
+  - **Not fixed blind.** `BluetoothTransportConnected` is the obvious replacement, but
+    whether it tracks the *radio* being switched off could not be confirmed here: doing so
+    means toggling Bluetooth off, which would disconnect the keyboard in use. Confirm that
+    property changes to `No` with the radio off before relying on it.
+  - **The safe partial fix, independent of that question**: stop reporting `Off` when the
+    property is absent. Under-reporting beats asserting something false — the `Users: 0`
+    call (v0.6.1). fastfetch reports connected devices here and retch reports `Off`.
 - **`login-manager`, `brightness` and `power-adapter` have no macOS arm** (`fetch.rs`,
   Linux-only since v0.5.0). `loginwindow` is fixed on macOS so the first is close to a
   constant; brightness via IOKit/DisplayServices; power adapter via IOPowerSources, and
