@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789061172518,
+  "lastUpdate": 1789061510137,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5138,90 +5138,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "30f2bc0d85fda967af17b3472e2784627296f331",
-          "message": "fix(justfile): make install and man recipes portable (#185)\n\nAssisted-By: Gemini 3.6 Flash",
-          "timestamp": "2026-08-10T13:24:44-07:00",
-          "tree_id": "0ebf13827d71fe02fbbdd12b0eb83ccbacbc2ab8",
-          "url": "https://github.com/l1a/retch/commit/30f2bc0d85fda967af17b3472e2784627296f331"
-        },
-        "date": 1786393925374,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 981409361.05,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2104.635225007227,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 119.52254655570243,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.808809490528101,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 57.98644313408008,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 18363.994705986308,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 188610.45500871644,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 12845.573356372988,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 12962.595411843136,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1426006.3766825018,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 370.4529916474482,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 297.39053838678797,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "521364f30839992fda65499538a01a44bc4f11bb",
           "message": "fix(display): constrain graphic logo height, normalize audio, and wrap lines to terminal width (#186)\n\n* fix(display): reduce logo height and wrap long info lines\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(display): constrain graphic logo height and wrap below-logo lines to full terminal width\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(sysinfo): normalize and deduplicate Windows audio device names\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(sysinfo): evaluate soundwire before streaming filter in normalize_win_audio_device\n\nAssisted-By: Gemini 3.6 Flash",
           "timestamp": "2026-08-10T14:10:09-07:00",
@@ -9321,6 +9237,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 141.0588740403129,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4241edfab5176835d7c0d9e97352207843fd3a01",
+          "message": "Add disk-io and net-io on macOS (#237)\n\nBoth fields shipped Linux-only in v0.10.0 and gained Windows arms in\nv0.11.0; on macOS they returned nothing. Nothing above the two sample_*\nfunctions changed - the rate arithmetic, the 100 ms floor and the\nsampling window were already platform-independent.\n\nDisk counters come from the IOKit IOBlockStorageDriver \"Statistics\"\ndictionary, the source iostat reads. The BSD name is on the child\nIOMedia rather than the driver, so partitions cannot be double-counted.\n\nNetwork counters come from sysctl(NET_RT_IFLIST2), deliberately NOT\ngetifaddrs: struct if_data carries 32-bit byte counters that wrap every\n4 GiB, and this machine was already at 77% of that ceiling on a single\nboot, so the wrap would have produced a plausible wrong rate rather than\nan obvious failure. A test pins the 64-bit-ness by type, since a value\nassertion cannot catch a narrowing.\n\nVerified against independent oracles under time-bounded load: disk\n947 MB/s vs iostat 896 MB/s, net 60.89 MB/s vs netstat 59.54 MB/s, both\n0 B/s idle. Perf A/B over four interleaved passes flips direction and is\nsmaller than main's spread against itself.\n\nAdds NOTES section 6c, the macOS parity list, which did not exist.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T10:25:22-07:00",
+          "tree_id": "04f39ff5848789f11d27207ae26ccdba54f9ca06",
+          "url": "https://github.com/l1a/retch/commit/4241edfab5176835d7c0d9e97352207843fd3a01"
+        },
+        "date": 1789061507898,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 507318089.35,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 856.4905306005578,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 89.5080168868424,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 6.159488098682117,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 49.41293139629729,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7503.334705552467,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71341.36036601814,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 47906.14350748279,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 48194.45684845561,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1307887.4963466343,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 288.46174196121547,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 208.31158605611614,
             "unit": "ns"
           }
         ]
