@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789058025671,
+  "lastUpdate": 1789061172518,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4362,6 +4362,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch",
             "unit": "ns",
             "value": 1053000991.62
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "4241edfab5176835d7c0d9e97352207843fd3a01",
+          "message": "Add disk-io and net-io on macOS (#237)\n\nBoth fields shipped Linux-only in v0.10.0 and gained Windows arms in\nv0.11.0; on macOS they returned nothing. Nothing above the two sample_*\nfunctions changed - the rate arithmetic, the 100 ms floor and the\nsampling window were already platform-independent.\n\nDisk counters come from the IOKit IOBlockStorageDriver \"Statistics\"\ndictionary, the source iostat reads. The BSD name is on the child\nIOMedia rather than the driver, so partitions cannot be double-counted.\n\nNetwork counters come from sysctl(NET_RT_IFLIST2), deliberately NOT\ngetifaddrs: struct if_data carries 32-bit byte counters that wrap every\n4 GiB, and this machine was already at 77% of that ceiling on a single\nboot, so the wrap would have produced a plausible wrong rate rather than\nan obvious failure. A test pins the 64-bit-ness by type, since a value\nassertion cannot catch a narrowing.\n\nVerified against independent oracles under time-bounded load: disk\n947 MB/s vs iostat 896 MB/s, net 60.89 MB/s vs netstat 59.54 MB/s, both\n0 B/s idle. Perf A/B over four interleaved passes flips direction and is\nsmaller than main's spread against itself.\n\nAdds NOTES section 6c, the macOS parity list, which did not exist.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T10:25:22-07:00",
+          "tree_id": "04f39ff5848789f11d27207ae26ccdba54f9ca06",
+          "url": "https://github.com/l1a/retch/commit/4241edfab5176835d7c0d9e97352207843fd3a01"
+        },
+        "date": 1789061172518,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 608882225.8799999
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 709552579.78
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 32597757.44
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 48460703.34000001
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 686077045.0200001
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 735900861.9200002
           }
         ]
       }
