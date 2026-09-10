@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789064281038,
+  "lastUpdate": 1789064284323,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17352,70 +17352,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "521364f30839992fda65499538a01a44bc4f11bb",
-          "message": "fix(display): constrain graphic logo height, normalize audio, and wrap lines to terminal width (#186)\n\n* fix(display): reduce logo height and wrap long info lines\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(display): constrain graphic logo height and wrap below-logo lines to full terminal width\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(sysinfo): normalize and deduplicate Windows audio device names\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(sysinfo): evaluate soundwire before streaming filter in normalize_win_audio_device\n\nAssisted-By: Gemini 3.6 Flash",
-          "timestamp": "2026-08-10T14:10:09-07:00",
-          "tree_id": "8526b53eccb25ed2a964d63d08a63e698c00c32f",
-          "url": "https://github.com/l1a/retch/commit/521364f30839992fda65499538a01a44bc4f11bb"
-        },
-        "date": 1786398086747,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 216.1651294524223,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.720145252494483,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 134.1004741851806,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 108.65377947064083,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 48303.873371600705,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 640.6735755345546,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 852.3056109708626,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2542209250,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "1177d194785c63e2058a99f5cffa5ef33577d9cb",
           "message": "ci: disable Claude Code Review workflow (#187)\n\nThe claude-review job no longer runs on pull requests: the\n`pull_request` trigger is replaced with `workflow_dispatch` and the\njob carries `if: false`, so it is off by default but can still be\ninvoked manually if wanted.\n\nBumps retch-cli 0.6.16 -> 0.6.17 (patch), refreshes Cargo.lock,\nregenerates docs/retch.1 for the new version footer, and updates the\nNOTES.md Current State header and release log.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-11T08:18:19-07:00",
@@ -20535,6 +20471,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1241688695,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bc63b79acb04f2fda7d3794adbeb4e39b1100c79",
+          "message": "Add vulkan, opengl and opencl on macOS (#238)\n\nCloses the second NOTES section 6c gap; the whole section 6 GPU-API\ngroup now reports on all three platforms.\n\nVulkan and OpenCL are the same code as Linux and Windows - those APIs\nare identical and only the loader filename differs, so mod dl and the\ntwo *_LIB constants simply widened. OpenGL needed a third module: Linux\nuses headless EGL, Windows needs WGL against a hidden window, and macOS\nuses CGL, which needs no window at all.\n\nThe CGL profile attribute decides the version reported. Omitting it, or\nrequesting the legacy profile, yields \"2.1 Metal - 90.5\" on a machine\nthat reports \"4.1 Metal - 90.5\" through a core profile - a silently\nhalved but perfectly plausible answer. Pinned by a test and watched\nfailing both as an assertion and in the live binary.\n\nmacOS system frameworks do not dlopen by short name; the absolute\nframework path is required or the field silently disappears.\n\nVulkan reports nothing on a stock Mac, which is correct - the platform\nships no Vulkan, only MoltenVK if a user installs it, and fastfetch\nprints no line here either.\n\nOpenGL output is byte-identical to fastfetch; OpenCL is deliberately\nricher, as on Linux. Stderr suppression stays Linux-only, with the\nmacOS no-op measured at 0 bytes rather than assumed.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T10:47:28-07:00",
+          "tree_id": "0a28263a93b2ec1421310329e0504de227481903",
+          "url": "https://github.com/l1a/retch/commit/bc63b79acb04f2fda7d3794adbeb4e39b1100c79"
+        },
+        "date": 1789064277556,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 175.42570411898845,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.8217274878945227,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 100.16516796882925,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 75.65514863409622,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 32420.272573101724,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 424.4790142987649,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 613.9597850042934,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1644991710,
             "unit": "ns"
           }
         ]
