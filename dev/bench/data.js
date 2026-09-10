@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789063320819,
+  "lastUpdate": 1789063506588,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4470,6 +4470,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 711878928.38
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "1ee2c5241b06f37ce8b1b3efd943205a6cb1c825",
+          "message": "Add keyboard and mouse on macOS (#239)\n\nCloses the third NOTES section 6c gap.\n\nThe v0.7.0 finding still holds - on a unifying receiver no kernel-visible\nsignal separates a keyboard from a mouse - but macOS does not present the\nproblem in that form. It publishes one IOHIDDevice per HID interface, each\nwith its own PrimaryUsage, so the role is stated rather than inferred.\nThere is no ambiguous case, so no HID++ tiebreak and no under-reporting\nfallback are needed. A composite device is listed under both fields, which\nis correct: an internal keyboard-and-trackpad genuinely is both.\n\nretch lists a connected Bluetooth Magic Keyboard that fastfetch misses,\nverified genuinely connected rather than merely paired via\nsystem_profiler, since v0.10.2 recorded the opposite error on Windows.\n\nA test of mine could not fail: the first vendor-page assertion passed with\nthe page filter deleted, because every vendor-page interface in the\nfixture carries a usage the usage filter already rejects. Replaced with a\nsynthetic case pairing a vendor page with usage 6, labelled as such.\n\nRecords a new section 6c item found along the way: the macOS Bluetooth\nfield reports Off while devices are connected, because the property it\nreads no longer exists and unwrap_or(false) turns that into a claim.\nDeliberately not fixed blind - confirming the replacement property means\ntoggling the radio, which would disconnect the keyboard in use.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T11:04:15-07:00",
+          "tree_id": "2d1a45838a04419824ebea438feb8a37aa6724d0",
+          "url": "https://github.com/l1a/retch/commit/1ee2c5241b06f37ce8b1b3efd943205a6cb1c825"
+        },
+        "date": 1789063506588,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 629617547.48
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 727279430.98
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 32140513.620000005
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 47919725.92
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 696596845.8000001
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 729050199.9000001
           }
         ]
       }
