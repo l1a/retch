@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789050003652,
+  "lastUpdate": 1789050383200,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4991,12 +4991,12 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - fastfetch",
             "unit": "ns",
-            "value": 995797516.0
+            "value": 995797516
           },
           {
             "name": "CLI execution - retch --short",
             "unit": "ns",
-            "value": 34909512.0
+            "value": 34909512
           },
           {
             "name": "CLI execution - fastfetch -c none",
@@ -5006,101 +5006,17 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch --long",
             "unit": "ns",
-            "value": 224781410.0
+            "value": 224781410
           },
           {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
-            "value": 1278843340.0
+            "value": 1278843340
           }
         ]
       }
     ],
     "Linux x64 Benchmarks": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "464951f8ff41455093d91045e621a17b81124684",
-          "message": "fix(display): parse monitor vendor and panel model from EDID on Windows (#183)\n\n* fix(display): parse monitor EDID on Windows\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(display): extract monitor vendor and model on Windows\n\nAssisted-By: Gemini 3.6 Flash",
-          "timestamp": "2026-08-08T07:48:08-07:00",
-          "tree_id": "5029838743a7e4449bedecce22a3d07443557dd7",
-          "url": "https://github.com/l1a/retch/commit/464951f8ff41455093d91045e621a17b81124684"
-        },
-        "date": 1786200931261,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 860270606.15,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2230.937978861579,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 115.20491914305737,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.698298939559962,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 60.18649224830434,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 21087.924154552275,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 210788.79281040764,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 14776.203834350768,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 14872.74003910269,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1520350.0833649922,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 357.1801790473902,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 290.2070250840549,
-            "unit": "ns"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -9213,6 +9129,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 281.8423805414148,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d9c95abdb4afb03a77a881741c68173c407aa441",
+          "message": "Gate CPU refresh and load average by field (#235)\n\nTwo sysinfo calls in `collect()` ran on every invocation regardless of\nwhich fields were selected, and both reached for Windows performance\ncounters, whose first touch in a process costs ~180-195 ms.\n\n`System::load_average()` was ungated. It is now gated on the `load`\nfield and skipped outright on Windows, where sysinfo has no native\nsource and synthesises one from a PDH `\\System\\Cpu Queue Length`\ncounter sampled every 5 *seconds* into a process-local static seeded at\nzero -- so it has always returned 0.00 there and the caller's\n`avg.one > 0.0` guard has always discarded it. NOTES 6a has listed\n`load` as not implemented on Windows for a long time; the code did not\nknow.\n\n`CpuRefreshKind::everything()` became `cpu_refresh_kind()`, which asks\nonly for what a selected field reads. `everything()` sets `frequency`,\nand `windows/cpu.rs::init_cpus` calls `get_frequencies()` only when it\nis set: dropping it took `System::new_with_specifics` from 195.5 ms to\n0.5 ms with the CPU line unchanged, since brand and core count come\nfrom the static CPU list. `cpu-freq` still requests frequency;\n`cpu-usage` requests usage off Windows only, as the Windows arm has\ndiffed its own GetSystemTimes samples since v0.3.49. `cpu-cache` leaves\nthe gate entirely -- `detect_cpu_cache()` never touches `sys`.\n\nWindows, hyperfine after warmup, fastfetch 2.65.2:\n\n  --short   239.5 -> 50.6 ms   (fastfetch -c none 78.0)\n  default   348.0 -> 142.0 ms  (fastfetch 1188)\n  --long    502.0 -> 286.4 ms  (fastfetch -c all 1312)\n  --full     1.692 -> 1.445 s  (fastfetch -c all 1.334)\n\nOutput is unchanged on every platform, verified by diffing the rendered\nfield labels of the before and after binaries across all four modes.\n\nThe prior diagnosis in NOTES 6a -- that this was process startup -- was\nwrong, and is corrected there rather than deleted. Its per-field sweep\nused `--fields os` as the baseline, which pays the same ~200 ms, so\ndifferencing cancelled the constant being hunted. The real floor is\n`retch --version` at 17.9 ms against `fastfetch --version` at 46.8 ms.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T07:19:03-07:00",
+          "tree_id": "000f572e01652cb5b27e8e4af3aa02ebdd25a2a5",
+          "url": "https://github.com/l1a/retch/commit/d9c95abdb4afb03a77a881741c68173c407aa441"
+        },
+        "date": 1789050380760,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 997562364.3,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2071.1093009295355,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 113.15459170663591,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.8038225441210844,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 57.974882325950034,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 18060.76329527351,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 188789.73871407527,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12823.012992218135,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 12948.696669367382,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1422718.1064995183,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 378.41536352027595,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 245.97259574251729,
             "unit": "ns"
           }
         ]
