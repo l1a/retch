@@ -116,7 +116,11 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.13.2)
+## Current State (v0.13.3)
+- **v0.13.3 - post-release: packaging pinned to 0.13.2, next cycle opened** (packaging only; no runtime change).
+  - `packaging/aur` (PKGBUILD and .SRCINFO) and `packaging/copr/retch.spec` bumped to **0.13.2**, the version just released. Both track the last RELEASED tag, so they can only move after the tag exists.
+  - `Cargo.toml` -> **0.13.3**, which is what lets this be a normal gated PR rather than a commit straight to `main`: `just pr`'s version check compares against the last tag, so the packaging bump passes as long as it travels with the next version bump.
+  - `retch-cli` -> 0.13.3. Patch bump.
 - **v0.13.2 - Windows `--short` is now FASTER than fastfetch, and the previous diagnosis in
   this file was wrong** (`crates/sysinfo/src/fetch.rs`). Two ungated `sysinfo` calls were
   paying for Windows performance-counter setup on every run, in every mode, for values that
