@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789011931859,
+  "lastUpdate": 1789012461938,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20230,70 +20230,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "86f5803462d1608de8b7739c8dc6c69bc9c85a46",
-          "message": "Give Domain Search one shape per source (v0.6.12) (#177)\n\nCI dry-run output showed 'eth0: <domain>' on Ubuntu but a bare\n'<domain>' on Fedora. The difference is not platform-driven: the same\nOS flips format between jobs. Ubuntu in the build matrix runs on a bare\nrunner and takes the resolvectl path; Ubuntu in full-test runs in a\ncontainer with no systemd-resolved and falls back to resolv.conf.\nFedora is always containerised, so it only looked different from\nUbuntu.\n\nGrouping differed too: the resolvectl path returns one entry per\ninterface with domains joined, while the fallback returned one entry\nper domain and the display prints one line per entry, so 'search a b c'\nemitted three separate bare lines.\n\nRender the fallback in the same '<scope>: a, b' shape, scoped 'global'\n-- labelled honestly rather than attributed to an interface, since\nresolv.conf's search list carries no attribution. The parser stays\nfaithful to the file; the shape is imposed at the detect layer. macOS\nroutes through the same formatter. The resolvectl path is unchanged.\n\nWindows is deliberately not fixed here and is documented in NOTES 6a:\nits Domain reads the AD/primary suffix rather than the connection\nsuffix, and Domain Search has no Windows arm at all. Both need\nGetAdaptersAddresses and cannot be verified live without a Windows box.\n\nAssisted-By: Claude Fable 5",
-          "timestamp": "2026-07-26T19:35:39-07:00",
-          "tree_id": "b11c193d8bdb824b38e28d4104d2b63b410c8fea",
-          "url": "https://github.com/l1a/retch/commit/86f5803462d1608de8b7739c8dc6c69bc9c85a46"
-        },
-        "date": 1785122130759,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 104.86999537103786,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9486663197653504,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 101.01230814031238,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.16315339153257,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47967.29496806237,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 500.4914875541758,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 767.964817478043,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2574530000,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "3738fdb3ff66b18fc121092f4f086ea51ac0dc30",
           "message": "Fix release tooling: publish-check and nix hashes (v0.6.13) (#178)\n\npublish-check failed on every release: the retch-cli dry run cannot\nresolve its '=0.1.x' retch-sysinfo pin until sysinfo is actually on the\nindex, and a dry run never uploads. It now checks the sparse index via\na new crates_io_has_version.py helper and skips that leg with an\nexplanation instead of dying on 'failed to select a version'. Both\npublish recipes also skip retch-sysinfo when its version is already\npublished, which is the normal state for a CLI-only release.\n\ncalculate_nix_hashes.py was silently emitting a wrong cargoHash. Its\nsubstitutions matched only 'lib.fakeHash', so once package.nix held\nreal values they became no-ops, the temp build kept the previous\nrelease's hashes, it failed on a source-hash mismatch rather than the\nintended cargoHash mismatch, and the lenient parser returned that stale\nsource hash. That is why the published v0.6.12 cargoHash equals\nv0.6.8's hash. Patterns now match a literal hash too, are line-anchored,\nand hard-error when they match nothing; the parser only accepts a hash\nreported against our own dummy.\n\nRefresh the in-repo packaging reference copies to the released v0.6.12.\npackage.nix keeps the genuine src hash but resets cargoHash to\nlib.fakeHash rather than carrying the corrupt value -- recompute with\n'just nix-update' on a machine with Nix.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-07-26T20:14:41-07:00",
@@ -23413,6 +23349,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1362161645,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b98586fcaf91d5bbfb79234a923b28c446efe3ad",
+          "message": "Add OpenGL on Windows via WGL (#233)\n\nCompletes the Windows half of the GPU-API group: all three now report\nthere, and NOTES §6a's opengl item is closed. Output is byte-identical to\nfastfetch - 4.6.0 Compatibility Profile Context 25.20.32.06.251214.\n\nThis needed a different mechanism rather than a wider cfg, which is why it\nis its own module. Vulkan and OpenCL share one implementation across\nplatforms because those APIs are identical and only the loader filename\ndiffers. OpenGL cannot: the Linux path takes a context from EGL with no\nwindow and no display server, and stock Windows ships no EGL. Windows has\nno headless equivalent in the base OS - WGL needs a device context, a DC\nneeds a window, and a window needs a registered class. So the Windows arm\nregisters a class, creates a 1x1 window, sets a pixel format, creates a\ncontext, reads GL_VERSION, and tears it all down.\n\nThe window is created hidden and never shown, and that was measured rather\nthan asserted. FindWindowEx plus IsWindowVisible were polled across 60\nback-to-back probe runs: the window was observed 134869 times in 722764\npolls and was VISIBLE 0 times. The observation count is the important half\n- it is the positive control proving the check could see the window at\nall. Counting conhost processes is not a valid oracle for this, per\n~/AGENTS.md: CREATE_NO_WINDOW still spawns a console.\n\nThe OS handles are wrapped in a guard type that unwinds on drop, in the\nreverse of acquisition order. Releasing them by hand at each ? is how a\nwindow or class leaks, and a leaked class makes a second registration in\nthe same process fail - which would present as \"no OpenGL\" rather than as\nan error. The pixel format must be set before wglCreateContext, whose\nabsence presents as a null handle rather than an error code; and\nwglMakeCurrent(NULL, NULL) precedes wglDeleteContext because deleting a\ncontext current to the calling thread is documented to fail.\n\nuser32 and gdi32 are linked rather than loaded at runtime, unlike the\ngraphics loaders: they are core OS libraries present wherever the binary\nruns at all, and display.rs already links user32 on the same grounds.\nopengl32 is loaded at runtime, because a machine with no OpenGL ICD is a\nreal case that must yield an absent field.\n\nPerf is a real cost of ~65-90 ms on --full, and the isolated figure is\nmuch larger: the probe alone measures 878.3 ms against a 410.7 ms floor,\n3-4x what vulkan or opencl cost, because a window plus a GL context is\nheavier than a loader query. Most of it overlaps in the concurrent scope.\nInterleaved and repeated against a main binary, --full came out 6891.9 vs\n6801.2 ms and 6853.0 vs 6788.1 ms - slower in both passes, so not noise.\nThe first attempt at that measurement was too noisy to quote and was\nre-run rather than reported.\n\nLayout guards for PIXELFORMATDESCRIPTOR (40 bytes) and WNDCLASSW (72),\nwatched failing against a mutated size: nSize is filled from size_of, so\nstruct drift would hand ChoosePixelFormat a wrong size silently.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T20:14:36-07:00",
+          "tree_id": "de374859311d050c1382c91af1769de281270bf7",
+          "url": "https://github.com/l1a/retch/commit/b98586fcaf91d5bbfb79234a923b28c446efe3ad"
+        },
+        "date": 1789012457690,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 181.79856604523476,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.969086152307681,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 102.80588003286785,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 85.40231683859201,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46032.69824517476,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 487.16861353908206,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 767.5604681810531,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1560099910,
             "unit": "ns"
           }
         ]
