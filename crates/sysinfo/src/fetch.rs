@@ -1669,9 +1669,63 @@ fn detect_login_manager() -> Option<String> {
         let unit = target.file_name().and_then(|n| n.to_str())?;
         login_manager_from_unit(unit)
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "macos")]
+    {
+        // macOS has exactly one login manager and always has: loginwindow. There is no
+        // choice to detect, so the only informative part is its version, which is what
+        // fastfetch reports too ("Login Window 9.0").
+        let plist = std::fs::read_to_string(LOGINWINDOW_PLIST).ok()?;
+        Some(format_login_window(parse_plist_string(
+            &plist,
+            "CFBundleShortVersionString",
+        )))
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
         None
+    }
+}
+
+/// Path to loginwindow's bundle metadata.
+#[cfg(target_os = "macos")]
+const LOGINWINDOW_PLIST: &str = "/System/Library/CoreServices/loginwindow.app/Contents/Info.plist";
+
+/// Extract a `<string>` value for `key` from an XML property list.
+///
+/// **Deliberately a small scanner rather than a plist dependency or a `defaults` call.**
+/// This file is plain XML on macOS 26 (verified: it begins `<?xml ve`, not `bplist`), the
+/// crate has a zero-subprocess policy for detection, and pulling in a plist parser to read
+/// one string would be disproportionate. It is pure, so it is unit-tested against a
+/// verbatim excerpt rather than the host's own file.
+///
+/// Returns `None` rather than guessing if the structure is not the expected
+/// `<key>K</key><string>V</string>` pairing — a version is better omitted than invented.
+#[cfg(any(target_os = "macos", test))]
+fn parse_plist_string(xml: &str, key: &str) -> Option<String> {
+    let needle = format!("<key>{key}</key>");
+    let rest = xml.split_once(&needle)?.1;
+    let open = rest.find("<string>")?;
+    // Guard against the key's value being a non-string type: if another <key> appears
+    // before the next <string>, this key does not have a string value.
+    if let Some(next_key) = rest.find("<key>") {
+        if next_key < open {
+            return None;
+        }
+    }
+    let after = &rest[open + "<string>".len()..];
+    let end = after.find("</string>")?;
+    let value = after[..end].trim();
+    (!value.is_empty()).then(|| value.to_string())
+}
+
+/// Render the macOS login manager, with its version when one could be read.
+///
+/// Pure and separate from the file read so the formatting is testable without `/System`.
+#[cfg(any(target_os = "macos", test))]
+fn format_login_window(version: Option<String>) -> String {
+    match version {
+        Some(v) => format!("Login Window {v}"),
+        None => "Login Window".to_string(),
     }
 }
 
@@ -1757,7 +1811,21 @@ fn detect_brightness() -> Option<String> {
         }
         None
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "macos")]
+    {
+        let (value, min, max) = crate::macos_ffi::get_backlight_brightness()?;
+        // Rebased onto the shared `brightness_percent(cur, max)` helper by subtracting the
+        // floor, so the percentage arithmetic lives in one tested place rather than two.
+        // macOS reports min = 0 in practice (measured: 0 / 32768 / 65536), but the range
+        // is expressed as a triple and a nonzero floor would otherwise inflate the figure.
+        let span = max.checked_sub(min)?;
+        let level = value.checked_sub(min)?;
+        if span <= 0 || level < 0 {
+            return None;
+        }
+        brightness_percent(level as u64, span as u64)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
         None
     }
@@ -1767,7 +1835,11 @@ fn detect_brightness() -> Option<String> {
 ///
 /// Returns `None` when `max` is 0 (divide-by-zero guard). Split out from
 /// [`detect_brightness`] so it is unit-testable without a real backlight device.
-#[cfg(target_os = "linux")]
+///
+/// Shared by both backlight arms: Linux passes the raw `brightness`/`max_brightness`
+/// pair, and macOS passes the `AppleARMBacklight` triple rebased onto a zero floor, so
+/// the percentage arithmetic exists in exactly one tested place.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn brightness_percent(cur: u64, max: u64) -> Option<String> {
     if max == 0 {
         return None;
@@ -1811,9 +1883,33 @@ fn detect_power_adapter() -> Option<String> {
         }
         None
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "macos")]
+    {
+        // `IOPSCopyExternalPowerAdapterDetails` returns NULL on battery, so absence *is*
+        // the unplugged signal and there is no separate flag to read. It also exposes no
+        // `Name`, so macOS reports the wattage the Linux arm cannot — the reverse of the
+        // Linux trade, and the reason these two arms format differently.
+        let watts = crate::macos_ffi::get_power_adapter_watts()?;
+        Some(format_power_adapter_watts(watts))
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
         None
+    }
+}
+
+/// Render a macOS power adapter from its wattage.
+///
+/// Separate from [`format_power_adapter`] because the two platforms have different facts
+/// to report: Linux has a supply *name* and an `online` flag but no wattage; macOS has
+/// wattage and no name, and reports nothing at all when unplugged. A non-positive wattage
+/// is dropped rather than printed — `0W (connected)` describes no real adapter.
+#[cfg(any(target_os = "macos", test))]
+fn format_power_adapter_watts(watts: i64) -> String {
+    if watts > 0 {
+        format!("{watts}W (connected)")
+    } else {
+        "connected".to_string()
     }
 }
 
@@ -2035,7 +2131,7 @@ mod tests {
         assert_eq!(login_manager_from_unit(".service").as_deref(), None);
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     #[test]
     fn test_brightness_percent() {
         assert_eq!(brightness_percent(50, 100).as_deref(), Some("50%"));
@@ -2045,6 +2141,90 @@ mod tests {
         assert_eq!(brightness_percent(133, 255).as_deref(), Some("52%"));
         // Divide-by-zero guard.
         assert_eq!(brightness_percent(10, 0), None);
+    }
+
+    /// Verbatim excerpt from `/System/Library/CoreServices/loginwindow.app/Contents/
+    /// Info.plist` on macOS 26 — the file is plain XML there, not a binary plist, which is
+    /// what makes a dependency-free scan reasonable.
+    #[test]
+    fn test_parse_plist_string() {
+        const PLIST: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>loginwindow</string>
+	<key>CFBundleShortVersionString</key>
+	<string>9.0</string>
+	<key>CFBundleVersion</key>
+	<string>3085.6.3</string>
+</dict>
+</plist>"#;
+        assert_eq!(
+            parse_plist_string(PLIST, "CFBundleShortVersionString").as_deref(),
+            Some("9.0")
+        );
+        assert_eq!(
+            parse_plist_string(PLIST, "CFBundleVersion").as_deref(),
+            Some("3085.6.3")
+        );
+        // A key that is not present yields None rather than the next string in the file,
+        // which is the failure mode a naive scan would have.
+        assert_eq!(parse_plist_string(PLIST, "NoSuchKey"), None);
+    }
+
+    /// A key whose value is not a string must not borrow the *next* key's string.
+    ///
+    /// Without the intervening-`<key>` guard this returns `"unrelated"` for `Flag` — a
+    /// confidently wrong version number rather than an absent one.
+    #[test]
+    fn test_parse_plist_string_rejects_a_non_string_value() {
+        const PLIST: &str = r#"<dict>
+	<key>Flag</key>
+	<true/>
+	<key>Other</key>
+	<string>unrelated</string>
+</dict>"#;
+        assert_eq!(parse_plist_string(PLIST, "Flag"), None);
+        assert_eq!(
+            parse_plist_string(PLIST, "Other").as_deref(),
+            Some("unrelated")
+        );
+    }
+
+    #[test]
+    fn test_format_login_window() {
+        assert_eq!(format_login_window(Some("9.0".into())), "Login Window 9.0");
+        // No version read: still name the manager rather than reporting nothing, since
+        // macOS always has exactly one and its presence is not in doubt.
+        assert_eq!(format_login_window(None), "Login Window");
+    }
+
+    #[test]
+    fn test_format_power_adapter_watts() {
+        assert_eq!(format_power_adapter_watts(96), "96W (connected)");
+        // A non-positive wattage describes no real adapter, so the number is dropped
+        // rather than printed as "0W (connected)".
+        assert_eq!(format_power_adapter_watts(0), "connected");
+        assert_eq!(format_power_adapter_watts(-1), "connected");
+    }
+
+    /// The macOS backlight triple is rebased onto a zero floor before being handed to the
+    /// shared percentage helper. Pins that arithmetic with the values this machine
+    /// actually reports, plus a nonzero-floor case the hardware here does not produce.
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[test]
+    fn test_backlight_triple_rebasing() {
+        // Measured on an M3 Pro: value 32768, min 0, max 65536.
+        assert_eq!(
+            brightness_percent((32768i64 - 0) as u64, (65536i64 - 0) as u64).as_deref(),
+            Some("50%")
+        );
+        // A nonzero floor must not inflate the reading: halfway between 100 and 300 is
+        // 50%, not the 67% a naive value/max would give.
+        assert_eq!(
+            brightness_percent((200i64 - 100) as u64, (300i64 - 100) as u64).as_deref(),
+            Some("50%")
+        );
     }
 
     #[cfg(target_os = "linux")]

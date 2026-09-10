@@ -119,7 +119,7 @@ You can generate a starting configuration with:
   - `bootmgr`: Second-stage bootloader (GRUB, systemd-boot, etc.).
   - `tpm`: Trusted Platform Module specification version (`2.0`, `1.2`), read from `/sys/class/tpm`. Omitted when no TPM is present or its version cannot be read. Linux only. Long mode and above.
   - `display`: Connected monitor displays with refresh rates and resolution.
-  - `brightness`: Current backlight brightness as a percentage (from `/sys/class/backlight`). Linux only. Long mode and above.
+  - `brightness`: Current backlight brightness as a percentage. Linux reads `/sys/class/backlight`; macOS reads the IOKit `AppleARMBacklight` service's `IODisplayParameters` (the classic `IODisplayConnect` path does not exist on Apple Silicon). Internal panel only on both — an external display has no backlight service. Linux and macOS. Long mode and above.
   - `audio`: Audio card controller and active sound servers (PipeWire, PulseAudio, ALSA, CoreAudio, Windows Audio).
   - `camera`: Connected camera/webcam names.
   - `gamepad`: Connected gamepad/controller names.
@@ -146,7 +146,7 @@ You can generate a starting configuration with:
   - `domain-search`: DNS search domain lists, one entry per scope, formatted as `scope: a, b`. The scope is the interface name when per-interface data is available (from `resolvectl status`), or `global` when falling back to `/etc/resolv.conf`'s `search` list, which carries no interface attribution. Full mode only.
   - `bluetooth`: Bluetooth adapter details and connected device count/names.
   - `battery`: Battery capacity, vendor/model, time remaining, and health. On Windows this reads the battery device directly (`IOCTL_BATTERY_QUERY_INFORMATION`) rather than via PowerShell — no subprocess and no elevation. Health is shown only when it is below 99%.
-  - `power-adapter`: AC power adapter name and connection state (from `/sys/class/power_supply` `Mains` supply). Linux only. Long mode and above.
+  - `power-adapter`: The attached AC power adapter. Linux reports the supply's **name** and connection state (from `/sys/class/power_supply` `Mains`); macOS reports its **wattage** (from `IOPSCopyExternalPowerAdapterDetails`, e.g. `96W (connected)`), because macOS exposes wattage but no adapter name and Linux the reverse. On macOS the field is absent when nothing is plugged in — that call returns nothing on battery, so absence is the unplugged signal. Linux and macOS. Long mode and above.
   - `shell`: Currently running shell name and version (e.g. bash, zsh, fish, nu). Detected from the process tree; falls back to `$SHELL` (login shell).
   - `editor`: Default editor from `$VISUAL` / `$EDITOR`.
   - `terminal`: Terminal emulator name and version.
@@ -154,7 +154,7 @@ You can generate a starting configuration with:
   - `terminal-size`: Terminal dimensions (columns × rows).
   - `desktop`: Desktop environment name (e.g. GNOME, KDE Plasma, XFCE).
   - `wm`: Window manager name (e.g. Mutter, KWin, Sway). Hidden when identical to Desktop.
-  - `login-manager`: Active display/login manager (GDM, SDDM, LightDM, greetd, …), resolved from the `display-manager.service` systemd unit. Linux only. Long mode and above.
+  - `login-manager`: Active display/login manager. On Linux, resolved from the `display-manager.service` systemd unit (GDM, SDDM, LightDM, greetd, …). On macOS there is only ever one — `loginwindow` — so the field reports it with its version, e.g. `Login Window 9.0`. Linux and macOS. Long mode and above.
   - `player`: Active media player name and playback status (e.g. Spotify (Playing), VLC media player). Long mode and above.
   - `media`: Currently playing song/track title and artist. Long mode and above.
   - `wm-theme`: Window manager frame / decoration theme (e.g. Breeze, Adwaita, Yaru, Greybird, Aqua, Aero). Full mode only by default.
