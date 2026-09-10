@@ -176,6 +176,13 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
     decide whether a drifted packaging file can reach a commit, and until now a PR touching
     only a guard matched no filter and got no packaging verification at all — the v0.9.6
     `Justfile` hole, one directory over.
+  - **`brew install <path>` does not work any more, and CI is what found it.** The obvious
+    invocation — `brew install --build-from-source ./packaging/homebrew/retch.rb` — is
+    rejected outright by modern Homebrew: *"Homebrew requires formulae to be in a tap"*.
+    The job now stages the formula in a throwaway `brew tap-new --no-git local/test` and
+    installs from there, which is also the **more faithful** test: it is exactly the path
+    a user takes via `brew tap l1a/retch`. This is the concrete argument for having put
+    the install in CI rather than trusting a formula that merely parses.
   - **Verification limit, recorded rather than papered over.** The formula was **not**
     installed locally: `depends_on "rust" => :build` would have pulled ~350 MB into the
     development machine's Homebrew. Local verification was `ruby -c` (Syntax OK), the

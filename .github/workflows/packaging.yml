@@ -355,23 +355,39 @@ jobs:
           echo "actual sha256 $ACTUAL"
           [ "$ACTUAL" = "$DECLARED" ] || { echo "::error::checksum mismatch for v$VER"; exit 1; }
 
+      # The formula has to be installed THROUGH A TAP, not from a path.
+      #
+      # `brew install ./packaging/homebrew/retch.rb` is the obvious thing to write and
+      # modern Homebrew rejects it outright: "Homebrew requires formulae to be in a tap".
+      # So this creates a throwaway local tap and installs from there — which is also the
+      # more faithful test, because it is exactly the path a user takes via
+      # `brew tap l1a/retch`.
+      #
+      # `--no-git` because the tap is discarded with the runner; there is nothing to commit.
+      - name: Stage the formula in a local tap
+        run: |
+          set -euo pipefail
+          brew tap-new --no-git local/test
+          cp packaging/homebrew/retch.rb "$(brew --repository local/test)/Formula/retch.rb"
+          echo "staged at $(brew --repository local/test)/Formula/retch.rb"
+
       # The real test. --build-from-source because there is no bottle, and there is
       # deliberately no bottle (see the formula's own comment block).
       - name: Install from source
-        run: brew install --build-from-source --formula ./packaging/homebrew/retch.rb
+        run: brew install --build-from-source local/test/retch
 
       # `brew test` runs the formula's own `test do` block: the binary runs, reports the
       # version the formula claims, can actually probe the machine, and the man page is
       # installed with a real version footer rather than a `$DATE` placeholder.
       - name: Run the formula's test block
-        run: brew test retch
+        run: brew test local/test/retch
 
       # Assert the payload directly as well, rather than trusting the test block alone —
       # the `aur` job inspects its packaged man page for the same reason.
       - name: Inspect the installed payload
         run: |
           set -euo pipefail
-          PREFIX=$(brew --prefix retch)
+          PREFIX=$(brew --prefix local/test/retch)
           echo "prefix: $PREFIX"
           test -x "$PREFIX/bin/retch"
           "$PREFIX/bin/retch" --version
