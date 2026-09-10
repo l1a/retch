@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789063245955,
+  "lastUpdate": 1789063320819,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20500,70 +20500,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "622cf3b843fc5f6286cad91442e7bd41af2fdf12",
-          "message": "Bump 4 deps and fix man page font-run strip (#184)\n\nConsolidates Dependabot #182 onto a gated branch so the release-hygiene\nsteps Dependabot skips (version bump, NOTES entry, man regen) are done.\n\nDependencies (cargo-dependencies group, lockfile-only — every spec is a\ncaret range, so Cargo.toml is untouched):\n  clap          4.6.4 -> 4.6.5  (clap_builder 4.6.2 -> 4.6.5)\n  toml          1.1.3 -> 1.1.4  (toml_parser  1.1.2 -> 1.1.3)\n  clap_complete 4.6.7 -> 4.6.8\n  base64        0.23.0 -> 0.23.1\n\nThe resulting Cargo.lock is byte-identical to what Dependabot generated.\n\nAlso fixes the `just man` font-collapsing sed, which has never worked on\nany platform. mandown emits redundant \\fB\\fB...\\fP\\fP runs and the recipe\ncarried `s/\\fB\\fB/\\fB/g` to strip them, but GNU sed reads \\f as the\nform-feed escape rather than backslash-then-f, so the pattern only ever\nmatched form feeds that groff output never contains. This is why\ndocs/retch.1 kept flip-flopping between machines: v0.6.2 concluded the\nstrip merely \"didn't take effect on Windows\", when in fact Linux was not\nstripping anything either — its mandown build just doesn't emit the\ndoubled runs. Matching the backslash as [\\] and carrying it out through a\ncapture group keeps any backslash escape off the replacement side.\n\nWith the fix, `just man` on Windows reproduces byte-for-byte the file a\nLinux `just man` produces, so the regen check in `just pr` no longer\ndepends on which machine last ran it. The regenerated page drops 21\ndoubled font runs and changes nothing else but the version footer.\n\nretch-sysinfo unchanged at 0.1.51; no Rust source touched.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-09T07:06:33-07:00",
-          "tree_id": "15f29415e43f3e3f4f04318b070cc8c16695ac9a",
-          "url": "https://github.com/l1a/retch/commit/622cf3b843fc5f6286cad91442e7bd41af2fdf12"
-        },
-        "date": 1786286964753,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 179.98561211855358,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.948651640036006,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 101.04042254832609,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.90606608903099,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46542.9459701875,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 496.7132038471762,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 751.8543766534048,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2620748120,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "30f2bc0d85fda967af17b3472e2784627296f331",
           "message": "fix(justfile): make install and man recipes portable (#185)\n\nAssisted-By: Gemini 3.6 Flash",
           "timestamp": "2026-08-10T13:24:44-07:00",
@@ -23683,6 +23619,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 789749250,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4241edfab5176835d7c0d9e97352207843fd3a01",
+          "message": "Add disk-io and net-io on macOS (#237)\n\nBoth fields shipped Linux-only in v0.10.0 and gained Windows arms in\nv0.11.0; on macOS they returned nothing. Nothing above the two sample_*\nfunctions changed - the rate arithmetic, the 100 ms floor and the\nsampling window were already platform-independent.\n\nDisk counters come from the IOKit IOBlockStorageDriver \"Statistics\"\ndictionary, the source iostat reads. The BSD name is on the child\nIOMedia rather than the driver, so partitions cannot be double-counted.\n\nNetwork counters come from sysctl(NET_RT_IFLIST2), deliberately NOT\ngetifaddrs: struct if_data carries 32-bit byte counters that wrap every\n4 GiB, and this machine was already at 77% of that ceiling on a single\nboot, so the wrap would have produced a plausible wrong rate rather than\nan obvious failure. A test pins the 64-bit-ness by type, since a value\nassertion cannot catch a narrowing.\n\nVerified against independent oracles under time-bounded load: disk\n947 MB/s vs iostat 896 MB/s, net 60.89 MB/s vs netstat 59.54 MB/s, both\n0 B/s idle. Perf A/B over four interleaved passes flips direction and is\nsmaller than main's spread against itself.\n\nAdds NOTES section 6c, the macOS parity list, which did not exist.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T10:25:22-07:00",
+          "tree_id": "04f39ff5848789f11d27207ae26ccdba54f9ca06",
+          "url": "https://github.com/l1a/retch/commit/4241edfab5176835d7c0d9e97352207843fd3a01"
+        },
+        "date": 1789063315393,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 183.25463546230924,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947091202096218,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.72272774053074,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.10268017445803,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 49200.29293157468,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 492.56874362609125,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 759.7486916806068,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2238230610,
             "unit": "ns"
           }
         ]
