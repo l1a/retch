@@ -176,6 +176,13 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
     decide whether a drifted packaging file can reach a commit, and until now a PR touching
     only a guard matched no filter and got no packaging verification at all — the v0.9.6
     `Justfile` hole, one directory over.
+  - **`brew test` is sandboxed with the network restricted, and that killed the first
+    test block.** It asserted on `retch --short`, which includes the `net` field, which
+    resolves the local IP with a UDP-connect — that blocks in the sandbox and the block
+    dies on `Timeout::Error` with nothing in the output pointing at the cause. Replaced
+    with `--fields os`, which proves the binary can probe the machine while touching only
+    local system calls (3.4 ms against `--short`'s 31 ms). **Third defect the `brew` CI
+    job caught that no amount of local reading would have.**
   - **`std_cargo_args` already passes `--locked`, and CI is what found that too.** The
     formula's first version added an explicit one, and cargo rejected it outright:
     *"the argument '--locked' cannot be used multiple times"*. The formula parsed, the

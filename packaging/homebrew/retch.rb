@@ -72,13 +72,19 @@ class Retch < Formula
   end
 
   test do
-    # Two assertions, and the second is the one with teeth. `--version` proves the binary
-    # runs and is the version the formula claims; `--short` proves it can actually probe
-    # the machine, which is the thing that would break under a sandbox or a missing
-    # framework link. `--short` is used rather than `--full` because it makes no network
-    # call and touches no slow field.
+    # `--version` proves the binary runs and is the version the formula claims.
     assert_match version.to_s, shell_output("#{bin}/retch --version")
-    assert_match(/OS:/, shell_output("#{bin}/retch --short --no-logo"))
+
+    # `--fields os` proves it can actually probe the machine — the thing that would break
+    # under a missing framework link — while touching nothing but local system calls.
+    #
+    # **NOT `--short`**, which was the first version of this and timed out in CI.
+    # `brew test` runs sandboxed with the network restricted, and `--short` includes the
+    # `net` field, which resolves the local IP with a UDP-connect. That blocks in the
+    # sandbox and the whole test block dies on `Timeout::Error` with nothing pointing at
+    # the cause. `--fields os` is 3.4 ms against `--short`'s 31 ms and reaches no network
+    # at all.
+    assert_match(/OS:/, shell_output("#{bin}/retch --fields os --no-logo"))
 
     # The man page must be installed and carry a real version footer — the `$DATE` /
     # `$pkgver` defect the AUR package shipped for months would pass a mere existence check.
