@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789066654536,
+  "lastUpdate": 1789066808914,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20662,70 +20662,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "1177d194785c63e2058a99f5cffa5ef33577d9cb",
-          "message": "ci: disable Claude Code Review workflow (#187)\n\nThe claude-review job no longer runs on pull requests: the\n`pull_request` trigger is replaced with `workflow_dispatch` and the\njob carries `if: false`, so it is off by default but can still be\ninvoked manually if wanted.\n\nBumps retch-cli 0.6.16 -> 0.6.17 (patch), refreshes Cargo.lock,\nregenerates docs/retch.1 for the new version footer, and updates the\nNOTES.md Current State header and release log.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-11T08:18:19-07:00",
-          "tree_id": "5edf46dce11e5ab7293d0a0411af8f9341a70b2b",
-          "url": "https://github.com/l1a/retch/commit/1177d194785c63e2058a99f5cffa5ef33577d9cb"
-        },
-        "date": 1786463990244,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 181.3855455990951,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.948044542483151,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 105.50389035274486,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 83.3422854250223,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46471.919254129556,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 497.84295882348414,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 738.0833764443303,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1854522285,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "1d0dc367f9ad44e2a04cc045891998fa9d9b1aae",
           "message": "fix: unprivileged Packages, sudo Rio, logo aspect (#189)\n\nThree defects found by diffing `sudo retch --full` against a plain run.\n\nPackages appeared only under sudo. The RPM SQLite database was opened\nread-write; it is root-owned inside a root-owned directory, so SQLite\ncould not create its journal sidecars and every *query* failed with\n\"attempt to write a readonly database\" — not the open(), which is why\nthe existing warning never fired and the field vanished silently. Now\nopened read-only over a `file:...?immutable=1` URI, and the query error\nis reported instead of swallowed.\n\nRio lost all graphics support under sudo: it was identified only by\nTERM_PROGRAM, which env_reset drops. `is_rio_terminal` now also accepts\nTERM=rio/xterm-rio, which sudo preserves.\n\nThe Kitty logo was stretched ~3x vertically. `c=26,r=10` was hardcoded\nand Kitty forces an image into that rectangle, while display.rs assumed\na fixed 40-column width and derived the row count a third way. A single\npure `fit_logo_cells` now feeds all three protocol emitters and\nplan_layout. Passing both correct values still left a 9% stretch from\ncell quantisation, so the Kitty spec carries only the limiting dimension\nand lets Kitty derive the other — measured 0.0% aspect error in a PTY.\n\nThe chafa box widens 28 -> 45 columns (row cap unchanged at 10) so wide\nlockup assets stay legible: the Fedora logo goes from 4 rows to 7. The\nside-by-side threshold is unaffected (45 + 45 <= 95), pinned by a test.\n\nAlso fixes a test-isolation defect the change exposed: once\nsupports_iterm2 read TERM, the host's TERM leaked into a test that\nguarded only TERM_PROGRAM, failing on a Rio box and passing on CI.\n\nDocuments the privilege trade-off in both directions (root-only\nphys-mem and btrfs snapshot counts; user-only editor/desktop/wm) in a\nnew NOTES section, README, and a man-page PRIVILEGES section.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-11T17:52:19-07:00",
@@ -23845,6 +23781,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1392902845,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a49bc080a0818239b038099299f0b576322b9d1c",
+          "message": "Add login-manager, brightness and power-adapter on macOS (#240)\n\nCloses the fourth NOTES section 6c gap - the same three fields v0.5.0\nadded for Linux, grouped the same way.\n\nThe documented IOKit brightness path does not exist on Apple Silicon:\nIODisplayConnect, AppleBacklightDisplay, AppleCLCD2 and\nIOMobileFramebufferShim all return nothing. AppleARMBacklight carries it,\nin a nested IODisplayParameters/brightness sub-dictionary. The triple is\nrebased onto a zero floor and handed to the existing brightness_percent\nhelper so the arithmetic stays in one tested place. fastfetch reports no\nBrightness at all here, so retch is ahead of it.\n\nmacOS and Linux have opposite facts available for the power adapter:\nmacOS exposes Watts but no Name, Linux the reverse. So macOS reports\n\"96W (connected)\" and finally reports the wattage section 6 recorded as\nnot yet reported. The call returns NULL on battery, so absence is the\nunplugged signal.\n\nmacOS has exactly one login manager, so the informative part is its\nversion. loginwindow's Info.plist is plain XML on macOS 26, so a small\npure scanner suffices - no plist dependency and no subprocess. It guards\nagainst borrowing the next key's value, which would yield a confidently\nwrong version rather than an absent one.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T11:19:27-07:00",
+          "tree_id": "e0292b25168a92d954d635ffbe1452d24976de2f",
+          "url": "https://github.com/l1a/retch/commit/a49bc080a0818239b038099299f0b576322b9d1c"
+        },
+        "date": 1789066804651,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 184.4177818258474,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.958227770125313,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.89689536218864,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.41966650724572,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47590.38016077348,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 496.66775332318764,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 763.9939227255622,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1144327445,
             "unit": "ns"
           }
         ]
