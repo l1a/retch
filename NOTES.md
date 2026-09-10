@@ -116,7 +116,57 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.13.0)
+## Current State (v0.13.1)
+- **v0.13.1 - `battery` reads the device instead of spawning PowerShell (Windows), and
+  Windows `--long` is now FASTER than fastfetch** (`crates/sysinfo/src/battery.rs`,
+  `crates/sysinfo/src/win_setupapi.rs`). The last PowerShell spawn in `--long` is gone.
+  - **The headline is the mode, not the field.** `--long` on Windows measured **668.0 ms
+    (min 604)** against `fastfetch -c all` at **1330-1477 ms** - roughly **2x faster**,
+    where it had been 1.3-2.3x *slower*. **NOTES §3's blocking condition is now satisfied
+    for `--long` on Windows**; `--short` is still behind and is a separate problem (see §6a).
+  - **The field itself went from ~2531 ms to ~10 ms of marginal cost**: `--fields battery`
+    measures **324.2 ± 22.9 ms** against a `--fields os` floor of **314.4 ± 14.4 ms**, i.e.
+    it now costs essentially nothing over process startup. Before, it was ~2209 ms *over*
+    that floor - the single slowest field on the platform.
+  - **It also reports strictly MORE than the spawn did, which was the surprise.**
+    `Win32_Battery` returned `DesignCapacity`, `FullChargeCapacity` **and** `Manufacturer`
+    as **empty** on this machine, so ~2.5 s of PowerShell bought a model name and nothing
+    else. The device answers all of them:
+    `40% (2h 54m remaining, discharging, 98% health) [ASUSTeK ASUS Battery]` against the old
+    `42% (3h 28m remaining, discharging)`.
+  - **Access rights were measured rather than copied from the MSDN sample.** The battery
+    IOCTLs are `FILE_READ_ACCESS`: a zero-access handle fails them with
+    `ERROR_ACCESS_DENIED` (5), unlike the `FILE_ANY_ACCESS` storage IOCTLs in `disk.rs` that
+    v0.3.46 deliberately chose. `GENERIC_READ` alone works and is what this uses; the usual
+    sample code asks for `GENERIC_READ | GENERIC_WRITE`. No elevation either way.
+  - **`win_setupapi` gained device-interface *path* enumeration**
+    (`present_interface_device_paths`). It previously returned only friendly *names*, which
+    cannot be opened; a path is what `CreateFileW` takes, so this is the entry point for any
+    probe that needs to talk to a device rather than name it.
+  - **THE BUG I SHIPPED INTO MY OWN DRAFT, worth recording because it is silent.**
+    `SP_DEVICE_INTERFACE_DETAIL_DATA_W` is `{ DWORD cbSize; WCHAR DevicePath[]; }`. Its
+    `cbSize` must be set to **8** on x64 - the size of the fixed part, rounded up by the
+    DWORD's alignment - but `DevicePath` begins at offset **4**, immediately after the
+    DWORD. I used one constant for both and read the path from 8, **chopping the first two
+    characters off every device path**. The only symptom was `CreateFileW` failing to open a
+    device that plainly exists, which reads as "this machine has no battery" rather than as
+    a parsing error. The standalone probe had it right at 4; the port to the crate is where
+    it broke. Now two separately named constants, `DETAIL_CB_SIZE` and
+    `DETAIL_PATH_OFFSET`, with the trap documented at both.
+  - **`BATTERY_INFORMATION` is 36 bytes, not the 32 I predicted**, because `Technology` plus
+    3 reserved bytes plus the 4-byte `Chemistry` array fill two words ahead of the six
+    `ULONG`s. The probe printed "expect 32", got 36, **and returned correct capacities
+    anyway** - 73000 mWh designed, matching this machine's 73 Wh battery. The values
+    validated the layout; the prediction did not. Layout guard **watched failing** against
+    the wrong prediction.
+  - **A measurement caveat, recorded rather than hidden**: a second hyperfine pass hung
+    indefinitely on its `fastfetch -c all` leg and had to be killed. `fastfetch -c all` runs
+    fine standalone (1330 ms) immediately afterwards, so the hang was in that invocation,
+    not in fastfetch - but the figures quoted above come from the runs that **completed**,
+    not from the one that stalled.
+  - `retch-sysinfo` -> `0.1.66`; `retch-cli` -> `0.13.1`. Patch bump - the field already
+    existed and gains detail while losing a subprocess, the v0.6.18 / v0.10.2 / v0.11.2 call.
+
 - **v0.13.0 - `opengl` on Windows, via WGL against a hidden window**
   (`crates/sysinfo/src/gpu_api.rs`). Completes the Windows half of the §6 GPU-API group:
   all three now report there, and §6a's `opengl` item is closed.
@@ -2662,6 +2712,13 @@ Windows 11, Windows Terminal).
   loader filename differs (`vulkan-1.dll` / `OpenCL.dll` against the Linux sonames), which
   is why `mod dl` gained a Windows backend rather than the probes being duplicated.
 
+- ~~**Windows `--long` is slower than fastfetch**~~ — fixed v0.13.1, by the last
+  PowerShell spawn in that mode going native. `--long` now measures **668 ms (min 604)**
+  against `fastfetch -c all` at **1330–1477 ms**, i.e. roughly **2× faster**, where it had
+  been 1.3–2.3× slower. The pole was `battery` at ~2531 ms; it now costs ~10 ms over the
+  startup floor. The per-field sweep that located it is worth reusing: time each field with
+  `--fields <name>`, but **confirm the predicted win against the real mode** — that harness
+  mispredicted the `dns` win by an order of magnitude in v0.11.2.
 - ~~**`opengl` has no Windows implementation**~~ — fixed v0.13.0, and it needed a different
   mechanism rather than a wider `cfg`: WGL against a window created hidden and never shown,
   because stock Windows has no EGL and therefore no headless context. Output is
@@ -2669,15 +2726,18 @@ Windows 11, Windows Terminal).
   as Linux.**
 
 **Open**
-- **Windows `--full` and `--long` are slower than fastfetch** (~6.8 s and ~2.2–3.0 s against
-  `fastfetch -c all` at ~1.7 s), which NOTES §3 treats as blocking. A per-field sweep
-  (2026-09-09) put the startup floor at ~322 ms with 41 of 56 `--long` fields inside 20 ms of
-  it; `dns` was the pole and was fixed in v0.11.2, leaving **`battery` at ~2531 ms** as the
-  next target — it still spawns `powershell -Command "Get-CimInstance Win32_Battery …"`.
-  The native route is `GUID_DEVCLASS_BATTERY` via SetupAPI plus
-  `IOCTL_BATTERY_QUERY_INFORMATION`; `GetSystemPowerStatus` alone does not give design or
-  full-charge capacity. **Confirm any predicted win against the real mode, not against
-  `--fields`** — that harness mispredicted the `dns` win by an order of magnitude.
+- **Windows `--short` is slower than fastfetch, and no probe explains it.** `--short`
+  measures ~314–338 ms against `fastfetch -c none` at ~99 ms. The per-field sweep put the
+  process-startup floor at ~314–322 ms and found **41 of 56 `--long` fields within 20 ms of
+  it**, so in `--short` the fields are effectively free and *the floor itself is the cost*.
+  Nothing in the field-level work touches this; it is startup, not probing. NOTES §3 treats
+  slower-than-fastfetch as blocking, so this remains open even though `--long` no longer is.
+- **Windows `--full` is slower than fastfetch** (~6.9 s against `fastfetch -c all` at
+  ~1.3–1.5 s). Unlike `--long`, this was never traced to a single pole; the `--full`-only
+  fields (`weather` with its network timeout, the `vulkan`/`opengl`/`opencl` group at a
+  combined few hundred ms, all sensors rather than the consolidated view) are the obvious
+  candidates but **that is a hypothesis, not a measurement** — a `--full` per-field sweep
+  has not been run.
 - **Logo renders above the text, not beside it (upper-right)** on Windows Terminal
   (CLI/rendering, retch-cli `src/`). Likely terminal-detection / cursor-positioning specific
   to Windows Terminal.

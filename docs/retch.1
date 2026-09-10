@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.13.0" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.13.1" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -236,7 +236,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]bluetooth\fP`: Bluetooth adapter details and connected device count/names\.
 .IP \(bu 4
-`\f[CR]battery\fP`: Battery capacity, vendor/model, time remaining, and health\.
+`\f[CR]battery\fP`: Battery capacity, vendor/model, time remaining, and health\. On Windows this reads the battery device directly (`\f[CR]IOCTL_BATTERY_QUERY_INFORMATION\fP`) rather than via PowerShell \-\- no subprocess and no elevation\. Health is shown only when it is below 99%\.
 .IP \(bu 4
 `\f[CR]power\-adapter\fP`: AC power adapter name and connection state (from `\f[CR]/sys/class/power_supply\fP` `\f[CR]Mains\fP` supply)\. Linux only\. Long mode and above\.
 .IP \(bu 4

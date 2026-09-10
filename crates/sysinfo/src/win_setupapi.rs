@@ -16,6 +16,21 @@ type Handle = *mut c_void;
 const INVALID_HANDLE_VALUE: Handle = -1isize as Handle;
 const DIGCF_PRESENT: u32 = 0x0000_0002;
 const DIGCF_DEVICEINTERFACE: u32 = 0x0000_0010;
+/// What `SP_DEVICE_INTERFACE_DETAIL_DATA_W.cbSize` must be set to on 64-bit Windows: the
+/// size of the struct's *fixed* part, **not** the size of the buffer being passed. Passing
+/// the buffer size is the classic error and fails with `ERROR_INVALID_USER_BUFFER`.
+const DETAIL_CB_SIZE: usize = 8;
+
+/// Byte offset of the inline `WCHAR DevicePath[]` within that struct.
+///
+/// **This is 4, and it is NOT the same number as `DETAIL_CB_SIZE`** — which is the trap.
+/// The struct is `{ DWORD cbSize; WCHAR DevicePath[ANYSIZE_ARRAY]; }`: the DWORD forces
+/// 4-byte alignment so `sizeof` rounds up to 8, but the path still begins immediately
+/// after the DWORD at offset 4. Reading from 8 silently drops the first two characters of
+/// the path, and the only symptom is that `CreateFileW` then fails to open a device that
+/// plainly exists — which reads as "no such device" rather than as a parsing bug. Hit
+/// exactly that way while writing the battery probe.
+const DETAIL_PATH_OFFSET: usize = 4;
 const SPDRP_DEVICEDESC: u32 = 0x0000_0000;
 const SPDRP_FRIENDLYNAME: u32 = 0x0000_000C;
 
@@ -101,6 +116,16 @@ struct SpDevinfoData {
     reserved: usize,
 }
 
+/// `SP_DEVICE_INTERFACE_DATA`. `cb_size` must be set before each enumeration call, the
+/// same contract `SpDevinfoData` has.
+#[repr(C)]
+struct SpDeviceInterfaceData {
+    cb_size: u32,
+    interface_class_guid: Guid,
+    flags: u32,
+    reserved: usize,
+}
+
 #[link(name = "setupapi")]
 extern "system" {
     fn SetupDiGetClassDevsW(
@@ -137,6 +162,21 @@ extern "system" {
         required_size: *mut u32,
     ) -> i32;
     fn SetupDiDestroyDeviceInfoList(dev_info: Handle) -> i32;
+    fn SetupDiEnumDeviceInterfaces(
+        dev_info: Handle,
+        dev_info_data: *mut SpDevinfoData,
+        interface_class_guid: *const Guid,
+        member_index: u32,
+        interface_data: *mut SpDeviceInterfaceData,
+    ) -> i32;
+    fn SetupDiGetDeviceInterfaceDetailW(
+        dev_info: Handle,
+        interface_data: *mut SpDeviceInterfaceData,
+        detail_data: *mut u8,
+        detail_data_size: u32,
+        required_size: *mut u32,
+        device_info_data: *mut SpDevinfoData,
+    ) -> i32;
 }
 
 /// Converts a null-terminated wide buffer to a trimmed `String`; `None` if empty.
@@ -302,6 +342,97 @@ pub fn present_device_names(class_guid: &Guid) -> Vec<String> {
 /// setup class, but only cameras expose [`KSCATEGORY_VIDEO_CAMERA`].
 pub fn present_interface_device_names(interface_guid: &Guid) -> Vec<String> {
     enumerate_names(interface_guid, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE)
+}
+
+/// Device *paths* for every present device exposing `interface_guid`, e.g.
+/// `\?cpi#pnp0c0a#0#{72631e54-...}`.
+///
+/// Distinct from [`present_interface_device_names`], which returns friendly names read
+/// from the registry. A path is what `CreateFileW` accepts, so this is the entry point for
+/// any probe that needs to *talk* to a device rather than merely name it — `battery` sends
+/// it IOCTLs. Kept here rather than in the caller because the enumeration dance
+/// (`SetupDiEnumDeviceInterfaces`, a size query, then the real
+/// `SetupDiGetDeviceInterfaceDetailW`) is the part that is easy to get subtly wrong.
+pub fn present_interface_device_paths(interface_guid: &Guid) -> Vec<String> {
+    let mut paths = Vec::new();
+    // SAFETY: the handle is checked before use and destroyed on every exit path; each
+    // buffer is sized by a preceding size query and the struct sizes are set as the API
+    // requires.
+    unsafe {
+        let dev_info = SetupDiGetClassDevsW(
+            interface_guid,
+            ptr::null(),
+            ptr::null_mut(),
+            DIGCF_PRESENT | DIGCF_DEVICEINTERFACE,
+        );
+        if dev_info.is_null() || dev_info == INVALID_HANDLE_VALUE {
+            return paths;
+        }
+        let mut index = 0u32;
+        loop {
+            let mut data = SpDeviceInterfaceData {
+                cb_size: size_of::<SpDeviceInterfaceData>() as u32,
+                interface_class_guid: Guid {
+                    data1: 0,
+                    data2: 0,
+                    data3: 0,
+                    data4: [0; 8],
+                },
+                flags: 0,
+                reserved: 0,
+            };
+            if SetupDiEnumDeviceInterfaces(
+                dev_info,
+                ptr::null_mut(),
+                interface_guid,
+                index,
+                &mut data,
+            ) == 0
+            {
+                break;
+            }
+            index += 1;
+
+            // Size query first: the detail struct is variable-length because the path is
+            // inline, so there is no fixed buffer that is always big enough.
+            let mut needed = 0u32;
+            SetupDiGetDeviceInterfaceDetailW(
+                dev_info,
+                &mut data,
+                ptr::null_mut(),
+                0,
+                &mut needed,
+                ptr::null_mut(),
+            );
+            if needed as usize <= DETAIL_PATH_OFFSET {
+                continue;
+            }
+            let mut detail = vec![0u8; needed as usize];
+            detail[0..4].copy_from_slice(&(DETAIL_CB_SIZE as u32).to_ne_bytes());
+            if SetupDiGetDeviceInterfaceDetailW(
+                dev_info,
+                &mut data,
+                detail.as_mut_ptr(),
+                needed,
+                &mut needed,
+                ptr::null_mut(),
+            ) == 0
+            {
+                continue;
+            }
+            let wide: Vec<u16> = detail[DETAIL_PATH_OFFSET..]
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|c| u16::from_ne_bytes(*c))
+                .collect();
+            if let Some(path) = wide_to_string(&wide) {
+                paths.push(path);
+            }
+        }
+        SetupDiDestroyDeviceInfoList(dev_info);
+    }
+    paths
 }
 
 #[cfg(test)]
