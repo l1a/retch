@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789017672401,
+  "lastUpdate": 1789050003652,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4958,6 +4958,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1214682944.0000002
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "d9c95abdb4afb03a77a881741c68173c407aa441",
+          "message": "Gate CPU refresh and load average by field (#235)\n\nTwo sysinfo calls in `collect()` ran on every invocation regardless of\nwhich fields were selected, and both reached for Windows performance\ncounters, whose first touch in a process costs ~180-195 ms.\n\n`System::load_average()` was ungated. It is now gated on the `load`\nfield and skipped outright on Windows, where sysinfo has no native\nsource and synthesises one from a PDH `\\System\\Cpu Queue Length`\ncounter sampled every 5 *seconds* into a process-local static seeded at\nzero -- so it has always returned 0.00 there and the caller's\n`avg.one > 0.0` guard has always discarded it. NOTES 6a has listed\n`load` as not implemented on Windows for a long time; the code did not\nknow.\n\n`CpuRefreshKind::everything()` became `cpu_refresh_kind()`, which asks\nonly for what a selected field reads. `everything()` sets `frequency`,\nand `windows/cpu.rs::init_cpus` calls `get_frequencies()` only when it\nis set: dropping it took `System::new_with_specifics` from 195.5 ms to\n0.5 ms with the CPU line unchanged, since brand and core count come\nfrom the static CPU list. `cpu-freq` still requests frequency;\n`cpu-usage` requests usage off Windows only, as the Windows arm has\ndiffed its own GetSystemTimes samples since v0.3.49. `cpu-cache` leaves\nthe gate entirely -- `detect_cpu_cache()` never touches `sys`.\n\nWindows, hyperfine after warmup, fastfetch 2.65.2:\n\n  --short   239.5 -> 50.6 ms   (fastfetch -c none 78.0)\n  default   348.0 -> 142.0 ms  (fastfetch 1188)\n  --long    502.0 -> 286.4 ms  (fastfetch -c all 1312)\n  --full     1.692 -> 1.445 s  (fastfetch -c all 1.334)\n\nOutput is unchanged on every platform, verified by diffing the rendered\nfield labels of the before and after binaries across all four modes.\n\nThe prior diagnosis in NOTES 6a -- that this was process startup -- was\nwrong, and is corrected there rather than deleted. Its per-field sweep\nused `--fields os` as the baseline, which pays the same ~200 ms, so\ndifferencing cancelled the constant being hunted. The real floor is\n`retch --version` at 17.9 ms against `fastfetch --version` at 46.8 ms.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T07:19:03-07:00",
+          "tree_id": "000f572e01652cb5b27e8e4af3aa02ebdd25a2a5",
+          "url": "https://github.com/l1a/retch/commit/d9c95abdb4afb03a77a881741c68173c407aa441"
+        },
+        "date": 1789050003652,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 135842466.00000003
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 995797516.0
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 34909512.0
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 61288452.00000001
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 224781410.0
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1278843340.0
           }
         ]
       }
