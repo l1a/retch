@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789065402149,
+  "lastUpdate": 1789065638408,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20662,70 +20662,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "521364f30839992fda65499538a01a44bc4f11bb",
-          "message": "fix(display): constrain graphic logo height, normalize audio, and wrap lines to terminal width (#186)\n\n* fix(display): reduce logo height and wrap long info lines\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(display): constrain graphic logo height and wrap below-logo lines to full terminal width\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(sysinfo): normalize and deduplicate Windows audio device names\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(sysinfo): evaluate soundwire before streaming filter in normalize_win_audio_device\n\nAssisted-By: Gemini 3.6 Flash",
-          "timestamp": "2026-08-10T14:10:09-07:00",
-          "tree_id": "8526b53eccb25ed2a964d63d08a63e698c00c32f",
-          "url": "https://github.com/l1a/retch/commit/521364f30839992fda65499538a01a44bc4f11bb"
-        },
-        "date": 1786398634783,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 180.48188838663447,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.947670137197315,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 102.15641421033199,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 83.4873022684442,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46382.3133229299,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 497.60990985302334,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 741.4006505838095,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2040453695,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "1177d194785c63e2058a99f5cffa5ef33577d9cb",
           "message": "ci: disable Claude Code Review workflow (#187)\n\nThe claude-review job no longer runs on pull requests: the\n`pull_request` trigger is replaced with `workflow_dispatch` and the\njob carries `if: false`, so it is off by default but can still be\ninvoked manually if wanted.\n\nBumps retch-cli 0.6.16 -> 0.6.17 (patch), refreshes Cargo.lock,\nregenerates docs/retch.1 for the new version footer, and updates the\nNOTES.md Current State header and release log.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-11T08:18:19-07:00",
@@ -23845,6 +23781,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1186526570,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1ee2c5241b06f37ce8b1b3efd943205a6cb1c825",
+          "message": "Add keyboard and mouse on macOS (#239)\n\nCloses the third NOTES section 6c gap.\n\nThe v0.7.0 finding still holds - on a unifying receiver no kernel-visible\nsignal separates a keyboard from a mouse - but macOS does not present the\nproblem in that form. It publishes one IOHIDDevice per HID interface, each\nwith its own PrimaryUsage, so the role is stated rather than inferred.\nThere is no ambiguous case, so no HID++ tiebreak and no under-reporting\nfallback are needed. A composite device is listed under both fields, which\nis correct: an internal keyboard-and-trackpad genuinely is both.\n\nretch lists a connected Bluetooth Magic Keyboard that fastfetch misses,\nverified genuinely connected rather than merely paired via\nsystem_profiler, since v0.10.2 recorded the opposite error on Windows.\n\nA test of mine could not fail: the first vendor-page assertion passed with\nthe page filter deleted, because every vendor-page interface in the\nfixture carries a usage the usage filter already rejects. Replaced with a\nsynthetic case pairing a vendor page with usage 6, labelled as such.\n\nRecords a new section 6c item found along the way: the macOS Bluetooth\nfield reports Off while devices are connected, because the property it\nreads no longer exists and unwrap_or(false) turns that into a claim.\nDeliberately not fixed blind - confirming the replacement property means\ntoggling the radio, which would disconnect the keyboard in use.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T11:04:15-07:00",
+          "tree_id": "2d1a45838a04419824ebea438feb8a37aa6724d0",
+          "url": "https://github.com/l1a/retch/commit/1ee2c5241b06f37ce8b1b3efd943205a6cb1c825"
+        },
+        "date": 1789065634657,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 183.37000696813138,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9490022148775834,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.79874669182573,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.24601238028065,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45471.33761532881,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 494.81729514155614,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 754.8980315716478,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1392902845,
             "unit": "ns"
           }
         ]
