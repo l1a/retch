@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.12.0" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.13.0" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -170,7 +170,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]vulkan\fP`: Vulkan API version, driver name and driver version, e\.g\. `\f[CR]1\.4\.354 \- radv [Mesa 26\.1\.8]\fP`\. Linux and Windows\. Full mode only by default\.
 .IP \(bu 4
-`\f[CR]opengl\fP`: OpenGL version string, read from a headless context, e\.g\. `\f[CR]4\.6 (Compatibility Profile) Mesa 26\.1\.8\fP`\. Linux only \-\- the headless path uses EGL, which stock Windows does not provide\. Full mode only by default\.
+`\f[CR]opengl\fP`: OpenGL version string, e\.g\. `\f[CR]4\.6 (Compatibility Profile) Mesa 26\.1\.8\fP`\. Linux and Windows: Linux reads it from a headless EGL context, Windows from a WGL context on a window that is created hidden and never shown\. Full mode only by default\.
 .IP \(bu 4
 `\f[CR]opencl\fP`: OpenCL platform version, provider, and the device it exposes\. Reports `\f[CR]no device enabled\fP` when a platform advertises a version but exposes no usable device \-\- the normal state for Mesa's rusticl until `\f[CR]RUSTICL_ENABLE\fP` is set\. Linux and Windows\. Full mode only by default\.
 .IP \(bu 4

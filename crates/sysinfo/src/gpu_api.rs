@@ -577,6 +577,316 @@ mod opengl {
     }
 }
 
+/// Windows OpenGL, via WGL against a hidden window.
+///
+/// **Why this is a separate module rather than a wider `cfg` on the EGL one.** Vulkan and
+/// OpenCL are the same code on both platforms because those APIs are identical and only the
+/// loader's filename differs. OpenGL is not: the Linux path gets a context from EGL with no
+/// window and no display server, and **stock Windows ships no `libEGL.dll`** — verified on a
+/// Windows 11 box carrying `vulkan-1.dll`, `opengl32.dll` and `OpenCL.dll` in `System32`
+/// with no EGL at all. Windows has no headless equivalent in the base OS: WGL requires a
+/// device context, a device context requires a window, and a window requires a window class.
+/// So this is a genuinely different mechanism reaching the same `glGetString(GL_VERSION)`.
+///
+/// **The window is never shown.** It is created without `WS_VISIBLE` and `ShowWindow` is
+/// never called, so nothing appears on screen — a fetch tool that flashed a window on every
+/// run would be broken. This is asserted rather than assumed: see the visibility check
+/// recorded in NOTES for v0.13.0, which enumerates top-level windows during a run.
+///
+/// `user32` and `gdi32` are linked rather than loaded at runtime, unlike the graphics
+/// loaders: they are core OS libraries always present on any Windows that can run the
+/// binary at all, and `display.rs` already links `user32` on the same grounds. `opengl32`
+/// *is* loaded at runtime, because a machine with no OpenGL ICD is a real case and must
+/// yield an absent field rather than a failure.
+#[cfg(target_os = "windows")]
+mod opengl {
+    use super::dl;
+    use super::*;
+
+    const GL_VERSION: u32 = 0x1F02;
+
+    // PIXELFORMATDESCRIPTOR.dwFlags
+    const PFD_DOUBLEBUFFER: u32 = 0x0000_0001;
+    const PFD_DRAW_TO_WINDOW: u32 = 0x0000_0004;
+    const PFD_SUPPORT_OPENGL: u32 = 0x0000_0020;
+    /// `PFD_TYPE_RGBA`.
+    const PFD_TYPE_RGBA: u8 = 0;
+    /// `PFD_MAIN_PLANE`.
+    const PFD_MAIN_PLANE: u8 = 0;
+
+    /// `WS_OVERLAPPED` is literally zero — the absence of `WS_VISIBLE` is what keeps the
+    /// window off screen, so it is spelled out rather than left implicit.
+    const WS_OVERLAPPED: u32 = 0x0000_0000;
+
+    /// `PIXELFORMATDESCRIPTOR`, 40 bytes. Only a handful of fields are set; the rest must
+    /// be zero, which is what `ChoosePixelFormat` expects for "don't care".
+    #[repr(C)]
+    #[derive(Default)]
+    struct PixelFormatDescriptor {
+        n_size: u16,
+        n_version: u16,
+        dw_flags: u32,
+        i_pixel_type: u8,
+        c_color_bits: u8,
+        c_red_bits: u8,
+        c_red_shift: u8,
+        c_green_bits: u8,
+        c_green_shift: u8,
+        c_blue_bits: u8,
+        c_blue_shift: u8,
+        c_alpha_bits: u8,
+        c_alpha_shift: u8,
+        c_accum_bits: u8,
+        c_accum_red_bits: u8,
+        c_accum_green_bits: u8,
+        c_accum_blue_bits: u8,
+        c_accum_alpha_bits: u8,
+        c_depth_bits: u8,
+        c_stencil_bits: u8,
+        c_aux_buffers: u8,
+        i_layer_type: u8,
+        b_reserved: u8,
+        dw_layer_mask: u32,
+        dw_visible_mask: u32,
+        dw_damage_mask: u32,
+    }
+
+    /// `WNDCLASSW`, 72 bytes on x64. `lpfnWndProc` points at `DefWindowProcW`: the window
+    /// never receives messages we care about, but a class still needs a procedure.
+    #[repr(C)]
+    struct WndClassW {
+        style: u32,
+        lpfn_wnd_proc: *const c_void,
+        cb_cls_extra: i32,
+        cb_wnd_extra: i32,
+        h_instance: *mut c_void,
+        h_icon: *mut c_void,
+        h_cursor: *mut c_void,
+        hbr_background: *mut c_void,
+        lpsz_menu_name: *const u16,
+        lpsz_class_name: *const u16,
+    }
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn RegisterClassW(lp_wnd_class: *const WndClassW) -> u16;
+        fn UnregisterClassW(lp_class_name: *const u16, h_instance: *mut c_void) -> i32;
+        fn CreateWindowExW(
+            dw_ex_style: u32,
+            lp_class_name: *const u16,
+            lp_window_name: *const u16,
+            dw_style: u32,
+            x: i32,
+            y: i32,
+            n_width: i32,
+            n_height: i32,
+            h_wnd_parent: *mut c_void,
+            h_menu: *mut c_void,
+            h_instance: *mut c_void,
+            lp_param: *mut c_void,
+        ) -> *mut c_void;
+        fn DestroyWindow(h_wnd: *mut c_void) -> i32;
+        fn GetDC(h_wnd: *mut c_void) -> *mut c_void;
+        fn ReleaseDC(h_wnd: *mut c_void, h_dc: *mut c_void) -> i32;
+        fn DefWindowProcW(h_wnd: *mut c_void, msg: u32, w_param: usize, l_param: isize) -> isize;
+    }
+
+    #[link(name = "gdi32")]
+    extern "system" {
+        fn ChoosePixelFormat(h_dc: *mut c_void, ppfd: *const PixelFormatDescriptor) -> i32;
+        fn SetPixelFormat(
+            h_dc: *mut c_void,
+            format: i32,
+            ppfd: *const PixelFormatDescriptor,
+        ) -> i32;
+    }
+
+    type WglCreateContext = unsafe extern "system" fn(*mut c_void) -> *mut c_void;
+    type WglMakeCurrent = unsafe extern "system" fn(*mut c_void, *mut c_void) -> i32;
+    type WglDeleteContext = unsafe extern "system" fn(*mut c_void) -> i32;
+    type GlGetString = unsafe extern "system" fn(u32) -> *const c_char;
+
+    /// A hidden window plus its class, unregistered and destroyed on drop.
+    ///
+    /// Kept as a guard type so every early return unwinds the OS objects in the right
+    /// order. Doing it by hand at each `?` is how a window or class leaks — and a leaked
+    /// class makes a *second* run in the same process fail to register.
+    struct HiddenWindow {
+        class_name: Vec<u16>,
+        hwnd: *mut c_void,
+        hdc: *mut c_void,
+    }
+
+    impl HiddenWindow {
+        fn new() -> Option<Self> {
+            // A distinctive class name: it is unregistered on drop, so a collision would
+            // only matter if two probes ran concurrently in one process, which they do not.
+            let class_name: Vec<u16> = "retch_gl_probe\0".encode_utf16().collect();
+
+            let wc = WndClassW {
+                style: 0,
+                lpfn_wnd_proc: DefWindowProcW as *const c_void,
+                cb_cls_extra: 0,
+                cb_wnd_extra: 0,
+                h_instance: std::ptr::null_mut(),
+                h_icon: std::ptr::null_mut(),
+                h_cursor: std::ptr::null_mut(),
+                hbr_background: std::ptr::null_mut(),
+                lpsz_menu_name: std::ptr::null(),
+                lpsz_class_name: class_name.as_ptr(),
+            };
+
+            // SAFETY: `wc` is a fully initialised WNDCLASSW whose string pointer outlives
+            // the call, and every handle below is checked before use.
+            unsafe {
+                if RegisterClassW(&wc) == 0 {
+                    return None;
+                }
+                // No WS_VISIBLE and no ShowWindow: the window exists only to own a device
+                // context, and must never appear on screen. 1x1 at the origin.
+                let hwnd = CreateWindowExW(
+                    0,
+                    class_name.as_ptr(),
+                    std::ptr::null(),
+                    WS_OVERLAPPED,
+                    0,
+                    0,
+                    1,
+                    1,
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                );
+                if hwnd.is_null() {
+                    UnregisterClassW(class_name.as_ptr(), std::ptr::null_mut());
+                    return None;
+                }
+                let hdc = GetDC(hwnd);
+                if hdc.is_null() {
+                    DestroyWindow(hwnd);
+                    UnregisterClassW(class_name.as_ptr(), std::ptr::null_mut());
+                    return None;
+                }
+                Some(Self {
+                    class_name,
+                    hwnd,
+                    hdc,
+                })
+            }
+        }
+    }
+
+    impl Drop for HiddenWindow {
+        fn drop(&mut self) {
+            // SAFETY: all three handles came from `new` and are released exactly once, in
+            // the reverse of the order they were acquired.
+            unsafe {
+                ReleaseDC(self.hwnd, self.hdc);
+                DestroyWindow(self.hwnd);
+                UnregisterClassW(self.class_name.as_ptr(), std::ptr::null_mut());
+            }
+        }
+    }
+
+    /// Read `GL_VERSION` from a WGL context on a hidden window.
+    ///
+    /// **The pixel format is what makes the context creatable**, and it must be set before
+    /// `wglCreateContext`: a device context with no pixel format cannot back a GL context,
+    /// and the failure is a null handle rather than an error code that says so.
+    ///
+    /// Like the Linux path, this asks for the driver's **default** context rather than a
+    /// core profile. `wglCreateContext` yields the highest compatibility profile the driver
+    /// offers, which is what fastfetch reports — measured here as
+    /// `4.6.0 Compatibility Profile Context 25.20.32.06.251214`. Requesting a core profile
+    /// would need `wglCreateContextAttribsARB` and would print a different string for the
+    /// same machine, so this is deliberate rather than the path of least resistance.
+    pub fn detect() -> Option<String> {
+        let lib = dl::open(c"opengl32.dll")?;
+        let out = detect_with(lib);
+        dl::close(lib);
+        out
+    }
+
+    fn detect_with(lib: *mut c_void) -> Option<String> {
+        let create_ctx = dl::sym(lib, c"wglCreateContext")?;
+        let make_current = dl::sym(lib, c"wglMakeCurrent")?;
+        let delete_ctx = dl::sym(lib, c"wglDeleteContext")?;
+        let get_string = dl::sym(lib, c"glGetString")?;
+
+        let window = HiddenWindow::new()?;
+
+        // SAFETY: every function pointer is freshly resolved from opengl32; `window.hdc` is
+        // a live device context owned by the guard above; the context is made non-current
+        // and deleted before returning on every path.
+        unsafe {
+            let create_ctx: WglCreateContext = std::mem::transmute(create_ctx);
+            let make_current: WglMakeCurrent = std::mem::transmute(make_current);
+            let delete_ctx: WglDeleteContext = std::mem::transmute(delete_ctx);
+            let get_string: GlGetString = std::mem::transmute(get_string);
+
+            let pfd = PixelFormatDescriptor {
+                n_size: std::mem::size_of::<PixelFormatDescriptor>() as u16,
+                n_version: 1,
+                dw_flags: PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+                i_pixel_type: PFD_TYPE_RGBA,
+                c_color_bits: 32,
+                c_depth_bits: 24,
+                c_stencil_bits: 8,
+                i_layer_type: PFD_MAIN_PLANE,
+                ..Default::default()
+            };
+            let format = ChoosePixelFormat(window.hdc, &pfd);
+            if format == 0 || SetPixelFormat(window.hdc, format, &pfd) == 0 {
+                return None;
+            }
+
+            let ctx = create_ctx(window.hdc);
+            if ctx.is_null() {
+                return None;
+            }
+            let version = if make_current(window.hdc, ctx) != 0 {
+                let p = get_string(GL_VERSION);
+                let s = (!p.is_null()).then(|| CStr::from_ptr(p).to_string_lossy().into_owned());
+                // Unbind before deleting: deleting the context that is current to this
+                // thread is documented as failing, which would leak it.
+                make_current(std::ptr::null_mut(), std::ptr::null_mut());
+                s
+            } else {
+                None
+            };
+            delete_ctx(ctx);
+
+            version
+                .map(|v| v.trim().to_string())
+                .filter(|v| !v.is_empty())
+        }
+    }
+
+    #[cfg(test)]
+    mod layout {
+        use std::mem::{offset_of, size_of};
+
+        // Both structs are passed to the OS by pointer and read by fixed offset, and
+        // `PIXELFORMATDESCRIPTOR.nSize` is set from `size_of` — so a layout change would
+        // silently hand `ChoosePixelFormat` a wrong size rather than fail to compile.
+        #[test]
+        fn ffi_struct_layout() {
+            assert_eq!(size_of::<super::PixelFormatDescriptor>(), 40);
+            assert_eq!(offset_of!(super::PixelFormatDescriptor, dw_flags), 4);
+            assert_eq!(offset_of!(super::PixelFormatDescriptor, i_pixel_type), 8);
+            assert_eq!(offset_of!(super::PixelFormatDescriptor, c_color_bits), 9);
+            assert_eq!(offset_of!(super::PixelFormatDescriptor, c_depth_bits), 23);
+            assert_eq!(offset_of!(super::PixelFormatDescriptor, i_layer_type), 26);
+
+            assert_eq!(size_of::<super::WndClassW>(), 72);
+            assert_eq!(offset_of!(super::WndClassW, lpfn_wnd_proc), 8);
+            assert_eq!(offset_of!(super::WndClassW, h_instance), 24);
+            assert_eq!(offset_of!(super::WndClassW, lpsz_class_name), 64);
+        }
+    }
+}
+
 #[cfg(any(target_os = "linux", target_os = "windows"))]
 mod opencl {
     use super::dl;
@@ -837,7 +1147,7 @@ pub fn detect_gpu_apis() -> GpuApis {
 pub fn detect_gpu_apis() -> GpuApis {
     GpuApis {
         vulkan: vulkan::detect(),
-        opengl: None,
+        opengl: opengl::detect(),
         opencl: opencl::detect(),
     }
 }
