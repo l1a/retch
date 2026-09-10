@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788997153992,
+  "lastUpdate": 1789005330170,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4742,6 +4742,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1746464509.9999998
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "a8c5647b52caf2ca9bdfb86733b5aeb3d0d130d9",
+          "message": "deps: bump icy_sixel to 0.7 (#228) (#231)\n\nConsolidates Dependabot #228 onto a gated branch so the version bump,\nNOTES entry and man regen it skips are actually done.\n\nicy_sixel 0.6.0 -> 0.7.0 brings decoder streaming improvements and codec\nhardening. SixelImage::try_from_rgba and .encode() signatures remain fully\ncompatible in src/logo.rs.\n\nCargo.toml bumped to 0.11.8 (since main already carries unreleased 0.11.7)\nand icy_sixel widened to 0.7. docs/retch.1 regenerated for 0.11.8.\n\nAssisted-By: Gemini 3.8 Flash",
+          "timestamp": "2026-09-09T16:00:16-07:00",
+          "tree_id": "6497f82d4bad2064bded32821efe8e24bc3efd1a",
+          "url": "https://github.com/l1a/retch/commit/a8c5647b52caf2ca9bdfb86733b5aeb3d0d130d9"
+        },
+        "date": 1789005330170,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 472576770.0
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1657715649.9999998
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 325340542.00000006
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 115759162.0
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 2424949476.0
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1752114606.0
           }
         ]
       }
