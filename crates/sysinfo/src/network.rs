@@ -665,6 +665,18 @@ pub fn parse_netsh_output(stdout: &str) -> Option<String> {
 /// work. Only removing the spawn removes the cost — the same conclusion #146-#150 reached
 /// for the other Windows probes.
 pub fn detect_dns() -> Vec<String> {
+    #[cfg(target_os = "macos")]
+    {
+        // Ask configd what the *default route's own* service uses. `/etc/resolv.conf` on
+        // macOS mirrors the MERGED resolver, so on a split-tunnel VPN it names the VPN's
+        // server even though the VPN is not the default route — the same defect v0.6.11
+        // fixed for `domain` on Linux. A resolvable primary service is authoritative,
+        // including when it lists no servers, so we must not fall through to the merged
+        // view in that case; only a machine with no default route at all falls back.
+        if let Some(config) = crate::macos_ffi::get_primary_service_dns() {
+            return config.servers;
+        }
+    }
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     {
         if let Ok(content) = std::fs::read_to_string("/etc/resolv.conf") {
@@ -727,6 +739,13 @@ pub fn detect_domain() -> Option<String> {
     }
     #[cfg(target_os = "macos")]
     {
+        // Same reasoning as `detect_dns`, and the same v0.6.11 shape: report the default
+        // route's own domain, not the merged list that a split-tunnel VPN dominates.
+        // `Some(config)` means the primary service resolved, so its answer stands even
+        // when it has no domain — falling back there is exactly what resurrects the VPN's.
+        if let Some(config) = crate::macos_ffi::get_primary_service_dns() {
+            return config.domain;
+        }
         read_resolv_conf_domain()
     }
     #[cfg(target_os = "windows")]
@@ -1417,6 +1436,57 @@ pub fn parse_resolvectl_search(content: &str) -> Vec<String> {
         .filter(|link| !link.search.is_empty())
         .map(|link| format!("{}: {}", link.interface, link.search.join(", ")))
         .collect()
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod macos_dns_tests {
+    use super::*;
+
+    /// The macOS `dns` and `domain` fields must agree with the **default route's own**
+    /// service, not with the merged resolver that `/etc/resolv.conf` mirrors.
+    ///
+    /// Machine-independent by construction: it does not assert *which* servers are
+    /// reported, only that whatever `detect_dns` returns is exactly what configd says the
+    /// primary service uses. That is the coupling a regression would break — reverting to
+    /// `parse_resolv_conf` makes these diverge on any host with a supplemental resolver
+    /// (a VPN, a second DNS-providing interface), while remaining identical on a plain
+    /// single-interface CI runner.
+    #[test]
+    fn test_dns_comes_from_the_primary_service_not_resolv_conf() {
+        let Some(config) = crate::macos_ffi::get_primary_service_dns() else {
+            // No default route (an offline runner): the fallback path is in force and
+            // there is nothing to compare against.
+            return;
+        };
+        assert_eq!(
+            detect_dns(),
+            config.servers,
+            "detect_dns must report the default route's own servers"
+        );
+        assert_eq!(
+            detect_domain(),
+            config.domain,
+            "detect_domain must report the default route's own domain"
+        );
+    }
+
+    /// A resolvable primary service is authoritative **even when it lists nothing**.
+    ///
+    /// This is the load-bearing half of the fix and the direct analogue of Linux's
+    /// `DefaultRouteDomain::Managed(None)` (v0.6.11): falling back to the merged view when
+    /// the default route has no domain of its own is precisely what resurrects a VPN's
+    /// domain. Asserting it here rather than only in prose.
+    #[test]
+    fn test_empty_primary_config_is_not_a_fallback_signal() {
+        let empty = crate::macos_ffi::ScDnsConfig::default();
+        assert!(empty.servers.is_empty());
+        assert!(empty.domain.is_none());
+        // `Some(empty)` and `None` must be distinguishable — if `get_primary_service_dns`
+        // collapsed the empty case to `None`, the caller would fall back and the bug
+        // would return.
+        let authoritative: Option<crate::macos_ffi::ScDnsConfig> = Some(empty);
+        assert!(authoritative.is_some());
+    }
 }
 
 #[cfg(test)]

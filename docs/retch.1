@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.17.0" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.17.1" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -228,9 +228,9 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]wifi\fP`: Active Wi\-Fi SSID, band frequency, channel, and link rates\.
 .IP \(bu 4
-`\f[CR]dns\fP`: Configured DNS nameservers\. Read from `\f[CR]/etc/resolv\.conf\fP` on Linux and macOS, and from `\f[CR]GetAdaptersAddresses\fP` on Windows \-\- natively, with no PowerShell and no elevation\. IPv4 nameservers only on Windows\.
+`\f[CR]dns\fP`: Configured DNS nameservers\. Read from `\f[CR]/etc/resolv\.conf\fP` on Linux, from `\f[CR]GetAdaptersAddresses\fP` on Windows (natively, with no PowerShell and no elevation; IPv4 nameservers only), and on macOS from the default route's own network service via SystemConfiguration\. \fBOn macOS `\f[CR]/etc/resolv\.conf\fP` is deliberately not used\fP: it is configd's legacy compatibility file and mirrors the \fImerged\fP resolver, so on a host with a split\-tunnel VPN it names the VPN's nameserver even when the VPN is not the default route\.
 .IP \(bu 4
-`\f[CR]domain\fP`: Configured DNS domain name\. On Linux, the domain of the interface carrying the default route (via `\f[CR]resolvectl\fP`), so a split\-tunnel VPN's domain is not reported unless the VPN is the default route; falls back to the `\f[CR]domain\fP` or first `\f[CR]search\fP` entry in `\f[CR]/etc/resolv\.conf\fP`\. Long mode and above\.
+`\f[CR]domain\fP`: Configured DNS domain name \-\- the domain of the interface carrying the default route, so a split\-tunnel VPN's domain is not reported unless the VPN \fIis\fP the default route\. On Linux this comes from `\f[CR]resolvectl\fP`, falling back to the `\f[CR]domain\fP` or first `\f[CR]search\fP` entry in `\f[CR]/etc/resolv\.conf\fP`; on macOS from the default route's own network service via SystemConfiguration, for the same reason and with the same fallback only when there is no default route at all\. Long mode and above\.
 .IP \(bu 4
 `\f[CR]domain\-search\fP`: DNS search domain lists, one entry per scope, formatted as `\f[CR]scope: a, b\fP`\. The scope is the interface name when per\-interface data is available (from `\f[CR]resolvectl status\fP`), or `\f[CR]global\fP` when falling back to `\f[CR]/etc/resolv\.conf\fP`'s `\f[CR]search\fP` list, which carries no interface attribution\. Full mode only\.
 .IP \(bu 4

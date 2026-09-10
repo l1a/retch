@@ -1,6 +1,6 @@
 [package]
 name = "retch-sysinfo"
-version = "0.1.71"
+version = "0.1.72"
 edition = "2021"
 authors = ["Ken Tobias"]
 description = "System information gathering library for retch"
