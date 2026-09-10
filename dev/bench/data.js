@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789065196188,
+  "lastUpdate": 1789065402149,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4578,6 +4578,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 732885346.7
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "305c2856dbc8cc474fb65fe6057e0663a7419027",
+          "message": "Report the default route's DNS on macOS, not a VPN's (#241)\n\nCloses the last NOTES section 6c field gap, and section 6a's long-standing\nUNCONFIRMED marking on this item was wrong: it is a real bug, and it is\nthe v0.6.11 Linux bug in macOS form.\n\n/etc/resolv.conf on macOS is configd's legacy compatibility file and\nmirrors the MERGED resolver, so on a host with a split-tunnel VPN it\nnames the VPN's nameserver and domain even though the VPN is not the\ndefault route. Measured: the default route is en9 with 10.10.1.1 / lan,\nwhile resolv.conf reports 100.101.255.254 / netbird.cloud. domain and dns\nnow read the default route's own service via SystemConfiguration.\n\nTwo claims in the old section 6a entry were also wrong and are corrected:\nresolv.conf mirrors the merged resolver rather than \"only the primary\nservice\", and SystemConfiguration was NOT already linked - the only\nmention in the crate was a comment. build.rs now links it.\n\nThe load-bearing rule, as in v0.6.11: a resolvable primary service is\nauthoritative even when it lists nothing, because falling back to the\nmerged view is exactly what resurrects the VPN's values. Only a machine\nwith no default route at all falls back to resolv.conf.\n\ndomain-search is deliberately unchanged: the search list genuinely is\nboth entries, so narrowing it would under-report real behaviour.\n\nAlso settles the tpm question as a decision rather than an open item -\na Secure Enclave is not a TPM and has no specification version to report.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T11:35:51-07:00",
+          "tree_id": "5efbc8997b0e01d2e35b1dff7cf9b5fc8432615d",
+          "url": "https://github.com/l1a/retch/commit/305c2856dbc8cc474fb65fe6057e0663a7419027"
+        },
+        "date": 1789065402149,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 619255622.3
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 721449580.7
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 32699384.3
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 47302355.10000001
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 693266342.7200001
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 737783425.9200001
           }
         ]
       }
