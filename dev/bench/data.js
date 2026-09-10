@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789064806329,
+  "lastUpdate": 1789064820743,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5300,90 +5300,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "1d0dc367f9ad44e2a04cc045891998fa9d9b1aae",
-          "message": "fix: unprivileged Packages, sudo Rio, logo aspect (#189)\n\nThree defects found by diffing `sudo retch --full` against a plain run.\n\nPackages appeared only under sudo. The RPM SQLite database was opened\nread-write; it is root-owned inside a root-owned directory, so SQLite\ncould not create its journal sidecars and every *query* failed with\n\"attempt to write a readonly database\" — not the open(), which is why\nthe existing warning never fired and the field vanished silently. Now\nopened read-only over a `file:...?immutable=1` URI, and the query error\nis reported instead of swallowed.\n\nRio lost all graphics support under sudo: it was identified only by\nTERM_PROGRAM, which env_reset drops. `is_rio_terminal` now also accepts\nTERM=rio/xterm-rio, which sudo preserves.\n\nThe Kitty logo was stretched ~3x vertically. `c=26,r=10` was hardcoded\nand Kitty forces an image into that rectangle, while display.rs assumed\na fixed 40-column width and derived the row count a third way. A single\npure `fit_logo_cells` now feeds all three protocol emitters and\nplan_layout. Passing both correct values still left a 9% stretch from\ncell quantisation, so the Kitty spec carries only the limiting dimension\nand lets Kitty derive the other — measured 0.0% aspect error in a PTY.\n\nThe chafa box widens 28 -> 45 columns (row cap unchanged at 10) so wide\nlockup assets stay legible: the Fedora logo goes from 4 rows to 7. The\nside-by-side threshold is unaffected (45 + 45 <= 95), pinned by a test.\n\nAlso fixes a test-isolation defect the change exposed: once\nsupports_iterm2 read TERM, the host's TERM leaked into a test that\nguarded only TERM_PROGRAM, failing on a Rio box and passing on CI.\n\nDocuments the privilege trade-off in both directions (root-only\nphys-mem and btrfs snapshot counts; user-only editor/desktop/wm) in a\nnew NOTES section, README, and a man-page PRIVILEGES section.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-11T17:52:19-07:00",
-          "tree_id": "9996d32ff3728e9292ad474ad37e12907763f637",
-          "url": "https://github.com/l1a/retch/commit/1d0dc367f9ad44e2a04cc045891998fa9d9b1aae"
-        },
-        "date": 1786496378821,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 866676076.85,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2264.6111102852738,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 120.36362290712569,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.027972152707867,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 62.17472321587864,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 21177.437477408694,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 212876.55947319878,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 14812.42859751674,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 14997.605434061796,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1554402.664701099,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 379.02218224681064,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 268.7332951091112,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "9d27af8746fe0e349822f3272031e94e03589b50",
           "message": "chore: bump 3 deps (consolidated Dependabot #188) (#190)\n\nRolls Dependabot #188 onto a gated branch so the release hygiene it\nbypasses — version bump, NOTES entry, man regen — is actually done,\nfollowing the #167/v0.6.3 and #184/v0.6.16 pattern.\n\nAll patch-level and lockfile-only; every spec is a caret range, so both\nCargo.toml manifests are untouched:\n\n  clap           4.6.5 -> 4.6.6  (pulls clap_builder 4.6.5 -> 4.6.6)\n  clap_complete  4.6.8 -> 4.6.9\n  rusqlite       0.40.1 -> 0.40.2 (pulls libsqlite3-sys 0.38.1 -> 0.38.2)\n\nThe lockfile was diff-verified byte-identical to Dependabot's before the\nversion bump, so this carries exactly the change its green CI validated;\nafterwards the only divergence is retch-cli's own version line.\n\nrusqlite warranted a live check rather than just a green suite: it is a\ndirect dependency of retch-sysinfo and the crate v0.6.18's Packages fix\nhad just started using differently, and libsqlite3-sys bundles SQLite\nitself, so a bump changes the engine that has to honour `immutable=1`.\nThe rpm_db_uri unit tests only assert string construction and could not\ncatch a behavioural change there. Verified live as an unprivileged user:\nPackages: 2509, unchanged.\n\nretch-cli -> 0.6.19; retch-sysinfo unchanged at 0.1.53 (no source\nchange, only its transitive lockfile deps moved).\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-11T18:52:53-07:00",
@@ -9483,6 +9399,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 262.38638641175197,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a49bc080a0818239b038099299f0b576322b9d1c",
+          "message": "Add login-manager, brightness and power-adapter on macOS (#240)\n\nCloses the fourth NOTES section 6c gap - the same three fields v0.5.0\nadded for Linux, grouped the same way.\n\nThe documented IOKit brightness path does not exist on Apple Silicon:\nIODisplayConnect, AppleBacklightDisplay, AppleCLCD2 and\nIOMobileFramebufferShim all return nothing. AppleARMBacklight carries it,\nin a nested IODisplayParameters/brightness sub-dictionary. The triple is\nrebased onto a zero floor and handed to the existing brightness_percent\nhelper so the arithmetic stays in one tested place. fastfetch reports no\nBrightness at all here, so retch is ahead of it.\n\nmacOS and Linux have opposite facts available for the power adapter:\nmacOS exposes Watts but no Name, Linux the reverse. So macOS reports\n\"96W (connected)\" and finally reports the wattage section 6 recorded as\nnot yet reported. The call returns NULL on battery, so absence is the\nunplugged signal.\n\nmacOS has exactly one login manager, so the informative part is its\nversion. loginwindow's Info.plist is plain XML on macOS 26, so a small\npure scanner suffices - no plist dependency and no subprocess. It guards\nagainst borrowing the next key's value, which would yield a confidently\nwrong version rather than an absent one.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T11:19:27-07:00",
+          "tree_id": "e0292b25168a92d954d635ffbe1452d24976de2f",
+          "url": "https://github.com/l1a/retch/commit/a49bc080a0818239b038099299f0b576322b9d1c"
+        },
+        "date": 1789064817157,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 859407646.7,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 995.5109682515802,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 107.99864260957334,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 7.29999838580459,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 59.26524072792779,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8862.673145444202,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 84276.39633281944,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 57119.14940135092,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 57499.80250678233,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1577818.638875764,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 339.70506693194375,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 253.5590532062131,
             "unit": "ns"
           }
         ]
