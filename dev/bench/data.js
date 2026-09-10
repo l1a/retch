@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789016233065,
+  "lastUpdate": 1789016592535,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13380,80 +13380,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "29c90fa282c281f6c5a2b797544c5babf5e957ce",
-          "message": "fix(net): resolve Windows connection DNS domain and search list (#181)\n\n* fix(net): resolve Windows connection DNS domain\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(net): read Windows interface registry search list\n\nAssisted-By: Gemini 3.6 Flash",
-          "timestamp": "2026-08-07T23:10:01-07:00",
-          "tree_id": "1430e5590c797113f0e21a4cdab22e90bfe90ce4",
-          "url": "https://github.com/l1a/retch/commit/29c90fa282c281f6c5a2b797544c5babf5e957ce"
-        },
-        "date": 1786170594578,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 814366833.4,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 413.7504634091433,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 61.95898684348449,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.6605343088258018,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 60.84329939458187,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 4109.347317836218,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 989.9965712098896,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 394.80076568701753,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 63702.05574290232,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 324.6470742173642,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "464951f8ff41455093d91045e621a17b81124684",
           "message": "fix(display): parse monitor vendor and panel model from EDID on Windows (#183)\n\n* fix(display): parse monitor EDID on Windows\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(display): extract monitor vendor and model on Windows\n\nAssisted-By: Gemini 3.6 Flash",
           "timestamp": "2026-08-08T07:48:08-07:00",
@@ -17063,6 +16989,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 382.33806526893886,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4177d9e00046a70192f51926772a91595d2f74cd",
+          "message": "Read the battery device instead of spawning PowerShell (#234)\n\nbattery was the last PowerShell spawn in --long on Windows and the slowest\nfield on the platform: a per-field sweep measured it at ~2531 ms against a\n~322 ms process-startup floor. It now reads the battery device directly\nover the GUID_DEVICE_BATTERY interface with IOCTL_BATTERY_QUERY_TAG and\nIOCTL_BATTERY_QUERY_INFORMATION.\n\nThe headline is the mode rather than the field. Windows --long measures\n668.0 ms (min 604) against `fastfetch -c all` at 1330-1477 ms - roughly 2x\nfaster, where it had been 1.3-2.3x slower. NOTES §3's blocking condition\nis now satisfied for --long on Windows. The field itself went from ~2209 ms\nover the startup floor to about 10 ms: --fields battery is 324.2 ms against\na --fields os floor of 314.4 ms. --short remains behind and is a startup\nproblem rather than a probe problem.\n\nIt also reports strictly more than the spawn did. Win32_Battery returned\nDesignCapacity, FullChargeCapacity and Manufacturer as empty on this\nmachine, so ~2.5 s of PowerShell bought a model name and nothing else. The\ndevice answers all of them:\n\n  before: 42% (3h 28m remaining, discharging)\n  after:  40% (2h 54m remaining, discharging, 98% health) [ASUSTeK ASUS Battery]\n\nAccess rights were measured, not copied from the MSDN sample. These IOCTLs\nare FILE_READ_ACCESS: a zero-access handle fails them with\nERROR_ACCESS_DENIED, unlike the FILE_ANY_ACCESS storage IOCTLs v0.3.46\nchose for phys-disk. GENERIC_READ alone suffices and is what this uses; the\nusual sample asks for GENERIC_READ | GENERIC_WRITE. No elevation either\nway.\n\nwin_setupapi gained device-interface path enumeration. It previously\nreturned only friendly names, which cannot be opened; a path is what\nCreateFileW takes, so this is the entry point for any probe that needs to\ntalk to a device rather than name it.\n\nTwo layout notes, both learned the hard way. SP_DEVICE_INTERFACE_DETAIL_-\nDATA_W wants cbSize = 8 but its DevicePath starts at offset 4; using one\nconstant for both chopped two characters off every path, and the only\nsymptom was CreateFileW failing on a device that plainly exists - which\nreads as \"no battery\" rather than as a parsing bug. And BATTERY_INFORMATION\nis 36 bytes, not the 32 predicted, though the probe returned correct\ncapacities regardless: the values validated the layout, the prediction did\nnot. Layout guard watched failing against the wrong prediction.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-09T21:43:32-07:00",
+          "tree_id": "a980caa011385a4856e59d03ea1090fc25789008",
+          "url": "https://github.com/l1a/retch/commit/4177d9e00046a70192f51926772a91595d2f74cd"
+        },
+        "date": 1789016590308,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1092321566.8,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 439.10891666307,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 123.0150920039309,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.7311727466125268,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 62.15934387580069,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4233.902741286119,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 998.4974713093694,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 410.14031139019926,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 64381.67846749007,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 360.13268031737437,
             "unit": "ns"
           }
         ]
