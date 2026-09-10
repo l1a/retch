@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789057520193,
+  "lastUpdate": 1789058025671,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20392,70 +20392,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "464951f8ff41455093d91045e621a17b81124684",
-          "message": "fix(display): parse monitor vendor and panel model from EDID on Windows (#183)\n\n* fix(display): parse monitor EDID on Windows\n\nAssisted-By: Gemini 3.6 Flash\n\n* fix(display): extract monitor vendor and model on Windows\n\nAssisted-By: Gemini 3.6 Flash",
-          "timestamp": "2026-08-08T07:48:08-07:00",
-          "tree_id": "5029838743a7e4449bedecce22a3d07443557dd7",
-          "url": "https://github.com/l1a/retch/commit/464951f8ff41455093d91045e621a17b81124684"
-        },
-        "date": 1786202989871,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 176.85087225065746,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9497512604938327,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 99.76592231765302,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.15216022368223,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47279.58783723063,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 494.0126500674879,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 755.4518966851099,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1764564625,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "622cf3b843fc5f6286cad91442e7bd41af2fdf12",
           "message": "Bump 4 deps and fix man page font-run strip (#184)\n\nConsolidates Dependabot #182 onto a gated branch so the release-hygiene\nsteps Dependabot skips (version bump, NOTES entry, man regen) are done.\n\nDependencies (cargo-dependencies group, lockfile-only — every spec is a\ncaret range, so Cargo.toml is untouched):\n  clap          4.6.4 -> 4.6.5  (clap_builder 4.6.2 -> 4.6.5)\n  toml          1.1.3 -> 1.1.4  (toml_parser  1.1.2 -> 1.1.3)\n  clap_complete 4.6.7 -> 4.6.8\n  base64        0.23.0 -> 0.23.1\n\nThe resulting Cargo.lock is byte-identical to what Dependabot generated.\n\nAlso fixes the `just man` font-collapsing sed, which has never worked on\nany platform. mandown emits redundant \\fB\\fB...\\fP\\fP runs and the recipe\ncarried `s/\\fB\\fB/\\fB/g` to strip them, but GNU sed reads \\f as the\nform-feed escape rather than backslash-then-f, so the pattern only ever\nmatched form feeds that groff output never contains. This is why\ndocs/retch.1 kept flip-flopping between machines: v0.6.2 concluded the\nstrip merely \"didn't take effect on Windows\", when in fact Linux was not\nstripping anything either — its mandown build just doesn't emit the\ndoubled runs. Matching the backslash as [\\] and carrying it out through a\ncapture group keeps any backslash escape off the replacement side.\n\nWith the fix, `just man` on Windows reproduces byte-for-byte the file a\nLinux `just man` produces, so the regen check in `just pr` no longer\ndepends on which machine last ran it. The regenerated page drops 21\ndoubled font runs and changes nothing else but the version footer.\n\nretch-sysinfo unchanged at 0.1.51; no Rust source touched.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-09T07:06:33-07:00",
@@ -23575,6 +23511,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1151176475,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "876c5b07f8659d597149772767b2f7d127068383",
+          "message": "packaging: pin to 0.13.2, open 0.13.3 (#236)\n\npackaging/aur and packaging/copr track the last RELEASED tag, so they can\nonly be bumped once v0.13.2 exists. Bundling that with the next version bump\nis what makes this a normal gated PR: just pr's step 2 compares Cargo.toml\nagainst the last tag, not against this PR's parent, so opening 0.13.3\nsatisfies it. Previous releases sent this commit straight to main on the\nbelief that a PR was impossible.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T08:57:33-07:00",
+          "tree_id": "387f2a1e0f0d0d26ac63bf7cabeaeec732e932a1",
+          "url": "https://github.com/l1a/retch/commit/876c5b07f8659d597149772767b2f7d127068383"
+        },
+        "date": 1789058019598,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 184.14553587075892,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9473255803811886,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.38581450718038,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.28167823768493,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 49202.79885675041,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 502.2912576198029,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 746.6534004188442,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 789749250,
             "unit": "ns"
           }
         ]
