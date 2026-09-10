@@ -116,7 +116,77 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.13.3)
+## Current State (v0.14.0)
+- **v0.14.0 - `disk-io` and `net-io` on macOS, and the obvious network source was the
+  wrong one** (`crates/sysinfo/src/io.rs`, `crates/sysinfo/src/macos_ffi.rs`). Both fields
+  shipped Linux-only in v0.10.0, gained Windows arms in v0.11.0, and returned nothing on
+  macOS until now. As with v0.11.0, **nothing above the two `sample_*` functions changed**:
+  the rate arithmetic, the 100 ms floor, the sampling window in `fetch.rs`, `fields.rs` and
+  `display.rs` were already platform-independent.
+  - **THE FINDING: `getifaddrs` carries 32-bit byte counters that wrap every 4 GiB, and the
+    development machine was already 77% of the way there.** `getifaddrs` is the obvious
+    route — it is one call, it needs no framework, and `libc` exposes it directly. Its
+    `struct if_data` has `ifi_ibytes`/`ifi_obytes` as **`u32`**. Measured here: `en0` read
+    `3_317_575_680` of a 4_294_967_296 ceiling on a single boot, so the wrap would have
+    landed inside an ordinary session and produced a **plausible-looking wrong rate** rather
+    than an obvious failure. This is the `GetIfTable` vs `GetIfTable2` decision from v0.11.0
+    in macOS form, and it was caught only because the number looked suspiciously close to a
+    power of two.
+    - The correct source is **`sysctl(NET_RT_IFLIST2)`**, whose `if_msghdr2` records carry
+      `if_data64` with genuine 64-bit counters. It is what `netstat -ib` itself reads.
+    - **Pinned by a test that asserts the property by type, not by value.** A value
+      assertion cannot catch a narrowing; the annotated `let ibytes: u64 = ...` bindings
+      stop compiling if `libc` ever changes these fields. **Watched failing**: swapping
+      `if_data64` back to `if_data` fails with `expected u64, found u32` — exactly the
+      regression being guarded.
+  - **`if_data64` is 4-byte aligned but its counters are `u64`, so `&field` is undefined
+    behaviour.** rustc rejects it as E0793 ("creating a misaligned reference is undefined
+    behavior, even if that reference is never dereferenced"). The first version of the
+    64-bit test used `size_of_val(&data.ifi_ibytes)` and failed to compile for precisely
+    this reason. The production sampler is sound because it *copies* each field into a
+    struct literal rather than borrowing it, and that is now stated at the loop so a future
+    edit does not quietly reintroduce it.
+  - **Disk counters come from IOKit `IOBlockStorageDriver`'s `Statistics` dictionary**,
+    the same source `iostat` reports from. The BSD name (`disk0`) is **not on the driver** —
+    it is on the child `IOMedia`, so `block_driver_bsd_name` walks the IOService plane. The
+    first child carrying a `BSD Name` is the whole-disk media and its partitions are deeper
+    in the tree, so the partition double-counting the Linux arm filters for is
+    **structurally impossible** here rather than merely filtered.
+  - **Only drivers with a resolvable BSD name are reported.** This Mac has **4**
+    `IOBlockStorageDriver` services, of which **3** have no BSD name and all-zero counters —
+    unattached synthesized devices. Reporting them would invent disks that do not exist; the
+    `Users: 0` call (v0.6.1) applied again.
+  - **Cross-checked against independent oracles under a time-bounded load**, because
+    agreement on an idle machine proves nothing (the v0.10.0/v0.11.0 lesson):
+    - Disk, during a sustained incompressible write: IOKit **947.34 MB/s** against
+      `iostat -d disk0`'s **895.96 / 894.53 / 898.38 MB/s** over its own overlapping 1 s
+      windows. Both 0 B/s idle.
+    - Net, during a looped parallel download: **60.89 MB/s** against a `netstat -ib` delta
+      of **59.54 MB/s** (774 MB moved). Both 0 B/s idle.
+    - **The first network attempt measured nothing and is worth recording**: the load ran
+      against `en0` while this machine's default route is `en9`, so the probe and the oracle
+      *agreed at ~0* — a check that passes while measuring nothing, the exact trap the
+      v0.10.0 entry names. Only re-running against the real default-route interface, with
+      the transfer confirmed in flight, exercised it.
+  - **The name vocabulary was verified against the live field, not assumed.** `if_indextoname`
+    returns `en9` and the `Net` field reports `en9`, so [`select_net_rates`] matches; had
+    they differed it would have silently fallen through to its "everything that moved"
+    branch. Names come from `if_indextoname` rather than by parsing the trailing
+    `sockaddr_dl`, which keeps this module ignorant of the sockaddr layout entirely.
+  - **Perf: no measurable cost, and the controls are what establish that.** Four interleaved
+    A/B passes against a binary built from `main` gave gaps of −14.4, −23.5, −5.6 and
+    **+1.6** ms on `--long` — the direction flips, which is the honest reading. Three
+    controls back it: `main` against *itself* spread 703.0 vs 708.9 ms; the same binary
+    drifted 617 → 709 ms across the session; and **standard mode, where neither field is
+    collected and no code differs at all, showed a 10 ms "difference" of its own**. User
+    time is flat (123.6 vs 124.6 ms). Isolated, `--fields disk-io` is **122.8 ms** and
+    `--fields net-io` **127.3 ms** against a `--fields os` floor of **3.3 ms** — that is the
+    deliberate 100 ms top-up, not probe cost, exactly as on Linux.
+  - Worth noting for the Windows perf backlog: the macOS startup floor measures **3.3 ms**,
+    against the ~17.9 ms `--version` figure recorded for Windows in v0.13.2.
+  - `retch-sysinfo` -> `0.1.68` (new public `get_block_storage_io`); `retch-cli` ->
+    `0.14.0`. Minor bump - new user-visible fields on a platform that had none, the
+    v0.6.0 / v0.11.0 / v0.12.0 precedent.
 - **v0.13.3 - post-release: packaging pinned to 0.13.2, next cycle opened** (packaging only; no runtime change).
   - `packaging/aur` (PKGBUILD and .SRCINFO) and `packaging/copr/retch.spec` bumped to **0.13.2**, the version just released. Both track the last RELEASED tag, so they can only move after the tag exists.
   - `Cargo.toml` -> **0.13.3**, which is what lets this be a normal gated PR rather than a commit straight to `main`: `just pr`'s version check compares against the last tag, so the packaging bump passes as long as it travels with the next version bump.
@@ -2714,15 +2784,19 @@ Below is a comparison of information gathered by `fastfetch` that is currently m
 - ~~**Btrfs**: Btrfs volume info~~ — added in v0.3.37 (`btrfs` field)
 - ~~**Zpool**: ZFS storage pool info~~ — added in v0.3.37 (`zpool` field)
 - ~~**DiskIO**: Disk I/O throughput~~ — added in v0.10.0 (`disk-io` field, Linux;
-  `/proc/diskstats`, rate averaged over the run's own collection window) and extended to
-  Windows in v0.11.0 (`IOCTL_DISK_PERFORMANCE`, no admin). **fastfetch reports no DiskIO on
-  Windows at all**, so retch is ahead of it on this field there.
+  `/proc/diskstats`, rate averaged over the run's own collection window), extended to
+  Windows in v0.11.0 (`IOCTL_DISK_PERFORMANCE`, no admin) and to macOS in v0.14.0 (IOKit
+  `IOBlockStorageDriver` `Statistics`, the source `iostat` reads). **fastfetch reports no
+  DiskIO on Windows at all**, so retch is ahead of it on this field there. All three
+  platforms now report.
 
 ### Network
 - ~~**NetIO**: Network I/O throughput~~ — added in v0.10.0 (`net-io` field, Linux;
-  `/sys/class/net/*/statistics`, same sampling window as `disk-io`) and extended to Windows
+  `/sys/class/net/*/statistics`, same sampling window as `disk-io`), extended to Windows
   in v0.11.0 (`GetIfTable2`, NDIS filter instances excluded so each adapter is counted
-  once). fastfetch reports NetIO on Windows and pays ~0.59 s for it there.
+  once) and to macOS in v0.14.0 (`sysctl(NET_RT_IFLIST2)`, **not** `getifaddrs`, whose
+  32-bit counters wrap every 4 GiB). fastfetch reports NetIO on Windows and pays ~0.59 s
+  for it there. All three platforms now report.
 
 ### Desktop Environment & UI
 - ~~**WMTheme**: Window manager theme~~ — added in v0.9.0 (`wm-theme` field; KWin, Xfwm4, Openbox, Fluxbox, IceWM, GTK/Mutter, Aqua, Windows themes)
@@ -2878,6 +2952,52 @@ v0.6.18 entry.)
 check whether the underlying source is genuinely root-only before adding an elevation note —
 `Packages` looked exactly like a permissions limit for a long time and was in fact a fixable
 SQLite open-mode defect.
+
+---
+
+## 6c. macOS cross-platform parity — known issues / backlog
+
+Existing `retch` fields that behave worse (or not at all) on macOS than on Linux/Windows.
+The macOS counterpart to §6a, and **new in v0.14.0** — until then these gaps existed only
+as scattered `- [ ]` lines in frozen WIP.md session entries, which is precisely how they
+went unworked for so long. Derived from the code's own `cfg` gates rather than from prose,
+so the list is complete as of the version noted.
+
+**Fixed**
+- ~~**`disk-io` and `net-io` are Linux/Windows-only**~~ — fixed v0.14.0. IOKit
+  `IOBlockStorageDriver` statistics and `sysctl(NET_RT_IFLIST2)`. The non-obvious half was
+  that the natural network source, `getifaddrs`, carries **32-bit** counters that wrap
+  every 4 GiB — and the development machine sat at 77% of that ceiling, so it would have
+  wrapped mid-session and reported a plausible wrong rate. See the v0.14.0 entry.
+
+**Open**
+- **`vulkan`, `opengl`, `opencl` have no macOS arm** (`gpu_api.rs` is Linux + Windows).
+  Vulkan exists only through MoltenVK, which is not present on a stock system; OpenGL (CGL)
+  and OpenCL are both deprecated by Apple but still shipped. **Decide what "available"
+  means before coding**: the v0.11.6 rule — report what is available *without changing the
+  user's environment*, and under-report rather than assert something false — is the
+  governing constraint, and it is what makes the MoltenVK case a judgement call rather than
+  a lookup.
+- **`keyboard` and `mouse` have no macOS arm** (`input.rs` is Linux-only). IOKit HID is the
+  source. **Read the v0.7.0 entry first**: on a unifying receiver no kernel-visible signal
+  separates a keyboard from a mouse, fastfetch gets it wrong in both directions on that
+  hardware, and under-reporting was chosen deliberately over guessing.
+- **`login-manager`, `brightness` and `power-adapter` have no macOS arm** (`fetch.rs`,
+  Linux-only since v0.5.0). `loginwindow` is fixed on macOS so the first is close to a
+  constant; brightness via IOKit/DisplayServices; power adapter via IOPowerSources, and
+  `battery.rs` already has a macOS arm whose plumbing can be reused.
+- **`tpm` — probably correct as absent, but decide deliberately.** Macs have a Secure
+  Enclave, not a TPM. Reporting a Secure Enclave under a `TPM` label would be the kind of
+  approximate-but-wrong answer §6a and the v0.7.0 input work both reject. Left absent
+  unless a deliberate decision says otherwise.
+- **macOS reads a weaker DNS source than it should** — see the same entry in §6a. Still
+  unconfirmed as a *defect*; `/etc/resolv.conf` on macOS is a legacy configd compatibility
+  file reflecting only the primary service, and `scutil --dns` / SystemConfiguration is
+  authoritative. Needs a Mac on a network that actually hands out a search domain to tell a
+  weak source from a genuinely empty one. **Do not change it blind.**
+
+**Long tail** (not field parity, but macOS-specific and tracked in §5): code signing and
+notarization, and a Homebrew tap/formula.
 
 ---
 

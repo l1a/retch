@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.13.3" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.14.0" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -212,7 +212,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]phys\-disk\fP`: Physical disk model, size, and type (NVMe SSD, SSD, HDD)\. On Windows, uses native storage IOCTLs; no PowerShell and no administrator rights\.
 .IP \(bu 4
-`\f[CR]disk\-io\fP`: Per\-disk read/write throughput in bytes per second, for physical whole disks only (partitions are excluded \-\- their traffic is already counted against the parent device)\. On Linux, read from `\f[CR]/proc/diskstats\fP` and named after the kernel device (`\f[CR]nvme0n1\fP`)\. On Windows, read via the `\f[CR]IOCTL_DISK_PERFORMANCE\fP` storage IOCTL and named after the drive index (`\f[CR]PhysicalDrive0\fP`); no PowerShell and no administrator rights\. Long mode and above\. See \fBI/O RATES\fP below for how the rate is measured\.
+`\f[CR]disk\-io\fP`: Per\-disk read/write throughput in bytes per second, for physical whole disks only (partitions are excluded \-\- their traffic is already counted against the parent device)\. On Linux, read from `\f[CR]/proc/diskstats\fP` and named after the kernel device (`\f[CR]nvme0n1\fP`)\. On Windows, read via the `\f[CR]IOCTL_DISK_PERFORMANCE\fP` storage IOCTL and named after the drive index (`\f[CR]PhysicalDrive0\fP`); no PowerShell and no administrator rights\. On macOS, read from the `\f[CR]Statistics\fP` dictionary of each IOKit `\f[CR]IOBlockStorageDriver\fP` and named after the BSD device (`\f[CR]disk0\fP`); this is the same source `\f[CR]iostat\fP` reports from\. Long mode and above\. See \fBI/O RATES\fP below for how the rate is measured\.
 .IP \(bu 4
 `\f[CR]btrfs\fP`: Mounted btrfs filesystem label, subvolume, and space allocation (`\f[CR]btrfs filesystem show\fP`/`\f[CR]usage\fP`); one entry per mount point, so a filesystem mounted at both `\f[CR]/\fP` and `\f[CR]/home\fP` via separate subvolumes shows two entries\. Snapshot count is shown when it can be read (`\f[CR]btrfs subvolume list \-s\fP`, requires root) and omitted otherwise\. Linux only\. Long mode and above\.
 .IP \(bu 4
@@ -222,7 +222,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]net\fP`: Active network interfaces and local/public IP addresses\.
 .IP \(bu 4
-`\f[CR]net\-io\fP`: Per\-interface RX/TX throughput in bytes per second, read from `\f[CR]/sys/class/net/<iface>/statistics\fP` on Linux and from `\f[CR]GetIfTable2\fP` on Windows (the same counters `\f[CR]Get\-NetAdapterStatistics\fP` reports, without the subprocess)\. Reports the default\-route interface when it is known, otherwise every non\-loopback interface that moved data during the window\. On Windows, the NDIS lightweight\-filter instances bound to an adapter \-\- which report that adapter's counters a second time under names like `\f[CR]Wi\-Fi\-QoS Packet Scheduler\-0000\fP` \-\- are excluded, so each adapter is counted once\. Long mode and above\. See \fBI/O RATES\fP below\.
+`\f[CR]net\-io\fP`: Per\-interface RX/TX throughput in bytes per second, read from `\f[CR]/sys/class/net/<iface>/statistics\fP` on Linux, from `\f[CR]GetIfTable2\fP` on Windows (the same counters `\f[CR]Get\-NetAdapterStatistics\fP` reports, without the subprocess), and from `\f[CR]sysctl(NET_RT_IFLIST2)\fP` on macOS (the same 64\-bit counters `\f[CR]netstat \-ib\fP` reports)\. Reports the default\-route interface when it is known, otherwise every non\-loopback interface that moved data during the window\. On Windows, the NDIS lightweight\-filter instances bound to an adapter \-\- which report that adapter's counters a second time under names like `\f[CR]Wi\-Fi\-QoS Packet Scheduler\-0000\fP` \-\- are excluded, so each adapter is counted once\. Long mode and above\. See \fBI/O RATES\fP below\.
 .IP \(bu 4
 `\f[CR]public\-ip\fP`: Public IP address (queried over the network)\. Long mode and above\.
 .IP \(bu 4
