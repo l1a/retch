@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.14.0" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.15.0" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -168,11 +168,11 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]gpu\fP`: GPU model(s) and VRAM\.
 .IP \(bu 4
-`\f[CR]vulkan\fP`: Vulkan API version, driver name and driver version, e\.g\. `\f[CR]1\.4\.354 \- radv [Mesa 26\.1\.8]\fP`\. Linux and Windows\. Full mode only by default\.
+`\f[CR]vulkan\fP`: Vulkan API version, driver name and driver version, e\.g\. `\f[CR]1\.4\.354 \- radv [Mesa 26\.1\.8]\fP`\. Linux, Windows and macOS\. \fBOn macOS this is normally absent\fP, and correctly so: macOS ships no Vulkan, which exists there only through MoltenVK once a user installs it, so the field reports only when the Khronos loader (`\f[CR]libvulkan\.1\.dylib\fP`) is present\. Full mode only by default\.
 .IP \(bu 4
-`\f[CR]opengl\fP`: OpenGL version string, e\.g\. `\f[CR]4\.6 (Compatibility Profile) Mesa 26\.1\.8\fP`\. Linux and Windows: Linux reads it from a headless EGL context, Windows from a WGL context on a window that is created hidden and never shown\. Full mode only by default\.
+`\f[CR]opengl\fP`: OpenGL version string, e\.g\. `\f[CR]4\.6 (Compatibility Profile) Mesa 26\.1\.8\fP` on Linux or `\f[CR]4\.1 Metal \- 90\.5\fP` on macOS\. Linux, Windows and macOS, each needing a different mechanism to obtain a context: Linux reads it from a headless EGL context, Windows from a WGL context on a window that is created hidden and never shown, and macOS from a CGL context that needs no window at all\. macOS caps OpenGL at 4\.1 and exposes it only through a core profile, which is what retch requests \-\- the legacy profile would report 2\.1 on the same machine\. Full mode only by default\.
 .IP \(bu 4
-`\f[CR]opencl\fP`: OpenCL platform version, provider, and the device it exposes\. Reports `\f[CR]no device enabled\fP` when a platform advertises a version but exposes no usable device \-\- the normal state for Mesa's rusticl until `\f[CR]RUSTICL_ENABLE\fP` is set\. Linux and Windows\. Full mode only by default\.
+`\f[CR]opencl\fP`: OpenCL platform version, provider, and the device it exposes\. Reports `\f[CR]no device enabled\fP` when a platform advertises a version but exposes no usable device \-\- the normal state for Mesa's rusticl until `\f[CR]RUSTICL_ENABLE\fP` is set\. Linux, Windows and macOS\. Full mode only by default\.
 .IP \(bu 4
 `\f[CR]motherboard\fP`: Motherboard manufacturer and model\.
 .IP \(bu 4
