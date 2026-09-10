@@ -68,6 +68,25 @@ yay -S retch
 
 *(AUR package configuration files are available in [packaging/aur](packaging/aur/PKGBUILD)).*
 
+### On macOS (Homebrew)
+
+`retch` is available from a Homebrew tap:
+
+```sh
+brew tap l1a/retch
+brew install retch
+```
+
+> [!NOTE]
+> The formula builds from source, so the first install compiles `retch` and needs Rust —
+> Homebrew installs it as a build-time dependency automatically. There is deliberately no
+> prebuilt bottle: a bottle has to be built, signed and uploaded per macOS version and
+> architecture, which is a meaningful amount of release machinery for a small tool. It also
+> installs the man page and shell completions for bash, zsh and fish.
+
+*(The formula is maintained in [packaging/homebrew](packaging/homebrew/retch.rb) and pushed
+to the tap by `just brew-publish` — the tap is never hand-edited.)*
+
 ### On Fedora (COPR)
 
 `retch` is built for Fedora in a [COPR](https://copr.fedorainfracloud.org/coprs/kentobias/retch/)
