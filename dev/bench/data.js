@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789103500347,
+  "lastUpdate": 1789103869060,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5516,90 +5516,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "e5b9b5941c53dc4bcdc12aac4b5549e7d0ddf5f6",
-          "message": "Let the manual Claude review actually run (#193)\n\n* Let the manual Claude review actually run\n\nv0.6.17 disabled automatic review by commenting out the pull_request\ntrigger AND setting if: false on the job. The trigger alone already did\nthat, so the guard added nothing -- but it also applied to\nworkflow_dispatch, which was kept. So gh workflow run started a run,\nskipped the job, and reported SUCCESS having reviewed nothing.\n\nA green run that did nothing is the failure this repo's tooling exists\nto refuse, and the one rusticprofile recorded twice about this action.\nDispatch available but silently inert is worse than working or absent.\n\nAutomatic review stays OFF -- only the job guard is removed; the\npull_request trigger is still commented immediately above it.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-12T20:45:42-07:00",
-          "tree_id": "a129dbfd95e55ff45255a019bb60311bdfcf5738",
-          "url": "https://github.com/l1a/retch/commit/e5b9b5941c53dc4bcdc12aac4b5549e7d0ddf5f6"
-        },
-        "date": 1786593185183,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 917094157.25,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 886.6489821139821,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 88.7488263278797,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 6.239368727130374,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 50.62503976185153,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7533.64805579747,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 72312.94706870694,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 48196.81972282771,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 48916.03667002529,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1348979.272942002,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 317.77799159225253,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 222.70155019412908,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "25a63eba863ae9cb9fb41eafa2ad6a65e9c42b8a",
           "message": "Gate merge-pr on CI; bring the triad under standard-check (#194)\n\n* Gate merge-pr on CI; check the triad\n\nmerge-pr went straight from the branch check to gh pr merge --squash\n--delete-branch, with no inspection of the status rollup. gh pr merge\nhappily merges a red PR when there is no branch protection, so every\nmerge in this repo has been ungated -- safe only because whoever merged\nhappened to look first.\n\nrusticprofile added this in v0.1.5 after a PR went in with a leg red,\nand extended it in 0.2.1 after an EMPTY rollup passed vacuously.\nNeither reached here.\n\nThree refusals now: a failing check, an empty rollup, and checks still\nrunning. The empty state is compared as a string rather than via jq -e\nlength, because an external jq is not on a default Windows PATH and a\ngate that degrades where its dependency is missing is the thing being\nfixed.\n\ngate_conformance.py (template v3) is vendored and run by\nstandard-check, so the guards cannot vanish again. It is structural,\nnot behavioural, and says so.\n\nVerified safely: on a branch with no PR the rollup is empty, so\nmerge-pr refuses before reaching gh pr merge.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-12T21:18:47-07:00",
@@ -9699,6 +9615,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 267.4643865258311,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4c85e0b3c1f1ed99e81c9cfaa309466a330bfebd",
+          "message": "packaging: pin to 0.17.3, open 0.17.4, fix post-release's prose (#244)\n\npackaging/aur, packaging/copr and packaging/homebrew track the last RELEASED\ntag, so they can only be bumped once v0.17.3 exists. Bundling that with the\nnext version bump is what makes this a normal gated PR: just pr's step 2\ncompares Cargo.toml against the last tag, not against this PR's parent, so\nopening 0.17.4 satisfies it. Previous releases sent this commit straight to\nmain on the belief that a PR was impossible.\n\njust brew-bump joined the post-release recipe in v0.17.2, but three pieces of\nits prose did not move with it, so this run bumped three packaging targets\nwhile describing two:\n\n  - the NOTES entry it writes said only aur and copr were bumped,\n  - this commit message body said the same,\n  - and the closing \"Next:\" instructions never mentioned just brew-publish,\n    which is the step that actually ships the formula to the tap.\n\nThe bumps themselves were always correct -- brew-bump runs at the same place\nas its siblings and pinned the formula to 0.17.3 as expected. What was wrong\nwas the account of them, which is the part anyone reads later. Both the entry\nalready written onto this branch and the templates that generate it are fixed\nhere, so the next post-release describes itself accurately.\n\naur-bump and brew-bump each downloaded the v0.17.3 tarball separately and\nhashed it with different tools (sha256sum vs Python hashlib), agreeing on\n77ccf85843d24ac3216ab31d2584ff4a95869266c59ddb8bc83819425cfc2033.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T22:10:49-07:00",
+          "tree_id": "242b5348be9aca9bb4fb553f5f19beb8d8661117",
+          "url": "https://github.com/l1a/retch/commit/4c85e0b3c1f1ed99e81c9cfaa309466a330bfebd"
+        },
+        "date": 1789103867358,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 692794457.4,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2064.4517917124776,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 117.01795655880429,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.883180885520862,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 57.98578974154547,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 18166.956547012243,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 188837.70866603294,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12801.983082784796,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 12990.247053676456,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1428823.4200359092,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 377.8318443530529,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 270.7219960121152,
             "unit": "ns"
           }
         ]
