@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789108768361,
+  "lastUpdate": 1789159107994,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4244,6 +4244,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1087928265.1399999
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "ede5c9a2093c2129ebd94aa339fb08a0c82eff21",
+          "message": "packaging: render at publish, not at release (#246)\n\nThe AUR PKGBUILD, its .SRCINFO, the COPR spec and the Homebrew formula each\nrecorded the released version, two of them with the tarball's sha256. A\nchecksum cannot be computed before its tag exists, so every release ended\nwith a post-tag commit -- and because that commit had to be a reviewed PR\nwhile `just pr` refuses a Cargo.toml equal to the last tag, it also had to\nopen the NEXT version. A release therefore forced a version bump, and main\nwas left naming a version that had never been released. On 2026-09-11 that\ncame one command from putting retch-cli 0.17.4 on crates.io.\n\nThe three files are now templates carrying @VERSION@ / @SHA256@, filled in by\nscripts/render_packaging.py at publish time from the tag and the tarball it\ndownloads. No packaging commit, no post-release PR, no aur-bump/copr-bump/\nbrew-bump, and no bump forced on a release; main sits at the released version\nuntil the next feature PR bumps it.\n\nThe three anti-drift guards stopped comparing four recordings of one fact and\nnow assert the templates record nothing. Neither check that mattered was\ndropped: the AUR pair comparison moved into aur-publish, where it runs on the\nbytes being pushed, and changelog-vs-Version moved into the renderer, which\nwrites both in one pass. COPR's Source0 became a local archive of the\ncheckout, so a PR can build its own SRPM for the first time; copr.yml's\ntrigger became the tag, pinned with `buildscm --commit`; and `just publish`\nnow refuses unless HEAD is the tag for Cargo.toml's version.\n\nVerified by reproducing what v0.17.3 published: the rendered .SRCINFO is\nbyte-identical to the one pushed to the AUR, the rendered formula matches the\npublished one apart from comments, and both pass ruby -c. The COPR SRPM was\nbuilt plain and under mock's environment, from both source paths, with\nrpmbuild -rp proving %autosetup matches the archive prefix.\n\nCloses the structural half of NOTES §5 -- the half that entry named as the\nactual work.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-11T13:37:35-07:00",
+          "tree_id": "4ddc2d01539a96abe3cd0163ee1062dbd06bcf3f",
+          "url": "https://github.com/l1a/retch/commit/ede5c9a2093c2129ebd94aa339fb08a0c82eff21"
+        },
+        "date": 1789159107994,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 329233653.0400001
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1087979030.44
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 7824008.780000002
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 30747676.280000005
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 419801800.08
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1091796035.7799997
           }
         ]
       }
