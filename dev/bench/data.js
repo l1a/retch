@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789102069392,
+  "lastUpdate": 1789103500347,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4190,6 +4190,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1105301553.92
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "4c85e0b3c1f1ed99e81c9cfaa309466a330bfebd",
+          "message": "packaging: pin to 0.17.3, open 0.17.4, fix post-release's prose (#244)\n\npackaging/aur, packaging/copr and packaging/homebrew track the last RELEASED\ntag, so they can only be bumped once v0.17.3 exists. Bundling that with the\nnext version bump is what makes this a normal gated PR: just pr's step 2\ncompares Cargo.toml against the last tag, not against this PR's parent, so\nopening 0.17.4 satisfies it. Previous releases sent this commit straight to\nmain on the belief that a PR was impossible.\n\njust brew-bump joined the post-release recipe in v0.17.2, but three pieces of\nits prose did not move with it, so this run bumped three packaging targets\nwhile describing two:\n\n  - the NOTES entry it writes said only aur and copr were bumped,\n  - this commit message body said the same,\n  - and the closing \"Next:\" instructions never mentioned just brew-publish,\n    which is the step that actually ships the formula to the tap.\n\nThe bumps themselves were always correct -- brew-bump runs at the same place\nas its siblings and pinned the formula to 0.17.3 as expected. What was wrong\nwas the account of them, which is the part anyone reads later. Both the entry\nalready written onto this branch and the templates that generate it are fixed\nhere, so the next post-release describes itself accurately.\n\naur-bump and brew-bump each downloaded the v0.17.3 tarball separately and\nhashed it with different tools (sha256sum vs Python hashlib), agreeing on\n77ccf85843d24ac3216ab31d2584ff4a95869266c59ddb8bc83819425cfc2033.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T22:10:49-07:00",
+          "tree_id": "242b5348be9aca9bb4fb553f5f19beb8d8661117",
+          "url": "https://github.com/l1a/retch/commit/4c85e0b3c1f1ed99e81c9cfaa309466a330bfebd"
+        },
+        "date": 1789103500347,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 321402809.64
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1084173497.0400002
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 7128040.02
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 15431693.120000001
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 433679710.14
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1087928265.1399999
           }
         ]
       }
