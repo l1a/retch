@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789105772790,
+  "lastUpdate": 1789106505079,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4794,6 +4794,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 601276202.5
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "37f683dcc0380ce5f434e770d1f5c1b87d1856ca",
+          "message": "legal: ship the actual GPLv3 text, and split out third-party notices (#245)\n\nGitHub reported this repository's licence as \"other\" despite Cargo.toml\ndeclaring GPL-3.0-or-later. The cause was that LICENSE was not the GPL: it was\na 31-line file holding a heading, a copyright line, the MIT attribution for the\nadapted Fastfetch logos, and the short source-header notice (\"This program is\nfree software...\"). GitHub's licensee had nothing to match, so it matched\nnothing.\n\nThat was also a compliance gap rather than a cosmetic one. The file told\nreaders \"You should have received a copy of the GNU General Public License\nalong with this program\" while the program shipped no such copy -- and both\nthe AUR PKGBUILD and the COPR spec install that file as the licence.\n\nLICENSE is now the verbatim 674-line GPLv3 text, byte-identical to\nhttps://www.gnu.org/licenses/gpl-3.0.txt. Cross-checked against the SPDX copy\nof GPL-3.0-or-later: after normalising whitespace and (C)/(c) the two agree to\n99.1%, and every remaining difference is typographic (SPDX uses curly quotes\nand the copyright sign). The gnu.org text is plain ASCII, which is what GPLv3\nprojects normally carry.\n\nEverything that was in LICENSE but is not the GPL moved to NOTICE: this\nproject's copyright and licence grant, and the MIT attribution for the\nFastfetch logos. NOTICE is not decoration -- MIT requires its copyright notice\nto travel with every copy, and that obligation was previously met only because\nthe text happened to be embedded in a file the packaging installed. So both\npackaging recipes now install NOTICE alongside LICENSE:\n\n  - PKGBUILD gains an install line next to the LICENSE one.\n  - The spec uses `%license LICENSE NOTICE`, deliberately %license and not\n    %doc, so it cannot be stripped as documentation.\n\npackaging/aur/.SRCINFO is unchanged and correctly so: it records metadata, not\nthe package() body, and aur_check.py compares those fields.\n\nThe AUR and COPR changes touch the package() body only, so they take effect\nwith the next release rather than retroactively for the published 0.17.3-1.\n\nWhether GitHub now detects the licence can only be settled by GitHub's own\ndetector; that it is byte-identical to the canonical text is the reason to\nexpect it, not proof of it.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T23:00:58-07:00",
+          "tree_id": "656609183e1047949fa11c6ff1d2eaf23bb336ba",
+          "url": "https://github.com/l1a/retch/commit/37f683dcc0380ce5f434e770d1f5c1b87d1856ca"
+        },
+        "date": 1789106505079,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 608958774.98
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 591501562.58
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 34112927.92000002
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 46676965.82000001
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 655559219.14
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 581697406.74
           }
         ]
       }
