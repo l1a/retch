@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789099781615,
+  "lastUpdate": 1789100126288,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20770,70 +20770,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "1d0dc367f9ad44e2a04cc045891998fa9d9b1aae",
-          "message": "fix: unprivileged Packages, sudo Rio, logo aspect (#189)\n\nThree defects found by diffing `sudo retch --full` against a plain run.\n\nPackages appeared only under sudo. The RPM SQLite database was opened\nread-write; it is root-owned inside a root-owned directory, so SQLite\ncould not create its journal sidecars and every *query* failed with\n\"attempt to write a readonly database\" — not the open(), which is why\nthe existing warning never fired and the field vanished silently. Now\nopened read-only over a `file:...?immutable=1` URI, and the query error\nis reported instead of swallowed.\n\nRio lost all graphics support under sudo: it was identified only by\nTERM_PROGRAM, which env_reset drops. `is_rio_terminal` now also accepts\nTERM=rio/xterm-rio, which sudo preserves.\n\nThe Kitty logo was stretched ~3x vertically. `c=26,r=10` was hardcoded\nand Kitty forces an image into that rectangle, while display.rs assumed\na fixed 40-column width and derived the row count a third way. A single\npure `fit_logo_cells` now feeds all three protocol emitters and\nplan_layout. Passing both correct values still left a 9% stretch from\ncell quantisation, so the Kitty spec carries only the limiting dimension\nand lets Kitty derive the other — measured 0.0% aspect error in a PTY.\n\nThe chafa box widens 28 -> 45 columns (row cap unchanged at 10) so wide\nlockup assets stay legible: the Fedora logo goes from 4 rows to 7. The\nside-by-side threshold is unaffected (45 + 45 <= 95), pinned by a test.\n\nAlso fixes a test-isolation defect the change exposed: once\nsupports_iterm2 read TERM, the host's TERM leaked into a test that\nguarded only TERM_PROGRAM, failing on a Rio box and passing on CI.\n\nDocuments the privilege trade-off in both directions (root-only\nphys-mem and btrfs snapshot counts; user-only editor/desktop/wm) in a\nnew NOTES section, README, and a man-page PRIVILEGES section.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-11T17:52:19-07:00",
-          "tree_id": "9996d32ff3728e9292ad474ad37e12907763f637",
-          "url": "https://github.com/l1a/retch/commit/1d0dc367f9ad44e2a04cc045891998fa9d9b1aae"
-        },
-        "date": 1786498405206,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 177.97786542098004,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9641768718634807,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 97.98860182163563,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.16608989814691,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 48848.0197212285,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 490.9679765126367,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 751.5241683900898,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2949890710,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "9d27af8746fe0e349822f3272031e94e03589b50",
           "message": "chore: bump 3 deps (consolidated Dependabot #188) (#190)\n\nRolls Dependabot #188 onto a gated branch so the release hygiene it\nbypasses — version bump, NOTES entry, man regen — is actually done,\nfollowing the #167/v0.6.3 and #184/v0.6.16 pattern.\n\nAll patch-level and lockfile-only; every spec is a caret range, so both\nCargo.toml manifests are untouched:\n\n  clap           4.6.5 -> 4.6.6  (pulls clap_builder 4.6.5 -> 4.6.6)\n  clap_complete  4.6.8 -> 4.6.9\n  rusqlite       0.40.1 -> 0.40.2 (pulls libsqlite3-sys 0.38.1 -> 0.38.2)\n\nThe lockfile was diff-verified byte-identical to Dependabot's before the\nversion bump, so this carries exactly the change its green CI validated;\nafterwards the only divergence is retch-cli's own version line.\n\nrusqlite warranted a live check rather than just a green suite: it is a\ndirect dependency of retch-sysinfo and the crate v0.6.18's Packages fix\nhad just started using differently, and libsqlite3-sys bundles SQLite\nitself, so a bump changes the engine that has to honour `immutable=1`.\nThe rpm_db_uri unit tests only assert string construction and could not\ncatch a behavioural change there. Verified live as an unprivileged user:\nPackages: 2509, unchanged.\n\nretch-cli -> 0.6.19; retch-sysinfo unchanged at 0.1.53 (no source\nchange, only its transitive lockfile deps moved).\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-11T18:52:53-07:00",
@@ -23953,6 +23889,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1144327445,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1519b646d688b75f3124d792452d9e42798d5058",
+          "message": "Add a Homebrew tap, formula and drift guard (#242)\n\n* Add a Homebrew tap, formula and drift guard\n\nmacOS was the platform the v0.14.0-v0.17.1 parity work was about, and the\none platform with no native install path: Linux gets the AUR and COPR,\neveryone gets crates.io, and a Mac user had to cargo install. A Homebrew\npackage is now a prerequisite for the next publish round rather than a\nlong-tail item, so it lands before v0.17.1 ships anywhere.\n\npackaging/homebrew/retch.rb is the SOURCE, not a reference copy, and it\nships with its guard. packaging/aur/PKGBUILD was an inert reference copy\nthat reached eleven releases of drift while CI stayed green; v0.7.1 fixed\nthat after the fact, and copr_check.py was written before the drift. This\nis the third instance of the construct and the guard was written at the\nsame time as the file.\n\nscripts/brew_check.py asserts six things offline, with 10 self-test cases.\nThe load-bearing one is the negative: a formula trailing Cargo.toml by a\nrelease cycle must stay silent, because that is the normal resting state\nand a guard that fires there gets deleted.\n\nThe guard immediately caught my own first draft, which pinned the\njust-released v0.17.1 tarball. All three packaging targets track the last\nreleased tag and are bumped together by post-release, so a formula ahead\nof its siblings is exactly the drift being guarded. It now pins 0.13.2 to\nmatch, and post-release moves all three.\n\nbrew-bump computes the checksum from the tarball it downloads and hard-\nerrors when a substitution matches nothing, rather than writing a file\nthat looks updated and is not - the calculate_nix_hashes.py defect.\nbrew-publish clones the tap fresh each time and sets the noreply identity\nexplicitly.\n\nA brew CI job on macos-latest does the expensive half: verifies the sha256\nagainst the real tarball, installs from source, runs the formula's test\nblock, and inspects the payload for a man page with no literal $ in .TH.\n\nAdds scripts/*_check.py to the packaging paths filter - the v0.9.6\nJustfile hole, one directory over.\n\nThe formula was NOT installed locally: depends_on rust would have pulled\n~350 MB into this machine's Homebrew, and brew audit is broken here for\nits own reasons (a vendored json gem conflict). The install is proven by\nCI, not locally.\n\nAssisted-By: Claude Opus 5\n\n* Install the formula through a tap in CI\n\nbrew install <path> is rejected by modern Homebrew: formulae must be in\na tap. The job now stages it in a throwaway local tap, which is also the\nmore faithful test - it is the path a user takes via brew tap.\n\nAssisted-By: Claude Opus 5\n\n* Drop the duplicate --locked; guard std_cargo_args instead\n\nstd_cargo_args already passes --locked, and cargo rejects the duplicate\nwith \"the argument '--locked' cannot be used multiple times\". The formula\nparsed and the offline guard passed; only a real install surfaced it.\n\nThe guard was asserting the wrong thing. Checking for the literal flag\nwould pass for a formula that dropped std_cargo_args and unpinned\nresolution, and would demand the duplicate cargo refuses. It now asserts\nstd_cargo_args is used and that no second --locked is added, with a\nself-test case for the exact regression CI caught.\n\nAssisted-By: Claude Opus 5\n\n* Use a network-free assertion in the formula test block\n\nbrew test runs sandboxed with the network restricted. The first test\nblock asserted on retch --short, which includes the net field, which\nresolves the local IP with a UDP-connect - that blocks in the sandbox and\nthe block dies on Timeout::Error with nothing pointing at the cause.\n\n--fields os proves the binary can probe the machine while touching only\nlocal system calls, and is 3.4 ms against --short's 31 ms.\n\nAssisted-By: Claude Opus 5\n\n* ANSI-strip in the formula test block\n\nThe assertion failed because retch colourises even when piped, so the\nlabel and its colon are separated by escapes and a literal /OS:/ never\nmatches.\n\nMy first diagnosis was wrong and is recorded as such: the backtrace\ncontained Timeout::Error.handle_timeout, which read as the sandbox\nblocking a network call, and --short does include a field that resolves\nthe local IP. But those timeout.rb frames are Homebrew's run_test\nwrapper and appear in every failed test block. The real cause was the\nsame ANSI mismatch both times.\n\nThe strip matches the whole ESC [ ... final-byte form rather than SGR\nonly, per the v0.9.2 chafa lesson.\n\nAlso records that retch ignores NO_COLOR and has no --no-color flag,\nnoticed while writing this test. Backlog, not fixed here.\n\nAssisted-By: Claude Opus 5\n\n* Check the Homebrew bash completion path, and show the tree on failure\n\nHomebrew's bash_completion is etc/bash_completion.d, not the freedesktop\nshare/bash-completion/completions that the AUR and COPR packages use.\nzsh and fish are where you would expect; bash is the odd one. The first\npayload check asserted the freedesktop path and reported the completion\nmissing on a package that installs it correctly.\n\nThe step now prints the whole installed tree before failing, so the next\nmismatch is diagnosable from the log rather than costing a round trip -\nthe lesson from the aur job's zipman failure.\n\nAssisted-By: Claude Opus 5\n\n* Make brew-publish answerable and correct on an empty tap\n\nThree defects in the recipe as first written, all mine:\n\nA bare `read` could only be answered by a human at a terminal - the\nv0.6.21 defect, where a script or agent blocks on a stdin that will never\nanswer and the failure reads as the gate refusing the publish. It now\ntakes BREW_CONFIRM, an interactive stdin, or piped input under a bound,\nmirroring aur-publish. Every path still requires an explicit \"yes\".\n\n`git diff --quiet -- <path>` does not see untracked files, so on a\nbrand-new empty tap it reported \"nothing to push\" and exited 0 having\npublished nothing. It now stages first and asks `--cached`, which is the\nquestion actually being asked.\n\nA brand-new tap has no branch, and which name git invents depends on the\nhost's init.defaultBranch - unset on at least one fleet machine. Pinned\nto main, but only when the repo is genuinely empty.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T20:35:42-07:00",
+          "tree_id": "e21e2fb33c247b6826022332f40067699bc925ab",
+          "url": "https://github.com/l1a/retch/commit/1519b646d688b75f3124d792452d9e42798d5058"
+        },
+        "date": 1789100122186,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 183.5854668145338,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9747629116278964,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.75097055207421,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.14447419771038,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 49052.63791936364,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 493.3844764593845,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 744.889469768934,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1227128525,
             "unit": "ns"
           }
         ]
