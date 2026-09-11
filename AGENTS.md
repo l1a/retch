@@ -272,6 +272,8 @@ blocks):
 ### 4.7 Version bump & release hygiene
 - [ ] Bump the version in `Cargo.toml` following semver:
       patch (`0.x.N+1`) for bug fixes, minor (`0.x+1.0`) for new features.
+      This applies to **PRs**. A *release* needs no bump of its own: after a tag, `main`
+      stays at the released version and the next PR is the thing that bumps (§4.9).
 - [ ] `Cargo.lock` updated (`cargo check` does this automatically) and committed.
 - [ ] `just man` re-run after the bump so the man page version footer is current, and committed.
 - [ ] Before tagging, verify `git status` is completely clean. The tag must only be
@@ -290,15 +292,25 @@ Clone `https://github.com/l1a/retch.wiki.git`, edit the relevant pages, and push
       Pre-PR/merge workflow (`just pr`, `just merge-pr`) changed.
 
 ### 4.9 Packaging
-- [ ] If this is a release PR, check whether `packaging/nixpkgs/package.nix` needs
-      `just nix-update` and whether the AUR PKGBUILD needs a version bump.
-- [ ] **The post-release packaging bump is a normal PR — do not commit it to `main`.** Run
-      `just post-release <version just released>`, which pins `packaging/aur` and
-      `packaging/copr` to that version *and* opens `Cargo.toml` on the next patch, then
-      `just open-pr` as usual. Releases up to v0.9.10 committed this straight to `main` on the
-      belief that the gate made a PR impossible; it did not. `just pr`'s version check is an
-      equality test against the last **tag**, so bundling the packaging bump with the next
-      version bump satisfies it. See NOTES §5.
+- [ ] **There is no post-release packaging PR, and a release requires no version bump.**
+      `packaging/aur/PKGBUILD`, `packaging/copr/retch.spec` and
+      `packaging/homebrew/retch.rb` are **templates** carrying `@VERSION@` / `@SHA256@`;
+      `scripts/render_packaging.py` fills those in at publish time, from the tag. So a
+      release is: tag → `just publish` → `just aur-publish <version>` →
+      `just brew-publish <version>` (COPR rebuilds itself off the tag), and nothing is
+      committed afterwards. `main` sits **at** the released version until the next feature
+      PR bumps it — which is what makes `just publish` on `main` correct, and its
+      HEAD-is-the-tag guard is what enforces that rather than trusting it.
+- [ ] If you are touching packaging, the guards run offline in `just check`
+      (`render-check`, `aur-check`, `copr-check`, `brew-check`) and assert the templates
+      still record nothing. Do not "fix" one by writing a version back into a template.
+- [ ] `packaging/nixpkgs/package.nix` is the one target still pinned by hand, deliberately:
+      that channel is undecided and its CI job is `if: false`. Check whether it needs
+      `just nix-update` only if a nixpkgs submission is actually happening.
+- [ ] History, for anyone reading an old commit: releases up to v0.9.10 committed the
+      packaging bump straight to `main` believing the gate made a PR impossible (it did
+      not); v0.9.12 turned it into a gated PR via `just post-release`; and the bump itself
+      is now gone because nothing records a released version. See NOTES §5.
 
 ### 4.10 PR description
 - [ ] Title is concise (≤ 70 chars), imperative mood.

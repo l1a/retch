@@ -9,18 +9,30 @@
 #      there would need a vendor tarball as Source1 (and rusqlite's "bundled" feature
 #      replaced with system sqlite). COPR is the endpoint; see NOTES.md.
 #
-# Version tracks the last RELEASED tag, not Cargo.toml, because Source0 is a tag tarball
-# that must exist. This mirrors packaging/aur/PKGBUILD's pkgver and drifts by one command
-# at release time, not by releases.
+# THIS IS A TEMPLATE. `@VERSION@` is filled in by scripts/render_packaging.py, which
+# .copr/Makefile runs when it builds the SRPM -- so the version comes from Cargo.toml in
+# the checkout COPR cloned, and nothing in this file records a release. It used to: the
+# `Version:` here tracked the last released tag, was bumped by hand at release time, and
+# had to be kept in step with three other files by a guard each. See
+# scripts/render_packaging.py for why that is the wrong shape.
+#
+# Source0 is a LOCAL tarball, not a URL. .copr/Makefile builds it from the checkout with
+# `tar`, so this spec needs neither a published tag nor network access to find its source:
+#   - a PR can build its own SRPM, which it could not while Source0 pinned a tag tarball
+#     that only exists after a release;
+#   - the built package is the code COPR actually cloned, rather than a re-download that is
+#     merely expected to match it.
+# The rendered %changelog entry is generated in the same pass as Version:, so the two
+# cannot disagree (rpmlint's incoherent-version-in-changelog).
 
 Name:           retch
-Version:        0.17.3
+Version:        @VERSION@
 Release:        1%{?dist}
 Summary:        A fast, feature-rich system information fetcher written in Rust
 
 License:        GPL-3.0-or-later
 URL:            https://github.com/l1a/retch
-Source0:        %{url}/archive/refs/tags/v%{version}.tar.gz#/%{name}-%{version}.tar.gz
+Source0:        %{name}-%{version}.tar.gz
 
 ExclusiveArch:  x86_64 aarch64
 

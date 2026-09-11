@@ -12,19 +12,24 @@ on:
       - 'flake.nix'
       - 'flake.lock'
       - 'packaging/**'
-      # The recipes that RENDER packaging/aur (aur-bump / aur-srcinfo / aur-check) live in
-      # the Justfile, so a change there can alter the AUR tooling without touching anything
-      # under packaging/ — which is exactly how #203 shipped with every workflow's paths
-      # filter skipping it, CI green having never looked at the change. This job cannot run
-      # those recipes (no podman, no `just` in the container), so what the entry buys is
-      # artifact-level coverage: the committed PKGBUILD/.SRCINFO pair is re-verified against
-      # the real tarball, rebuilt with makepkg, and its packaged man page inspected.
+      # The recipes that publish packaging/aur (aur-publish / aur-srcinfo / aur-check) live
+      # in the Justfile, so a change there can alter the AUR tooling without touching
+      # anything under packaging/ — which is exactly how #203 shipped with every workflow's
+      # paths filter skipping it, CI green having never looked at the change. This job
+      # cannot run those recipes (no podman, no `just` in the container), so what the entry
+      # buys is artifact-level coverage: the PKGBUILD is rendered for the last released tag
+      # and its checksum re-derived from the real tarball, then built with makepkg and its
+      # packaged man page inspected.
       - 'Justfile'
       # The three packaging guards themselves. Same hole as the Justfile one above, one
       # directory over: `scripts/brew_check.py` and its siblings decide whether a drifted
       # packaging file can reach a commit, and until this entry a PR touching only a guard
       # matched no filter and got no packaging verification at all.
       - 'scripts/*_check.py'
+      # The renderer is a stronger instance of the same thing: it does not merely decide
+      # whether a packaging file may be committed, it WRITES the files that get published to
+      # the AUR, COPR and the Homebrew tap. `scripts/*_check.py` does not match it.
+      - 'scripts/render_packaging.py'
       # .copr/Makefile is what GENERATES the SRPM, and until v0.9.10 no PR-triggered
       # workflow watched it: copr.yml watches '.copr/**' but only on push to main, so a PR
       # touching only that file got no packaging verification whatsoever. That is not
@@ -67,70 +72,95 @@ jobs:
           # either. Pre-installing it here would mask a future build() that calls it without
           # declaring it — `makepkg -s` installs what makedepends asks for, and nothing else.
           # `cargo` is still pre-installed, so that one makedepend remains masked.
-          pacman -Syu --noconfirm git base-devel cargo curl sudo
+          # `python` is needed by scripts/render_packaging.py; base-devel does not include it.
+          pacman -Syu --noconfirm git base-devel cargo curl sudo python
 
+      # fetch-depth: 0 because the render step below needs the last RELEASED tag, and the
+      # default shallow checkout carries no tags at all.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
 
-      # Runs BEFORE the build step, which rewrites source= and sha256sums= to build from local
-      # sources. Without this, the declared checksum is never checked by anything: a stale or
-      # wrong sha256 in the reference PKGBUILD would sail through CI and only fail for someone
-      # actually installing from the AUR.
-      - name: Verify declared source checksum
+      # WHAT THIS REPLACED, AND WHY IT IS STRONGER.
+      #
+      # This step used to source the committed PKGBUILD and compare its declared sha256
+      # against the real tarball. There is no declared sha256 any more: the PKGBUILD is a
+      # template, and `scripts/render_packaging.py` supplies the version and checksum at
+      # publish time. So instead of checking a committed constant, this performs the publish
+      # render for the last released tag and checks THAT -- the same computation
+      # `just aur-publish` will do, against the same tarball an AUR user downloads.
+      #
+      # A wrong committed checksum used to be invisible until someone installed from the AUR.
+      # Now a renderer that produces a wrong one fails here, which is the same protection
+      # aimed at the thing that can actually be wrong.
+      - name: Render the PKGBUILD for the last released tag and verify its checksum
         shell: bash
         run: |
           set -euo pipefail
-          cd packaging/aur
-          # A PKGBUILD is a bash script of assignments; sourcing defines the functions without
-          # running them.
-          # shellcheck disable=SC1091
-          source ./PKGBUILD
-          url_field="${source[0]#*::}"
-          declared="${sha256sums[0]}"
-          echo "pkgver:   $pkgver"
-          echo "url:      $url_field"
-          echo "declared: $declared"
-
-          if [ "$declared" = "SKIP" ]; then
-            echo "::error::sha256sums is SKIP in the committed PKGBUILD; it must carry a real checksum"
-            exit 1
-          fi
-
-          # The reference copy tracks the last RELEASED version, so its tag normally exists. On
-          # a branch that has bumped it ahead of the last release it will not yet — that is a
-          # legitimate state, not a failure, so skip rather than go red.
-          if ! curl -fsSL --retry 3 -o upstream.tar.gz "$url_field"; then
-            echo "::notice::tag not published yet ($url_field) — checksum not verifiable at this commit"
+          git config --global --add safe.directory "$PWD"
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -z "$TAG" ]; then
+            echo "::notice::no tags in this checkout — nothing to render against"
             exit 0
           fi
-
-          actual=$(sha256sum upstream.tar.gz | cut -d' ' -f1)
-          echo "actual:   $actual"
-          if [ "$actual" != "$declared" ]; then
-            echo "::error::sha256 mismatch for $url_field — declared $declared, actual $actual"
-            exit 1
+          V="${TAG#v}"
+          URL="https://github.com/l1a/retch/archive/refs/tags/${TAG}.tar.gz"
+          echo "last released tag: $TAG"
+          if ! curl -fsSL --retry 3 -o /tmp/upstream.tar.gz "$URL"; then
+            echo "::notice::$URL is not fetchable — checksum not verifiable at this commit"
+            exit 0
           fi
-          echo "checksum OK"
-          rm -f upstream.tar.gz
+          SHA=$(sha256sum /tmp/upstream.tar.gz | cut -d' ' -f1)
+          echo "computed sha256: $SHA"
+
+          python3 scripts/render_packaging.py --target aur --version "$V" --sha256 "$SHA" \
+            --out /tmp/PKGBUILD.rendered
+
+          # Read the rendered file back rather than trusting the renderer's exit code: the
+          # failure being guarded against is a substitution that silently did not happen,
+          # which is exactly what an exit code cannot show (v0.6.13).
+          # shellcheck disable=SC1091
+          ( cd /tmp && source ./PKGBUILD.rendered
+            echo "rendered pkgver:    $pkgver"
+            echo "rendered sha256sums: ${sha256sums[0]}"
+            [ "$pkgver" = "$V" ] || { echo "::error::rendered pkgver is $pkgver, expected $V"; exit 1; }
+            [ "${sha256sums[0]}" = "$SHA" ] || { echo "::error::rendered sha256 does not match the tarball"; exit 1; }
+            case "${source[0]}" in
+              *"refs/tags/v${V}.tar.gz") ;;
+              *) echo "::error::rendered source does not point at refs/tags/v$V"; exit 1 ;;
+            esac )
+          echo "render verified against the real $TAG tarball"
+          rm -f /tmp/upstream.tar.gz
 
       - name: Build AUR PKGBUILD
         run: |
+          set -euo pipefail
           # Create builduser
           useradd -m builduser
           echo "builduser ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-          
+
+          # The committed PKGBUILD is a template and makepkg refuses `@` in pkgver, so the
+          # local build renders one first. The version is Cargo.toml's (this checkout's), and
+          # the checksum is irrelevant because the next step replaces source= with a local
+          # tarball -- hence a real-looking but arbitrary digest here, never SKIP in a
+          # published file.
           cd packaging/aur
-          
+          V=$(python3 ../../scripts/render_packaging.py --print-version)
+          python3 ../../scripts/render_packaging.py --target aur --version "$V" \
+            --sha256 "$(printf 'local-build-only%s' "$V" | sha256sum | cut -d' ' -f1)" \
+            --out PKGBUILD
+
           # Package local source to avoid downloading tag that doesn't exist yet
           tar --exclude=packaging/aur/cargo-home --exclude=target --exclude=.git -czf /tmp/retch.tar.gz -C ../.. .
           mv /tmp/retch.tar.gz retch.tar.gz
-          
+
           # Patch PKGBUILD for local build
           sed -i 's|source=.*|source=("retch.tar.gz")|' PKGBUILD
           sed -i 's|sha256sums=.*|sha256sums=("SKIP")|' PKGBUILD
           sed -i 's|"$pkgname-\$pkgver"|"$srcdir"|g' PKGBUILD
-          
+
           chown -R builduser:builduser .
-          
+
           # Run makepkg (unsetting any runner-inherited cargo linker configs)
           sudo -u builduser env -u CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER makepkg -s --noconfirm
 
@@ -272,7 +302,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf .copr-sources
+          rm -rf .copr-build
           mkdir -p /builddir /tmp/srpm-mock
           echo "%_topdir /builddir/build" > /builddir/.rpmmacros
           export HOME=/builddir
@@ -281,12 +311,17 @@ jobs:
           ls -1 /tmp/srpm-mock
 
       # The SRPM's name encodes the version rpm actually resolved, so this closes the loop
-      # between the text copr_check.py reads and the artifact the build produced.
-      - name: Verify the SRPM matches the version the spec pins
+      # between the version .copr/Makefile rendered and the artifact the build produced.
+      #
+      # The version comes from Cargo.toml, not from the spec: the spec is a template whose
+      # `Version:` is `@VERSION@`, and reading that would compare the artifact against a
+      # sentinel. This is also the assertion that proves the render actually happened -- an
+      # unrendered spec produces `retch-@VERSION@-1.src.rpm`, which fails here by name.
+      - name: Verify the SRPM matches the version the render used
         shell: bash
         run: |
           set -euo pipefail
-          version=$(sed -n 's/^Version:[[:space:]]*//p' packaging/copr/retch.spec | head -1)
+          version=$(python3 scripts/render_packaging.py --print-version)
           # find -print -quit, never `ls | head`: under pipefail a producer killed by SIGPIPE
           # makes the pipeline fail, so that idiom reports "not found" precisely when it
           # matched. The aur job's man-page step went red on a correct package for exactly
@@ -297,63 +332,80 @@ jobs:
             ls -la /tmp/srpm-mock || true
             exit 1
           fi
-          echo "spec Version: $version"
-          echo "built:        $(basename "$srpm")"
+          echo "Cargo.toml version: $version"
+          echo "built:              $(basename "$srpm")"
           case "$(basename "$srpm")" in
             retch-"$version"-*.src.rpm) ;;
             *)
-              echo "::error::SRPM name does not carry the spec's Version ($version)"
+              echo "::error::SRPM name does not carry Cargo.toml's version ($version)"
               exit 1
               ;;
           esac
-          echo "SRPM matches the pinned version"
+          echo "SRPM matches the rendered version"
 
   # The macOS half of packaging verification. The other two packaging targets are verified
   # on Linux runners; a Homebrew formula can only be exercised where Homebrew runs.
   #
   # WHAT THIS BUYS OVER `just brew-check`
   # --------------------------------------
-  # brew-check is the cheap, offline half wired into `just check`: it proves the formula's
-  # fields agree with the PKGBUILD, the COPR spec and Cargo.toml. It cannot prove the
-  # formula BUILDS, that the man page lands, or that completions generate — and an
-  # unbuildable formula fails only on a user's machine. This job is that expensive half,
-  # the same division of labour the `aur` job has against `aur_check.py`.
+  # brew-check is the cheap, offline half wired into `just check`: it proves the formula is
+  # still a template that records no version and no checksum. It cannot prove the RENDERED
+  # formula builds, that the man page lands, or that completions generate — and an
+  # unbuildable formula fails only on a user's machine. This job is that expensive half: it
+  # renders for the last released tag and then installs what it rendered, which is the same
+  # division of labour the `aur` job has against `aur_check.py`.
   brew:
     runs-on: macos-latest
     steps:
+      # fetch-depth: 0 because the render step needs the last RELEASED tag, and the default
+      # shallow checkout carries no tags.
       - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
 
-      # Offline consistency first: if the fields are wrong there is no point spending
-      # several minutes on a build that pins the wrong tarball.
-      - name: Formula consistency (offline)
+      # Offline consistency first: if the template has stopped being one there is no point
+      # spending several minutes on a build.
+      - name: Formula template is valid (offline)
         run: python3 scripts/brew_check.py --self-test && python3 scripts/brew_check.py
 
-      - name: Ruby syntax
-        run: ruby -c packaging/homebrew/retch.rb
-
-      # The declared sha256 is verified against the tarball that will actually be
-      # downloaded, BEFORE the build patches anything — the same check the `aur` job makes,
-      # and for the same reason: a formula can name the right version and carry a wrong
-      # hash, which fails only for the person installing it.
+      # THE RENDER IS WHAT IS TESTED FROM HERE ON.
       #
-      # When the pinned tag is not published yet (a branch that has bumped past the last
-      # release) this emits a notice and passes, rather than going red for a legitimate
-      # state.
-      - name: Verify declared sha256 against the real tarball
+      # The formula in the repo is a template whose `url` and `sha256` are sentinels, so it
+      # cannot be installed as it stands. This renders it exactly as `just brew-publish`
+      # will -- for the last released tag, with the checksum computed from the tarball a
+      # user's `brew install` downloads -- and every later step operates on that output.
+      #
+      # Rendering for the last RELEASED tag rather than for Cargo.toml's version is
+      # deliberate and is also what this job did before: the formula pinned the last
+      # release, so the install step has always built released source. Rendering for an
+      # in-development version would point at a tag that does not exist.
+      - name: Render the formula for the last released tag
         run: |
           set -euo pipefail
-          VER=$(sed -n 's|.*/refs/tags/v\([0-9.]*\)\.tar\.gz.*|\1|p' packaging/homebrew/retch.rb | head -1)
-          DECLARED=$(sed -n 's/^  sha256 "\(.*\)"/\1/p' packaging/homebrew/retch.rb)
-          URL="https://github.com/l1a/retch/archive/refs/tags/v${VER}.tar.gz"
-          echo "formula pins v$VER, sha256 $DECLARED"
-          if ! curl -sfIL -o /dev/null "$URL"; then
-            echo "::notice::v$VER is not published yet — skipping the checksum comparison"
-            exit 0
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -z "$TAG" ]; then
+            echo "::error::no tags in this checkout — cannot render a formula to install"
+            exit 1
           fi
-          curl -sfL -o /tmp/src.tar.gz "$URL"
-          ACTUAL=$(shasum -a 256 /tmp/src.tar.gz | cut -d' ' -f1)
-          echo "actual sha256 $ACTUAL"
-          [ "$ACTUAL" = "$DECLARED" ] || { echo "::error::checksum mismatch for v$VER"; exit 1; }
+          VER="${TAG#v}"
+          URL="https://github.com/l1a/retch/archive/refs/tags/${TAG}.tar.gz"
+          echo "last released tag: $TAG"
+          curl -sfL -o /tmp/src.tar.gz "$URL" || { echo "::error::cannot fetch $URL"; exit 1; }
+          SHA=$(shasum -a 256 /tmp/src.tar.gz | cut -d' ' -f1)
+          echo "computed sha256: $SHA"
+          python3 scripts/render_packaging.py --target brew --version "$VER" --sha256 "$SHA" \
+            --out /tmp/retch.rb
+          # Read the output back: a substitution that silently did not happen is the failure
+          # an exit code cannot show (v0.6.13).
+          grep -q "refs/tags/v${VER}.tar.gz" /tmp/retch.rb \
+            || { echo "::error::rendered formula does not point at $TAG"; exit 1; }
+          grep -q "sha256 \"${SHA}\"" /tmp/retch.rb \
+            || { echo "::error::rendered formula does not carry the computed sha256"; exit 1; }
+          echo "RENDERED_VER=$VER" >> "$GITHUB_ENV"
+          echo "render verified against the real $TAG tarball"
+
+      - name: Ruby syntax
+        run: ruby -c /tmp/retch.rb
 
       # The formula has to be installed THROUGH A TAP, not from a path.
       #
@@ -378,7 +430,7 @@ jobs:
         run: |
           set -euo pipefail
           brew tap-new --no-git local/test
-          cp packaging/homebrew/retch.rb "$(brew --repository local/test)/Formula/retch.rb"
+          cp /tmp/retch.rb "$(brew --repository local/test)/Formula/retch.rb"
           echo "staged at $(brew --repository local/test)/Formula/retch.rb"
 
       # The real test. --build-from-source because there is no bottle, and there is

@@ -6,5 +6,6 @@ memory/
 __pycache__/
 *.pyc
 
-# Created by .copr/Makefile when generating the SRPM locally
-.copr-sources/
+# Created by .copr/Makefile when generating the SRPM locally: the rendered spec and the
+# source tarball it builds from the checkout.
+.copr-build/

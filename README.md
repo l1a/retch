@@ -61,12 +61,16 @@ yay -S retch
 ```
 
 > [!NOTE]
-> **AUR Registration Outage**: New account registrations on the Arch User Repository are temporarily suspended by Arch Linux. While registrations are down, you can still build and install the package locally using the provided configuration:
+> **AUR Registration Outage**: New account registrations on the Arch User Repository are temporarily suspended by Arch Linux. While registrations are down, you can still build and install the package locally from a clone:
 > ```sh
-> cd packaging/aur && makepkg -si
+> just aur-local            # needs just, python3 and makepkg
 > ```
+> This renders the PKGBUILD for the last released tag and runs `makepkg -si` on it, which
+> builds exactly the tarball the AUR package builds.
 
-*(AUR package configuration files are available in [packaging/aur](packaging/aur/PKGBUILD)).*
+*(The AUR PKGBUILD lives in [packaging/aur](packaging/aur/PKGBUILD) as a **template**: its
+`pkgver` and `sha256sums` are filled in from the tag at publish time, so it cannot be run
+directly — hence the recipe above. See `scripts/render_packaging.py`.)*
 
 ### On macOS (Homebrew)
 

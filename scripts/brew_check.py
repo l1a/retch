@@ -1,60 +1,55 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 l1a
-"""Assert packaging/homebrew/retch.rb has not drifted from the rest of the repo.
+"""Assert packaging/homebrew/retch.rb is still a template that records no release.
 
-WHY THIS EXISTS
----------------
-The formula's `url` and `sha256` track the last RELEASED tag, not `Cargo.toml`, because the
-tarball has to exist before it can be checksummed. That is correct and deliberate -- and it
-means the fields are bumped by a human, at release time, in a separate commit, with nothing
-checking the result.
+WHY THIS EXISTS, AND WHY IT CHECKS SOMETHING DIFFERENT NOW
+----------------------------------------------------------
+The formula's `url` and `sha256` used to track the last RELEASED tag, because the tarball
+has to exist before it can be checksummed. So the fields were bumped by a human, at release
+time, in a separate commit -- and this file's original job was to compare that recording
+against the same fact recorded in `packaging/aur/PKGBUILD` and `packaging/copr/retch.spec`.
 
-That is the third time this repo has built that exact construct. `packaging/aur/PKGBUILD`
-had it with no guard and sat **eleven releases** stale (0.6.12 in-repo while the AUR served
-0.6.23) while every CI run was green; v0.7.1 added the guard *after* the drift.
-`packaging/copr/retch.spec` had it and got `copr_check.py` in v0.9.10, *before* the drift.
-This is the same guard for the same shape, written at the same time as the formula so the
-gap never opens at all.
+That was the third instance of one construct. The PKGBUILD had it with no guard and sat
+**eleven releases** stale (0.6.12 in-repo while the AUR served 0.6.23) while every CI run
+was green; v0.7.1 added a guard *after* the drift, v0.9.10 added one for the spec *before*
+its drift, and v0.17.2 gave this formula one on day one. Three guards, comparing four
+recordings of a single fact -- each of them necessary only because the fact was written
+down more than once.
+
+`scripts/render_packaging.py` writes it down once instead, at publish time, from the tag.
+`url` and `sha256` are now sentinels, so there is no "trailing Cargo.toml" state to reason
+about, no bump to forget, and no post-tag commit -- which is what used to force a version
+bump on every release.
 
 WHAT IT CHECKS
 --------------
-All six are offline, deterministic and free:
+All offline, deterministic and free:
 
-  1. The formula's version == `packaging/aur/PKGBUILD`'s `pkgver` == the COPR spec's
-     `Version:`. All three pin the last released tag, so they are three independent
-     recordings of one fact and any disagreement means one was bumped and the others
-     forgotten. This is the drift that actually happened to the PKGBUILD, and it is the
-     load-bearing check.
-  2. The formula's version <= `Cargo.toml`'s version. The in-development version leads and
-     the released version trails, so a formula AHEAD of Cargo.toml pins a tag that cannot
-     exist. Deliberately one-sided: trailing by a whole release cycle is the normal state.
-  3. `sha256` is a real 64-character hex digest, not a placeholder. `lib.fakeHash` sat in
-     `packaging/nixpkgs/package.nix` for many releases (v0.6.13); an obvious placeholder is
-     better than a wrong hash, but neither belongs in a file that gets published.
-  4. The `url` derives its version from the same place the check reads, and is a
-     `refs/tags/` archive URL -- not a branch tarball, which would silently change content
-     under a fixed sha256.
-  5. `cargo install` still uses `*std_cargo_args`, and does NOT add a second `--locked`.
+  1. `url` is the sentinel `refs/tags/v@VERSION@` archive URL -- a `refs/tags/` archive, not
+     a branch tarball, which would silently change content under a fixed sha256.
+  2. `sha256` is exactly `@SHA256@`. An equality test rather than "contains a sentinel": a
+     formula carrying a real digest and a `@SHA256@` in a comment would pass the weaker one.
+  3. Nothing else in the formula body records a version or a digest.
+  4. `cargo install` still uses `*std_cargo_args`, and does NOT add a second `--locked`.
      `std_cargo_args` is what supplies `--locked`; Homebrew builds with network access and
      no vendoring, so `Cargo.lock` is the only thing pinning resolution to what CI tested.
      Checking for the literal flag would be wrong both ways -- it would pass for a formula
      that dropped `std_cargo_args`, and would demand the duplicate cargo rejects.
-  6. The formula still installs the COMMITTED `docs/retch.1` rather than regenerating it.
+  5. The formula still installs the COMMITTED `docs/retch.1` rather than regenerating it.
      The AUR PKGBUILD regenerated its own with mandown and shipped a page footed `$DATE` /
      `retch $pkgver` for months. The tarball already carries a correct page.
 
+The "real 64-character digest, not a placeholder" check has not been dropped -- it moved to
+`render_packaging.py`, which refuses to render a sha that is not a real digest. That is
+where it belongs: the value only exists at publish time now.
+
 WHAT IT IS NOT
 --------------
-It deliberately does NOT:
-
-  - verify the tarball exists or re-checksum it (needs the network -- `just brew-bump` does
-    that when it renders the file, and the `brew` CI job does it again on every PR), or
-  - prove the formula builds or installs (that is `brew install --build-from-source`, run
-    by the `brew` CI job on a macOS runner).
-
-It is the cheap, offline, always-runnable half, wired into `just check` so a drifted formula
-cannot reach a commit. Same division of labour, and deliberately the same wording, as
+It does not prove the formula builds or installs -- that is `brew install
+--build-from-source`, run by the `brew` CI job on a macOS runner against a formula it
+renders for the last released tag. It is the cheap, offline, always-runnable half, wired
+into `just check`. Same division of labour, and deliberately the same wording, as
 `aur_check.py` and `copr_check.py` -- the three are siblings on purpose.
 
 WHY IT PARSES RATHER THAN CALLING brew
@@ -76,14 +71,15 @@ TEMPLATE_VERSION = 1
 
 REPO = Path(__file__).resolve().parent.parent
 FORMULA = REPO / "packaging" / "homebrew" / "retch.rb"
-PKGBUILD = REPO / "packaging" / "aur" / "PKGBUILD"
-SPEC = REPO / "packaging" / "copr" / "retch.spec"
-CARGO = REPO / "Cargo.toml"
 
-SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-TAG_URL_RE = re.compile(
-    r"https://github\.com/l1a/retch/archive/refs/tags/v(?P<version>[0-9]+\.[0-9]+\.[0-9]+)\.tar\.gz"
-)
+# What the template must carry, verbatim. `refs/tags/` and not a branch tarball: a branch
+# tarball changes content under a fixed sha256, so `render_packaging.py` would pin a digest
+# that stops matching the moment anything lands on the branch.
+EXPECTED_URL = "https://github.com/l1a/retch/archive/refs/tags/v@VERSION@.tar.gz"
+EXPECTED_SHA = "@SHA256@"
+
+SHA256_RE = re.compile(r"\b[0-9a-fA-F]{64}\b")
+VERSIONISH_RE = re.compile(r"\b[0-9]+\.[0-9]+\.[0-9]+\b")
 
 
 class ParseError(Exception):
@@ -113,92 +109,41 @@ def _field(body: str, name: str) -> str:
     return m.group(1)
 
 
-def formula_version(body: str) -> str:
-    """The version the formula pins, taken from its tag URL.
-
-    Deliberately derived from `url` rather than from a separate `version` field: a formula
-    with both can have them disagree, and the URL is what actually gets downloaded.
-    """
-    url = _field(body, "url")
-    m = TAG_URL_RE.fullmatch(url)
-    if not m:
-        raise ParseError(
-            f"url is not a github refs/tags archive for this repo: {url!r}\n"
-            "        a branch tarball would change content under a fixed sha256"
-        )
-    return m.group("version")
-
-
-def pkgbuild_version(text: str) -> str:
-    m = re.search(r"^pkgver=([0-9]+\.[0-9]+\.[0-9]+)\s*$", text, re.M)
-    if not m:
-        raise ParseError("no pkgver= in packaging/aur/PKGBUILD")
-    return m.group(1)
-
-
-def spec_version(text: str) -> str:
-    m = re.search(r"^Version:\s*([0-9]+\.[0-9]+\.[0-9]+)\s*$", text, re.M)
-    if not m:
-        raise ParseError("no Version: in packaging/copr/retch.spec")
-    return m.group(1)
-
-
-def cargo_version(text: str) -> str:
-    m = re.search(r'^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"', text, re.M)
-    if not m:
-        raise ParseError("no version in Cargo.toml")
-    return m.group(1)
-
-
-def as_tuple(v: str) -> tuple[int, ...]:
-    return tuple(int(p) for p in v.split("."))
-
-
-def check(
-    formula_text: str, pkgbuild_text: str, spec_text: str, cargo_text: str
-) -> list[str]:
-    """Return a list of problems; empty means the formula is consistent."""
+def check_template(formula_text: str) -> list[str]:
+    """Return a list of problems; empty means the formula is still a template."""
     problems: list[str] = []
     body = _body(formula_text)
 
-    # An unusable `url` is a problem to report, not an exception to propagate: every
-    # later check needs the version it encodes, so this returns early rather than
-    # cascading a dozen confusing follow-on failures.
+    # 1 and 2. The load-bearing assertions: no recorded release, no recorded digest.
+    # Equality rather than containment -- a formula carrying a real digest AND a sentinel in
+    # a comment would satisfy a containment test while pinning a release.
     try:
-        fver = formula_version(body)
+        url = _field(body, "url")
+        sha = _field(body, "sha256")
     except ParseError as exc:
         return [str(exc)]
-    pver = pkgbuild_version(pkgbuild_text)
-    sver = spec_version(spec_text)
-    cver = cargo_version(cargo_text)
 
-    # 1. The load-bearing check: three recordings of one fact.
-    if fver != pver:
+    if url != EXPECTED_URL:
         problems.append(
-            f"formula pins {fver} but packaging/aur/PKGBUILD pkgver is {pver} — "
-            "both track the last RELEASED tag, so one of them was not bumped "
-            "(remedy: just brew-bump <version>)"
+            f"url is {url!r}, not {EXPECTED_URL!r} — this formula is a template; "
+            "scripts/render_packaging.py fills the version in at publish time"
         )
-    if fver != sver:
+    if sha != EXPECTED_SHA:
         problems.append(
-            f"formula pins {fver} but packaging/copr/retch.spec Version: is {sver} — "
-            "both track the last RELEASED tag, so one of them was not bumped "
-            "(remedy: just brew-bump <version>)"
+            f"sha256 is {sha!r}, not {EXPECTED_SHA!r} — a checksum cannot be computed "
+            "before its tag exists, which is why recording one here forced a post-tag "
+            "commit on every release"
         )
 
-    # 2. One-sided: trailing is normal, ahead is impossible.
-    if as_tuple(fver) > as_tuple(cver):
-        problems.append(
-            f"formula pins {fver}, which is AHEAD of Cargo.toml's {cver} — "
-            "that tag cannot exist yet"
-        )
+    # 3. Nothing may smuggle the same facts in elsewhere. `_body` has already stripped
+    #    comments, so the block explaining the history is not mistaken for a pin.
+    for line in body.splitlines():
+        for regex, what in ((SHA256_RE, "a sha256 digest"), (VERSIONISH_RE, "a version number")):
+            m = regex.search(line)
+            if m:
+                problems.append(f"formula body records {what} ({m.group(0)}): {line.strip()!r}")
 
-    # 3. A real digest.
-    sha = _field(body, "sha256")
-    if not SHA256_RE.fullmatch(sha):
-        problems.append(f"sha256 is not a 64-character hex digest: {sha!r}")
-
-    # 5. Resolution stays pinned, and the flag is not duplicated.
+    # 4. Resolution stays pinned, and the flag is not duplicated.
     #
     # `std_cargo_args` expands to `--locked --root <prefix> --path .`, so it is what
     # supplies --locked. Asserting the literal flag instead would be wrong in both
@@ -224,7 +169,7 @@ def check(
                 "\"the argument '--locked' cannot be used multiple times\""
             )
 
-    # 6. The committed man page, not a regenerated one.
+    # 5. The committed man page, not a regenerated one.
     if 'man1.install "docs/retch.1"' not in body:
         problems.append(
             "the formula no longer installs the committed docs/retch.1 — regenerating it "
@@ -242,12 +187,14 @@ def check(
 # ── self-test ────────────────────────────────────────────────────────────────
 
 _GOOD_FORMULA = '''\
-# a comment mentioning mandown, which must NOT trip check 6
+# a comment mentioning mandown and v1.2.3 and
+# 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef, none of which
+# must trip a check -- comments are stripped before matching.
 class Retch < Formula
   desc "Fast, feature-rich system information fetcher"
   homepage "https://github.com/l1a/retch"
-  url "https://github.com/l1a/retch/archive/refs/tags/v1.2.3.tar.gz"
-  sha256 "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  url "https://github.com/l1a/retch/archive/refs/tags/v@VERSION@.tar.gz"
+  sha256 "@SHA256@"
   license "GPL-3.0-or-later"
 
   def install
@@ -256,129 +203,118 @@ class Retch < Formula
   end
 end
 '''
-_GOOD_PKGBUILD = "pkgname=retch\npkgver=1.2.3\npkgrel=1\n"
-_GOOD_SPEC = "Name:           retch\nVersion:        1.2.3\nRelease:        1%{?dist}\n"
-_GOOD_CARGO = 'version = "1.2.4"\n'
+
+_REAL_SHA = "77ccf85843d24ac3216ab31d2584ff4a95869266c59ddb8bc83819425cfc2033"
 
 
 def _self_test() -> int:
-    failures = 0
+    failures: list[str] = []
 
-    def expect(label: str, problems: list[str], want_problem: bool) -> None:
-        nonlocal failures
-        got = bool(problems)
-        if got != want_problem:
-            failures += 1
-            print(f"  [FAIL] {label}: expected problem={want_problem}, got {problems}")
-        else:
-            print(f"  [ok]   {label}")
+    def check(name: str, cond: bool, detail: str = "") -> None:
+        if not cond:
+            failures.append(f"{name}: {detail}")
 
-    # The control. If this ever reports a problem the others prove nothing.
-    expect(
-        "a consistent set passes",
-        check(_GOOD_FORMULA, _GOOD_PKGBUILD, _GOOD_SPEC, _GOOD_CARGO),
-        False,
-    )
+    def expect_problem(label: str, text: str, needle: str) -> None:
+        probs = check_template(text)
+        check(label, any(needle in p for p in probs), f"got {probs}")
 
-    # THE LOAD-BEARING NEGATIVE, and the reason it is here: the formula legitimately
-    # TRAILS Cargo.toml for a whole release cycle. A guard that fires on the repo's normal
-    # resting state gets deleted within a week, taking the other five with it.
-    expect(
-        "trailing Cargo.toml by a release cycle stays silent",
-        check(_GOOD_FORMULA, _GOOD_PKGBUILD, _GOOD_SPEC, 'version = "9.9.9"\n'),
-        False,
-    )
+    # The template fixture is clean -- including its comment block, which deliberately
+    # contains a version and a digest to prove comments are stripped before matching.
+    clean = check_template(_GOOD_FORMULA)
+    check("template fixture clean", clean == [], f"got {clean}")
 
-    expect(
-        "stale pkgver is caught",
-        check(_GOOD_FORMULA, "pkgver=1.2.2\n", _GOOD_SPEC, _GOOD_CARGO),
-        True,
+    # The LIVE formula must be clean too: one assertion coupling this self-test to the real
+    # file, so it cannot keep passing about a fixture after the real formula changed shape.
+    live = Path(__file__).resolve().parent.parent / "packaging" / "homebrew" / "retch.rb"
+    if live.is_file():
+        live_problems = check_template(live.read_text(encoding="utf-8"))
+        check("live formula clean", live_problems == [], f"got {live_problems}")
+
+    # 1. A pinned release must not come back. This is the successor to the old
+    #    formula-vs-PKGBUILD-vs-spec comparison: that drift is now unrepresentable, so what
+    #    is guarded is the property that makes it so.
+    expect_problem(
+        "pinned url detected",
+        _GOOD_FORMULA.replace("v@VERSION@.tar.gz", "v0.17.3.tar.gz"),
+        "url is",
     )
-    expect(
-        "stale spec Version is caught",
-        check(_GOOD_FORMULA, _GOOD_PKGBUILD, "Version:        1.2.2\n", _GOOD_CARGO),
-        True,
-    )
-    expect(
-        "formula ahead of Cargo.toml is caught",
-        check(_GOOD_FORMULA, _GOOD_PKGBUILD, _GOOD_SPEC, 'version = "1.0.0"\n'),
-        True,
-    )
-    expect(
-        "placeholder sha256 is caught",
-        check(
-            _GOOD_FORMULA.replace(
-                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-                "lib.fakeHash",
-            ),
-            _GOOD_PKGBUILD,
-            _GOOD_SPEC,
-            _GOOD_CARGO,
-        ),
-        True,
-    )
-    expect(
-        "dropped std_cargo_args is caught",
-        check(
-            _GOOD_FORMULA.replace('"install", *std_cargo_args', '"install"'),
-            _GOOD_PKGBUILD,
-            _GOOD_SPEC,
-            _GOOD_CARGO,
-        ),
-        True,
-    )
-    # The regression the brew CI job actually caught: std_cargo_args already carries
-    # --locked, and cargo rejects the duplicate.
-    expect(
-        "a duplicated --locked is caught",
-        check(
-            _GOOD_FORMULA.replace('"install", *std_cargo_args', '"install", "--locked", *std_cargo_args'),
-            _GOOD_PKGBUILD,
-            _GOOD_SPEC,
-            _GOOD_CARGO,
-        ),
-        True,
-    )
-    expect(
-        "dropped man page install is caught",
-        check(
-            _GOOD_FORMULA.replace('    man1.install "docs/retch.1"\n', ""),
-            _GOOD_PKGBUILD,
-            _GOOD_SPEC,
-            _GOOD_CARGO,
-        ),
-        True,
-    )
-    expect(
-        "a mandown regeneration is caught",
-        check(
-            _GOOD_FORMULA.replace(
-                '    man1.install "docs/retch.1"',
-                '    system "mandown", "docs/retch.1.md"',
-            ),
-            _GOOD_PKGBUILD,
-            _GOOD_SPEC,
-            _GOOD_CARGO,
-        ),
-        True,
-    )
-    # A branch tarball would change content under a fixed sha256.
-    expect(
-        "a non-tag url is caught",
-        check(
-            _GOOD_FORMULA.replace(
-                "https://github.com/l1a/retch/archive/refs/tags/v1.2.3.tar.gz",
-                "https://github.com/l1a/retch/archive/refs/heads/main.tar.gz",
-            ),
-            _GOOD_PKGBUILD,
-            _GOOD_SPEC,
-            _GOOD_CARGO,
-        ),
-        True,
+    expect_problem(
+        "pinned sha256 detected",
+        _GOOD_FORMULA.replace('sha256 "@SHA256@"', f'sha256 "{_REAL_SHA}"'),
+        "sha256 is",
     )
 
-    print(f"brew_check self-test: {'FAILED' if failures else 'all passed'}")
-    return 1 if failures else 0
+    # A branch tarball would change content under a fixed digest.
+    expect_problem(
+        "branch tarball detected",
+        _GOOD_FORMULA.replace(
+            "https://github.com/l1a/retch/archive/refs/tags/v@VERSION@.tar.gz",
+            "https://github.com/l1a/retch/archive/refs/heads/main.tar.gz",
+        ),
+        "url is",
+    )
+
+    # 3. Smuggled into another live field, which the equality checks alone would miss.
+    expect_problem(
+        "smuggled digest detected",
+        _GOOD_FORMULA.replace(
+            '  license "GPL-3.0-or-later"', f'  license "GPL-3.0-or-later"\n  version "{_REAL_SHA}"'
+        ),
+        "records a sha256 digest",
+    )
+    expect_problem(
+        "smuggled version detected",
+        _GOOD_FORMULA.replace('  license "GPL-3.0-or-later"',
+                              '  license "GPL-3.0-or-later"\n  version "0.17.3"'),
+        "records a version number",
+    )
+
+    # 4. Resolution pinning, both directions of the std_cargo_args trap.
+    expect_problem(
+        "dropped std_cargo_args detected",
+        _GOOD_FORMULA.replace('system "cargo", "install", *std_cargo_args',
+                              'system "cargo", "install", "--root", prefix'),
+        "std_cargo_args",
+    )
+    expect_problem(
+        "duplicate --locked detected",
+        _GOOD_FORMULA.replace('system "cargo", "install", *std_cargo_args',
+                              'system "cargo", "install", "--locked", *std_cargo_args'),
+        "multiple times",
+    )
+    expect_problem(
+        "no cargo install detected",
+        _GOOD_FORMULA.replace('system "cargo", "install", *std_cargo_args', "true"),
+        "cargo install",
+    )
+
+    # 5. The man page the AUR package got wrong for months.
+    expect_problem(
+        "regenerated man page detected",
+        _GOOD_FORMULA.replace('man1.install "docs/retch.1"', 'man1.install "retch.1"'),
+        "docs/retch.1",
+    )
+    expect_problem(
+        "live mandown reference detected",
+        _GOOD_FORMULA.replace('man1.install "docs/retch.1"',
+                              'system "mandown", "docs/retch.1.md"'),
+        "mandown",
+    )
+
+    # A formula with no class at all must raise rather than compare as empty.
+    try:
+        _body("puts 1\n")
+        check("missing class raises", False, "_body accepted a file with no class Retch")
+    except ParseError:
+        pass
+
+    if failures:
+        for f in failures:
+            print(f"  FAIL {f}", file=sys.stderr)
+        print(f"brew_check.py self-test FAILED ({len(failures)})", file=sys.stderr)
+        return 1
+    print(f"brew_check.py self-test passed (template v{TEMPLATE_VERSION})")
+    return 0
 
 
 def main() -> int:
@@ -390,12 +326,7 @@ def main() -> int:
         return _self_test()
 
     try:
-        problems = check(
-            FORMULA.read_text(encoding="utf-8"),
-            PKGBUILD.read_text(encoding="utf-8"),
-            SPEC.read_text(encoding="utf-8"),
-            CARGO.read_text(encoding="utf-8"),
-        )
+        problems = check_template(FORMULA.read_text(encoding="utf-8"))
     except (ParseError, FileNotFoundError) as exc:
         print(f"[brew-check] {exc}", file=sys.stderr)
         return 1
@@ -403,10 +334,11 @@ def main() -> int:
     if problems:
         for p in problems:
             print(f"[brew-check] {p}", file=sys.stderr)
+        print("[brew-check] the version and checksum are supplied by "
+              "scripts/render_packaging.py at publish time", file=sys.stderr)
         return 1
 
-    body = _body(FORMULA.read_text(encoding="utf-8"))
-    print(f"[brew-check] retch.rb is consistent (version {formula_version(body)})")
+    print("[brew-check] retch.rb is a template (records no version, no checksum)")
     return 0
 
 

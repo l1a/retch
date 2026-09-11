@@ -1,28 +1,31 @@
 name: COPR Rebuild
 
-# Triggers a rebuild of the COPR package after the spec changes.
+# Triggers a rebuild of the COPR package when a release is tagged.
 #
-# WHY NOT "on: release" OR A TAG TRIGGER, which is the obvious choice and is WRONG here:
-# packaging/copr/retch.spec pins Version: and a Source0 tarball checksum to the last
-# RELEASED tag, so it can only be bumped AFTER that tag exists. The sequence is
-#   1. push tag vX      -> spec still says the PREVIOUS version
-#   2. release workflow -> spec still says the PREVIOUS version
-#   3. commit the packaging bump to main -> spec now says vX
-# A release- or tag-triggered rebuild fires at step 1 or 2 and rebuilds the OLD version.
-# The event that means "there is something new to build" is the commit at step 3, which is
-# exactly what the paths filter below matches.
+# THE TRIGGER USED TO BE A PACKAGING COMMIT, AND THE REASON IS WORTH KEEPING.
 #
-# .copr/** is watched as well as packaging/copr/**: the Makefile there is what GENERATES the
-# SRPM, so a change to it alters the build without touching the spec. Same reasoning as
-# adding Justfile to packaging.yml's filter in v0.9.6.
+# packaging/copr/retch.spec used to pin `Version:` to the last RELEASED tag, so it could
+# only be bumped AFTER that tag existed:
+#   1. push tag vX      -> spec still said the PREVIOUS version
+#   2. release workflow -> spec still said the PREVIOUS version
+#   3. commit the packaging bump to main -> spec finally said vX
+# A tag-triggered rebuild fired at step 1 and rebuilt the OLD version, so the only event
+# that meant "there is something new" was the commit at step 3.
+#
+# Step 3 no longer exists. The spec is a template and `.copr/Makefile` renders its version
+# from Cargo.toml when it builds the SRPM, so the tag IS the event: at the moment vX is
+# pushed, main's Cargo.toml says X and its tree is what X names. Removing the post-tag
+# commit is what removed the version bump a release used to force; see NOTES.md §5.
+#
+# The paths filter is gone with it. There is nothing to bump, so a push to main that touches
+# packaging/copr no longer means a new release is ready -- it means someone edited the
+# template, which the PR-triggered `copr` job in packaging.yml already verifies by building
+# an SRPM. Rebuilding COPR for it would publish an UNRELEASED version, which is exactly what
+# the guard below refuses.
 
 on:
   push:
-    branches: [ "main" ]
-    paths:
-      - 'packaging/copr/**'
-      - '.copr/**'
-      - '.github/workflows/copr.yml'
+    tags: [ "v*" ]
   workflow_dispatch:
 
 permissions:
@@ -33,15 +36,42 @@ jobs:
     runs-on: ubuntu-latest
     container: fedora:latest
     steps:
+      # fetch-depth: 0 so a workflow_dispatch run can ask git for the last released tag.
+      # A tag-triggered run gets it from the ref and does not need the history, but the
+      # guard below must work identically either way -- a check that is skipped on one of
+      # its two entry points is not a check.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
 
       - name: Install copr-cli
-        run: dnf -y install copr-cli
+        run: dnf -y install copr-cli git
 
-      - name: Report what the spec pins
+      # REFUSE TO REBUILD AN UNRELEASED VERSION.
+      #
+      # `.copr/Makefile` renders the spec's version from Cargo.toml, so a rebuild triggered
+      # while main is ahead of the last tag would publish a version that has no GitHub
+      # release and no crates.io upload -- and a published COPR NEVRA cannot be recalled.
+      # Asserting that Cargo.toml equals the tag being released is what makes the
+      # Cargo.toml-derived version safe.
+      - name: Refuse unless Cargo.toml matches the released tag
         run: |
           set -euo pipefail
-          grep -E '^(Name|Version|Release):' packaging/copr/retch.spec
+          git config --global --add safe.directory "$PWD"
+          V=$(python3 scripts/render_packaging.py --print-version)
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            TAG="$GITHUB_REF_NAME"
+          else
+            TAG=$(git describe --tags --abbrev=0)
+            echo "manual run: comparing against the last tag, $TAG"
+          fi
+          echo "Cargo.toml: $V"
+          echo "tag:        $TAG"
+          if [ "v$V" != "$TAG" ]; then
+            echo "::error::Cargo.toml is $V but the tag is $TAG — refusing to build a version that was not released"
+            exit 1
+          fi
+          echo "will build retch $V"
 
       - name: Configure copr-cli
         env:
@@ -73,8 +103,30 @@ jobs:
         if: env.skip != 'true'
         run: |
           set -euo pipefail
-          # build-package rebuilds from the package's stored SCM source config, which must be
-          # set up once with `copr-cli edit-package-scm` (see NOTES.md). It waits for the
-          # build and exits non-zero if any chroot fails, so a broken spec goes red here
-          # rather than silently serving a stale package.
-          copr-cli build-package --name retch kentobias/retch
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            REF="$GITHUB_REF_NAME"
+          else
+            REF=$(git describe --tags --abbrev=0)
+          fi
+
+          # `buildscm --commit` rather than `build-package`, and the difference is a race
+          # that the previous trigger also had. `build-package` rebuilds from the package's
+          # stored SCM config, whose committish is `main` -- so a merge landing in the
+          # minute after a tag push would make COPR clone a tree that is AHEAD of the
+          # release and publish a version nobody released. Naming the tag removes the window
+          # entirely: COPR builds exactly what vX points at.
+          #
+          # --method make_srpm matches the stored config (.copr/Makefile generates the
+          # SRPM); no --subdir, because COPR runs the Makefile from the repository root.
+          # --enable-net on is stated rather than inherited: the build resolves crates.io,
+          # and a silently net-less buildroot fails deep inside cargo.
+          #
+          # If this ever misbehaves, the fallback is the previous call, which is still
+          # configured and needs no arguments:
+          #     copr-cli build-package --name retch kentobias/retch
+          copr-cli buildscm \
+            --clone-url https://github.com/l1a/retch.git \
+            --commit "$REF" \
+            --method make_srpm \
+            --enable-net on \
+            kentobias/retch

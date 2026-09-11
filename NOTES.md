@@ -84,29 +84,30 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
     Triggers `full-test` and `build-release` identically, but skips the `release` job (guarded by `!contains(github.ref_name, '-')`). Artifacts are downloadable from the GitHub Actions run page.
   - **Publish to crates.io** (manual, after the GitHub Release):
     ```
-    cargo publish -p retch-sysinfo
-    cargo publish -p retch-cli
+    just publish        # retch-sysinfo first, then retch-cli
     ```
-    Publish `retch-sysinfo` first since `retch-cli` depends on it.
-  - **Post-release: packaging + the next version, as ONE gated PR** (after the GitHub
-    Release, because both packaging targets pin the tag's tarball and cannot move before it
-    exists):
+    `retch-sysinfo` goes first because `retch-cli` pins `=0.1.x`; the recipe orders them and
+    skips sysinfo when its version is already on the index (a CLI-only release). **It
+    refuses unless `HEAD` is the tag for `Cargo.toml`'s version** — see §5 for the near-miss
+    that guard exists for. Run `just publish-check` first; the retch-cli leg *skipping* is
+    expected before a release, not a failure (v0.6.13).
+  - **Distro channels — no commit, no version bump** (after the GitHub Release, because the
+    tarball has to exist before it can be checksummed):
     ```
-    just post-release <version>   # the version just RELEASED; needs podman
-    just open-pr                  # after reviewing the diff
-    just aur-publish              # after it merges
+    just aur-publish <version>    # renders + pushes to the AUR; needs podman
+    just brew-publish <version>   # renders + pushes to the Homebrew tap
     ```
-    `post-release` branches, pins `packaging/aur` and `packaging/copr` to the released
-    version, opens `Cargo.toml` on the next patch, regenerates the man page and writes the
-    NOTES entry. **Bundling the two is what makes it a normal PR**: `just pr`'s version check
-    compares `Cargo.toml` against the last *tag*, so opening the next version satisfies it —
-    which is why releases before v0.9.12 did not need to commit packaging straight to `main`
-    after all (see §5). It stops short of `open-pr` deliberately: the manual checklist needs a
-    human, and a release is the worst moment to rubber-stamp one.
-    Never hand-edit `packaging/aur/.SRCINFO`; it is generated. `just check` fails while it
-    disagrees with the PKGBUILD. The AUR RPC lags a push by minutes to hours — the git ref is
-    the authoritative check, so do not chase a stale `rpc/v5/info` reading. COPR needs no
-    manual step at all: `copr.yml` rebuilds once `packaging/copr` lands on `main`.
+    Each recipe downloads the tag's tarball, computes its sha256, renders its template
+    through `scripts/render_packaging.py`, and pushes the **rendered** file. Nothing in the
+    repository records the released version, so there is no packaging commit, no
+    `post-release` PR and **no version bump forced on a release** — which is what §5's
+    long-standing item was about. `packaging/aur/.SRCINFO` is not tracked at all any more:
+    it is generated from the rendered PKGBUILD by a real `makepkg --printsrcinfo` and
+    compared against it field by field before the push.
+    COPR needs no manual step: `copr.yml` fires on the **tag** and builds that exact
+    committish, refusing if `Cargo.toml` does not match the tag.
+    The AUR RPC lags a push by minutes to hours — the git ref is the authoritative check,
+    so do not chase a stale `rpc/v5/info` reading.
   - **Publish to tldr-pages upstream** (on hold — do not run):
     The upstream tldr-pages submission was denied pending more community traction.
     Keep `docs/retch.md` current but do not run `just tldr-release` until further notice.
@@ -116,7 +117,131 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.4)
+## Current State (v0.17.5)
+- **v0.17.5 - a release no longer requires a version bump, because the packaging stopped
+  recording the release** (`scripts/render_packaging.py` (new), the three packaging
+  templates, `.copr/Makefile`, the three guards, `Justfile`, `copr.yml`, `packaging.yml`).
+  Closes the structural half of the §5 release-flow item — the half §5 itself named as
+  *"the actual work"*. Tooling and packaging only; no runtime change, `retch-sysinfo`
+  unchanged at `0.1.72`.
+  - **THE CHAIN THAT FORCED THE BUMP, since the fix only makes sense against it.** Four
+    files recorded the released version — `packaging/aur/PKGBUILD` and its `.SRCINFO` (with
+    the tarball's sha256), `packaging/copr/retch.spec`, `packaging/homebrew/retch.rb` (also
+    with the sha256). A checksum cannot be computed before its tag exists, so every release
+    ended with a post-tag commit; that commit had to be a reviewed PR (v0.9.12), and
+    `just pr` refuses a `Cargo.toml` equal to the last tag, so the PR had to **open the next
+    version**. Hence: a release forced a bump, and `main` then named a version that had
+    never been released.
+  - **That last consequence is not theoretical.** On 2026-09-11 `just publish` on `main`
+    was one command from putting `retch-cli 0.17.4` on crates.io — no tag, no GitHub
+    release, disagreeing with all three distro channels, and unyankable-but-undeletable —
+    because post-release had opened 0.17.4. It was caught by reading the index first.
+  - **The fix records the fact once, at publish time.** The three files are templates
+    carrying `@VERSION@` / `@SHA256@`; `scripts/render_packaging.py` fills them in from the
+    tag and the tarball it just downloaded. So there is no packaging commit, no
+    `post-release` recipe, no `aur-bump`/`copr-bump`/`brew-bump`, and **no bump forced on a
+    release**. `main` sits at the released version until the next feature PR bumps it.
+  - **Three guards stopped comparing four recordings of one fact.** `aur_check.py`,
+    `copr_check.py` and `brew_check.py` existed to detect disagreement between those
+    recordings — the PKGBUILD once sat **eleven releases** stale with every CI run green.
+    They now assert the templates *record nothing*, which is a smaller claim about a
+    stronger property: the drift they hunted is unrepresentable rather than detected.
+    Nothing was silently dropped — the two checks that still mattered moved to where they
+    can act: the AUR pair comparison to `aur-publish` (on the bytes being pushed, via
+    `aur_check.py --dir`), and "the newest `%changelog` entry matches `Version:`" into the
+    renderer, which writes both in one pass so they cannot disagree.
+  - **`Source0` is now a local tarball built from the checkout**, so the COPR spec needs
+    neither a published tag nor a network fetch. That has a side effect worth more than the
+    bump it removed: **a PR can now build its own SRPM.** Previously `Source0` pinned a
+    released tag, so the `copr` CI job could only ever build the *previous* release's
+    source.
+  - **`copr.yml`'s trigger became the tag**, and the long comment block explaining why a tag
+    trigger was wrong is kept as the record of why it is now right: the spec no longer trails
+    the tag, so the tag *is* the event. It uses `copr-cli buildscm --commit <tag>` rather
+    than `build-package`, which also closes a race the old trigger had — `build-package`
+    rebuilds from the stored committish `main`, so a merge landing in the minute after a tag
+    push would have built a tree ahead of the release. A guard refuses to build at all
+    unless `Cargo.toml` equals the tag.
+  - **`just publish` now refuses unless `HEAD` is the tag for `Cargo.toml`'s version.** The
+    2026-09-11 near-miss was avoided by a human reading the crates.io index; this makes it a
+    mechanism, in the spirit of "git hooks are the actual enforcement layer". `PUBLISH_ANY_REF=1`
+    overrides it deliberately. Watched failing in all four states in a throwaway repo — off
+    the tag, on the tag, no such tag, and overridden — with the guard's code **extracted
+    from the Justfile** rather than retyped.
+    - **And the first attempt at that test silently proved nothing, which is the lesson.**
+      The extractor sliced `Justfile` between two markers and the end marker
+      (`SYSINFO_VER=$(grep …`) occurs in `publish-check` **earlier in the file**, so
+      `str.index` returned a position before the start and the slice came out **empty** —
+      the harness then reported "GUARD PASSED" for a script containing nothing but `echo`,
+      i.e. it declared the guard broken while testing no guard at all. Fixed by searching
+      for the end marker *after* the start index and asserting the extraction is more than
+      20 lines. Same family as every other entry here: the oracle answered a different
+      question, and this time it answered about an empty string.
+  - **Verified by reproducing what the last release actually published, not by inspection.**
+    Rendering the AUR template for v0.17.3 and generating `.SRCINFO` from it with a real
+    `makepkg --printsrcinfo` produced a file **byte-identical** to the `.SRCINFO` v0.17.3
+    pushed to the AUR (466 bytes, sha256 `4a92102588afe38c…`), with the PKGBUILD's metadata
+    identical field for field; the Homebrew formula rendered identical to the published one
+    apart from comments, and both the template and the rendered formula pass `ruby -c`. The
+    sha256 the renderer computed from the downloaded tarball,
+    `77ccf858…2033`, is the value the old committed PKGBUILD declared. `just aur-publish
+    0.17.3` was run end to end with `AUR_CONFIRM=n`, exercising download, render, `.SRCINFO`
+    generation, the pair check and the AUR reachability probe before aborting at the
+    confirmation — the v0.6.23 "test the gate without performing the act" approach.
+  - **The COPR path was built and run in a container, in both environments and both source
+    modes.** SRPM built plain and under mock's environment (`HOME=/builddir` plus a moved
+    `%{_topdir}`, the v0.9.9 regression test), from `git archive` and from the `tar`
+    fallback, and `rpmbuild -rp` on each SRPM proves `%autosetup -n %{name}-%{version}`
+    matches the archive's prefix. The two source modes' listings were diffed against each
+    other and agree exactly on the tracked tree.
+  - **Two traps found by that diff, both mine, both silent.** First: `tar
+    --exclude-vcs-ignores` **does not implement .gitignore semantics** — against this
+    repo's ignore file it excluded `WIP.md` (a bare filename) and kept `memory/` (directory
+    form) and `/target` (anchored form), so the first version of `.copr/Makefile` packed the
+    private cross-machine handoff log and the auto-memory directory into the SRPM, where
+    they would have reached the published `-debugsource`. Second: `--exclude=./__pycache__`
+    anchors at the top level and kept `scripts/__pycache__/`. The Makefile now hard-fails on
+    an archive containing any of them, and also asserts the files whose absence would be
+    just as bad (no `Cargo.lock` means unpinned resolution; no `LICENSE`/`NOTICE` means the
+    v0.17.4 obligation shipped unmet).
+  - **That guard then corrected its author in the other direction**, which is the better
+    half of the story: it rejected `.claude/settings.json`, which is **tracked** and
+    therefore already in every GitHub tag tarball the AUR and Homebrew build from. Excluding
+    it would have made COPR's source differ from the released one. The must-not-ship list
+    names things git does not track, not things that look internal.
+  - **`packaging/aur/.SRCINFO` is no longer tracked.** It is pure derived data; it is
+    generated from the rendered PKGBUILD at publish time and compared against it there.
+  - **`packaging/nixpkgs/package.nix` is deliberately untouched** and remains the one
+    hand-pinned target: that channel is undecided, its CI job is `if: false`, and folding it
+    into this change would have widened an already large one.
+  - **The `aur` and `brew` CI jobs verify the render rather than a committed constant.**
+    Each derives the last released tag, downloads that tarball, computes its sha256, renders
+    its template, and reads the output back — then `makepkg` / `brew install` what it
+    rendered. A wrong committed checksum used to be invisible until someone installed from
+    the AUR; the check now points at the thing that can actually be wrong. `scripts/
+    render_packaging.py` is added to `packaging.yml`'s paths filter for the v0.9.6 reason:
+    `scripts/*_check.py` does not match it, and it writes the files that get published.
+  - **A verification limit, recorded rather than papered over.** COPR itself cannot be
+    exercised from here — no credentials, and its buildroot is mock. So
+    `copr-cli buildscm --commit` behaving as its `--help` documents is taken on the
+    documentation; the fallback — `copr-cli build-package --name retch kentobias/retch`,
+    unchanged and still configured — is named in the workflow.
+  - **CI answered the source-path question, and the answer was the one I did not predict.**
+    The `copr` job's own log reads `source: tar of the working tree (no git repository
+    here)` — under `actions/checkout` in a `fedora:latest` container, `git rev-parse
+    --git-dir` is false even though git 2.55 is installed, so the **fallback is what runs
+    there**, in both the plain and the mock-environment builds. That is why the Makefile
+    prints which path it took rather than assuming one. The two paths now have coverage in
+    different places: the `git archive` path locally (both environments, both verified
+    against each other's listings), the `tar` path in CI. Neither is theoretical, and the
+    guard runs on whichever produced the archive. It also means mock quite possibly takes
+    the fallback too — the first real COPR build will say so in its log.
+  - **And one of my own checks failed for the documented wrong reason while writing this**:
+    a `tar -tzf … | head -3` in a verification script exited 141 under `set -o pipefail`,
+    the `bsdtar | grep -q` SIGPIPE trap NOTES §v0.7.0 names explicitly, including `head`.
+    Materialise the listing, then read the file.
+  - `retch-cli` -> 0.17.5. Patch bump — tooling and packaging only, the v0.7.1 / v0.9.7 /
+    v0.17.2 precedent.
 - **v0.17.4 - GitHub reported the licence as "other", because `LICENSE` was never the GPL**
   (`LICENSE`, `NOTICE`, `README.md`, `packaging/aur/PKGBUILD`, `packaging/copr/retch.spec`).
   Legal and packaging metadata only; no runtime change, `retch-sysinfo` unchanged at `0.1.72`.
@@ -3062,7 +3187,17 @@ Adds over long:
 - **Revisit the whole release/publish flow: one tag should do everything.** Recorded
   2026-08-31 after the v0.9.7 release, which touched four channels and needed a different
   trigger and a different manual step for each. **The sequencing is the complaint, and it is
-  structural rather than a matter of adding automation on top.** Today:
+  structural rather than a matter of adding automation on top.**
+  - **THE STRUCTURAL HALF IS DONE (v0.17.5), and it was exactly where this entry said it
+    was:** *"the root cause is that two packaging targets pin a checksum of an artifact that
+    does not exist until the tag is pushed"* and *"changing the pinning is the actual
+    work"*. All three hash- or version-pinned targets are now templates rendered at publish
+    time by `scripts/render_packaging.py`, so **a release requires no packaging commit and
+    no version bump**, and `main` sits at the released version between releases. Options 1
+    and 2 below are superseded by that; what remains of option 1 is only the CI automation,
+    described at the bottom of this entry. The rest of the entry is kept because its
+    diagnosis is what the fix was built from.
+  - How it worked until v0.17.5:
   - `git push origin vX` -> CI builds binaries and publishes the GitHub Release. Automatic.
   - crates.io -> a human runs `just publish` afterwards.
   - AUR -> `just aur-bump X` **cannot run until the tag tarball exists**, because the PKGBUILD
@@ -3101,15 +3236,23 @@ Adds over long:
     trigger is currently correct *given* the pinning - see the comment block in
     `.github/workflows/copr.yml` for why a release-triggered COPR rebuild builds the previous
     version. Changing the pinning is the actual work; the triggers fall out of it.
-  - **Where this stands after v0.9.12.** The *gating* half is closed: the post-tag packaging
-    commit is now a normal reviewed PR (`just post-release`), so nothing bypasses the gate and
-    the "smell" is gone. The *automation* half is untouched and is the remaining work - a tag
-    still does not, by itself, publish to crates.io or push to the AUR. Option 1 is the
-    straightforward route now that the shape it would automate is gated and scripted: the
-    steps `post-release` performs are exactly the ones a release workflow would run, so
-    lifting them into CI is a port rather than a redesign. It still needs a crates.io token
-    and an AUR SSH key as secrets, and it still means a bot commit to `main` - which is a
-    deliberate trade against the gating just gained, not a free win.
+    **This is the instruction v0.17.5 followed, and the parenthetical turned out to be
+    literally true**: once the pinning went, the COPR trigger became a tag trigger, and the
+    comment block that explained why a tag was wrong is now the record of why it is right.
+  - **Where this stands after v0.17.5.** The *gating* half closed in v0.9.12 (the packaging
+    commit became a reviewed PR). The *pinning* half is now closed too, and it took the
+    packaging commit with it — so the version bump a release used to force is gone, `main`
+    no longer names an unreleased version between releases, and three anti-drift guards
+    stopped comparing four recordings of one fact because there is only one recording left,
+    made at publish time.
+  - **What is left is only CI automation, and it needs credentials this repo does not
+    hold.** A tag still does not, by itself, publish to crates.io or push to the AUR and the
+    tap. That is now a genuine port rather than a redesign: the release workflow would run
+    the same two recipes a human runs, with nothing to commit afterwards. It needs three
+    secrets — a crates.io token, an AUR SSH key, and a tap push token — and it trades a
+    human's confirmation before each irreversible public act for automation, which is a
+    decision rather than a free win. **The COPR half of that automation is already done**:
+    `copr.yml` fires on the tag, so one channel out of four is fully hands-off.
 - **Windows `--long` is slower than fastfetch, and §3 calls that blocking.** Measured
   2026-09-09 on arrakis: `retch --long` **3076 ms** vs `fastfetch -c all` **1467 ms**. The
   standard mode is fine (327 vs 1361 ms, 4.2x faster); it is `--long` and `--short` that
