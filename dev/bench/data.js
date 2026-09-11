@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789101573645,
+  "lastUpdate": 1789102069392,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20770,70 +20770,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "9d27af8746fe0e349822f3272031e94e03589b50",
-          "message": "chore: bump 3 deps (consolidated Dependabot #188) (#190)\n\nRolls Dependabot #188 onto a gated branch so the release hygiene it\nbypasses — version bump, NOTES entry, man regen — is actually done,\nfollowing the #167/v0.6.3 and #184/v0.6.16 pattern.\n\nAll patch-level and lockfile-only; every spec is a caret range, so both\nCargo.toml manifests are untouched:\n\n  clap           4.6.5 -> 4.6.6  (pulls clap_builder 4.6.5 -> 4.6.6)\n  clap_complete  4.6.8 -> 4.6.9\n  rusqlite       0.40.1 -> 0.40.2 (pulls libsqlite3-sys 0.38.1 -> 0.38.2)\n\nThe lockfile was diff-verified byte-identical to Dependabot's before the\nversion bump, so this carries exactly the change its green CI validated;\nafterwards the only divergence is retch-cli's own version line.\n\nrusqlite warranted a live check rather than just a green suite: it is a\ndirect dependency of retch-sysinfo and the crate v0.6.18's Packages fix\nhad just started using differently, and libsqlite3-sys bundles SQLite\nitself, so a bump changes the engine that has to honour `immutable=1`.\nThe rpm_db_uri unit tests only assert string construction and could not\ncatch a behavioural change there. Verified live as an unprivileged user:\nPackages: 2509, unchanged.\n\nretch-cli -> 0.6.19; retch-sysinfo unchanged at 0.1.53 (no source\nchange, only its transitive lockfile deps moved).\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-11T18:52:53-07:00",
-          "tree_id": "0f8eb7815bf12c631f95919caaeb1e89e3549096",
-          "url": "https://github.com/l1a/retch/commit/9d27af8746fe0e349822f3272031e94e03589b50"
-        },
-        "date": 1786502016632,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 177.87052596234662,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9487391539177286,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 97.9215514955733,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.10950675639944,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46425.82791202316,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 487.42357421723216,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 727.4663350984727,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2419996210,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "c1b99674ea9eded99c6558e78098409ebe6a78ac",
           "message": "Make the pre-PR gate answerable; open-pr now pushes (#192)\n\n* Make the pre-PR gate answerable; open-pr now pushes\n\njust pr ended in a bare read, so only a human at a terminal could\nanswer it -- a script or agent blocked on a stdin that would never\nanswer, or died without saying why, and that reads as the gate refusing\nthe change. It now accepts PR_CONFIRM, an interactive stdin, or piped\ninput under a timeout, and names PR_CONFIRM when it cannot be answered.\nNot a bypass: every path still requires an explicit y.\n\njust open-pr did not push, so on a never-pushed branch it printed\n\"Gate passed\" and then failed because gh pr create had no remote\nbranch to open from. It now pushes only when there is no upstream --\npushing unconditionally would silently publish existing commits on a\nbranch that already has one. pre-push still runs just check, so the\npush is inside the gate rather than around it.\n\nBoth are rusticprofile's 0.0.21 and 0.2.12, which retch never received.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-12T20:24:18-07:00",
@@ -23953,6 +23889,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1227128525,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1b52ddcba57894ea04bf5811d75b76c024879004",
+          "message": "Document the Homebrew trust gate; audit the formula in CI (#243)\n\nHomebrew 6.0+ refuses to load a third-party tap's formulae until the tap\nis trusted, and the error is misleading: \"Cannot tap l1a/retch: invalid\nsyntax in tap!\" for a formula whose syntax is fine. Anyone following the\nv0.17.2 README would conclude the formula was broken. Documented with the\nverbatim error and scoped to 6.0+, since brew trust does not exist on 5.x.\n\nThe brew CI job did not catch this and its comment claimed it would. A\ntap created with brew tap-new bypasses the trust gate entirely, so the\njob proves the formula builds, installs and works - not that a user can\ntap it. The comment now says so. A local tap is still correct to test,\nbecause it exercises this PR's formula rather than whatever is released.\n\nbrew audit --strict is now a CI step and immediately found two defects in\nthe v0.17.2 formula: shells: is the default and passing it is redundant,\nplus a hash alignment violation. Both fixed. The step runs after install\nand test so an upstream audit-rule change cannot look like a build\nfailure. Dropping shells: is checked rather than assumed - the payload\nstep already asserts all three completion files are present.\n\nRecords why the audit step was not possible before: running brew audit\npiped through head truncated stdout mid-install, SIGPIPE-killed a native\ngem build, and left json 2.21.2 Ruby code over a 2.18.0 binary. That is\nthe bsdtar | grep -q trap from v0.7.0, which names head as the same\nhazard. It was recorded, and used anyway.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T21:08:55-07:00",
+          "tree_id": "d876741cd0411ac9be39c183181716af050f60b9",
+          "url": "https://github.com/l1a/retch/commit/1b52ddcba57894ea04bf5811d75b76c024879004"
+        },
+        "date": 1789102065677,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 186.68516840268137,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948031905376379,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.76000988001601,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.22014348241146,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46928.9656791504,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 494.2309877237588,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 757.7310671529983,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 957049550,
             "unit": "ns"
           }
         ]
