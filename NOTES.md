@@ -116,7 +116,57 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.2)
+## Current State (v0.17.3)
+- **v0.17.3 - Homebrew 6.0 requires third-party taps to be TRUSTED, and the install
+  instructions shipped in v0.17.2 did not say so** (`README.md`, the wiki,
+  `packaging/homebrew/retch.rb`, `.github/workflows/packaging.yml`). Docs, packaging and CI
+  only; no runtime change, `retch-sysinfo` unchanged at `0.1.72`.
+  - **The gate, and why it is worth a release entry.** `brew tap l1a/retch` on Homebrew
+    6.0+ refuses to load the formula until `brew trust l1a/retch` has been run, and **the
+    error is actively misleading**:
+    `Refusing to load formula ... from untrusted tap` followed by
+    `Error: Cannot tap l1a/retch: invalid syntax in tap!` — for a formula whose syntax is
+    fine (`ruby -c` passes, CI installs it). Anyone following the v0.17.2 README would
+    conclude the formula was broken. Documented with the verbatim error, and framed as
+    6.0+-only since `brew trust` does not exist on 5.x.
+  - **THE CI JOB DID NOT CATCH THIS, AND THE COMMENT CLAIMING IT WOULD WAS WRONG.** The
+    `brew` job stages the formula in a `brew tap-new` **local** tap, and its comment said
+    that was "the more faithful test, because it is exactly the path a user takes". It is
+    not: a locally-created tap **bypasses the trust gate entirely**, so the job proves the
+    formula builds, installs and works — and proves nothing about whether a user can tap
+    it. The comment now says so. A local tap is still the right thing to test, because it
+    exercises *this PR's* formula where tapping the published one would test whatever is
+    already released; the claim about fidelity was the error, not the choice.
+  - **`brew audit --strict` is now a CI step**, and it immediately found two real defects
+    in the v0.17.2 formula: `shells: [:bash, :zsh, :fish]` is the **default** and passing
+    it is redundant, plus a hash-alignment violation. Both fixed; audit is now clean. The
+    step runs **after** install and test so the log distinguishes "does not work" from
+    "untidy" — an upstream audit-rule change can redden it for a formula that still
+    installs perfectly, and that must not read as a build failure.
+    - Dropping `shells:` relies on the default being bash/zsh/fish, which is exactly the
+      kind of assumption that rots silently. It is checked rather than assumed: the
+      payload step already asserts all three completion files exist and are non-empty.
+  - **How the audit step came to be possible is itself the lesson, and it is the
+    `bsdtar | grep -q` trap again.** `brew audit` could not be run on the development
+    machine because Homebrew was broken there — and it was broken *by running
+    `brew audit` piped through `head -25`*. The truncation closed stdout mid-way through
+    Homebrew's dev-gem bundle install; the native extension build took SIGPIPE and `make`
+    died, leaving `json-2.21.2`'s Ruby files on the load path with **no C extension**.
+    Ruby then fell back to portable-ruby's built-in **json 2.18.0** extension, producing
+    `already initialized constant JSON::Ext::Parser::Config` and then
+    `undefined method 'default_sort_keys_proc='` — 2.21.2 Ruby code over a 2.18.0 binary.
+    `gem_make.out` recorded it verbatim: `make failedBroken pipe @ rb_sys_fail_on_write`.
+    - **NOTES §v0.7.0 already documents this exact hazard** and names `head -1` alongside
+      `grep -q` as the same trap. It was recorded, and used anyway, on a command that
+      builds native extensions.
+    - Repaired by deleting the two half-built gems (`json`, `prism`) and re-running an
+      unpiped brew command so bundler rebuilt them; both now report `make-failed=0`.
+    - **The diagnosis was wrong twice before it was right.** The breakage was first
+      reported as pre-existing — but the very first `brew audit` was both the thing that
+      broke it and the thing that reported it, in one invocation, so there was never a
+      clean baseline to compare against. A conclusion drawn from an oracle that had
+      already been damaged by the act of consulting it.
+  - `retch-cli` -> 0.17.3. Patch bump - docs, packaging and CI only.
 - **v0.17.2 - Homebrew: a fourth packaging target, built as a source with a guard from day
   one** (`packaging/homebrew/retch.rb`, `scripts/brew_check.py`, `Justfile`,
   `.github/workflows/packaging.yml`). Packaging and tooling only; no runtime change,
