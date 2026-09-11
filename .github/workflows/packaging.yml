@@ -20,6 +20,11 @@ on:
       # artifact-level coverage: the committed PKGBUILD/.SRCINFO pair is re-verified against
       # the real tarball, rebuilt with makepkg, and its packaged man page inspected.
       - 'Justfile'
+      # The three packaging guards themselves. Same hole as the Justfile one above, one
+      # directory over: `scripts/brew_check.py` and its siblings decide whether a drifted
+      # packaging file can reach a commit, and until this entry a PR touching only a guard
+      # matched no filter and got no packaging verification at all.
+      - 'scripts/*_check.py'
       # .copr/Makefile is what GENERATES the SRPM, and until v0.9.10 no PR-triggered
       # workflow watched it: copr.yml watches '.copr/**' but only on push to main, so a PR
       # touching only that file got no packaging verification whatsoever. That is not
@@ -302,3 +307,124 @@ jobs:
               ;;
           esac
           echo "SRPM matches the pinned version"
+
+  # The macOS half of packaging verification. The other two packaging targets are verified
+  # on Linux runners; a Homebrew formula can only be exercised where Homebrew runs.
+  #
+  # WHAT THIS BUYS OVER `just brew-check`
+  # --------------------------------------
+  # brew-check is the cheap, offline half wired into `just check`: it proves the formula's
+  # fields agree with the PKGBUILD, the COPR spec and Cargo.toml. It cannot prove the
+  # formula BUILDS, that the man page lands, or that completions generate — and an
+  # unbuildable formula fails only on a user's machine. This job is that expensive half,
+  # the same division of labour the `aur` job has against `aur_check.py`.
+  brew:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      # Offline consistency first: if the fields are wrong there is no point spending
+      # several minutes on a build that pins the wrong tarball.
+      - name: Formula consistency (offline)
+        run: python3 scripts/brew_check.py --self-test && python3 scripts/brew_check.py
+
+      - name: Ruby syntax
+        run: ruby -c packaging/homebrew/retch.rb
+
+      # The declared sha256 is verified against the tarball that will actually be
+      # downloaded, BEFORE the build patches anything — the same check the `aur` job makes,
+      # and for the same reason: a formula can name the right version and carry a wrong
+      # hash, which fails only for the person installing it.
+      #
+      # When the pinned tag is not published yet (a branch that has bumped past the last
+      # release) this emits a notice and passes, rather than going red for a legitimate
+      # state.
+      - name: Verify declared sha256 against the real tarball
+        run: |
+          set -euo pipefail
+          VER=$(sed -n 's|.*/refs/tags/v\([0-9.]*\)\.tar\.gz.*|\1|p' packaging/homebrew/retch.rb | head -1)
+          DECLARED=$(sed -n 's/^  sha256 "\(.*\)"/\1/p' packaging/homebrew/retch.rb)
+          URL="https://github.com/l1a/retch/archive/refs/tags/v${VER}.tar.gz"
+          echo "formula pins v$VER, sha256 $DECLARED"
+          if ! curl -sfIL -o /dev/null "$URL"; then
+            echo "::notice::v$VER is not published yet — skipping the checksum comparison"
+            exit 0
+          fi
+          curl -sfL -o /tmp/src.tar.gz "$URL"
+          ACTUAL=$(shasum -a 256 /tmp/src.tar.gz | cut -d' ' -f1)
+          echo "actual sha256 $ACTUAL"
+          [ "$ACTUAL" = "$DECLARED" ] || { echo "::error::checksum mismatch for v$VER"; exit 1; }
+
+      # The formula has to be installed THROUGH A TAP, not from a path.
+      #
+      # `brew install ./packaging/homebrew/retch.rb` is the obvious thing to write and
+      # modern Homebrew rejects it outright: "Homebrew requires formulae to be in a tap".
+      # So this creates a throwaway local tap and installs from there — which is also the
+      # more faithful test, because it is exactly the path a user takes via
+      # `brew tap l1a/retch`.
+      #
+      # `--no-git` because the tap is discarded with the runner; there is nothing to commit.
+      - name: Stage the formula in a local tap
+        run: |
+          set -euo pipefail
+          brew tap-new --no-git local/test
+          cp packaging/homebrew/retch.rb "$(brew --repository local/test)/Formula/retch.rb"
+          echo "staged at $(brew --repository local/test)/Formula/retch.rb"
+
+      # The real test. --build-from-source because there is no bottle, and there is
+      # deliberately no bottle (see the formula's own comment block).
+      - name: Install from source
+        run: brew install --build-from-source local/test/retch
+
+      # `brew test` runs the formula's own `test do` block: the binary runs, reports the
+      # version the formula claims, can actually probe the machine, and the man page is
+      # installed with a real version footer rather than a `$DATE` placeholder.
+      - name: Run the formula's test block
+        run: brew test local/test/retch
+
+      # Assert the payload directly as well, rather than trusting the test block alone —
+      # the `aur` job inspects its packaged man page for the same reason.
+      - name: Inspect the installed payload
+        run: |
+          set -euo pipefail
+          PREFIX=$(brew --prefix local/test/retch)
+          echo "prefix: $PREFIX"
+          test -x "$PREFIX/bin/retch"
+          "$PREFIX/bin/retch" --version
+          # The man page must exist and must NOT carry the literal-$ footer defect the AUR
+          # package shipped for months.
+          MAN=$(find "$PREFIX/share/man/man1" -name 'retch.1*' -print -quit)
+          [ -n "$MAN" ] || { echo "::error::no man page installed"; exit 1; }
+          case "$MAN" in *.gz) gunzip -c "$MAN" > /tmp/retch.1 ;; *) cp "$MAN" /tmp/retch.1 ;; esac
+          head -1 /tmp/retch.1
+          grep -q '^\.TH' /tmp/retch.1 || { echo "::error::man page has no .TH line"; exit 1; }
+          if grep -m1 '^\.TH' /tmp/retch.1 | grep -q '\$'; then
+            echo "::error::man page .TH contains a literal \$ — the v0.7.0 footer defect"; exit 1
+          fi
+          # Completions for all three shells the formula generates.
+          #
+          # NOTE THE BASH PATH. Homebrew's `bash_completion` is `etc/bash_completion.d`,
+          # NOT the freedesktop `share/bash-completion/completions` that the AUR and COPR
+          # packages install into. Asserting the freedesktop path reports the completion
+          # missing on a package that installs it perfectly well — which is what the first
+          # version of this step did.
+          MISSING=0
+          for f in "$PREFIX/etc/bash_completion.d/retch" \
+                   "$PREFIX/share/zsh/site-functions/_retch" \
+                   "$PREFIX/share/fish/vendor_completions.d/retch.fish"; do
+            if [ -s "$f" ]; then
+              echo "  ok  $f ($(wc -c < "$f" | tr -d ' ') bytes)"
+            else
+              echo "::error::missing or empty completion: $f"
+              MISSING=1
+            fi
+          done
+          # Print what IS there before failing. An assertion about a built artefact that
+          # does not say what it actually saw costs a whole round trip to diagnose — the
+          # lesson from the `aur` job's zipman failure (v0.7.0).
+          if [ "$MISSING" -ne 0 ]; then
+            echo "--- everything actually installed under the prefix ---"
+            find "$PREFIX" -type f | sed "s|^$PREFIX/||" | sort
+            exit 1
+          fi
+          echo "payload verified: binary, man page, three completion files"

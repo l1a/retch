@@ -122,7 +122,7 @@ lint:
     cargo clippy --workspace -- -D warnings
 
 # Run strict checks (formatting and linting) as done in CI
-check: standard-check aur-check copr-check
+check: standard-check aur-check copr-check brew-check
     cargo fmt -- --check
     cargo clippy --workspace -- -D warnings
     # Also lint the optional `graphics` feature (base64/image/icy_sixel in src/logo.rs),
@@ -519,6 +519,162 @@ copr-bump VERSION:
     just copr-check
     echo "Commit packaging/copr — .github/workflows/copr.yml rebuilds COPR when it lands on main"
 
+# ===== HOMEBREW =====
+#
+# packaging/homebrew/retch.rb is the SOURCE, not a reference copy. brew-bump renders it,
+# brew-check guards it, brew-publish pushes exactly that file to the tap. The AUR pair was
+# an inert reference copy for eleven releases (see scripts/brew_check.py); this does not
+# repeat that.
+
+# Offline drift guard: formula vs PKGBUILD vs spec vs Cargo.toml. Wired into `just check`.
+brew-check:
+    @{{PY}} scripts/brew_check.py --self-test
+    @{{PY}} scripts/brew_check.py
+
+# Point the formula at a released tag: rewrite url + sha256 from the real tarball
+brew-bump VERSION:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
+    pass() { echo -e "${GREEN}[✓]${NC} $1"; }
+    fail() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
+    info() { echo -e "${YELLOW}[→]${NC} $1"; }
+    V="{{VERSION}}"
+    FORMULA="{{justfile_directory()}}/packaging/homebrew/retch.rb"
+    URL="https://github.com/l1a/retch/archive/refs/tags/v${V}.tar.gz"
+
+    # Same precondition as aur-bump and copr-bump, for the same reason: the formula pins
+    # the tarball's sha256, so bumping ahead of the tag pins something that cannot be
+    # fetched. This is also why the formula legitimately trails Cargo.toml.
+    curl -sfIL -o /dev/null "$URL" || fail "no release tarball at $URL — tag and release v$V first"
+
+    # The checksum is computed from the tarball that will actually be downloaded, never
+    # copied from elsewhere. Written to a file first rather than piped, so the byte count
+    # is inspectable if the hash ever looks wrong.
+    info "Downloading and checksumming the v$V tarball..."
+    TMP=$(mktemp "$(dirname "$FORMULA")/.tarball.XXXXXX")
+    trap 'rm -f "$TMP"' EXIT
+    curl -sfL -o "$TMP" "$URL" || fail "could not download $URL"
+    SHA=$({{PY}} -c "import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$TMP")
+    SIZE=$(wc -c < "$TMP" | tr -d ' ')
+    pass "v$V tarball: $SIZE bytes, sha256 $SHA"
+
+    {{PY}} - "$FORMULA" "$V" "$SHA" <<'PYEOF'
+    import pathlib, re, sys
+    formula, version, sha = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+    t = formula.read_text(encoding="utf-8")
+    t, n_url = re.subn(
+        r'(^\s*url\s+")https://github\.com/l1a/retch/archive/refs/tags/v[0-9.]+\.tar\.gz(")',
+        rf"\g<1>https://github.com/l1a/retch/archive/refs/tags/v{version}.tar.gz\g<2>",
+        t, count=1, flags=re.M)
+    t, n_sha = re.subn(r'(^\s*sha256\s+")[^"]*(")', rf"\g<1>{sha}\g<2>", t, count=1, flags=re.M)
+    # Hard-error on a substitution that matched nothing, rather than writing a file that
+    # looks updated and is not -- the exact defect calculate_nix_hashes.py shipped (v0.6.13),
+    # where a no-op substitution left the PREVIOUS release's hash in place.
+    if n_url != 1 or n_sha != 1:
+        raise SystemExit(f"substitution matched nothing (url={n_url}, sha256={n_sha}) — formula shape changed")
+    formula.write_text(t, encoding="utf-8")
+    PYEOF
+
+    pass "formula pinned to v$V"
+    just brew-check
+    echo "Commit packaging/homebrew, then: just brew-publish"
+
+# Push packaging/homebrew/retch.rb to the tap at github.com/l1a/homebrew-retch
+brew-publish:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    BOLD='\033[1m'; GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
+    pass() { echo -e "${GREEN}[✓]${NC} $1"; }
+    fail() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
+    info() { echo -e "${YELLOW}[→]${NC} $1"; }
+
+    FORMULA="{{justfile_directory()}}/packaging/homebrew/retch.rb"
+    TAP_REPO="git@github.com:l1a/homebrew-retch.git"
+    [ -f "$FORMULA" ] || fail "packaging/homebrew/retch.rb is missing"
+
+    {{PY}} scripts/brew_check.py || fail "the formula is inconsistent — run: just brew-bump <version>"
+    pass "formula is consistent"
+
+    VER=$(sed -n 's|.*/refs/tags/v\([0-9.]*\)\.tar\.gz.*|\1|p' "$FORMULA" | head -1)
+    [ -n "$VER" ] || fail "could not read the pinned version out of the formula"
+
+    # The declared checksum is verified against the tarball that will actually be
+    # downloaded, exactly as aur-publish does -- a formula can agree with its siblings on
+    # the version and still carry a wrong hash, which fails only on the user's machine.
+    info "Verifying sha256 against the real v$VER tarball..."
+    URL="https://github.com/l1a/retch/archive/refs/tags/v${VER}.tar.gz"
+    ACTUAL=$(curl -sfL "$URL" | {{PY}} -c "import hashlib,sys;print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())")
+    DECLARED=$(sed -n 's/^  sha256 "\(.*\)"/\1/p' "$FORMULA")
+    [ "$ACTUAL" = "$DECLARED" ] \
+        || fail "checksum mismatch for v$VER — declared $DECLARED, actual $ACTUAL. Run: just brew-bump $VER"
+    pass "sha256 matches the v$VER tarball"
+
+    echo
+    echo -e "${BOLD}About to publish retch $VER to the Homebrew tap.${NC}"
+    echo "This is public and immediate: $TAP_REPO"
+    echo ""
+    # Takes its answer from BREW_CONFIRM, an interactive stdin, or piped input under a
+    # bound -- mirroring aur-publish, and for the v0.6.21 reason: a bare `read` can only be
+    # answered by a human at a terminal, so a script or agent either blocks on a stdin that
+    # will never answer or dies without saying why, and that failure reads as the gate
+    # REFUSING the publish rather than as a question nobody could hear. This widens who can
+    # answer, not what counts as an answer: every path still requires an explicit "yes".
+    if [ -n "${BREW_CONFIRM:-}" ]; then
+        CONFIRM="$BREW_CONFIRM"
+        echo "Type 'yes' to continue: $CONFIRM   (answered by BREW_CONFIRM)"
+    elif [ -t 0 ]; then
+        echo -n "Type 'yes' to continue: "; read -r CONFIRM
+    else
+        read -r -t 10 CONFIRM || CONFIRM=""
+        echo "$CONFIRM"
+        [ -n "$CONFIRM" ] || fail "no terminal and nothing on stdin. Re-run with BREW_CONFIRM=yes"
+    fi
+    [ "$CONFIRM" = "yes" ] || { echo -e "${RED}Aborted.${NC}"; exit 1; }
+
+    # Cloned fresh each time rather than kept as a working copy: a long-lived clone is how
+    # the aur-retch checkout drifted eleven releases out of date. Outside the repo so the
+    # clone is never mistaken for tracked content.
+    WORK=$(mktemp -d)
+    trap 'rm -rf "$WORK"' EXIT
+    info "Cloning the tap..."
+    git clone -q "$TAP_REPO" "$WORK/tap" || fail "could not clone $TAP_REPO — does the tap exist, and is the SSH key registered?"
+    mkdir -p "$WORK/tap/Formula"
+    cp "$FORMULA" "$WORK/tap/Formula/retch.rb"
+
+    # A brand-new tap has no commits and therefore no branch, and which name git invents
+    # depends on the host's `init.defaultBranch` -- unset on at least one machine in this
+    # fleet, which would make the tap's default branch differ per publisher. Pin it, but
+    # ONLY when the repo is genuinely empty: doing this unconditionally would move HEAD on
+    # a populated tap without touching the index, which is a quiet way to lose work.
+    if ! git -C "$WORK/tap" rev-parse --verify -q HEAD >/dev/null 2>&1; then
+        git -C "$WORK/tap" symbolic-ref HEAD refs/heads/main
+        info "empty tap: default branch pinned to main"
+    fi
+
+    # A fresh clone does not inherit this repo's commit identity, and GitHub rejects a push
+    # authored with a private email (hit on the wiki clone, 2026-08-11).
+    git -C "$WORK/tap" config user.name  "$(git -C "{{justfile_directory()}}" config user.name)"
+    git -C "$WORK/tap" config user.email "$(git -C "{{justfile_directory()}}" config user.email)"
+
+    # Stage FIRST, then ask the index whether anything changed.
+    #
+    # `git diff --quiet -- <path>` compares the worktree to the index and **does not see
+    # untracked files**, so on a brand-new empty tap it reports "no changes" and this would
+    # skip the push entirely -- exiting 0 having published nothing, which is the worst
+    # available outcome. `--cached` compares the index to HEAD (or to the empty tree when
+    # there is no HEAD, as in an empty repo), which is the question actually being asked.
+    git -C "$WORK/tap" add Formula/retch.rb
+    if git -C "$WORK/tap" diff --cached --quiet; then
+        pass "tap already has this exact formula — nothing to push"
+        exit 0
+    fi
+    git -C "$WORK/tap" commit -q -m "retch $VER"
+    # -u so an empty tap gets its default branch set by this first push.
+    git -C "$WORK/tap" push -q -u origin HEAD
+    pass "pushed retch $VER to $TAP_REPO"
+    echo "Verify: brew tap l1a/retch && brew install retch"
+
 # ===== POST-RELEASE =====
 #
 # Everything that has to happen AFTER a tag exists, as one gated PR instead of a commit
@@ -581,6 +737,7 @@ post-release VERSION:
     info "Pinning packaging to v$V..."
     just aur-bump "$V"
     just copr-bump "$V"
+    just brew-bump "$V"
 
     info "Opening the next version..."
     sed -i "s/^version = \"$V\"/version = \"$NEXT\"/" Cargo.toml

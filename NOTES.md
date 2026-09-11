@@ -116,7 +116,120 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.1)
+## Current State (v0.17.2)
+- **v0.17.2 - Homebrew: a fourth packaging target, built as a source with a guard from day
+  one** (`packaging/homebrew/retch.rb`, `scripts/brew_check.py`, `Justfile`,
+  `.github/workflows/packaging.yml`). Packaging and tooling only; no runtime change,
+  `retch-sysinfo` unchanged at `0.1.72`.
+  - **Why now, and why it gates publishing.** macOS was the platform the v0.14.0-v0.17.1
+    parity work was about, and it is the one platform with **no native install path**:
+    Linux users get the AUR and COPR, everyone gets crates.io, and a Mac user had to
+    `cargo install`. The user made a Homebrew package a prerequisite for the next publish
+    round rather than a long-tail item, so it lands before v0.17.1 ships anywhere.
+  - **A tap, not homebrew-core.** homebrew-core has notability requirements comparable to
+    the tldr-pages submission this project already had declined (§3). A tap needs no
+    approval and is the realistic first step; core is a later decision, not a prerequisite.
+  - **THE STRUCTURAL POINT: `packaging/homebrew/retch.rb` is the SOURCE, not a reference
+    copy, and it ships with its guard.** `packaging/aur/PKGBUILD` was an inert reference
+    copy that nothing rendered, published or checked, and it reached **eleven releases** of
+    drift while every CI run stayed green; v0.7.1 fixed that *after* the fact. The COPR
+    spec got `copr_check.py` in v0.9.10, *before* its drift. This is the third instance of
+    the same construct and the guard was written **at the same time as the file**, so the
+    gap never opens.
+  - **`scripts/brew_check.py`** asserts six things offline: the formula's version equals
+    the PKGBUILD's `pkgver` **and** the spec's `Version:` (three independent recordings of
+    one fact); it is not *ahead* of `Cargo.toml`; `sha256` is a real 64-hex digest and not
+    a placeholder; the `url` is a `refs/tags/` archive rather than a branch tarball, which
+    would change content under a fixed hash; `cargo install` still passes `--locked`; and
+    the formula still installs the **committed** `docs/retch.1` rather than regenerating
+    it with mandown, which is how the AUR package shipped a page footed `$DATE` /
+    `retch $pkgver` for months.
+    - **10 self-test cases, and the load-bearing one is the negative**: a formula
+      *trailing* `Cargo.toml` by a whole release cycle must stay silent, because that is
+      the repo's normal resting state and a guard that fires there gets deleted within a
+      week, taking the other five with it. Same reasoning recorded for `copr_check.py`.
+    - It strips `#` comments before matching, so a comment *describing* a rule cannot
+      satisfy the check for a formula that lost it — the v0.7.0 PKGBUILD audit and the
+      v0.9.9 Makefile grep were both fooled by exactly that.
+  - **The formula was pinned at 0.13.2, not 0.17.1, and the guard is what caught that.**
+    The first draft pinned the just-released v0.17.1 tarball, which looked right and was
+    wrong: all three packaging targets track the last released tag and are bumped
+    **together** by `just post-release`, so a formula ahead of its siblings is precisely
+    the drift the guard exists to detect. It fired immediately. The formula now matches the
+    PKGBUILD and the spec at 0.13.2, and `just post-release 0.17.1` will move all three.
+  - **`just brew-bump` computes the checksum from the tarball it downloads**, never copies
+    one, and **hard-errors when a substitution matches nothing** rather than writing a file
+    that looks updated and is not — the exact defect `calculate_nix_hashes.py` shipped in
+    v0.6.13, where a no-op substitution left the previous release's hash in place.
+    `just post-release` now pins all three targets together.
+  - **`just brew-publish` clones the tap fresh each time** rather than keeping a working
+    copy: a long-lived clone is how `~/Sync/git/aur-retch` drifted out of date. It sets the
+    noreply commit identity explicitly, since a fresh clone does not inherit it and GitHub
+    rejects a push authored with a private address (hit on the wiki clone, 2026-08-11).
+  - **A `brew` CI job on `macos-latest`** does the expensive half the offline guard cannot:
+    verifies the declared sha256 against the real tarball, `brew install
+    --build-from-source`, runs the formula's own `test do` block, and then inspects the
+    installed payload directly — binary runs, man page present with **no literal `$` in its
+    `.TH`**, and all three completion files non-empty. Same division of labour as
+    `aur_check.py` against the `aur` job.
+  - **`scripts/*_check.py` added to `packaging.yml`'s paths filter.** The three guards
+    decide whether a drifted packaging file can reach a commit, and until now a PR touching
+    only a guard matched no filter and got no packaging verification at all — the v0.9.6
+    `Justfile` hole, one directory over.
+  - **Homebrew installs bash completions to `etc/bash_completion.d`, not the freedesktop
+    `share/bash-completion/completions`** the AUR and COPR packages use. `zsh_completion`
+    and `fish_completion` are where you would expect (`share/zsh/site-functions`,
+    `share/fish/vendor_completions.d`); bash is the odd one. The first payload check
+    asserted the freedesktop path and reported the completion missing on a package that
+    installs it perfectly well. The step now also **prints the whole installed tree before
+    failing**, so the next such mismatch is diagnosable from the log rather than costing a
+    round trip — the lesson from the `aur` job's `zipman` failure in v0.7.0.
+  - **The formula's test block must ANSI-strip before matching, and my first diagnosis of
+    why it failed was wrong.** The assertion `assert_match(/OS:/, ...)` fails because
+    **retch colourises even when piped**, so the label and its colon are separated by
+    escapes: `\e[38;2;0;255;255mOS\e[39m\e[38;2;128;128;128m:\e[39m …`.
+    - **The wrong diagnosis is the part worth recording.** The first failure's backtrace
+      contained `Timeout::Error.handle_timeout`, which read as "the sandbox blocked a
+      network call" — and `--short` does include `net`, which resolves the local IP with a
+      UDP-connect, so a plausible mechanism was right there. It was not the cause: those
+      `timeout.rb` frames are Homebrew's `run_test` wrapper and appear in **every** failed
+      test block. The real cause was the same ANSI mismatch both times. An oracle answering
+      a different question, and a plausible mechanism is exactly what makes that stick.
+    - The strip matches the whole `ESC [ … <final byte>` form, not SGR (`m`) only — chafa
+      opens a run with `\e[?25l` and an SGR-only strip leaves six characters behind, the
+      measurement bug recorded in v0.9.2 and again in v0.11.5.
+    - `--fields os` is kept over `--short` regardless: it is 3.4 ms against 31 ms and
+      touches no network, which is the right property for a sandboxed test even though it
+      was not what was failing.
+  - **`std_cargo_args` already passes `--locked`, and CI is what found that too.** The
+    formula's first version added an explicit one, and cargo rejected it outright:
+    *"the argument '--locked' cannot be used multiple times"*. The formula parsed, the
+    offline guard passed, and only a real install surfaced it. **The guard was asserting
+    the wrong thing** and now asserts the right one: that `*std_cargo_args` is still used
+    (that is what supplies `--locked`) and that no second `--locked` is added. Checking
+    for the literal flag was wrong in *both* directions — it would pass for a formula that
+    dropped `std_cargo_args` and unpinned resolution, and it demanded the duplicate cargo
+    refuses.
+  - **`brew install <path>` does not work any more, and CI is what found it.** The obvious
+    invocation — `brew install --build-from-source ./packaging/homebrew/retch.rb` — is
+    rejected outright by modern Homebrew: *"Homebrew requires formulae to be in a tap"*.
+    The job now stages the formula in a throwaway `brew tap-new --no-git local/test` and
+    installs from there, which is also the **more faithful** test: it is exactly the path
+    a user takes via `brew tap l1a/retch`. This is the concrete argument for having put
+    the install in CI rather than trusting a formula that merely parses.
+  - **Verification limit, recorded rather than papered over.** The formula was **not**
+    installed locally: `depends_on "rust" => :build` would have pulled ~350 MB into the
+    development machine's Homebrew. Local verification was `ruby -c` (Syntax OK), the
+    offline guard, and confirming `retch --completions=bash` produces output in the
+    `=`-joined form `shell_parameter_format` generates. **The install is proven by the CI
+    job, not locally.**
+    - Separately: **`brew audit` is broken on that machine** and it is not the formula's
+      doing — it crashes inside Homebrew's own vendored gems
+      (`json-2.21.2 ... undefined method 'default_sort_keys_proc='`) before reading
+      anything. A checker failing for its own reasons, the family this file keeps
+      recording; `ruby -c` was used as the independent syntax oracle instead.
+  - `retch-cli` -> 0.17.2. Patch bump - packaging and tooling only, the v0.7.1 / v0.9.7
+    precedent.
 - **v0.17.1 - macOS `domain` and `dns` reported a split-tunnel VPN instead of the default
   route** (`crates/sysinfo/src/network.rs`, `crates/sysinfo/src/macos_ffi.rs`,
   `crates/sysinfo/build.rs`). Closes the last NOTES §6c gap, and **§6a's long-standing
@@ -2930,9 +3043,19 @@ Adds over long:
     `--long` measures 3352 ms, and removing `dns` moved the former by 3650 ms but the
     latter by only 276 ms. **The `--fields` harness does not model `--long`'s concurrency**;
     confirm any predicted win against the real mode before believing it.
+- **retch ignores `NO_COLOR`, and has no `--no-color` flag.** Noticed while writing the
+  Homebrew formula's test block (v0.17.2), which had to strip ANSI itself. `NO_COLOR` is a
+  widely honoured convention and retch emits colour even when stdout is not a terminal —
+  note that is deliberate for the *logo* (v0.6.6 forces `--ascii-logo` on when piped) but
+  the field colouring is a separate question. A `--no-color` flag, or honouring `NO_COLOR`,
+  would make retch easier to consume from scripts and test harnesses. Not urgent; recorded
+  rather than dropped.
 - **Package repository submissions**: Submit retch to AUR (Arch User Repository) and nixpkgs so it appears in the [Repology](https://repology.org/project/retch/versions) packaging status widget. The Nix flake (contributed by @quixaq) is a useful starting point for the nixpkgs submission.
 - **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
-- **Homebrew tap / formula**: Publish a `homebrew-retch` tap or submit a formula to Homebrew core so macOS users can `brew install retch`.
+- ~~**Homebrew tap / formula**~~ — done in v0.17.2 as `packaging/homebrew/retch.rb` plus
+  `just brew-bump`/`brew-check`/`brew-publish`, a `brew` CI job and a drift guard. The tap
+  is `l1a/homebrew-retch`. Submitting to **homebrew-core** remains open and is a separate
+  decision — its notability bar is comparable to the tldr-pages submission that was declined.
 - **FUSE mounts in `--full`**: v0.3.26 skips all `fuse.*` mounts to avoid 600ms+ hangs from cryfs/EncFS vaults. The `--full` mode redesign (§4) resolves this by re-enabling `statvfs` for fuse.* entries in `--full` only — no separate config key or flag needed.
 - ~~**Field wiring de-duplication (tech debt)**~~ — resolved in v0.3.39. The field
   list is now a single `FIELDS` table in `src/fields.rs`. The four *in-code* copies
