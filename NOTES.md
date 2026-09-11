@@ -116,7 +116,12 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.3)
+## Current State (v0.17.4)
+- **v0.17.4 - post-release: packaging pinned to 0.17.3, next cycle opened** (packaging only; no runtime change).
+  - `packaging/aur` (PKGBUILD and .SRCINFO), `packaging/copr/retch.spec` and `packaging/homebrew/retch.rb` bumped to **0.17.3**, the version just released. All three track the last RELEASED tag, so they can only move after the tag exists. The formula joined `post-release` in v0.17.2; this is the first run that bumps all three, and the prose describing the run was still written for two (fixed in this commit).
+  - `aur-bump` and `brew-bump` each downloaded the tarball separately and hashed it with different tools (`sha256sum` vs Python `hashlib`), and agreed: `77ccf858...2033`. That is a cross-check between two independent computations, not one value copied into two files.
+  - `Cargo.toml` -> **0.17.4**, which is what lets this be a normal gated PR rather than a commit straight to `main`: `just pr`'s version check compares against the last tag, so the packaging bump passes as long as it travels with the next version bump.
+  - `retch-cli` -> 0.17.4. Patch bump.
 - **v0.17.3 - Homebrew 6.0 requires third-party taps to be TRUSTED, and the install
   instructions shipped in v0.17.2 did not say so** (`README.md`, the wiki,
   `packaging/homebrew/retch.rb`, `.github/workflows/packaging.yml`). Docs, packaging and CI
