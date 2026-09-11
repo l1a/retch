@@ -757,9 +757,9 @@ post-release VERSION:
     entry = (f"## Current State (v{nxt})\n"
              f"- **v{nxt} - post-release: packaging pinned to {v}, next cycle opened** "
              f"(packaging only; no runtime change).\n"
-             f"  - `packaging/aur` (PKGBUILD and .SRCINFO) and `packaging/copr/retch.spec` bumped to "
-             f"**{v}**, the version just released. Both track the last RELEASED tag, so they can "
-             f"only move after the tag exists.\n"
+             f"  - `packaging/aur` (PKGBUILD and .SRCINFO), `packaging/copr/retch.spec` and "
+             f"`packaging/homebrew/retch.rb` bumped to **{v}**, the version just released. All "
+             f"three track the last RELEASED tag, so they can only move after the tag exists.\n"
              f"  - `Cargo.toml` -> **{nxt}**, which is what lets this be a normal gated PR rather "
              f"than a commit straight to `main`: `just pr`'s version check compares against the "
              f"last tag, so the packaging bump passes as long as it travels with the next "
@@ -771,8 +771,8 @@ post-release VERSION:
     git add -A
     git commit -q -m "packaging: pin to $V, open $NEXT
 
-    packaging/aur and packaging/copr track the last RELEASED tag, so they can
-    only be bumped once v$V exists. Bundling that with the next version bump
+    packaging/aur, packaging/copr and packaging/homebrew track the last RELEASED
+    tag, so they can only be bumped once v$V exists. Bundling that with the next version bump
     is what makes this a normal gated PR: just pr's step 2 compares Cargo.toml
     against the last tag, not against this PR's parent, so opening $NEXT
     satisfies it. Previous releases sent this commit straight to main on the
@@ -785,6 +785,7 @@ post-release VERSION:
     echo -e "${BOLD}Next:${NC}"
     echo "  1. review the diff, then: just open-pr"
     echo "  2. after it merges:       just aur-publish"
+    echo "                            just brew-publish"
     echo "     (COPR rebuilds itself once packaging/copr lands on main)"
 
 # Merge the active PR, switch to main, pull, delete the branch, and update WIP.md (requires gh)
