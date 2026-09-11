@@ -73,9 +73,23 @@ yay -S retch
 `retch` is available from a Homebrew tap:
 
 ```sh
+brew trust l1a/retch    # Homebrew 6.0+ only; see the note below
 brew tap l1a/retch
 brew install retch
 ```
+
+> [!IMPORTANT]
+> **Homebrew 6.0 and later require third-party taps to be trusted before their formulae
+> will load**, so `brew trust l1a/retch` must come first. Without it `brew tap` fails with
+> a misleading message:
+>
+> ```
+> Refusing to load formula l1a/retch/retch from untrusted tap l1a/retch.
+> Error: Cannot tap l1a/retch: invalid syntax in tap!
+> ```
+>
+> The syntax is not the problem — that is just how the refusal surfaces. On Homebrew 5.x
+> and earlier there is no `brew trust` command; skip that line and tap directly.
 
 > [!NOTE]
 > The formula builds from source, so the first install compiles `retch` and needs Rust —

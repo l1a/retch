@@ -359,9 +359,19 @@ jobs:
       #
       # `brew install ./packaging/homebrew/retch.rb` is the obvious thing to write and
       # modern Homebrew rejects it outright: "Homebrew requires formulae to be in a tap".
-      # So this creates a throwaway local tap and installs from there — which is also the
-      # more faithful test, because it is exactly the path a user takes via
-      # `brew tap l1a/retch`.
+      # So this creates a throwaway local tap and installs from there.
+      #
+      # **THIS IS NOT QUITE THE PATH A USER TAKES, and the difference matters.** Homebrew
+      # 6.0 added a trust gate for third-party taps: `brew tap l1a/retch` refuses to load
+      # the formula until `brew trust l1a/retch` has been run, and the error it gives is
+      # actively misleading ("Cannot tap l1a/retch: invalid syntax in tap!" for a formula
+      # whose syntax is fine). A tap created locally with `tap-new` bypasses that gate, so
+      # **this job cannot and does not prove the trust step is unnecessary** — it proves
+      # the formula builds, installs and works. The trust requirement is a documentation
+      # problem, handled in README.md and the wiki.
+      #
+      # A local tap is still the right thing to test here: it exercises THIS PR's formula,
+      # where tapping the published l1a/retch would test whatever is already released.
       #
       # `--no-git` because the tap is discarded with the runner; there is nothing to commit.
       - name: Stage the formula in a local tap
@@ -381,6 +391,18 @@ jobs:
       # installed with a real version footer rather than a `$DATE` placeholder.
       - name: Run the formula's test block
         run: brew test local/test/retch
+
+      # Style and correctness lint. Deliberately AFTER the install and test steps so the
+      # log distinguishes "the formula does not work" from "the formula is untidy" — an
+      # audit-rule change upstream can redden this for a formula that still installs
+      # perfectly, and that should not look like a build failure.
+      #
+      # `--strict` is what flagged the redundant `shells:` argument this step was added
+      # for. Note `brew audit` is also what broke the development machine's Homebrew when
+      # its output was piped through `head`: the truncation SIGPIPE-killed a native gem
+      # build mid-install. Nothing here pipes it.
+      - name: Audit the formula
+        run: brew audit --formula --strict local/test/retch
 
       # Assert the payload directly as well, rather than trusting the test block alone —
       # the `aur` job inspects its packaged man page for the same reason.
