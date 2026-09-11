@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789107252374,
+  "lastUpdate": 1789107621156,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13974,80 +13974,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "25a63eba863ae9cb9fb41eafa2ad6a65e9c42b8a",
-          "message": "Gate merge-pr on CI; bring the triad under standard-check (#194)\n\n* Gate merge-pr on CI; check the triad\n\nmerge-pr went straight from the branch check to gh pr merge --squash\n--delete-branch, with no inspection of the status rollup. gh pr merge\nhappily merges a red PR when there is no branch protection, so every\nmerge in this repo has been ungated -- safe only because whoever merged\nhappened to look first.\n\nrusticprofile added this in v0.1.5 after a PR went in with a leg red,\nand extended it in 0.2.1 after an EMPTY rollup passed vacuously.\nNeither reached here.\n\nThree refusals now: a failing check, an empty rollup, and checks still\nrunning. The empty state is compared as a string rather than via jq -e\nlength, because an external jq is not on a default Windows PATH and a\ngate that degrades where its dependency is missing is the thing being\nfixed.\n\ngate_conformance.py (template v3) is vendored and run by\nstandard-check, so the guards cannot vanish again. It is structural,\nnot behavioural, and says so.\n\nVerified safely: on a branch with no PR the rollup is empty, so\nmerge-pr refuses before reaching gh pr merge.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-12T21:18:47-07:00",
-          "tree_id": "09cf28f2dd68d69de2931ed6e287f3ca4b42fd13",
-          "url": "https://github.com/l1a/retch/commit/25a63eba863ae9cb9fb41eafa2ad6a65e9c42b8a"
-        },
-        "date": 1786596224030,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 937460108.35,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 437.24220000801716,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 124.00731245498773,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.687781763174229,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 61.83549054381797,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 4036.137544944603,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 997.3028556089682,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 403.5966027539313,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 63975.47514994687,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 446.16362377987235,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "120ed8e2e0fe45a624212a8204ae34b082b8c360",
           "message": "Add keyboard, mouse and tpm fields (#195)\n\n* Add keyboard, mouse and tpm fields\n\nThree NOTES.md section 6 fastfetch-gap fields, all --long and above,\nLinux-only, in the v0.5.0 shape: thin /proc and sysfs readers over pure\nhelpers that unit-test without touching host hardware.\n\nInput classification is exclusive and declines to guess. On a Logitech\nUnifying/Bolt receiver no kernel-visible signal separates a keyboard from\na mouse: handlers, capabilities/rel (0x1943 on both), the alphabet key\nblock, INPUT_PROP, udev ID_INPUT_* (POINTINGSTICK on both), USB HID\nbInterfaceProtocol and the HID report descriptor itself are all identical\nfor an MX Keys and an MX Master 3. fastfetch 2.66 gets this wrong in both\ndirections on that hardware. Ambiguous devices are resolved via the HID++\ndriver's battery model_name and, failing that, reported in neither field\nrather than asserted into the wrong one.\n\ntpm reads tpm_version_major and maps it to the published spec names\n(1 -> 1.2, 2 -> 2.0), returning None for anything unrecognised.\n\nAlso refresh packaging/aur/PKGBUILD, stranded at 0.6.12 for eleven\nreleases while the AUR moved to 0.6.23, and drop its man-page\nregeneration: the font-strip sed never matched on any platform (GNU sed\nreads \\\\f as a form feed) and $DATE/$pkgver were literal inside double\nquotes, so the installed footer read \"retch $pkgver\". The committed\ndocs/retch.1 ships in the tarball with the correct footer, so package()\ninstalls it directly and the mandown makedepend is gone.\n\nStrata golden counts move Long 49->52, Full 55->58. 11 new unit tests.\nVerified live on corrino (Fedora 44, i7-1360P).\n\nAssisted-By: Claude Opus 5\n\n* Close two holes in the aur CI job\n\nThe job rewrote source= and sha256sums= to build from local sources, so the\ndeclared checksum was never checked by anything — a stale one (as this\nPKGBUILD carried for eleven releases) stayed green and would only fail for\nsomeone installing from the AUR. Verify it against the real tag tarball\nbefore that patching, refusing a committed SKIP and skipping cleanly when the\ntag is not published yet.\n\nNothing inspected the packaged man page either, which is where both defects\nthis branch fixes actually showed. Assert the built package's .TH line carries\nno literal $ and a real retch <version> footer, and that no doubled font runs\nsurvive.\n\nAlso stop pre-installing mandown, so makedepends is load-bearing: makepkg -s\ninstalls what the PKGBUILD declares and nothing else.\n\nAssisted-By: Claude Opus 5\n\n* Fix the man-page check failing on a correct package\n\nThe new verification step used `bsdtar -tf \"$pkg\" | grep -qx …` under\n`set -o pipefail`. grep -q exits on its first match, bsdtar takes SIGPIPE and\nexits 141, and pipefail turns that into a failed pipeline — so the step\nreported the man page missing exactly when it was present, and CI went red on\na package that was correct. head -1 and grep -m1 carry the same hazard.\n\nMaterialise the listing and the page to files and grep those; select the\npackage with find -print -quit. Verified against a good package and against\npurpose-built broken ones (missing page, literal $ footer, doubled font runs).\n\nAssisted-By: Claude Opus 5\n\n* Match the gzipped man page makepkg actually ships\n\nmakepkg's zipman option is on by default, so the packaged path is\nusr/share/man/man1/retch.1.gz. The verification step looked for retch.1 and\nreported it missing — the check wrong again, the package correct again.\n\nMatch retch.1 with an optional .gz/.zst/.xz/.bz2 suffix and decompress before\ninspecting. Tested against gzipped, uncompressed, and gzipped-but-broken\npackages.\n\nThe diagnostic added in the previous commit is what made this cheap: printing\nthe real usr/share listing on failure named retch.1.gz directly in the CI log.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-14T09:49:12-07:00",
@@ -17657,6 +17583,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 372.52818832928926,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "37f683dcc0380ce5f434e770d1f5c1b87d1856ca",
+          "message": "legal: ship the actual GPLv3 text, and split out third-party notices (#245)\n\nGitHub reported this repository's licence as \"other\" despite Cargo.toml\ndeclaring GPL-3.0-or-later. The cause was that LICENSE was not the GPL: it was\na 31-line file holding a heading, a copyright line, the MIT attribution for the\nadapted Fastfetch logos, and the short source-header notice (\"This program is\nfree software...\"). GitHub's licensee had nothing to match, so it matched\nnothing.\n\nThat was also a compliance gap rather than a cosmetic one. The file told\nreaders \"You should have received a copy of the GNU General Public License\nalong with this program\" while the program shipped no such copy -- and both\nthe AUR PKGBUILD and the COPR spec install that file as the licence.\n\nLICENSE is now the verbatim 674-line GPLv3 text, byte-identical to\nhttps://www.gnu.org/licenses/gpl-3.0.txt. Cross-checked against the SPDX copy\nof GPL-3.0-or-later: after normalising whitespace and (C)/(c) the two agree to\n99.1%, and every remaining difference is typographic (SPDX uses curly quotes\nand the copyright sign). The gnu.org text is plain ASCII, which is what GPLv3\nprojects normally carry.\n\nEverything that was in LICENSE but is not the GPL moved to NOTICE: this\nproject's copyright and licence grant, and the MIT attribution for the\nFastfetch logos. NOTICE is not decoration -- MIT requires its copyright notice\nto travel with every copy, and that obligation was previously met only because\nthe text happened to be embedded in a file the packaging installed. So both\npackaging recipes now install NOTICE alongside LICENSE:\n\n  - PKGBUILD gains an install line next to the LICENSE one.\n  - The spec uses `%license LICENSE NOTICE`, deliberately %license and not\n    %doc, so it cannot be stripped as documentation.\n\npackaging/aur/.SRCINFO is unchanged and correctly so: it records metadata, not\nthe package() body, and aur_check.py compares those fields.\n\nThe AUR and COPR changes touch the package() body only, so they take effect\nwith the next release rather than retroactively for the published 0.17.3-1.\n\nWhether GitHub now detects the licence can only be settled by GitHub's own\ndetector; that it is byte-identical to the canonical text is the reason to\nexpect it, not proof of it.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T23:00:58-07:00",
+          "tree_id": "656609183e1047949fa11c6ff1d2eaf23bb336ba",
+          "url": "https://github.com/l1a/retch/commit/37f683dcc0380ce5f434e770d1f5c1b87d1856ca"
+        },
+        "date": 1789107617965,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 877424914.4,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 448.9014508792534,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 140.1228371849361,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.986666318983938,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 74.47231143019643,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6093.301774286331,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1236.5541824816314,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 451.76845473904297,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 79953.55192415099,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 372.510462210888,
             "unit": "ns"
           }
         ]
