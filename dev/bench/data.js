@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789105264189,
+  "lastUpdate": 1789105772790,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20824,70 +20824,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "c1b99674ea9eded99c6558e78098409ebe6a78ac",
-          "message": "Make the pre-PR gate answerable; open-pr now pushes (#192)\n\n* Make the pre-PR gate answerable; open-pr now pushes\n\njust pr ended in a bare read, so only a human at a terminal could\nanswer it -- a script or agent blocked on a stdin that would never\nanswer, or died without saying why, and that reads as the gate refusing\nthe change. It now accepts PR_CONFIRM, an interactive stdin, or piped\ninput under a timeout, and names PR_CONFIRM when it cannot be answered.\nNot a bypass: every path still requires an explicit y.\n\njust open-pr did not push, so on a never-pushed branch it printed\n\"Gate passed\" and then failed because gh pr create had no remote\nbranch to open from. It now pushes only when there is no upstream --\npushing unconditionally would silently publish existing commits on a\nbranch that already has one. pre-push still runs just check, so the\npush is inside the gate rather than around it.\n\nBoth are rusticprofile's 0.0.21 and 0.2.12, which retch never received.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-12T20:24:18-07:00",
-          "tree_id": "7307c8c54022ab27b0b3e8ecfeab8995613e25ea",
-          "url": "https://github.com/l1a/retch/commit/c1b99674ea9eded99c6558e78098409ebe6a78ac"
-        },
-        "date": 1786593958930,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 177.97220856857447,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.948049563703345,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 98.20334608973543,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.98042209263049,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46417.63510042655,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 486.802722235934,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 726.8206757924728,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2996746880,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "e5b9b5941c53dc4bcdc12aac4b5549e7d0ddf5f6",
           "message": "Let the manual Claude review actually run (#193)\n\n* Let the manual Claude review actually run\n\nv0.6.17 disabled automatic review by commenting out the pull_request\ntrigger AND setting if: false on the job. The trigger alone already did\nthat, so the guard added nothing -- but it also applied to\nworkflow_dispatch, which was kept. So gh workflow run started a run,\nskipped the job, and reported SUCCESS having reviewed nothing.\n\nA green run that did nothing is the failure this repo's tooling exists\nto refuse, and the one rusticprofile recorded twice about this action.\nDispatch available but silently inert is worse than working or absent.\n\nAutomatic review stays OFF -- only the job guard is removed; the\npull_request trigger is still commented immediately above it.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-12T20:45:42-07:00",
@@ -24007,6 +23943,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 957049550,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4c85e0b3c1f1ed99e81c9cfaa309466a330bfebd",
+          "message": "packaging: pin to 0.17.3, open 0.17.4, fix post-release's prose (#244)\n\npackaging/aur, packaging/copr and packaging/homebrew track the last RELEASED\ntag, so they can only be bumped once v0.17.3 exists. Bundling that with the\nnext version bump is what makes this a normal gated PR: just pr's step 2\ncompares Cargo.toml against the last tag, not against this PR's parent, so\nopening 0.17.4 satisfies it. Previous releases sent this commit straight to\nmain on the belief that a PR was impossible.\n\njust brew-bump joined the post-release recipe in v0.17.2, but three pieces of\nits prose did not move with it, so this run bumped three packaging targets\nwhile describing two:\n\n  - the NOTES entry it writes said only aur and copr were bumped,\n  - this commit message body said the same,\n  - and the closing \"Next:\" instructions never mentioned just brew-publish,\n    which is the step that actually ships the formula to the tap.\n\nThe bumps themselves were always correct -- brew-bump runs at the same place\nas its siblings and pinned the formula to 0.17.3 as expected. What was wrong\nwas the account of them, which is the part anyone reads later. Both the entry\nalready written onto this branch and the templates that generate it are fixed\nhere, so the next post-release describes itself accurately.\n\naur-bump and brew-bump each downloaded the v0.17.3 tarball separately and\nhashed it with different tools (sha256sum vs Python hashlib), agreeing on\n77ccf85843d24ac3216ab31d2584ff4a95869266c59ddb8bc83819425cfc2033.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T22:10:49-07:00",
+          "tree_id": "242b5348be9aca9bb4fb553f5f19beb8d8661117",
+          "url": "https://github.com/l1a/retch/commit/4c85e0b3c1f1ed99e81c9cfaa309466a330bfebd"
+        },
+        "date": 1789105769062,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 183.07679552429133,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9559221437405725,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.51686680796563,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.20220517055242,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 48494.51448066967,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 493.3476858220256,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 748.7278739521258,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2228400230,
             "unit": "ns"
           }
         ]
