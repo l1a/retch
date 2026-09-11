@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789099608248,
+  "lastUpdate": 1789099781615,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4686,6 +4686,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 586928002.5000001
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "1b52ddcba57894ea04bf5811d75b76c024879004",
+          "message": "Document the Homebrew trust gate; audit the formula in CI (#243)\n\nHomebrew 6.0+ refuses to load a third-party tap's formulae until the tap\nis trusted, and the error is misleading: \"Cannot tap l1a/retch: invalid\nsyntax in tap!\" for a formula whose syntax is fine. Anyone following the\nv0.17.2 README would conclude the formula was broken. Documented with the\nverbatim error and scoped to 6.0+, since brew trust does not exist on 5.x.\n\nThe brew CI job did not catch this and its comment claimed it would. A\ntap created with brew tap-new bypasses the trust gate entirely, so the\njob proves the formula builds, installs and works - not that a user can\ntap it. The comment now says so. A local tap is still correct to test,\nbecause it exercises this PR's formula rather than whatever is released.\n\nbrew audit --strict is now a CI step and immediately found two defects in\nthe v0.17.2 formula: shells: is the default and passing it is redundant,\nplus a hash alignment violation. Both fixed. The step runs after install\nand test so an upstream audit-rule change cannot look like a build\nfailure. Dropping shells: is checked rather than assumed - the payload\nstep already asserts all three completion files are present.\n\nRecords why the audit step was not possible before: running brew audit\npiped through head truncated stdout mid-install, SIGPIPE-killed a native\ngem build, and left json 2.21.2 Ruby code over a 2.18.0 binary. That is\nthe bsdtar | grep -q trap from v0.7.0, which names head as the same\nhazard. It was recorded, and used anyway.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T21:08:55-07:00",
+          "tree_id": "d876741cd0411ac9be39c183181716af050f60b9",
+          "url": "https://github.com/l1a/retch/commit/1b52ddcba57894ea04bf5811d75b76c024879004"
+        },
+        "date": 1789099781615,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 597148619.9599999
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 601194195.2600001
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 32837210.880000003
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 43484790.18
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 653260615.0000001
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 601276202.5
           }
         ]
       }
