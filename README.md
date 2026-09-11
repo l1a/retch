@@ -358,7 +358,11 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0.
+Copyright (C) 2025 Ken Tobias. Licensed under the GNU General Public License,
+version 3 or later (`GPL-3.0-or-later`). The full text is in [LICENSE](LICENSE).
+
+[NOTICE](NOTICE) carries the licence grant for this project together with the MIT
+attribution for the ASCII logos adapted from Fastfetch.
 
 ## Contributing
 

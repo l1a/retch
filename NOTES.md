@@ -117,6 +117,38 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 ---
 
 ## Current State (v0.17.4)
+- **v0.17.4 - GitHub reported the licence as "other", because `LICENSE` was never the GPL**
+  (`LICENSE`, `NOTICE`, `README.md`, `packaging/aur/PKGBUILD`, `packaging/copr/retch.spec`).
+  Legal and packaging metadata only; no runtime change, `retch-sysinfo` unchanged at `0.1.72`.
+  - **The file was 31 lines, and none of them were the licence.** `LICENSE` held a heading, a
+    copyright line, the MIT attribution for the adapted Fastfetch logos, and the short
+    source-header notice ("This program is free software..."). GitHub's `licensee` needs to
+    match the licence *text*; there was none to match, so the repository page said `other`
+    while both `Cargo.toml`s declared `GPL-3.0-or-later`.
+  - **It was a compliance gap, not a cosmetic one.** The file told readers "You should have
+    received a copy of the GNU General Public License along with this program" while the
+    program shipped no such copy — and `packaging/aur/PKGBUILD` and `packaging/copr/retch.spec`
+    both install that file *as* the licence, so every AUR and COPR user got the stub.
+  - `LICENSE` is now the verbatim 674-line GPLv3, byte-identical to
+    `https://www.gnu.org/licenses/gpl-3.0.txt` (sha256 `3972dc97…3698`). **Cross-checked against
+    a second source** rather than trusted from one: normalised against SPDX's
+    `GPL-3.0-or-later`, the two agree to 99.1%, and every remaining difference is typographic
+    (SPDX uses curly quotes and `©`). The gnu.org text is plain ASCII, which is what GPLv3
+    projects normally carry.
+  - **`NOTICE` is load-bearing, not decoration.** Everything that was in `LICENSE` but is not
+    the GPL moved there: this project's copyright and grant, plus the Fastfetch MIT
+    attribution. MIT requires that notice to travel with every copy, and that obligation was
+    being met *only* because the text happened to sit inside a file the packaging installed.
+    Moving it without touching the recipes would have silently dropped it, so both now install
+    it — the spec deliberately as `%license LICENSE NOTICE`, not `%doc`, so it cannot be
+    stripped as documentation.
+  - `packaging/aur/.SRCINFO` is unchanged and correctly so: it records metadata, not the
+    `package()` body, which is what `aur_check.py` compares. The AUR and COPR edits therefore
+    take effect with the next release, not retroactively for the published `0.17.3-1`.
+  - **What this entry does not claim.** Byte-identity with the canonical text is the reason to
+    expect GitHub to detect the licence, not proof that it does. The only oracle that answers
+    that question is GitHub's own detector, queried per-branch via
+    `GET /repos/l1a/retch/license?ref=<branch>` before merging.
 - **v0.17.4 - post-release: packaging pinned to 0.17.3, next cycle opened** (packaging only; no runtime change).
   - `packaging/aur` (PKGBUILD and .SRCINFO), `packaging/copr/retch.spec` and `packaging/homebrew/retch.rb` bumped to **0.17.3**, the version just released. All three track the last RELEASED tag, so they can only move after the tag exists. The formula joined `post-release` in v0.17.2; this is the first run that bumps all three, and the prose describing the run was still written for two (fixed in this commit).
   - `aur-bump` and `brew-bump` each downloaded the tarball separately and hashed it with different tools (`sha256sum` vs Python `hashlib`), and agreed: `77ccf858...2033`. That is a cross-check between two independent computations, not one value copied into two files.

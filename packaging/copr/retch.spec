@@ -103,7 +103,9 @@ export CARGO_HOME=%{_builddir}/cargo-home
 cargo test --release --locked --workspace
 
 %files
-%license LICENSE
+# NOTICE is %license, not %doc: it carries the MIT attribution for the adapted Fastfetch
+# logos, which must ship with every copy rather than be strippable as documentation.
+%license LICENSE NOTICE
 %doc README.md
 %{_bindir}/retch
 # The glob is load-bearing: rpm compresses man pages on install, so the packaged path is
