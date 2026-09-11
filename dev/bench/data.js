@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789160858432,
+  "lastUpdate": 1789161361508,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20932,70 +20932,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "25a63eba863ae9cb9fb41eafa2ad6a65e9c42b8a",
-          "message": "Gate merge-pr on CI; bring the triad under standard-check (#194)\n\n* Gate merge-pr on CI; check the triad\n\nmerge-pr went straight from the branch check to gh pr merge --squash\n--delete-branch, with no inspection of the status rollup. gh pr merge\nhappily merges a red PR when there is no branch protection, so every\nmerge in this repo has been ungated -- safe only because whoever merged\nhappened to look first.\n\nrusticprofile added this in v0.1.5 after a PR went in with a leg red,\nand extended it in 0.2.1 after an EMPTY rollup passed vacuously.\nNeither reached here.\n\nThree refusals now: a failing check, an empty rollup, and checks still\nrunning. The empty state is compared as a string rather than via jq -e\nlength, because an external jq is not on a default Windows PATH and a\ngate that degrades where its dependency is missing is the thing being\nfixed.\n\ngate_conformance.py (template v3) is vendored and run by\nstandard-check, so the guards cannot vanish again. It is structural,\nnot behavioural, and says so.\n\nVerified safely: on a branch with no PR the rollup is empty, so\nmerge-pr refuses before reaching gh pr merge.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-12T21:18:47-07:00",
-          "tree_id": "09cf28f2dd68d69de2931ed6e287f3ca4b42fd13",
-          "url": "https://github.com/l1a/retch/commit/25a63eba863ae9cb9fb41eafa2ad6a65e9c42b8a"
-        },
-        "date": 1786597403679,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 177.8338105508045,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.948794891428535,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 97.8038326676865,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.94313922763317,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46582.9809188185,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 488.0119594705733,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 728.7180002004212,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1435672365,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "120ed8e2e0fe45a624212a8204ae34b082b8c360",
           "message": "Add keyboard, mouse and tpm fields (#195)\n\n* Add keyboard, mouse and tpm fields\n\nThree NOTES.md section 6 fastfetch-gap fields, all --long and above,\nLinux-only, in the v0.5.0 shape: thin /proc and sysfs readers over pure\nhelpers that unit-test without touching host hardware.\n\nInput classification is exclusive and declines to guess. On a Logitech\nUnifying/Bolt receiver no kernel-visible signal separates a keyboard from\na mouse: handlers, capabilities/rel (0x1943 on both), the alphabet key\nblock, INPUT_PROP, udev ID_INPUT_* (POINTINGSTICK on both), USB HID\nbInterfaceProtocol and the HID report descriptor itself are all identical\nfor an MX Keys and an MX Master 3. fastfetch 2.66 gets this wrong in both\ndirections on that hardware. Ambiguous devices are resolved via the HID++\ndriver's battery model_name and, failing that, reported in neither field\nrather than asserted into the wrong one.\n\ntpm reads tpm_version_major and maps it to the published spec names\n(1 -> 1.2, 2 -> 2.0), returning None for anything unrecognised.\n\nAlso refresh packaging/aur/PKGBUILD, stranded at 0.6.12 for eleven\nreleases while the AUR moved to 0.6.23, and drop its man-page\nregeneration: the font-strip sed never matched on any platform (GNU sed\nreads \\\\f as a form feed) and $DATE/$pkgver were literal inside double\nquotes, so the installed footer read \"retch $pkgver\". The committed\ndocs/retch.1 ships in the tarball with the correct footer, so package()\ninstalls it directly and the mandown makedepend is gone.\n\nStrata golden counts move Long 49->52, Full 55->58. 11 new unit tests.\nVerified live on corrino (Fedora 44, i7-1360P).\n\nAssisted-By: Claude Opus 5\n\n* Close two holes in the aur CI job\n\nThe job rewrote source= and sha256sums= to build from local sources, so the\ndeclared checksum was never checked by anything — a stale one (as this\nPKGBUILD carried for eleven releases) stayed green and would only fail for\nsomeone installing from the AUR. Verify it against the real tag tarball\nbefore that patching, refusing a committed SKIP and skipping cleanly when the\ntag is not published yet.\n\nNothing inspected the packaged man page either, which is where both defects\nthis branch fixes actually showed. Assert the built package's .TH line carries\nno literal $ and a real retch <version> footer, and that no doubled font runs\nsurvive.\n\nAlso stop pre-installing mandown, so makedepends is load-bearing: makepkg -s\ninstalls what the PKGBUILD declares and nothing else.\n\nAssisted-By: Claude Opus 5\n\n* Fix the man-page check failing on a correct package\n\nThe new verification step used `bsdtar -tf \"$pkg\" | grep -qx …` under\n`set -o pipefail`. grep -q exits on its first match, bsdtar takes SIGPIPE and\nexits 141, and pipefail turns that into a failed pipeline — so the step\nreported the man page missing exactly when it was present, and CI went red on\na package that was correct. head -1 and grep -m1 carry the same hazard.\n\nMaterialise the listing and the page to files and grep those; select the\npackage with find -print -quit. Verified against a good package and against\npurpose-built broken ones (missing page, literal $ footer, doubled font runs).\n\nAssisted-By: Claude Opus 5\n\n* Match the gzipped man page makepkg actually ships\n\nmakepkg's zipman option is on by default, so the packaged path is\nusr/share/man/man1/retch.1.gz. The verification step looked for retch.1 and\nreported it missing — the check wrong again, the package correct again.\n\nMatch retch.1 with an optional .gz/.zst/.xz/.bz2 suffix and decompress before\ninspecting. Tested against gzipped, uncompressed, and gzipped-but-broken\npackages.\n\nThe diagnostic added in the previous commit is what made this cheap: printing\nthe real usr/share listing on failure named retch.1.gz directly in the CI log.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-14T09:49:12-07:00",
@@ -24115,6 +24051,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2061773875,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ede5c9a2093c2129ebd94aa339fb08a0c82eff21",
+          "message": "packaging: render at publish, not at release (#246)\n\nThe AUR PKGBUILD, its .SRCINFO, the COPR spec and the Homebrew formula each\nrecorded the released version, two of them with the tarball's sha256. A\nchecksum cannot be computed before its tag exists, so every release ended\nwith a post-tag commit -- and because that commit had to be a reviewed PR\nwhile `just pr` refuses a Cargo.toml equal to the last tag, it also had to\nopen the NEXT version. A release therefore forced a version bump, and main\nwas left naming a version that had never been released. On 2026-09-11 that\ncame one command from putting retch-cli 0.17.4 on crates.io.\n\nThe three files are now templates carrying @VERSION@ / @SHA256@, filled in by\nscripts/render_packaging.py at publish time from the tag and the tarball it\ndownloads. No packaging commit, no post-release PR, no aur-bump/copr-bump/\nbrew-bump, and no bump forced on a release; main sits at the released version\nuntil the next feature PR bumps it.\n\nThe three anti-drift guards stopped comparing four recordings of one fact and\nnow assert the templates record nothing. Neither check that mattered was\ndropped: the AUR pair comparison moved into aur-publish, where it runs on the\nbytes being pushed, and changelog-vs-Version moved into the renderer, which\nwrites both in one pass. COPR's Source0 became a local archive of the\ncheckout, so a PR can build its own SRPM for the first time; copr.yml's\ntrigger became the tag, pinned with `buildscm --commit`; and `just publish`\nnow refuses unless HEAD is the tag for Cargo.toml's version.\n\nVerified by reproducing what v0.17.3 published: the rendered .SRCINFO is\nbyte-identical to the one pushed to the AUR, the rendered formula matches the\npublished one apart from comments, and both pass ruby -c. The COPR SRPM was\nbuilt plain and under mock's environment, from both source paths, with\nrpmbuild -rp proving %autosetup matches the archive prefix.\n\nCloses the structural half of NOTES §5 -- the half that entry named as the\nactual work.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-11T13:37:35-07:00",
+          "tree_id": "4ddc2d01539a96abe3cd0163ee1062dbd06bcf3f",
+          "url": "https://github.com/l1a/retch/commit/ede5c9a2093c2129ebd94aa339fb08a0c82eff21"
+        },
+        "date": 1789161358066,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 189.2357473974294,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9482585362526743,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 106.77199258587056,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 84.2629552761571,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46424.32420902205,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 496.4366915907123,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 753.3773016285617,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1163118520,
             "unit": "ns"
           }
         ]
