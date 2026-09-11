@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789108232109,
+  "lastUpdate": 1789108768361,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20878,70 +20878,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "e5b9b5941c53dc4bcdc12aac4b5549e7d0ddf5f6",
-          "message": "Let the manual Claude review actually run (#193)\n\n* Let the manual Claude review actually run\n\nv0.6.17 disabled automatic review by commenting out the pull_request\ntrigger AND setting if: false on the job. The trigger alone already did\nthat, so the guard added nothing -- but it also applied to\nworkflow_dispatch, which was kept. So gh workflow run started a run,\nskipped the job, and reported SUCCESS having reviewed nothing.\n\nA green run that did nothing is the failure this repo's tooling exists\nto refuse, and the one rusticprofile recorded twice about this action.\nDispatch available but silently inert is worse than working or absent.\n\nAutomatic review stays OFF -- only the job guard is removed; the\npull_request trigger is still commented immediately above it.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-12T20:45:42-07:00",
-          "tree_id": "a129dbfd95e55ff45255a019bb60311bdfcf5738",
-          "url": "https://github.com/l1a/retch/commit/e5b9b5941c53dc4bcdc12aac4b5549e7d0ddf5f6"
-        },
-        "date": 1786595177214,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 178.35713141489336,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.947798848977942,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 96.9539729448284,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.93094062801478,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47223.860366859124,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 488.3173522608,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 757.3713384287,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2048605605,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "25a63eba863ae9cb9fb41eafa2ad6a65e9c42b8a",
           "message": "Gate merge-pr on CI; bring the triad under standard-check (#194)\n\n* Gate merge-pr on CI; check the triad\n\nmerge-pr went straight from the branch check to gh pr merge --squash\n--delete-branch, with no inspection of the status rollup. gh pr merge\nhappily merges a red PR when there is no branch protection, so every\nmerge in this repo has been ungated -- safe only because whoever merged\nhappened to look first.\n\nrusticprofile added this in v0.1.5 after a PR went in with a leg red,\nand extended it in 0.2.1 after an EMPTY rollup passed vacuously.\nNeither reached here.\n\nThree refusals now: a failing check, an empty rollup, and checks still\nrunning. The empty state is compared as a string rather than via jq -e\nlength, because an external jq is not on a default Windows PATH and a\ngate that degrades where its dependency is missing is the thing being\nfixed.\n\ngate_conformance.py (template v3) is vendored and run by\nstandard-check, so the guards cannot vanish again. It is structural,\nnot behavioural, and says so.\n\nVerified safely: on a branch with no PR the rollup is empty, so\nmerge-pr refuses before reaching gh pr merge.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-12T21:18:47-07:00",
@@ -24061,6 +23997,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2228400230,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "37f683dcc0380ce5f434e770d1f5c1b87d1856ca",
+          "message": "legal: ship the actual GPLv3 text, and split out third-party notices (#245)\n\nGitHub reported this repository's licence as \"other\" despite Cargo.toml\ndeclaring GPL-3.0-or-later. The cause was that LICENSE was not the GPL: it was\na 31-line file holding a heading, a copyright line, the MIT attribution for the\nadapted Fastfetch logos, and the short source-header notice (\"This program is\nfree software...\"). GitHub's licensee had nothing to match, so it matched\nnothing.\n\nThat was also a compliance gap rather than a cosmetic one. The file told\nreaders \"You should have received a copy of the GNU General Public License\nalong with this program\" while the program shipped no such copy -- and both\nthe AUR PKGBUILD and the COPR spec install that file as the licence.\n\nLICENSE is now the verbatim 674-line GPLv3 text, byte-identical to\nhttps://www.gnu.org/licenses/gpl-3.0.txt. Cross-checked against the SPDX copy\nof GPL-3.0-or-later: after normalising whitespace and (C)/(c) the two agree to\n99.1%, and every remaining difference is typographic (SPDX uses curly quotes\nand the copyright sign). The gnu.org text is plain ASCII, which is what GPLv3\nprojects normally carry.\n\nEverything that was in LICENSE but is not the GPL moved to NOTICE: this\nproject's copyright and licence grant, and the MIT attribution for the\nFastfetch logos. NOTICE is not decoration -- MIT requires its copyright notice\nto travel with every copy, and that obligation was previously met only because\nthe text happened to be embedded in a file the packaging installed. So both\npackaging recipes now install NOTICE alongside LICENSE:\n\n  - PKGBUILD gains an install line next to the LICENSE one.\n  - The spec uses `%license LICENSE NOTICE`, deliberately %license and not\n    %doc, so it cannot be stripped as documentation.\n\npackaging/aur/.SRCINFO is unchanged and correctly so: it records metadata, not\nthe package() body, and aur_check.py compares those fields.\n\nThe AUR and COPR changes touch the package() body only, so they take effect\nwith the next release rather than retroactively for the published 0.17.3-1.\n\nWhether GitHub now detects the licence can only be settled by GitHub's own\ndetector; that it is byte-identical to the canonical text is the reason to\nexpect it, not proof of it.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T23:00:58-07:00",
+          "tree_id": "656609183e1047949fa11c6ff1d2eaf23bb336ba",
+          "url": "https://github.com/l1a/retch/commit/37f683dcc0380ce5f434e770d1f5c1b87d1856ca"
+        },
+        "date": 1789108764590,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 187.4385434526466,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.94884711900231,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.83521450210324,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 83.29194638355659,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46604.93195833671,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 496.2519256286341,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 752.2976617639395,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2061773875,
             "unit": "ns"
           }
         ]
