@@ -614,8 +614,23 @@ brew-publish:
     echo -e "${BOLD}About to publish retch $VER to the Homebrew tap.${NC}"
     echo "This is public and immediate: $TAP_REPO"
     echo ""
-    read -r -p "Type 'yes' to continue: " CONFIRM
-    [ "$CONFIRM" = "yes" ] || fail "aborted"
+    # Takes its answer from BREW_CONFIRM, an interactive stdin, or piped input under a
+    # bound -- mirroring aur-publish, and for the v0.6.21 reason: a bare `read` can only be
+    # answered by a human at a terminal, so a script or agent either blocks on a stdin that
+    # will never answer or dies without saying why, and that failure reads as the gate
+    # REFUSING the publish rather than as a question nobody could hear. This widens who can
+    # answer, not what counts as an answer: every path still requires an explicit "yes".
+    if [ -n "${BREW_CONFIRM:-}" ]; then
+        CONFIRM="$BREW_CONFIRM"
+        echo "Type 'yes' to continue: $CONFIRM   (answered by BREW_CONFIRM)"
+    elif [ -t 0 ]; then
+        echo -n "Type 'yes' to continue: "; read -r CONFIRM
+    else
+        read -r -t 10 CONFIRM || CONFIRM=""
+        echo "$CONFIRM"
+        [ -n "$CONFIRM" ] || fail "no terminal and nothing on stdin. Re-run with BREW_CONFIRM=yes"
+    fi
+    [ "$CONFIRM" = "yes" ] || { echo -e "${RED}Aborted.${NC}"; exit 1; }
 
     # Cloned fresh each time rather than kept as a working copy: a long-lived clone is how
     # the aur-retch checkout drifted eleven releases out of date. Outside the repo so the
@@ -627,18 +642,36 @@ brew-publish:
     mkdir -p "$WORK/tap/Formula"
     cp "$FORMULA" "$WORK/tap/Formula/retch.rb"
 
+    # A brand-new tap has no commits and therefore no branch, and which name git invents
+    # depends on the host's `init.defaultBranch` -- unset on at least one machine in this
+    # fleet, which would make the tap's default branch differ per publisher. Pin it, but
+    # ONLY when the repo is genuinely empty: doing this unconditionally would move HEAD on
+    # a populated tap without touching the index, which is a quiet way to lose work.
+    if ! git -C "$WORK/tap" rev-parse --verify -q HEAD >/dev/null 2>&1; then
+        git -C "$WORK/tap" symbolic-ref HEAD refs/heads/main
+        info "empty tap: default branch pinned to main"
+    fi
+
     # A fresh clone does not inherit this repo's commit identity, and GitHub rejects a push
     # authored with a private email (hit on the wiki clone, 2026-08-11).
     git -C "$WORK/tap" config user.name  "$(git -C "{{justfile_directory()}}" config user.name)"
     git -C "$WORK/tap" config user.email "$(git -C "{{justfile_directory()}}" config user.email)"
 
-    if git -C "$WORK/tap" diff --quiet -- Formula/retch.rb; then
+    # Stage FIRST, then ask the index whether anything changed.
+    #
+    # `git diff --quiet -- <path>` compares the worktree to the index and **does not see
+    # untracked files**, so on a brand-new empty tap it reports "no changes" and this would
+    # skip the push entirely -- exiting 0 having published nothing, which is the worst
+    # available outcome. `--cached` compares the index to HEAD (or to the empty tree when
+    # there is no HEAD, as in an empty repo), which is the question actually being asked.
+    git -C "$WORK/tap" add Formula/retch.rb
+    if git -C "$WORK/tap" diff --cached --quiet; then
         pass "tap already has this exact formula — nothing to push"
         exit 0
     fi
-    git -C "$WORK/tap" add Formula/retch.rb
     git -C "$WORK/tap" commit -q -m "retch $VER"
-    git -C "$WORK/tap" push -q origin HEAD
+    # -u so an empty tap gets its default branch set by this first push.
+    git -C "$WORK/tap" push -q -u origin HEAD
     pass "pushed retch $VER to $TAP_REPO"
     echo "Verify: brew tap l1a/retch && brew install retch"
 
