@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789098559585,
+  "lastUpdate": 1789098991799,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13812,80 +13812,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "fbd76828105384492815f283cc8351f68368cb56",
-          "message": "Fix nushell completion path; adopt shared helpers (#191)\n\ninstall_completions.py wrote nushell completions to\n$XDG_CONFIG_HOME/nushell/autoload. On Windows\n$nu.user-autoload-dirs is exactly %APPDATA%\\nushell\\autoload and\nnushell never reads the XDG path, so the helper wrote a real file\nsomewhere nothing consults, printed the path, and delivered nothing.\n\nTwo more defects in the same helper: it logged a generation failure\nto stderr, continued, and then printed \"Installed completions for\nretch:\" unconditionally -- success reported over work not done; and\nnothing checked whether zsh would ever load the file (it reads only\ndirectories on fpath, and site-functions is not on it by default).\nIt now checks, via an INTERACTIVE zsh, since a non-interactive one\nreports the built-in default.\n\nThis repo's MECHANISM was right and is now the standard. v0.6.16\nmoved these recipes to Python so they run natively on Windows\nwithout Git's usr\\bin; rusticprofile first proposed replacing them\nwith sh recipes because it held the correctness fixes, which would\nhave regressed that work in the name of consistency. Each repo had\nsolved half the problem.\n\ninstall_completions.py and install_man.py are now vendored\nbyte-identically across retch, rusticprofile and etr, with\ntemplates/justfile-common.just as the Justfile block reference.\nstandard-check runs their self-tests -- not a text diff, since\nseparate repos cannot diff each other's files and a diff would pass\non a repo that never adopted the standard -- and check depends on it.\n\nAlso adds install-tag VERSION, which installs a released tag with\nbinary, completions (from the INSTALLED binary) and man page (from\nthe tag) so the three cannot disagree.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-12T17:11:38-07:00",
-          "tree_id": "52f09d8ff2178e92d32e22dc2177be6643ec678b",
-          "url": "https://github.com/l1a/retch/commit/fbd76828105384492815f283cc8351f68368cb56"
-        },
-        "date": 1786581183204,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1047203360.45,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 468.85663438852873,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 146.2988750875451,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.7340624765939725,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 68.65999215840121,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 4893.055632373771,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1101.4597954080266,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 434.8531247412196,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 73946.78036906457,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 385.533122681689,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "c1b99674ea9eded99c6558e78098409ebe6a78ac",
           "message": "Make the pre-PR gate answerable; open-pr now pushes (#192)\n\n* Make the pre-PR gate answerable; open-pr now pushes\n\njust pr ended in a bare read, so only a human at a terminal could\nanswer it -- a script or agent blocked on a stdin that would never\nanswer, or died without saying why, and that reads as the gate refusing\nthe change. It now accepts PR_CONFIRM, an interactive stdin, or piped\ninput under a timeout, and names PR_CONFIRM when it cannot be answered.\nNot a bypass: every path still requires an explicit y.\n\njust open-pr did not push, so on a never-pushed branch it printed\n\"Gate passed\" and then failed because gh pr create had no remote\nbranch to open from. It now pushes only when there is no upstream --\npushing unconditionally would silently publish existing commits on a\nbranch that already has one. pre-push still runs just check, so the\npush is inside the gate rather than around it.\n\nBoth are rusticprofile's 0.0.21 and 0.2.12, which retch never received.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-12T20:24:18-07:00",
@@ -17495,6 +17421,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 573.3075760151858,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1519b646d688b75f3124d792452d9e42798d5058",
+          "message": "Add a Homebrew tap, formula and drift guard (#242)\n\n* Add a Homebrew tap, formula and drift guard\n\nmacOS was the platform the v0.14.0-v0.17.1 parity work was about, and the\none platform with no native install path: Linux gets the AUR and COPR,\neveryone gets crates.io, and a Mac user had to cargo install. A Homebrew\npackage is now a prerequisite for the next publish round rather than a\nlong-tail item, so it lands before v0.17.1 ships anywhere.\n\npackaging/homebrew/retch.rb is the SOURCE, not a reference copy, and it\nships with its guard. packaging/aur/PKGBUILD was an inert reference copy\nthat reached eleven releases of drift while CI stayed green; v0.7.1 fixed\nthat after the fact, and copr_check.py was written before the drift. This\nis the third instance of the construct and the guard was written at the\nsame time as the file.\n\nscripts/brew_check.py asserts six things offline, with 10 self-test cases.\nThe load-bearing one is the negative: a formula trailing Cargo.toml by a\nrelease cycle must stay silent, because that is the normal resting state\nand a guard that fires there gets deleted.\n\nThe guard immediately caught my own first draft, which pinned the\njust-released v0.17.1 tarball. All three packaging targets track the last\nreleased tag and are bumped together by post-release, so a formula ahead\nof its siblings is exactly the drift being guarded. It now pins 0.13.2 to\nmatch, and post-release moves all three.\n\nbrew-bump computes the checksum from the tarball it downloads and hard-\nerrors when a substitution matches nothing, rather than writing a file\nthat looks updated and is not - the calculate_nix_hashes.py defect.\nbrew-publish clones the tap fresh each time and sets the noreply identity\nexplicitly.\n\nA brew CI job on macos-latest does the expensive half: verifies the sha256\nagainst the real tarball, installs from source, runs the formula's test\nblock, and inspects the payload for a man page with no literal $ in .TH.\n\nAdds scripts/*_check.py to the packaging paths filter - the v0.9.6\nJustfile hole, one directory over.\n\nThe formula was NOT installed locally: depends_on rust would have pulled\n~350 MB into this machine's Homebrew, and brew audit is broken here for\nits own reasons (a vendored json gem conflict). The install is proven by\nCI, not locally.\n\nAssisted-By: Claude Opus 5\n\n* Install the formula through a tap in CI\n\nbrew install <path> is rejected by modern Homebrew: formulae must be in\na tap. The job now stages it in a throwaway local tap, which is also the\nmore faithful test - it is the path a user takes via brew tap.\n\nAssisted-By: Claude Opus 5\n\n* Drop the duplicate --locked; guard std_cargo_args instead\n\nstd_cargo_args already passes --locked, and cargo rejects the duplicate\nwith \"the argument '--locked' cannot be used multiple times\". The formula\nparsed and the offline guard passed; only a real install surfaced it.\n\nThe guard was asserting the wrong thing. Checking for the literal flag\nwould pass for a formula that dropped std_cargo_args and unpinned\nresolution, and would demand the duplicate cargo refuses. It now asserts\nstd_cargo_args is used and that no second --locked is added, with a\nself-test case for the exact regression CI caught.\n\nAssisted-By: Claude Opus 5\n\n* Use a network-free assertion in the formula test block\n\nbrew test runs sandboxed with the network restricted. The first test\nblock asserted on retch --short, which includes the net field, which\nresolves the local IP with a UDP-connect - that blocks in the sandbox and\nthe block dies on Timeout::Error with nothing pointing at the cause.\n\n--fields os proves the binary can probe the machine while touching only\nlocal system calls, and is 3.4 ms against --short's 31 ms.\n\nAssisted-By: Claude Opus 5\n\n* ANSI-strip in the formula test block\n\nThe assertion failed because retch colourises even when piped, so the\nlabel and its colon are separated by escapes and a literal /OS:/ never\nmatches.\n\nMy first diagnosis was wrong and is recorded as such: the backtrace\ncontained Timeout::Error.handle_timeout, which read as the sandbox\nblocking a network call, and --short does include a field that resolves\nthe local IP. But those timeout.rb frames are Homebrew's run_test\nwrapper and appear in every failed test block. The real cause was the\nsame ANSI mismatch both times.\n\nThe strip matches the whole ESC [ ... final-byte form rather than SGR\nonly, per the v0.9.2 chafa lesson.\n\nAlso records that retch ignores NO_COLOR and has no --no-color flag,\nnoticed while writing this test. Backlog, not fixed here.\n\nAssisted-By: Claude Opus 5\n\n* Check the Homebrew bash completion path, and show the tree on failure\n\nHomebrew's bash_completion is etc/bash_completion.d, not the freedesktop\nshare/bash-completion/completions that the AUR and COPR packages use.\nzsh and fish are where you would expect; bash is the odd one. The first\npayload check asserted the freedesktop path and reported the completion\nmissing on a package that installs it correctly.\n\nThe step now prints the whole installed tree before failing, so the next\nmismatch is diagnosable from the log rather than costing a round trip -\nthe lesson from the aur job's zipman failure.\n\nAssisted-By: Claude Opus 5\n\n* Make brew-publish answerable and correct on an empty tap\n\nThree defects in the recipe as first written, all mine:\n\nA bare `read` could only be answered by a human at a terminal - the\nv0.6.21 defect, where a script or agent blocks on a stdin that will never\nanswer and the failure reads as the gate refusing the publish. It now\ntakes BREW_CONFIRM, an interactive stdin, or piped input under a bound,\nmirroring aur-publish. Every path still requires an explicit \"yes\".\n\n`git diff --quiet -- <path>` does not see untracked files, so on a\nbrand-new empty tap it reported \"nothing to push\" and exited 0 having\npublished nothing. It now stages first and asks `--cached`, which is the\nquestion actually being asked.\n\nA brand-new tap has no branch, and which name git invents depends on the\nhost's init.defaultBranch - unset on at least one fleet machine. Pinned\nto main, but only when the repo is genuinely empty.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T20:35:42-07:00",
+          "tree_id": "e21e2fb33c247b6826022332f40067699bc925ab",
+          "url": "https://github.com/l1a/retch/commit/1519b646d688b75f3124d792452d9e42798d5058"
+        },
+        "date": 1789098988911,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1119176295.85,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 541.1450034438889,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 174.2431598598272,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.735369936712498,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 87.74185495973364,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6036.702621645294,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1317.0766681005748,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 629.6230742853152,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 101841.47973574544,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 423.79994277942825,
             "unit": "ns"
           }
         ]
