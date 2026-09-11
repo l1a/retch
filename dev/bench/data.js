@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789100911774,
+  "lastUpdate": 1789101573645,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17568,70 +17568,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "c1b99674ea9eded99c6558e78098409ebe6a78ac",
-          "message": "Make the pre-PR gate answerable; open-pr now pushes (#192)\n\n* Make the pre-PR gate answerable; open-pr now pushes\n\njust pr ended in a bare read, so only a human at a terminal could\nanswer it -- a script or agent blocked on a stdin that would never\nanswer, or died without saying why, and that reads as the gate refusing\nthe change. It now accepts PR_CONFIRM, an interactive stdin, or piped\ninput under a timeout, and names PR_CONFIRM when it cannot be answered.\nNot a bypass: every path still requires an explicit y.\n\njust open-pr did not push, so on a never-pushed branch it printed\n\"Gate passed\" and then failed because gh pr create had no remote\nbranch to open from. It now pushes only when there is no upstream --\npushing unconditionally would silently publish existing commits on a\nbranch that already has one. pre-push still runs just check, so the\npush is inside the gate rather than around it.\n\nBoth are rusticprofile's 0.0.21 and 0.2.12, which retch never received.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-12T20:24:18-07:00",
-          "tree_id": "7307c8c54022ab27b0b3e8ecfeab8995613e25ea",
-          "url": "https://github.com/l1a/retch/commit/c1b99674ea9eded99c6558e78098409ebe6a78ac"
-        },
-        "date": 1786593388568,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 213.12054756649985,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.406597559715065,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 121.90139885143076,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 98.84650348741597,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 43245.54229089133,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 679.6572549295431,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 839.965926381348,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2909613905,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "e5b9b5941c53dc4bcdc12aac4b5549e7d0ddf5f6",
           "message": "Let the manual Claude review actually run (#193)\n\n* Let the manual Claude review actually run\n\nv0.6.17 disabled automatic review by commenting out the pull_request\ntrigger AND setting if: false on the job. The trigger alone already did\nthat, so the guard added nothing -- but it also applied to\nworkflow_dispatch, which was kept. So gh workflow run started a run,\nskipped the job, and reported SUCCESS having reviewed nothing.\n\nA green run that did nothing is the failure this repo's tooling exists\nto refuse, and the one rusticprofile recorded twice about this action.\nDispatch available but silently inert is worse than working or absent.\n\nAutomatic review stays OFF -- only the job guard is removed; the\npull_request trigger is still commented immediately above it.\n\nAssisted-By: Claude Opus 5\n\n* Commit the Cargo.lock version bump\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-12T20:45:42-07:00",
@@ -20751,6 +20687,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2323202155,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1b52ddcba57894ea04bf5811d75b76c024879004",
+          "message": "Document the Homebrew trust gate; audit the formula in CI (#243)\n\nHomebrew 6.0+ refuses to load a third-party tap's formulae until the tap\nis trusted, and the error is misleading: \"Cannot tap l1a/retch: invalid\nsyntax in tap!\" for a formula whose syntax is fine. Anyone following the\nv0.17.2 README would conclude the formula was broken. Documented with the\nverbatim error and scoped to 6.0+, since brew trust does not exist on 5.x.\n\nThe brew CI job did not catch this and its comment claimed it would. A\ntap created with brew tap-new bypasses the trust gate entirely, so the\njob proves the formula builds, installs and works - not that a user can\ntap it. The comment now says so. A local tap is still correct to test,\nbecause it exercises this PR's formula rather than whatever is released.\n\nbrew audit --strict is now a CI step and immediately found two defects in\nthe v0.17.2 formula: shells: is the default and passing it is redundant,\nplus a hash alignment violation. Both fixed. The step runs after install\nand test so an upstream audit-rule change cannot look like a build\nfailure. Dropping shells: is checked rather than assumed - the payload\nstep already asserts all three completion files are present.\n\nRecords why the audit step was not possible before: running brew audit\npiped through head truncated stdout mid-install, SIGPIPE-killed a native\ngem build, and left json 2.21.2 Ruby code over a 2.18.0 binary. That is\nthe bsdtar | grep -q trap from v0.7.0, which names head as the same\nhazard. It was recorded, and used anyway.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-10T21:08:55-07:00",
+          "tree_id": "d876741cd0411ac9be39c183181716af050f60b9",
+          "url": "https://github.com/l1a/retch/commit/1b52ddcba57894ea04bf5811d75b76c024879004"
+        },
+        "date": 1789101568075,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 217.61117635758478,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.857486949191203,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 134.24318379618333,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 104.8026880321664,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 44088.82022303918,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 701.9504127527947,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 976.4750970509853,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1378307120,
             "unit": "ns"
           }
         ]
