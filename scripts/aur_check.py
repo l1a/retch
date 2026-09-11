@@ -1,29 +1,40 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 l1a
-"""Assert packaging/aur/.SRCINFO still agrees with packaging/aur/PKGBUILD.
+"""Guard the AUR packaging: the template in-repo, and the rendered pair at publish time.
 
-WHY THIS EXISTS
----------------
+TWO MODES, FOR TWO DIFFERENT MOMENTS
+------------------------------------
+  (default)    packaging/aur/PKGBUILD is a TEMPLATE and must stay one -- no recorded
+               version, no recorded checksum, sentinels intact. Wired into `just check`.
+  --dir DIR    DIR/PKGBUILD and DIR/.SRCINFO agree field by field. `just aur-publish`
+               renders both into a temp directory and runs this against them, so the check
+               happens on the bytes actually being pushed to the AUR.
+
+WHY THE TEMPLATE MODE EXISTS
+----------------------------
+`pkgver` and `sha256sums` used to name a released version here, and keeping that in step
+with the same fact recorded in .SRCINFO, the COPR spec and the Homebrew formula is the
+entire history of this directory: the PKGBUILD sat at 0.6.12 while the AUR served 0.6.23,
+eleven releases, with every CI run green. A checksum cannot be computed before its tag
+exists, so recording it also forced a post-tag commit -- and therefore a version bump on
+every release, to satisfy `just pr`. scripts/render_packaging.py supplies both values at
+publish time instead; this mode's job is to make sure nobody puts them back.
+
+WHY THE PAIR MODE STILL EXISTS
+------------------------------
 `.SRCINFO` is pure derived data, and the AUR reads *it* for package metadata while building
-from the *PKGBUILD*. So a pair that disagrees does not fail loudly: the AUR advertises one
+from the *PKGBUILD*. A pair that disagrees does not fail loudly: the AUR advertises one
 version and builds another, and the first person to notice is a user whose install broke.
-Both files are hand-editable and nothing else compares them.
+That check has not become less necessary -- it has moved to the point where it can act on
+the real thing rather than on a committed copy of it.
 
-That is not hypothetical here. Before v0.7.1 `packaging/aur/PKGBUILD` sat at 0.6.12 while the
-published AUR package was eleven releases ahead, and each release's `.SRCINFO` was written by
-hand on whichever machine did the push — with the fields eyeballed rather than compared.
-
-WHAT THIS IS, AND WHAT IT IS NOT
---------------------------------
-This checks the two files *agree with each other*. It deliberately does NOT:
-
-  - verify the sha256 against the real release tarball (needs the network — that is
-    `just aur-bump`, and the `aur` CI job re-checks it on every PR), or
-  - prove the package builds (that is the `aur` CI job, which runs a real `makepkg`).
-
-It is the cheap, offline, always-runnable half, wired into `just check` so a drifted pair
-cannot reach a commit. The expensive halves run in CI where they belong.
+WHAT THIS IS NOT
+----------------
+It does not verify a sha256 against the real tarball (that is `just aur-publish`, which
+computes it, and the `aur` CI job, which re-derives it for the last released tag), and it
+does not prove the package builds (that is the `aur` CI job's real `makepkg`). It is the
+cheap, offline, always-runnable half. The expensive halves run where they belong.
 
 WHY IT PARSES RATHER THAN SOURCING THE PKGBUILD
 -----------------------------------------------
@@ -193,6 +204,70 @@ def compare(pkgbuild_text: str, srcinfo_text: str) -> list[str]:
     return problems
 
 
+SHA256_RE = re.compile(r"\b[0-9a-fA-F]{64}\b")
+VERSIONISH_RE = re.compile(r"\b[0-9]+\.[0-9]+\.[0-9]+\b")
+
+
+def check_template(text: str) -> list[str]:
+    """Return problems with the PKGBUILD *template*; empty means it is still a template.
+
+    The two sentinel assertions are the load-bearing ones, and they are deliberately
+    equality tests rather than "contains @VERSION@": a file carrying `pkgver=0.17.3` *and*
+    a `@VERSION@` in a comment would satisfy a containment test while shipping a pinned
+    version, which is exactly the failure being ruled out.
+    """
+    problems: list[str] = []
+    try:
+        fields = parse_pkgbuild(text)
+    except ParseError as exc:
+        return [str(exc)]
+
+    pkgver = fields.get("pkgver", [""])[0]
+    if pkgver != "@VERSION@":
+        problems.append(
+            f"pkgver is {pkgver!r}, not '@VERSION@' — this file is a template and must "
+            "record no released version; scripts/render_packaging.py supplies it at "
+            "publish time"
+        )
+    sums = fields.get("sha256sums", [])
+    if sums != ["@SHA256@"]:
+        problems.append(
+            f"sha256sums is {sums!r}, not ['@SHA256@'] — a checksum cannot be computed "
+            "before its tag exists, which is why recording one here forced a post-tag "
+            "commit on every release"
+        )
+
+    # Nothing else may smuggle the same facts in. Scanned over the parsed metadata rather
+    # than the whole file so the comment block, which cites historical versions on purpose,
+    # is not mistaken for a pin.
+    for key, values in sorted(fields.items()):
+        for value in values:
+            if key != "sha256sums" and SHA256_RE.search(value):
+                problems.append(f"{key} contains a sha256 digest: {value!r}")
+            if VERSIONISH_RE.search(value):
+                problems.append(f"{key} contains a version number: {value!r}")
+
+    # Regressions this packaging has actually shipped, each worth one line to keep out.
+    if 'install -Dm644 "docs/retch.1"' not in text:
+        problems.append(
+            "package() no longer installs the committed docs/retch.1 — regenerating it is "
+            "how the AUR shipped a page footed `$DATE` / `retch $pkgver` for months (v0.7.0)"
+        )
+    # Matched against non-comment lines only: the comment block explains the mandown defect
+    # at length, and a comment describing a rule must never satisfy the check for a file
+    # that lost it -- the trap the v0.7.0 PKGBUILD audit and the v0.9.9 Makefile grep both
+    # fell into.
+    if re.search(r"^\s*[^#\n]*mandown", text, re.M):
+        problems.append("a live (non-comment) line references mandown — see v0.7.0")
+    for legal in ("LICENSE", "NOTICE"):
+        if f'install -Dm644 "{legal}"' not in text:
+            problems.append(
+                f"package() no longer installs {legal} — NOTICE carries the MIT attribution "
+                "for the adapted Fastfetch logos, which must travel with every copy (v0.17.4)"
+            )
+    return problems
+
+
 # --------------------------------------------------------------------------------------
 # Self-test
 # --------------------------------------------------------------------------------------
@@ -299,6 +374,57 @@ def _self_test() -> int:
     except ParseError:
         pass
 
+    # ---- template mode ----
+    # The live template must pass. This is the one assertion that couples the self-test to
+    # the real file, and deliberately so: a self-test that only ever reads fixtures cannot
+    # notice that the thing it guards has stopped being guardable.
+    live = Path(__file__).resolve().parent.parent / "packaging" / "aur" / "PKGBUILD"
+    if live.is_file():
+        live_problems = check_template(live.read_text(encoding="utf-8"))
+        check("live template clean", live_problems == [], f"got {live_problems}")
+
+    tmpl = _GOOD_PKGBUILD.replace("pkgver=0.7.0", "pkgver=@VERSION@").replace(
+        "sha256sums=('3d1079e594091341136a272904e3526c69d9764be50dff3e3e96913d001f7691')",
+        "sha256sums=('@SHA256@')",
+    ) + (
+        'package() {\n'
+        '  install -Dm644 "docs/retch.1" "$pkgdir/x"\n'
+        '  install -Dm644 "LICENSE" "$pkgdir/l"\n'
+        '  install -Dm644 "NOTICE" "$pkgdir/n"\n'
+        "}\n"
+    )
+    check("template fixture clean", check_template(tmpl) == [], f"got {check_template(tmpl)}")
+
+    # Each way a template can stop being one. These are the assertions that matter: the
+    # whole point of the mode is that a pinned version cannot come back unnoticed.
+    pinned = tmpl.replace("pkgver=@VERSION@", "pkgver=0.17.3")
+    check("pinned pkgver rejected", any("pkgver" in p for p in check_template(pinned)),
+          f"got {check_template(pinned)}")
+    pinned_sum = tmpl.replace(
+        "sha256sums=('@SHA256@')",
+        "sha256sums=('77ccf85843d24ac3216ab31d2584ff4a95869266c59ddb8bc83819425cfc2033')")
+    check("pinned sha256 rejected", any("sha256sums" in p for p in check_template(pinned_sum)),
+          f"got {check_template(pinned_sum)}")
+    # A digest smuggled into another field, which the equality checks alone would miss.
+    smuggled = tmpl.replace(
+        'url="https://github.com/l1a/retch"',
+        'url="https://github.com/l1a/retch#77ccf85843d24ac3216ab31d2584ff4a95869266c59ddb8bc83819425cfc2033"')
+    check("smuggled digest rejected", any("digest" in p for p in check_template(smuggled)),
+          f"got {check_template(smuggled)}")
+    check("regenerated man page rejected",
+          any("docs/retch.1" in p for p in check_template(tmpl.replace('install -Dm644 "docs/retch.1" "$pkgdir/x"', "true"))),
+          "a template that stopped installing the committed man page passed")
+    check("live mandown rejected",
+          any("mandown" in p for p in check_template(tmpl + "  mandown docs/retch.1.md\n")),
+          "a non-comment mandown line passed")
+    check("commented mandown accepted",
+          not any("mandown" in p for p in check_template(tmpl + "# mandown is not used here\n")),
+          "a COMMENT mentioning mandown was treated as a live reference")
+    for legal in ("LICENSE", "NOTICE"):
+        dropped = tmpl.replace(f'install -Dm644 "{legal}" ', "true ")
+        check(f"missing {legal} rejected", any(legal in p for p in check_template(dropped)),
+              f"got {check_template(dropped)}")
+
     if failures:
         for f in failures:
             print(f"  FAIL {f}", file=sys.stderr)
@@ -311,13 +437,31 @@ def _self_test() -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--self-test", action="store_true", help="run built-in tests and exit")
-    ap.add_argument("--dir", default=None, help="directory holding PKGBUILD and .SRCINFO")
+    ap.add_argument("--dir", default=None,
+                    help="directory holding a RENDERED PKGBUILD and .SRCINFO to compare")
     args = ap.parse_args()
 
     if args.self_test:
         return _self_test()
 
-    base = Path(args.dir) if args.dir else Path(__file__).resolve().parent.parent / "packaging" / "aur"
+    # No --dir: check the in-repo template. This is what `just check` runs, and there is no
+    # committed .SRCINFO to compare it against -- it is generated from the rendered PKGBUILD
+    # at publish time, which is where the pair check now happens.
+    if args.dir is None:
+        template = Path(__file__).resolve().parent.parent / "packaging" / "aur" / "PKGBUILD"
+        if not template.is_file():
+            print(f"error: {template} not found", file=sys.stderr)
+            return 1
+        problems = check_template(template.read_text(encoding="utf-8"))
+        if problems:
+            print(f"error: {template} is no longer a valid template:", file=sys.stderr)
+            for p in problems:
+                print(f"  {p}", file=sys.stderr)
+            return 1
+        print("packaging/aur/PKGBUILD is a template (records no version, no checksum)")
+        return 0
+
+    base = Path(args.dir)
     pkgbuild, srcinfo = base / "PKGBUILD", base / ".SRCINFO"
     for f in (pkgbuild, srcinfo):
         if not f.is_file():
@@ -335,11 +479,11 @@ def main() -> int:
         print(f"error: {pkgbuild} and {srcinfo} disagree:", file=sys.stderr)
         for p in problems:
             print(f"  {p}", file=sys.stderr)
-        print("\nRegenerate with: just aur-srcinfo", file=sys.stderr)
+        print("\nRegenerate the pair with: just aur-srcinfo <dir>", file=sys.stderr)
         return 1
 
-    ver = dict(compare_ver := [(k, v) for k, v in pkgbuild_fields(pkgbuild.read_text(encoding="utf-8")) if k == "pkgver"])
-    print(f"packaging/aur: PKGBUILD and .SRCINFO agree (pkgver {ver.get('pkgver', '?')})")
+    ver = dict((k, v) for k, v in pkgbuild_fields(pkgbuild.read_text(encoding="utf-8")) if k == "pkgver")
+    print(f"{base}: PKGBUILD and .SRCINFO agree (pkgver {ver.get('pkgver', '?')})")
     return 0
 
 

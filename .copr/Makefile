@@ -9,19 +9,83 @@
 # This version does not depend on %{_topdir}, $(HOME), or a source tree existing at all:
 # it points _sourcedir and _srcrpmdir explicitly, so the environment cannot move them.
 #
-# Why make_srpm rather than COPR's `rpkg` source type: this spec's Source0 is a remote tag
-# tarball, and make_srpm makes the fetch explicit and reproducible.
+# WHAT CHANGED, AND WHY IT MATTERS HERE
+# -------------------------------------
+# packaging/copr/retch.spec is now a TEMPLATE: its Version: is `@VERSION@` and its Source0
+# is a local tarball. This recipe supplies both, from the checkout COPR cloned:
 #
-# NOTE: this builds whatever version packaging/copr/retch.spec pins, which tracks the last
-# RELEASED tag -- not the current Cargo.toml. That is deliberate; see NOTES.md.
+#   version  <- Cargo.toml, via scripts/render_packaging.py
+#   Source0  <- an archive of this checkout
+#
+# Neither needs a published tag or a network fetch, which is what lets a PR build its own
+# SRPM -- previously impossible, because Source0 pinned a tag tarball that does not exist
+# until after a release, so CI could only ever build the PREVIOUS release's source.
+#
+# HOW THE SOURCE ARCHIVE IS BUILT, AND THE TRAP THAT DECIDED IT
+# -------------------------------------------------------------
+# `git archive` when there is a repository to ask, plain `tar` otherwise. The fallback is
+# not cosmetic: whether COPR's mock buildroot carries `.git` alongside the checkout is not
+# something this repo can verify without a COPR build, so the recipe works either way and
+# PRINTS which path it took -- the first COPR build after this lands answers it from its log.
+#
+# The reason the fallback needs explicit excludes is a measured trap: **GNU tar's
+# `--exclude-vcs-ignores` does not implement .gitignore semantics.** Given this repo's
+# .gitignore it excluded `WIP.md` (a bare filename) and silently kept `memory/` (directory
+# form) and `/target` (anchored form) -- so the first version of this recipe packed the
+# private cross-machine handoff log and the auto-memory directory into the SRPM, where they
+# would have reached the published -debugsource package. The excludes are also written
+# WITHOUT a leading `./`, which is the second half of the same trap: `--exclude=./__pycache__`
+# anchors at the top level and silently kept `scripts/__pycache__/`. Comparing the two paths'
+# listings is what found both. An SRPM is published and cannot be
+# recalled, which is why the guard below is a hard failure rather than a warning, and why it
+# also asserts the four files whose ABSENCE would be just as bad: no Cargo.lock means
+# unpinned resolution, and no LICENSE/NOTICE means a GPL+MIT obligation shipped unmet.
+#
+# The guard has already corrected this file's author once, in the other direction:
+# `.claude/settings.json` is TRACKED (only `settings.local.json` is ignored), so it is in
+# every GitHub tag tarball the AUR and Homebrew already build from. Excluding it here would
+# have made COPR's source differ from the released one, so it is deliberately not in the
+# must-not-ship list -- the list names things git does not track, not things that look
+# internal.
 
-SPEC    := packaging/copr/retch.spec
-SOURCES := $(CURDIR)/.copr-sources
+SPEC_IN := packaging/copr/retch.spec
+BUILD   := $(CURDIR)/.copr-build
+RENDER  := scripts/render_packaging.py
 
 .PHONY: srpm
 
 srpm:
-	dnf -y install rpm-build rpmdevtools
-	mkdir -p $(SOURCES) $(outdir)
-	spectool -g -R --define '_sourcedir $(SOURCES)' $(SPEC)
-	rpmbuild -bs --define '_sourcedir $(SOURCES)' --define '_srcrpmdir $(outdir)' $(SPEC)
+	# python3 is present in every Fedora buildroot (rpm itself depends on it) and git
+	# usually is not. Both are installed explicitly rather than assumed -- a build that
+	# fails for a missing tool should say so at its first step, not halfway through.
+	dnf -y install rpm-build python3 git
+	rm -rf $(BUILD)
+	mkdir -p $(BUILD) $(outdir)
+	V=$$(python3 $(RENDER) --print-version); \
+	echo "version from Cargo.toml: $$V"; \
+	python3 $(RENDER) --target copr --version "$$V" --out $(BUILD)/retch.spec; \
+	TARBALL=$(BUILD)/retch-$$V.tar.gz; \
+	if git rev-parse --git-dir >/dev/null 2>&1; then \
+	    echo "source: git archive HEAD (the committed tree)"; \
+	    git archive --format=tar.gz --prefix="retch-$$V/" -o "$$TARBALL" HEAD; \
+	else \
+	    echo "source: tar of the working tree (no git repository here)"; \
+	    tar --exclude=./.git --exclude=./target --exclude=./.copr-build \
+	        --exclude=WIP.md --exclude=memory --exclude=.antigravitycli \
+	        --exclude=settings.local.json --exclude=__pycache__ --exclude='*.pyc' \
+	        --transform "s,^[.],retch-$$V," \
+	        -czf "$$TARBALL" .; \
+	fi; \
+	tar -tzf "$$TARBALL" > $(BUILD)/listing.txt; \
+	echo "packed $$(wc -l < $(BUILD)/listing.txt) entries as retch-$$V/"; \
+	if grep -qE "^retch-[^/]+/(WIP[.]md|memory/|target/|[.]git/|[.]antigravitycli/|settings[.]local[.]json)" $(BUILD)/listing.txt; then \
+	    echo "error: the source archive contains files that must never ship:" >&2; \
+	    grep -E "^retch-[^/]+/(WIP[.]md|memory/|target/|[.]git/|[.]antigravitycli/|settings[.]local[.]json)" $(BUILD)/listing.txt >&2; \
+	    exit 1; \
+	fi; \
+	for f in Cargo.toml Cargo.lock LICENSE NOTICE docs/retch.1; do \
+	    grep -qx "retch-$$V/$$f" $(BUILD)/listing.txt \
+	        || { echo "error: the source archive is missing $$f" >&2; exit 1; }; \
+	done; \
+	echo "source archive verified"
+	rpmbuild -bs --define '_sourcedir $(BUILD)' --define '_srcrpmdir $(outdir)' $(BUILD)/retch.spec

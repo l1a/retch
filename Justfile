@@ -121,8 +121,16 @@ fmt:
 lint:
     cargo clippy --workspace -- -D warnings
 
+# The renderer is the single implementation behind all three packaging targets, so its
+# self-test is a `check` dependency like theirs. It is the piece that must refuse: a
+# substitution matching nothing, a sentinel surviving, a placeholder checksum.
+#
+# Verify scripts/render_packaging.py still renders and still refuses (offline)
+render-check:
+    @{{PY}} scripts/render_packaging.py --self-test
+
 # Run strict checks (formatting and linting) as done in CI
-check: standard-check aur-check copr-check brew-check
+check: standard-check render-check aur-check copr-check brew-check
     cargo fmt -- --check
     cargo clippy --workspace -- -D warnings
     # Also lint the optional `graphics` feature (base64/image/icy_sixel in src/logo.rs),
@@ -264,6 +272,38 @@ publish-check:
 publish:
     #!/usr/bin/env bash
     set -euo pipefail
+
+    # REFUSE UNLESS HEAD IS THE TAG FOR THE VERSION ABOUT TO BE UPLOADED.
+    #
+    # `cargo publish` uploads whatever the worktree says, and a crates.io version can be
+    # yanked but never deleted. On 2026-09-11 this was one command away from putting
+    # `retch-cli 0.17.4` on the index -- a version with no tag, no GitHub release, and
+    # disagreeing with all three distro channels -- because the post-release packaging PR
+    # had opened the next version on `main`. That PR no longer exists (see RELEASING
+    # below), so `main` now sits AT the released version; this guard is what makes that a
+    # checked property rather than a habit. Override deliberately with PUBLISH_ANY_REF=1,
+    # which is for a genuine exception, not for getting past a surprise.
+    CARGO_VER=$(grep -m1 '^version' Cargo.toml | cut -d '"' -f2)
+    if [ "${PUBLISH_ANY_REF:-}" != "1" ]; then
+        HEAD_SHA=$(git rev-parse HEAD)
+        TAG_SHA=$(git rev-parse -q --verify "refs/tags/v${CARGO_VER}^{commit}" || true)
+        if [ -z "$TAG_SHA" ]; then
+            echo "error: Cargo.toml is $CARGO_VER but there is no tag v$CARGO_VER in this clone." >&2
+            echo "       Tag and push the release first (git fetch --tags if it was tagged elsewhere)." >&2
+            exit 1
+        fi
+        if [ "$HEAD_SHA" != "$TAG_SHA" ]; then
+            echo "error: HEAD is not v$CARGO_VER." >&2
+            echo "       HEAD      $HEAD_SHA" >&2
+            echo "       v$CARGO_VER  $TAG_SHA" >&2
+            echo "       Publishing here would upload source that is not what the tag names." >&2
+            exit 1
+        fi
+        echo "==> HEAD is v$CARGO_VER ($HEAD_SHA)"
+    else
+        echo "==> PUBLISH_ANY_REF=1: skipping the HEAD-is-the-tag check"
+    fi
+
     SYSINFO_VER=$(grep -m1 '^version' crates/sysinfo/Cargo.toml | cut -d '"' -f2)
     if python3 scripts/crates_io_has_version.py retch-sysinfo "$SYSINFO_VER" >/dev/null 2>&1; then
         echo "==> retch-sysinfo $SYSINFO_VER already published — skipping (CLI-only release)"
@@ -306,13 +346,82 @@ tldr-release:
 # that block is vendored byte-identically across retch, rusticprofile and etr, and retch is
 # the only one of the three whose AUR pair is tracked in-repo.
 #
-# Verify packaging/aur/.SRCINFO still agrees with its PKGBUILD (offline, no podman)
+# Verify packaging/aur/PKGBUILD is still a template recording no version (offline)
 aur-check:
     @{{PY}} scripts/aur_check.py --self-test
     @{{PY}} scripts/aur_check.py
 
-# Regenerate packaging/aur/.SRCINFO from the PKGBUILD (never edit it by hand)
-aur-srcinfo:
+# Generate .SRCINFO next to a RENDERED PKGBUILD in DIR (never edit it by hand)
+#
+# DIR is a directory holding a rendered PKGBUILD -- `just aur-publish` makes one in a temp
+# dir and calls this. It is not the repo: `packaging/aur/PKGBUILD` is a template whose
+# pkgver is `@VERSION@`, which makepkg refuses outright, so there is nothing there to
+# generate a .SRCINFO from and nothing committed for one to drift against.
+#
+# Render the AUR pair for a released tag into DIR: PKGBUILD + generated .SRCINFO
+#
+# Shared by `aur-publish` (which pushes DIR) and `aur-local` (which builds it), so the
+# download, the checksum computation, the render and the pair check exist once. The checksum
+# is always COMPUTED from the tarball just downloaded -- never read from a committed field,
+# which is the staleness this whole arrangement replaced.
+aur-render VERSION DIR:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
+    pass() { echo -e "${GREEN}[✓]${NC} $1"; }
+    fail() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
+    info() { echo -e "${YELLOW}[→]${NC} $1"; }
+
+    V="{{VERSION}}"; V="${V#v}"
+    DIR="{{DIR}}"
+    [ -n "$V" ] || fail "aur-render needs a version"
+
+    # The tag must exist: the PKGBUILD builds from the release tarball, so rendering for an
+    # unreleased version would produce a package nobody can build.
+    URL="https://github.com/l1a/retch/archive/refs/tags/v${V}.tar.gz"
+    mkdir -p "$DIR"
+    info "Downloading and checksumming the v$V tarball..."
+    curl -sfL -o "$DIR/src.tar.gz" "$URL" \
+        || fail "no release tarball at $URL — tag and release v$V first"
+    SHA=$(sha256sum "$DIR/src.tar.gz" | cut -d' ' -f1)
+    pass "v$V tarball: $(wc -c < "$DIR/src.tar.gz" | tr -d ' ') bytes, sha256 $SHA"
+    rm -f "$DIR/src.tar.gz"
+
+    {{PY}} scripts/render_packaging.py --target aur --version "$V" --sha256 "$SHA" \
+        --out "$DIR/PKGBUILD"
+    # Generates .SRCINFO from the rendered PKGBUILD with a real makepkg, then compares the
+    # pair field by field -- a pair can agree on the version and disagree on the checksum,
+    # which is the shape that breaks on the user's machine and nowhere else.
+    just aur-srcinfo "$DIR"
+    pass "rendered PKGBUILD + .SRCINFO for v$V in $DIR"
+
+# Build and install the AUR package locally, without the AUR (needs makepkg, so Arch only)
+#
+# This is the path README and the wiki document for when the AUR itself cannot be used. It
+# used to be `cd packaging/aur && makepkg -si`, which stopped working when that file became
+# a template -- makepkg refuses `@VERSION@`. Rendering into a temp directory keeps the path
+# working and keeps it honest: it builds the last RELEASED tag's tarball, which is exactly
+# what installing from the AUR would build.
+aur-local VERSION="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    RED='\033[0;31m'; NC='\033[0m'
+    fail() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
+    command -v makepkg >/dev/null || fail "makepkg not found — this recipe only works on Arch"
+    V="{{VERSION}}"; V="${V#v}"
+    if [ -z "$V" ]; then
+        V=$(git describe --tags --abbrev=0 2>/dev/null || true); V="${V#v}"
+        [ -n "$V" ] || fail "no tags in this clone; pass a version: just aur-local 0.17.5"
+        echo "using the last released tag: v$V"
+    fi
+    WORK=$(mktemp -d)
+    trap 'rm -rf "$WORK"' EXIT
+    just aur-render "$V" "$WORK/pkg"
+    cd "$WORK/pkg"
+    makepkg -si
+
+# Generate .SRCINFO beside a rendered PKGBUILD in DIR (requires podman)
+aur-srcinfo DIR:
     #!/usr/bin/env bash
     set -euo pipefail
     RED='\033[0;31m'; NC='\033[0m'
@@ -323,7 +432,11 @@ aur-srcinfo:
     # this fleet runs Arch, hence the container.
     command -v podman >/dev/null || fail "podman is required (or edit this recipe for docker)"
 
-    OUT="{{justfile_directory()}}/packaging/aur/.SRCINFO"
+    DIR="{{DIR}}"
+    [ -f "$DIR/PKGBUILD" ] || fail "$DIR/PKGBUILD does not exist -- render it first"
+    grep -q '@VERSION@' "$DIR/PKGBUILD" \
+        && fail "$DIR/PKGBUILD is still a template -- render it with scripts/render_packaging.py"
+    OUT="$DIR/.SRCINFO"
 
     # Generated to a temp file and moved into place, NEVER redirected at the real file: a
     # shell redirect truncates before the command runs, so a missing image or no network
@@ -345,7 +458,7 @@ aur-srcinfo:
     # permanently relabels this directory to categories no other container holds — and this
     # repo lives under a Syncthing folder whose own container then cannot scan it. See the
     # `:Z` incident in ~/AGENTS.md.
-    podman run --rm -v "{{justfile_directory()}}/packaging/aur:/pkg:ro,z" archlinux:base-devel bash -c '
+    podman run --rm -v "$DIR:/pkg:ro,z" archlinux:base-devel bash -c '
         useradd -m builder; mkdir -p /home/builder/b && cp /pkg/PKGBUILD /home/builder/b/
         chown -R builder /home/builder/b; cd /home/builder/b
         su builder -c "makepkg --printsrcinfo"' > "$TMP"
@@ -355,37 +468,24 @@ aur-srcinfo:
     [ -s "$TMP" ] || fail ".SRCINFO came back empty — $OUT left untouched"
     grep -q '^pkgbase = ' "$TMP" || fail "output has no 'pkgbase =' line — $OUT left untouched"
 
-    # mktemp makes the file 0600; the committed one must match its PKGBUILD sibling.
+    # mktemp makes the file 0600; the pushed file must match its PKGBUILD sibling.
     chmod 0644 "$TMP"
     mv "$TMP" "$OUT"
     trap - EXIT
-    echo "packaging/aur/.SRCINFO regenerated"
-    just aur-check
+    echo "$OUT generated"
+    # The pair check, on the bytes that are about to be pushed rather than on a committed
+    # copy of them. This is the same field-by-field comparison `just check` used to run
+    # against the repo; it did not get weaker, it moved to where it can act on the real thing.
+    {{PY}} scripts/aur_check.py --dir "$DIR"
 
-# Point the PKGBUILD at a released tag: bump pkgver, reset pkgrel, refresh the checksum
-aur-bump VERSION:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    RED='\033[0;31m'; GREEN='\033[0;32m'; NC='\033[0m'
-    fail() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
-    V="{{VERSION}}"
-    URL="https://github.com/l1a/retch/archive/refs/tags/v${V}.tar.gz"
-
-    # The tag must exist first: the PKGBUILD builds from the release tarball, so bumping
-    # ahead of the release produces a package nobody can build. This is also why the in-repo
-    # copy legitimately trails by one release between `just publish` and this recipe.
-    curl -sfIL -o /dev/null "$URL" || fail "no release tarball at $URL — tag and release v$V first"
-
-    SHA=$(curl -sL "$URL" | sha256sum | cut -d' ' -f1)
-    P="{{justfile_directory()}}/packaging/aur/PKGBUILD"
-    sed -i -e "s/^pkgver=.*/pkgver=${V}/" -e "s/^pkgrel=.*/pkgrel=1/" \
-           -e "s/^sha256sums=.*/sha256sums=('${SHA}')/" "$P"
-    echo -e "${GREEN}[✓]${NC} pkgver=${V} pkgrel=1 sha256=${SHA}"
-    just aur-srcinfo
-    echo "Commit packaging/aur, then run: just aur-publish"
-
-# Push packaging/aur to the AUR — verifies the checksum and refuses if the AUR is down
-aur-publish:
+#
+# Takes the version because nothing in the repo records one any more: the PKGBUILD is a
+# template, and this is the moment the released version and its checksum come into
+# existence. The checksum is COMPUTED here from the tarball that was actually downloaded --
+# never copied from a committed field, which is the class of staleness this replaced.
+#
+# Render packaging/aur for a released tag and push it to the AUR
+aur-publish VERSION:
     #!/usr/bin/env bash
     set -euo pipefail
     BOLD='\033[1m'; GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -393,25 +493,13 @@ aur-publish:
     fail() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
     info() { echo -e "${YELLOW}[→]${NC} $1"; }
 
-    DIR="{{justfile_directory()}}/packaging/aur"
-    [ -f "$DIR/PKGBUILD" ] && [ -f "$DIR/.SRCINFO" ] || fail "packaging/aur is missing PKGBUILD or .SRCINFO"
+    PKGVER="{{VERSION}}"; PKGVER="${PKGVER#v}"
+    [ -n "$PKGVER" ] || fail "aur-publish needs a version, e.g. just aur-publish 0.17.5"
 
-    # Field-by-field, not just the pkgver line: a pair can agree on the version and disagree
-    # on the checksum, which is the shape that breaks on the user's machine and nowhere else.
-    {{PY}} scripts/aur_check.py || fail "PKGBUILD and .SRCINFO disagree — run: just aur-srcinfo"
-    pass ".SRCINFO agrees with PKGBUILD"
-
-    PKGVER=$(sed -n 's/^pkgver=//p' "$DIR/PKGBUILD")
-    pass "PKGBUILD pkgver: $PKGVER"
-
-    # The declared checksum is checked against the tarball that will actually be downloaded.
-    info "Verifying sha256sums against the real tarball..."
-    URL="https://github.com/l1a/retch/archive/refs/tags/v${PKGVER}.tar.gz"
-    ACTUAL=$(curl -sL "$URL" | sha256sum | cut -d' ' -f1)
-    DECLARED=$(sed -n "s/^sha256sums=('\(.*\)')/\1/p" "$DIR/PKGBUILD")
-    [ "$ACTUAL" = "$DECLARED" ] \
-        || fail "checksum mismatch for v$PKGVER — declared $DECLARED, actual $ACTUAL. Run: just aur-bump $PKGVER"
-    pass "sha256 matches the v$PKGVER tarball"
+    WORK=$(mktemp -d)
+    trap 'rm -rf "$WORK"' EXIT
+    just aur-render "$PKGVER" "$WORK/pkg"
+    DIR="$WORK/pkg"
 
     # The AUR takes maintenance windows, during which SSH authenticates and then refuses.
     # Saying so plainly beats a confusing git failure.
@@ -443,11 +531,12 @@ aur-publish:
     fi
     [ "$CONFIRM" = "y" ] || [ "$CONFIRM" = "Y" ] || { echo -e "${RED}Aborted.${NC}"; exit 1; }
 
-    CLONE=$(mktemp -d)
-    trap 'rm -rf "$CLONE"' EXIT
-    git clone "ssh://aur@aur.archlinux.org/retch.git" "$CLONE/pkg" 2>&1 | tail -2
-    cp "$DIR/PKGBUILD" "$DIR/.SRCINFO" "$CLONE/pkg/"
-    cd "$CLONE/pkg"
+    # Cloned INSIDE $WORK rather than into a second mktemp dir: a second `trap ... EXIT`
+    # replaces the first, so the earlier one would stop cleaning up the rendered files and
+    # the downloaded tarball.
+    git clone "ssh://aur@aur.archlinux.org/retch.git" "$WORK/aur" 2>&1 | tail -2
+    cp "$DIR/PKGBUILD" "$DIR/.SRCINFO" "$WORK/aur/"
+    cd "$WORK/aur"
     if [ -z "$(git status --porcelain)" ]; then
         pass "the AUR already matches these files — nothing to push"
         exit 0
@@ -476,48 +565,19 @@ aur-publish:
 # `standard-check`: that block is vendored byte-identically across retch, rusticprofile and
 # etr, and retch is the only one of the three with a COPR target at all.
 #
-# Verify packaging/copr/retch.spec has not drifted (offline, no network, no rpm tooling)
+# Verify packaging/copr/retch.spec is still a template recording no version (offline)
 copr-check:
     @{{PY}} scripts/copr_check.py --self-test
     @{{PY}} scripts/copr_check.py
 
-# Point the spec at a released tag: bump Version, reset Release, add a %changelog entry
-copr-bump VERSION:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    RED='\033[0;31m'; GREEN='\033[0;32m'; NC='\033[0m'
-    fail() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
-    V="{{VERSION}}"
-    SPEC="{{justfile_directory()}}/packaging/copr/retch.spec"
-    URL="https://github.com/l1a/retch/archive/refs/tags/v${V}.tar.gz"
-
-    # Same precondition as aur-bump, for the same reason: Source0 is the release tarball, so
-    # bumping ahead of the tag pins something COPR cannot fetch. This is also why the spec
-    # legitimately trails Cargo.toml for a whole release cycle.
-    curl -sfIL -o /dev/null "$URL" || fail "no release tarball at $URL — tag and release v$V first"
-
-    grep -q "^Version:" "$SPEC" || fail "no Version: tag in $SPEC"
-    sed -i -e "s/^Version:\( *\).*/Version:\1${V}/" \
-           -e "s/^Release:\( *\).*/Release:\11%{?dist}/" "$SPEC"
-
-    # Prepended, because rpm's changelog is newest-first and copr_check.py compares the FIRST
-    # entry. Date in rpm's required C-locale format — LC_ALL is pinned so a non-English
-    # locale cannot emit a month name rpmbuild will reject.
-    NAME=$(git -C "{{justfile_directory()}}" config user.name)
-    EMAIL=$(git -C "{{justfile_directory()}}" config user.email)
-    STAMP=$(LC_ALL=C date '+%a %b %d %Y')
-    # Trailing blank line: rpm separates changelog entries with one, and every existing
-    # entry in this spec does. Without it the new entry abuts the previous one.
-    ENTRY="* ${STAMP} ${NAME} <${EMAIL}> - ${V}-1\n- Update to ${V}\n\n"
-    # awk rather than `sed -i '/^%changelog/a'`: the entry contains slashes and ampersands
-    # (an email address, a URL-ish name) that sed's replacement side would interpret.
-    awk -v entry="$ENTRY" '
-        /^%changelog$/ && !done { print; printf "%s", entry; done = 1; next } { print }
-    ' "$SPEC" > "$SPEC.tmp" && mv "$SPEC.tmp" "$SPEC"
-
-    echo -e "${GREEN}[✓]${NC} Version=${V} Release=1 + %changelog entry"
-    just copr-check
-    echo "Commit packaging/copr — .github/workflows/copr.yml rebuilds COPR when it lands on main"
+#
+# There is no `copr-bump`, because there is nothing to bump: the spec's Version: is
+# `@VERSION@` and .copr/Makefile renders it from Cargo.toml when COPR builds the SRPM. This
+# recipe exists so a human can see what COPR will be handed without running rpmbuild.
+#
+# Render the spec as .copr/Makefile will and print it (no network, no rpm tooling)
+copr-render:
+    @{{PY}} scripts/render_packaging.py --target copr
 
 # ===== HOMEBREW =====
 #
@@ -526,62 +586,18 @@ copr-bump VERSION:
 # an inert reference copy for eleven releases (see scripts/brew_check.py); this does not
 # repeat that.
 
-# Offline drift guard: formula vs PKGBUILD vs spec vs Cargo.toml. Wired into `just check`.
+# Verify the Homebrew formula is still a template recording no version (offline)
 brew-check:
     @{{PY}} scripts/brew_check.py --self-test
     @{{PY}} scripts/brew_check.py
 
-# Point the formula at a released tag: rewrite url + sha256 from the real tarball
-brew-bump VERSION:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
-    pass() { echo -e "${GREEN}[✓]${NC} $1"; }
-    fail() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
-    info() { echo -e "${YELLOW}[→]${NC} $1"; }
-    V="{{VERSION}}"
-    FORMULA="{{justfile_directory()}}/packaging/homebrew/retch.rb"
-    URL="https://github.com/l1a/retch/archive/refs/tags/v${V}.tar.gz"
-
-    # Same precondition as aur-bump and copr-bump, for the same reason: the formula pins
-    # the tarball's sha256, so bumping ahead of the tag pins something that cannot be
-    # fetched. This is also why the formula legitimately trails Cargo.toml.
-    curl -sfIL -o /dev/null "$URL" || fail "no release tarball at $URL — tag and release v$V first"
-
-    # The checksum is computed from the tarball that will actually be downloaded, never
-    # copied from elsewhere. Written to a file first rather than piped, so the byte count
-    # is inspectable if the hash ever looks wrong.
-    info "Downloading and checksumming the v$V tarball..."
-    TMP=$(mktemp "$(dirname "$FORMULA")/.tarball.XXXXXX")
-    trap 'rm -f "$TMP"' EXIT
-    curl -sfL -o "$TMP" "$URL" || fail "could not download $URL"
-    SHA=$({{PY}} -c "import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$TMP")
-    SIZE=$(wc -c < "$TMP" | tr -d ' ')
-    pass "v$V tarball: $SIZE bytes, sha256 $SHA"
-
-    {{PY}} - "$FORMULA" "$V" "$SHA" <<'PYEOF'
-    import pathlib, re, sys
-    formula, version, sha = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3]
-    t = formula.read_text(encoding="utf-8")
-    t, n_url = re.subn(
-        r'(^\s*url\s+")https://github\.com/l1a/retch/archive/refs/tags/v[0-9.]+\.tar\.gz(")',
-        rf"\g<1>https://github.com/l1a/retch/archive/refs/tags/v{version}.tar.gz\g<2>",
-        t, count=1, flags=re.M)
-    t, n_sha = re.subn(r'(^\s*sha256\s+")[^"]*(")', rf"\g<1>{sha}\g<2>", t, count=1, flags=re.M)
-    # Hard-error on a substitution that matched nothing, rather than writing a file that
-    # looks updated and is not -- the exact defect calculate_nix_hashes.py shipped (v0.6.13),
-    # where a no-op substitution left the PREVIOUS release's hash in place.
-    if n_url != 1 or n_sha != 1:
-        raise SystemExit(f"substitution matched nothing (url={n_url}, sha256={n_sha}) — formula shape changed")
-    formula.write_text(t, encoding="utf-8")
-    PYEOF
-
-    pass "formula pinned to v$V"
-    just brew-check
-    echo "Commit packaging/homebrew, then: just brew-publish"
-
-# Push packaging/homebrew/retch.rb to the tap at github.com/l1a/homebrew-retch
-brew-publish:
+#
+# Takes the version for the same reason `aur-publish` does: the formula is a template, and
+# this is the moment the released version and its checksum come into existence. There is no
+# `brew-bump` any more -- nothing in the repo holds a value to bump.
+#
+# Render the formula for a released tag and push it to the tap at l1a/homebrew-retch
+brew-publish VERSION:
     #!/usr/bin/env bash
     set -euo pipefail
     BOLD='\033[1m'; GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -589,26 +605,29 @@ brew-publish:
     fail() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
     info() { echo -e "${YELLOW}[→]${NC} $1"; }
 
-    FORMULA="{{justfile_directory()}}/packaging/homebrew/retch.rb"
     TAP_REPO="git@github.com:l1a/homebrew-retch.git"
-    [ -f "$FORMULA" ] || fail "packaging/homebrew/retch.rb is missing"
+    VER="{{VERSION}}"; VER="${VER#v}"
+    [ -n "$VER" ] || fail "brew-publish needs a version, e.g. just brew-publish 0.17.5"
 
-    {{PY}} scripts/brew_check.py || fail "the formula is inconsistent — run: just brew-bump <version>"
-    pass "formula is consistent"
+    {{PY}} scripts/brew_check.py || fail "packaging/homebrew/retch.rb is not a valid template"
+    pass "formula template is valid"
 
-    VER=$(sed -n 's|.*/refs/tags/v\([0-9.]*\)\.tar\.gz.*|\1|p' "$FORMULA" | head -1)
-    [ -n "$VER" ] || fail "could not read the pinned version out of the formula"
-
-    # The declared checksum is verified against the tarball that will actually be
-    # downloaded, exactly as aur-publish does -- a formula can agree with its siblings on
-    # the version and still carry a wrong hash, which fails only on the user's machine.
-    info "Verifying sha256 against the real v$VER tarball..."
+    # The checksum is COMPUTED from the tarball that will actually be downloaded, never
+    # copied from a committed field. Written to a file rather than piped, so the byte count
+    # is inspectable if the hash ever looks wrong.
+    WORK=$(mktemp -d)
+    trap 'rm -rf "$WORK"' EXIT
     URL="https://github.com/l1a/retch/archive/refs/tags/v${VER}.tar.gz"
-    ACTUAL=$(curl -sfL "$URL" | {{PY}} -c "import hashlib,sys;print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())")
-    DECLARED=$(sed -n 's/^  sha256 "\(.*\)"/\1/p' "$FORMULA")
-    [ "$ACTUAL" = "$DECLARED" ] \
-        || fail "checksum mismatch for v$VER — declared $DECLARED, actual $ACTUAL. Run: just brew-bump $VER"
-    pass "sha256 matches the v$VER tarball"
+    info "Downloading and checksumming the v$VER tarball..."
+    curl -sfL -o "$WORK/src.tar.gz" "$URL" \
+        || fail "no release tarball at $URL — tag and release v$VER first"
+    SHA=$({{PY}} -c "import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$WORK/src.tar.gz")
+    pass "v$VER tarball: $(wc -c < "$WORK/src.tar.gz" | tr -d ' ') bytes, sha256 $SHA"
+
+    {{PY}} scripts/render_packaging.py --target brew --version "$VER" --sha256 "$SHA" \
+        --out "$WORK/retch.rb"
+    FORMULA="$WORK/retch.rb"
+    pass "rendered formula for v$VER"
 
     echo
     echo -e "${BOLD}About to publish retch $VER to the Homebrew tap.${NC}"
@@ -633,10 +652,9 @@ brew-publish:
     [ "$CONFIRM" = "yes" ] || { echo -e "${RED}Aborted.${NC}"; exit 1; }
 
     # Cloned fresh each time rather than kept as a working copy: a long-lived clone is how
-    # the aur-retch checkout drifted eleven releases out of date. Outside the repo so the
-    # clone is never mistaken for tracked content.
-    WORK=$(mktemp -d)
-    trap 'rm -rf "$WORK"' EXIT
+    # the aur-retch checkout drifted eleven releases out of date. Inside the $WORK created
+    # above, because a second `trap ... EXIT` would replace the first and leave the rendered
+    # formula and the downloaded tarball behind.
     info "Cloning the tap..."
     git clone -q "$TAP_REPO" "$WORK/tap" || fail "could not clone $TAP_REPO — does the tap exist, and is the SSH key registered?"
     mkdir -p "$WORK/tap/Formula"
@@ -675,118 +693,38 @@ brew-publish:
     pass "pushed retch $VER to $TAP_REPO"
     echo "Verify: brew tap l1a/retch && brew install retch"
 
-# ===== POST-RELEASE =====
+# ===== RELEASING =====
 #
-# Everything that has to happen AFTER a tag exists, as one gated PR instead of a commit
-# straight to main.
+# A release needs NO VERSION BUMP, and that is the point of the shape below.
 #
-# WHY THIS EXISTS, AND THE ASSUMPTION IT CORRECTS
-# -----------------------------------------------
-# Both packaging targets pin the last RELEASED tag -- the PKGBUILD carries its tarball's
-# sha256, the spec's Source0 is a tag tarball -- so neither can be bumped until the tag is
-# pushed. Five commits went DIRECT TO MAIN on the belief that a PR was therefore impossible
-# (9476836, f75989c, d60658c, de1d73f, 468efc7), each explaining that `just pr` hard-fails
-# once Cargo.toml equals the last tag.
+# WHAT USED TO HAPPEN, AND WHY
+# ----------------------------
+# Three packaging targets recorded the released version in-repo, two of them with the
+# tarball's sha256. A checksum cannot be computed before its tag exists, so every release
+# ended with a post-tag commit -- and because that commit had to be a reviewed PR, and
+# `just pr` refuses a Cargo.toml equal to the last tag, it also had to OPEN THE NEXT
+# VERSION. So a release forced a bump, `main` then named a version that was never released,
+# and `just publish` on `main` came one command away from putting an unreleased
+# `retch-cli 0.17.4` on crates.io while every other channel served 0.17.3.
 #
-# **That belief was wrong.** `pr`'s step 2 is `[ "$LAST_TAG" = "v$CARGO_VER" ] && fail` -- an
-# equality test against the last tag, not "did this PR bump anything". So a packaging bump
-# passes the gate as long as it ALSO opens the next version, which it should be doing anyway.
-# Nothing in the gate needed changing; the packaging bump just had to stop travelling alone.
+# `scripts/render_packaging.py` supplies the version and checksum at publish time instead.
+# Nothing records them, so there is no post-tag commit, no `post-release` recipe, no
+# `aur-bump`/`copr-bump`/`brew-bump`, and no bump forced on a release. `main` sits AT the
+# released version until the next feature PR bumps it, which is what makes `just publish`
+# safe to run from `main` -- and the guard in `publish` enforces that rather than trusting it.
 #
-# So this recipe does both halves in one branch: packaging pinned to the version just
-# released, Cargo.toml opened to the next one. It deliberately stops before `open-pr` -- the
-# manual checklist needs a human, and this is a release, which is the worst possible moment to
-# rubber-stamp one.
-
-# Prepare the post-release PR: packaging pinned to VERSION, Cargo.toml opened to the next patch
-post-release VERSION:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    BOLD='\033[1m'; GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
-    pass() { echo -e "${GREEN}[✓]${NC} $1"; }
-    fail() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
-    info() { echo -e "${YELLOW}[→]${NC} $1"; }
-
-    V="{{VERSION}}"
-
-    # Start from a clean main. A packaging bump computed on top of unrelated work would put
-    # that work in the release PR, and this is the one PR nobody reads closely.
-    [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ] || fail "run this from main"
-    [ -z "$(git status --porcelain)" ] || fail "working tree is dirty — commit or stash first"
-
-    # The tag must already exist: everything below pins to its tarball.
-    LAST_TAG=$(git describe --tags --abbrev=0)
-    [ "$LAST_TAG" = "v$V" ] || fail "last tag is $LAST_TAG, not v$V — tag and release v$V first"
-    pass "released tag: v$V"
-
-    # Guard against running this twice. After a successful run Cargo.toml is already ahead,
-    # and a second run would bump again and pin packaging to a version that is no longer the
-    # newest -- silently producing exactly the drift copr-check exists to catch.
-    CUR=$(grep '^version' Cargo.toml | head -1 | cut -d'"' -f2)
-    [ "$CUR" = "$V" ] || fail "Cargo.toml is $CUR, not $V — post-release already run, or the wrong version"
-
-    # Next patch. Deliberately not minor/major: this bump only opens the next cycle so the
-    # gate has something to compare against, and the PR that lands a real feature re-bumps
-    # as §4.7 requires.
-    NEXT=$(echo "$V" | awk -F. '{printf "%s.%s.%d", $1, $2, $3 + 1}')
-    BRANCH="chore/post-release-v$V"
-    git rev-parse --verify "$BRANCH" >/dev/null 2>&1 && fail "branch $BRANCH already exists"
-    git checkout -q -b "$BRANCH"
-    pass "branch: $BRANCH  (Cargo.toml $V -> $NEXT)"
-
-    info "Pinning packaging to v$V..."
-    just aur-bump "$V"
-    just copr-bump "$V"
-    just brew-bump "$V"
-
-    info "Opening the next version..."
-    sed -i "s/^version = \"$V\"/version = \"$NEXT\"/" Cargo.toml
-    cargo check --workspace -q
-    just man
-
-    # The gate checks this header, and unlike a feature PR the entry's content is fully known
-    # here -- so it is written rather than stubbed. A TODO stub would either ship as-is or
-    # block the release on prose.
-    python3 - "$V" "$NEXT" <<'PYEOF'
-    import pathlib, re, sys
-    v, nxt = sys.argv[1], sys.argv[2]
-    p = pathlib.Path("NOTES.md"); t = p.read_text(encoding="utf-8")
-    old = re.search(r"^## Current State \(v[^)]+\)$", t, re.M)
-    if not old:
-        raise SystemExit("NOTES.md has no Current State header")
-    entry = (f"## Current State (v{nxt})\n"
-             f"- **v{nxt} - post-release: packaging pinned to {v}, next cycle opened** "
-             f"(packaging only; no runtime change).\n"
-             f"  - `packaging/aur` (PKGBUILD and .SRCINFO), `packaging/copr/retch.spec` and "
-             f"`packaging/homebrew/retch.rb` bumped to **{v}**, the version just released. All "
-             f"three track the last RELEASED tag, so they can only move after the tag exists.\n"
-             f"  - `Cargo.toml` -> **{nxt}**, which is what lets this be a normal gated PR rather "
-             f"than a commit straight to `main`: `just pr`'s version check compares against the "
-             f"last tag, so the packaging bump passes as long as it travels with the next "
-             f"version bump.\n"
-             f"  - `retch-cli` -> {nxt}. Patch bump.\n")
-    p.write_text(t[:old.start()] + entry + t[old.end():].lstrip("\n"), encoding="utf-8")
-    PYEOF
-
-    git add -A
-    git commit -q -m "packaging: pin to $V, open $NEXT
-
-    packaging/aur, packaging/copr and packaging/homebrew track the last RELEASED
-    tag, so they can only be bumped once v$V exists. Bundling that with the next version bump
-    is what makes this a normal gated PR: just pr's step 2 compares Cargo.toml
-    against the last tag, not against this PR's parent, so opening $NEXT
-    satisfies it. Previous releases sent this commit straight to main on the
-    belief that a PR was impossible.
-
-    Assisted-By: Claude Opus 5"
-
-    echo
-    pass "prepared $BRANCH"
-    echo -e "${BOLD}Next:${NC}"
-    echo "  1. review the diff, then: just open-pr"
-    echo "  2. after it merges:       just aur-publish"
-    echo "                            just brew-publish"
-    echo "     (COPR rebuilds itself once packaging/copr lands on main)"
+# THE SEQUENCE
+# ------------
+#   1. main is green and Cargo.toml says X (bumped by whichever PR landed last)
+#   2. git tag -a vX -m '...' --cleanup=verbatim && git push origin vX
+#        -> the release workflow builds the GitHub Release
+#        -> .github/workflows/copr.yml rebuilds COPR from the tag
+#   3. just publish              # crates.io; refuses unless HEAD is the tag for X
+#   4. just aur-publish X        # renders + pushes to the AUR      (needs podman)
+#      just brew-publish X       # renders + pushes to the tap
+#
+# There is no step that edits a file, and therefore nothing to commit afterwards. Steps 3
+# and 4 still ask before acting: they are public and irreversible.
 
 # Merge the active PR, switch to main, pull, delete the branch, and update WIP.md (requires gh)
 merge-pr:

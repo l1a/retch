@@ -1,6 +1,21 @@
 # Maintainer: l1a <634380+l1a@users.noreply.github.com>
+#
+# THIS IS A TEMPLATE. It is not a valid PKGBUILD as it stands, and that is the point.
+#
+# `@VERSION@` and `@SHA256@` are filled in by `scripts/render_packaging.py` at publish
+# time, from the tag being released and the sha256 of the tarball that was actually
+# downloaded. `just aur-publish <version>` renders it, generates .SRCINFO from the result
+# with a real `makepkg --printsrcinfo`, and pushes both to the AUR.
+#
+# Nothing here records a released version, because recording it is what went wrong: this
+# file sat at pkgver=0.6.12 while the AUR served 0.6.23 -- eleven releases -- and the same
+# fact was written down in three other files that then had to be kept in step by a guard
+# each. A checksum cannot be computed before its tag exists, so recording it also forced a
+# post-tag commit and a version bump on every release. See scripts/render_packaging.py.
+#
+# makepkg rejects `@` in pkgver, so this template cannot be built or published by accident.
 pkgname=retch
-pkgver=0.17.3
+pkgver=@VERSION@
 pkgrel=1
 pkgdesc="A fast, feature-rich system information fetcher written in Rust"
 arch=('x86_64' 'aarch64')
@@ -10,7 +25,7 @@ depends=('gcc-libs' 'glibc')
 makedepends=('cargo')
 options=('!lto')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('77ccf85843d24ac3216ab31d2584ff4a95869266c59ddb8bc83819425cfc2033')
+sha256sums=('@SHA256@')
 
 prepare() {
   cd "$pkgname-$pkgver"
