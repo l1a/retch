@@ -117,7 +117,86 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.5)
+## Current State (v0.17.6)
+- **v0.17.6 - Windows `--full` is faster than fastfetch: `gamepad` stops spawning
+  PowerShell, and `shell`'s version spawn leaves the critical path**
+  (`crates/sysinfo/src/gamepad.rs`, `crates/sysinfo/src/win_setupapi.rs`,
+  `crates/sysinfo/src/fetch.rs`). Closes §6a's last performance item, which turned out to
+  be far worse than recorded.
+  - **The recorded gap was stale, in the wrong direction.** §6a said `--full` was 1.08×
+    slower (1.445 s against 1.334 s at v0.13.2). Re-measured on arrakis before touching
+    anything: **3.226 s against `fastfetch -c all`'s 1.732 s — 1.86× slower** — and `--long`
+    had drifted from 286 ms to ~900 ms while still beating fastfetch, so nothing flagged it.
+  - **Two causes, each found by measurement.** Isolated `--fields` timings against the
+    `--version` floor (18.9 ms, the v0.13.2 lesson — never `--fields os`) named `gamepad` at
+    **2.47 s**. With that fixed, `--full` still lost (1.85–1.91 s against 1.51 s), and the
+    remaining cost was in no single field: temporary, env-guarded, absolute elapsed-time
+    marks inside `collect()` (discarded afterwards with `git checkout`) showed **one serial
+    chunk costing ~520–570 ms in every run of both `--long` and `--full`** — `shell`.
+  - **`gamepad` (Windows): native SetupAPI instead of `Get-PnpDevice`.** One
+    `DIGCF_ALLCLASSES` enumeration of the present devices
+    (`win_setupapi::present_devices_all_classes`) reads the three properties the pipeline
+    filtered on — setup class, friendly name, hardware IDs — and the pure
+    `is_windows_gamepad` applies its predicate unchanged: a HIDClass node carrying a
+    `HID_DEVICE_SYSTEM_GAME` or `HID_DEVICE_GAME` hardware ID, or a node in any class named
+    like an Xbox controller, gamepad or joystick. **`--fields gamepad` 2.02 s → 104 ms**; the
+    old query costs 1.3–1.7 s standalone to print nothing on this machine.
+    - **The HID special-purpose IDs are hardware IDs, not compatible IDs** — measured: every
+      HID collection here has an *empty* compatible-ID list, and `HID_DEVICE_SYSTEM_CONTROL`
+      sits in its hardware IDs. Reading `SPDRP_HARDWAREID` is the faithful port, not a guess.
+    - **Checked against the live machine, not only fixtures.** A temporary probe enumerated
+      **360 devices and 29 HIDClass nodes**, matching `Get-PnpDevice` exactly (an earlier
+      reading of 361 was a Bluetooth service node that dropped off between runs — recounted
+      rather than explained away), and read hardware-ID lists byte-identical to
+      `Get-PnpDeviceProperty`'s. The grow-and-retry path for long `REG_MULTI_SZ` lists never
+      fires here (the longest list is 335 characters), so it was **forced** by starting the
+      buffer at 8 characters — same 360 devices, same lists.
+    - The negative controls are this laptop's own nodes, verbatim: `HID-compliant system
+      controller` (`HID_DEVICE_SYSTEM_CONTROL`, power/sleep buttons) and `HID-compliant
+      system multi-axis controller` (`UP:0001_U:000E`), both HIDClass "controllers", neither
+      a gamepad. **Watched failing** three ways: widening the ID match to any
+      `HID_DEVICE_SYSTEM*` catches the system controller; dropping the HIDClass scoping fails
+      its test; and a `REG_MULTI_SZ` splitter that reads past the double NUL returns
+      `["A", "STALE"]`.
+    - **Verification limit, recorded rather than papered over**: no gamepad is attached to
+      arrakis, so the positive case rests on a synthetic fixture following the documented
+      HID hardware-ID shape and on the predicate being the replaced one verbatim. Output
+      parity was checked on the case that exists here: both binaries report no gamepad.
+  - **`shell` now runs inside the concurrent scope.** It reports the version by spawning the
+    shell itself — `pwsh --version`, or Windows PowerShell evaluating `$PSVersionTable` —
+    measured at ~200–480 ms standalone and ~570 ms inside retch. Serial after the scope, it
+    sat on the critical path of every `--long` and `--full` run; inside the scope it overlaps
+    the network-bound probes. It reads `sys` only, as `audio` already did there. Output is
+    unchanged.
+  - **A latent `shell` bug fixed alongside, found by the same investigation**: `--fields
+    shell` on its own reported **`powershell 5.1.26100.9444` under PowerShell 7**. `shell`
+    and `terminal` identify the running program by walking the process tree up from retch's
+    pid, but the process list was loaded only when `procs` or `audio` was selected too —
+    with no list, `sys.process(pid)` found nothing and the walk fell back to the shell
+    `PSModulePath` implies. New `needs_process_list` includes both consumers; `--fields
+    shell` now reports `pwsh 7.6.6`, matching `--long`. Test watched failing with the two
+    consumers removed. `terminal` is included **by inspection**: on arrakis it reports
+    nothing in any mode (a separate gap, now in §6a).
+  - **Measured on arrakis — medians, hyperfine `-N`, 15–20 runs, fastfetch 2.65.2**, against
+    a binary built from `main` (exported with `git archive`, so no worktree was registered in
+    the Syncthing-replicated `.git`), interleaved in both orders:
+
+    | Mode | retch | fastfetch | |
+    |---|---|---|---|
+    | `--short` vs `-c none` | 45 ms | 79 ms | retch 1.8× |
+    | standard vs default | 142 ms | 1339 ms | retch 9.4× |
+    | `--long` vs `-c all` | 424 ms | 1488 ms | retch 3.5× |
+    | `--full` vs `-c all` | 1314 / 1346 ms | 1468 / 1462 ms | retch 1.1×, both orders |
+
+    `main` read 2.35–2.39 s for `--full` and 563–590 ms for `--long` in the same session.
+    **`--full`'s lead is thin and network-bound**: its scope is set by `weather` and
+    `public-ip`, which fastfetch pays too (`-c all` runs both), so the tails overlap —
+    retch's slowest run was 1.77 s against fastfetch's 1.60 s. The medians held in both run
+    orders; quote those, not single runs.
+  - **Output verified unchanged**: the `--full` field-label sets of the two binaries are
+    identical (44/44), as is the `Shell` line (`pwsh 7.6.6`).
+  - `retch-sysinfo` -> `0.1.73` (behaviour change; new `win_setupapi` enumeration API);
+    `retch-cli` -> `0.17.6`. Patch bump - no new field, the v0.13.1 / v0.13.2 precedent.
 - **v0.17.5 - a release no longer requires a version bump, because the packaging stopped
   recording the release** (`scripts/render_packaging.py` (new), the three packaging
   templates, `.copr/Makefile`, the three guards, `Justfile`, `copr.yml`, `packaging.yml`).
@@ -236,6 +315,11 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
     against each other's listings), the `tar` path in CI. Neither is theoretical, and the
     guard runs on whichever produced the archive. It also means mock quite possibly takes
     the fallback too — the first real COPR build will say so in its log.
+    - **It did, and that guess was wrong** (corrected in v0.17.6). The v0.17.5 COPR build
+      log reads `source: git archive HEAD (the committed tree)`, then `packed 173 entries as
+      retch-0.17.5/`: **mock's buildroot carries `.git`**, so the git path is what runs on
+      COPR, while GitHub Actions' container takes the `tar` fallback. Both paths are now
+      proven in a real environment — the case the two-path design was written for.
   - **And one of my own checks failed for the documented wrong reason while writing this**:
     a `tar -tzf … | head -3` in a verification script exited 141 under `set -o pipefail`,
     the `bsdtar | grep -q` SIGPIPE trap NOTES §v0.7.0 names explicitly, including `head`.
@@ -3265,9 +3349,14 @@ Adds over long:
     battery IOCTL interface (`GUID_DEVCLASS_BATTERY` via SetupAPI +
     `IOCTL_BATTERY_QUERY_INFORMATION`) - more work than `dns` was, because
     `GetSystemPowerStatus` alone does not give design/full-charge capacity.
-  - **Do not chase `shell`**: 1284 ms in isolation but **19 ms** when removed from the full
-    set, i.e. it overlaps and is not on the critical path. Recorded because the isolated
-    sweep alone points straight at it.
+  - ~~**Do not chase `shell`**: 1284 ms in isolation but **19 ms** when removed from the full
+    set, i.e. it overlaps and is not on the critical path.~~ **WRONG, corrected in
+    v0.17.6.** `shell` never overlapped anything: it ran *serially* after the concurrent
+    scope, and absolute elapsed-time marks put it at ~570 ms on the critical path of every
+    `--long` and `--full` run. The 19 ms came from the `--fields` removal harness, which the
+    caveat below already says does not model `--long`. Kept rather than deleted, because the
+    isolated sweep that "points straight at it" was right, and the removal test that
+    overruled it was the measurement answering a different question.
   - **`-NoProfile` is not a shortcut for any of these** - measured, see the v0.11.2 entry.
   - **A caveat on method**: `--fields <all 56 long fields>` measures 6540 ms while real
     `--long` measures 3352 ms, and removing `dns` moved the former by 3650 ms but the
@@ -3437,18 +3526,24 @@ Windows 11, Windows Terminal).
   byte-identical to fastfetch. **The whole §6 GPU-API group now reports on Windows as well
   as Linux.**
 
+- ~~**Windows `--full` is marginally slower than fastfetch**~~ — fixed v0.17.6, and the
+  "marginally" was stale: re-measured before the fix it was **3.226 s against 1.732 s
+  (1.86×)**. The hypothesis this entry recorded — `weather`, the GPU-API group, all sensors —
+  was wrong: the poles were `gamepad`, still spawning PowerShell (~2.5 s), and `shell`,
+  whose ~570 ms version spawn ran serially after the concurrent scope in `--long` too. Now
+  **1314 ms against 1468 ms** (medians, both run orders). The warning that closed the old
+  entry held: the second cause was found by absolute elapsed-time marks, not by any
+  `--fields` sweep. See the v0.17.6 entry.
+
 **Open**
-- **Windows `--full` is marginally slower than fastfetch** — **1.445 s against
-  `fastfetch -c all` at 1.334 s** (v0.13.2, 6 runs after warmup), i.e. **1.08×**. The
-  **~6.9 s figure previously recorded here is stale and should not be quoted**: it predates
-  the `dns` (v0.11.2), `battery` (v0.13.1) and CPU/load (v0.13.2) work, each of which
-  removed cost that `--full` also paid. This was never traced to a single pole and still has
-  not been; the `--full`-only fields (`weather` with its network timeout, the
-  `vulkan`/`opengl`/`opencl` group, all sensors rather than the consolidated view) are the
-  obvious candidates but **that is a hypothesis, not a measurement**. If a sweep is run,
-  read the v0.13.2 entry in §Current State first: the previous `--short` sweep reached a
-  confident wrong conclusion because its `--fields os` baseline shared the cost it was
-  hunting, and a `--full` sweep built the same way would fail the same way.
+- **`terminal` reports nothing on Windows Terminal** (found in v0.17.6;
+  `terminal.rs::detect_terminal`). On arrakis retch prints no `Terminal` line in any mode,
+  while fastfetch prints one on the same machine. `detect_terminal` returns early only for
+  `TERM_PROGRAM`, `TERMINAL_EMULATOR` and the Alacritty variables — Windows Terminal sets
+  `WT_SESSION` instead — and its process-tree fallback lists `"Terminal"` with a capital T
+  while comparing against a *lowercased* process name, so that entry can never match
+  anything. Not fixed in v0.17.6, which was a performance change; reading `WT_SESSION` is
+  the obvious first step.
 - **Logo renders above the text, not beside it (upper-right)** on Windows Terminal
   (CLI/rendering, retch-cli `src/`). Likely terminal-detection / cursor-positioning specific
   to Windows Terminal.

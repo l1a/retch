@@ -307,6 +307,7 @@ separator_color = "bright_black"
 # Note: "btrfs" snapshot counts require root on Linux; the count is omitted (not shown as 0) when it can't be read.
 # Note: "editor", "desktop" and "wm" read environment variables, so they are absent under `sudo` (env_reset).
 # Note: "phys-disk" on Windows uses native storage IOCTLs (no PowerShell, no admin).
+# Note: "gamepad" on Windows enumerates PnP devices natively via SetupAPI (no PowerShell).
 # Note: "weather" requires network access; shown in full mode only by default.
 # Note: "domain-search" queries resolvectl; shown in full mode only by default.
 # Note: "disk-io" and "net-io" are rates averaged over the run's own collection window
