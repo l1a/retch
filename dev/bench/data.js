@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789312975156,
+  "lastUpdate": 1789313320397,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5742,12 +5742,12 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch",
             "unit": "ns",
-            "value": 163173950.0
+            "value": 163173950
           },
           {
             "name": "CLI execution - fastfetch",
             "unit": "ns",
-            "value": 1772631020.0
+            "value": 1772631020
           },
           {
             "name": "CLI execution - retch --short",
@@ -5762,7 +5762,7 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch --long",
             "unit": "ns",
-            "value": 301827194.0
+            "value": 301827194
           },
           {
             "name": "CLI execution - fastfetch -c all",
@@ -5773,90 +5773,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Linux x64 Benchmarks": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "9b8bcc71daafe3d38abb8ba9085195eef680d68f",
-          "message": "Native Media and Player Detection (#197)\n\n* Add native media and player detection fields\n\nImplement 100% native FFI / direct socket media and player detection with zero subprocess forks across Windows (WinRT COM GlobalSystemMediaTransportControlsSessionManager via combase.dll), Linux (direct Unix domain socket D-Bus MPRIS client), and macOS (Objective-C runtime SBApplication FFI).\n\nAdds 'player' and 'media' to FIELDS registry (Mode::Long, available in --long and --full). Strata golden counts Long 52 -> 54, Full 58 -> 60. Regenerated man page, updated README.md, docs/retch.1.md, NOTES.md, WIP.md, and GitHub wiki.\n\nAssisted-By: Gemini 2.5 Flash\n\n* Fix Rust 1.97 Clippy lints in media.rs\n\nAssisted-By: Antigravity",
-          "timestamp": "2026-08-16T19:19:02-07:00",
-          "tree_id": "5f6c7da98e5d1a0862003b59cc74c4130d097866",
-          "url": "https://github.com/l1a/retch/commit/9b8bcc71daafe3d38abb8ba9085195eef680d68f"
-        },
-        "date": 1786933594725,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1327496693.2,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2075.3770927610867,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 120.48924613673125,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.829726020503113,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 56.62941956243287,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 17963.09256982017,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 188441.06633459774,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 12768.824666027982,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 12888.672474670644,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1463009.5441360096,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 370.23567920966656,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 291.36373567222455,
-            "unit": "ns"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -9969,6 +9885,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 253.27891847863125,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "254c13ee1e7b32c07102981c7435107fa552f75c",
+          "message": "Detect Windows Terminal in the terminal field (#248)\n\n`terminal` printed nothing on Windows Terminal. Two causes: WT_SESSION\nwas never read, and the process-tree table's capitalised \"Terminal\"\nentry was compared against a lowercased name, so it never matched.\n\nThe tree walk now has a Windows Terminal entry, and WT_SESSION is the\nfallback after it (child processes inherit it; Windows Terminal\nforwards it into WSL via WSLENV). Apple's Terminal is matched exactly,\nso a substring cannot shadow xfce4-terminal. Precedence lives in a\npure resolve_terminal, unit-tested with an injected environment and\nancestor list.\n\nAlso: the man page no longer claims `terminal` reports a version, and\nAGENTS.md says to apply the attribution rule without comment.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-13T08:21:23-07:00",
+          "tree_id": "393d0fab08e397b977ab21949d6bff6b822a857e",
+          "url": "https://github.com/l1a/retch/commit/254c13ee1e7b32c07102981c7435107fa552f75c"
+        },
+        "date": 1789313318191,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 990184763.05,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2058.1208306388517,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 120.05559511231533,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.830592897217924,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 59.926936428371036,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 17998.303320965704,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 188431.96390795693,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12699.601412182315,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 12814.028023178507,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1453466.3603100248,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 377.59412803567676,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 262.98620992259623,
             "unit": "ns"
           }
         ]
