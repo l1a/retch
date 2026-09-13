@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789314155248,
+  "lastUpdate": 1789314712990,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5768,6 +5768,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1900149873.9999998
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "75c9e6d408838b4b8ecc204d8cc2836a5327d716",
+          "message": "Report Windows Terminal's package version (#249)\n\n`terminal` now reads `Windows Terminal 1.24.11911.0`, matching\nfastfetch. The version is the MSIX package version, parsed from the\nrunning WindowsTerminal.exe's WindowsApps folder name; the exe's own\nfile-version resource (1.24.2607.10001) is an internal build number\nand is deliberately not used.\n\nThe path comes from one QueryFullProcessImageNameW per Windows\nTerminal process, rather than loading executable paths for every\nprocess. A Windows Terminal ancestor decides the version; otherwise\nall running instances must agree. Unpackaged installs, WSL and\ndisagreeing instances keep the bare name.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-13T08:50:22-07:00",
+          "tree_id": "ed969fa7389faafecdfaf972c4f14725a289755b",
+          "url": "https://github.com/l1a/retch/commit/75c9e6d408838b4b8ecc204d8cc2836a5327d716"
+        },
+        "date": 1789314712990,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 168407792.0
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1534139052.0
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 66662866.0
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 116576585.99999999
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 331257119.99999994
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1673641630.0
           }
         ]
       }
