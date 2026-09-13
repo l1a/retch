@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789315099561,
+  "lastUpdate": 1789315326667,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -21148,70 +21148,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "0fb38978e0182c24717fea4d8b4a80047b15d233",
-          "message": "Make packaging/aur the source, not a stale copy (#196)\n\npackaging/aur/PKGBUILD was a reference copy that nothing rendered, published or\nchecked. It reached eleven releases of lag (0.6.12 in-repo against 0.6.23\npublished), and because the copy was inert the live AUR PKGBUILD kept two\nman-page defects long after they were fixed here — Arch installs got a page\nfooted $DATE / retch $pkgver the whole time.\n\npackaging/aur is now the source. aur-bump renders it from a released tag,\naur-publish pushes exactly those files, and .SRCINFO is tracked and generated\nby a real makepkg --printsrcinfo in a container (no host here runs Arch).\nCarried over from rusticprofile: write to a temp file and move it into place so\na failure cannot truncate the committed file, check the output content rather\nthan the exit code, and mount :z never :Z.\n\nscripts/aur_check.py is the anti-drift guard and just check depends on it. It\ncompares the pair field-by-field including the expanded source URL, so it\ncatches a pair that agrees on the version and disagrees on the checksum — the\nshape that breaks on the user's machine and nowhere else. Pure Python, so it\nruns on Windows; parses rather than sourcing the PKGBUILD, and raises rather\nthan expanding unknown variables to empty.\n\nVerified end to end: the generated .SRCINFO came out byte-identical to the one\nhand-written and pushed to the AUR earlier today, and AUR_CONFIRM=n\njust aur-publish exercised every preflight check without publishing.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-14T10:43:28-07:00",
-          "tree_id": "0dcac6b08b8ab4bb34654fbcf6096f083db1f748",
-          "url": "https://github.com/l1a/retch/commit/0fb38978e0182c24717fea4d8b4a80047b15d233"
-        },
-        "date": 1786731841478,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 181.0637903146159,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9479788413105465,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 96.89705303100894,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 83.69347795492641,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45032.96450167777,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 485.9090329851821,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 748.7142302049091,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3253555905,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "9b8bcc71daafe3d38abb8ba9085195eef680d68f",
           "message": "Native Media and Player Detection (#197)\n\n* Add native media and player detection fields\n\nImplement 100% native FFI / direct socket media and player detection with zero subprocess forks across Windows (WinRT COM GlobalSystemMediaTransportControlsSessionManager via combase.dll), Linux (direct Unix domain socket D-Bus MPRIS client), and macOS (Objective-C runtime SBApplication FFI).\n\nAdds 'player' and 'media' to FIELDS registry (Mode::Long, available in --long and --full). Strata golden counts Long 52 -> 54, Full 58 -> 60. Regenerated man page, updated README.md, docs/retch.1.md, NOTES.md, WIP.md, and GitHub wiki.\n\nAssisted-By: Gemini 2.5 Flash\n\n* Fix Rust 1.97 Clippy lints in media.rs\n\nAssisted-By: Antigravity",
           "timestamp": "2026-08-16T19:19:02-07:00",
@@ -24331,6 +24267,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 476502860,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "254c13ee1e7b32c07102981c7435107fa552f75c",
+          "message": "Detect Windows Terminal in the terminal field (#248)\n\n`terminal` printed nothing on Windows Terminal. Two causes: WT_SESSION\nwas never read, and the process-tree table's capitalised \"Terminal\"\nentry was compared against a lowercased name, so it never matched.\n\nThe tree walk now has a Windows Terminal entry, and WT_SESSION is the\nfallback after it (child processes inherit it; Windows Terminal\nforwards it into WSL via WSLENV). Apple's Terminal is matched exactly,\nso a substring cannot shadow xfce4-terminal. Precedence lives in a\npure resolve_terminal, unit-tested with an injected environment and\nancestor list.\n\nAlso: the man page no longer claims `terminal` reports a version, and\nAGENTS.md says to apply the attribution rule without comment.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-13T08:21:23-07:00",
+          "tree_id": "393d0fab08e397b977ab21949d6bff6b822a857e",
+          "url": "https://github.com/l1a/retch/commit/254c13ee1e7b32c07102981c7435107fa552f75c"
+        },
+        "date": 1789315322512,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 184.97838834622593,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9481422506453487,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 103.23842731686678,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 80.49177430895016,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46011.332832930035,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 490.1933501815296,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 733.9486171938283,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 562171900,
             "unit": "ns"
           }
         ]
