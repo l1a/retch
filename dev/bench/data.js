@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789313707347,
+  "lastUpdate": 1789314155248,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14190,80 +14190,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "9b8bcc71daafe3d38abb8ba9085195eef680d68f",
-          "message": "Native Media and Player Detection (#197)\n\n* Add native media and player detection fields\n\nImplement 100% native FFI / direct socket media and player detection with zero subprocess forks across Windows (WinRT COM GlobalSystemMediaTransportControlsSessionManager via combase.dll), Linux (direct Unix domain socket D-Bus MPRIS client), and macOS (Objective-C runtime SBApplication FFI).\n\nAdds 'player' and 'media' to FIELDS registry (Mode::Long, available in --long and --full). Strata golden counts Long 52 -> 54, Full 58 -> 60. Regenerated man page, updated README.md, docs/retch.1.md, NOTES.md, WIP.md, and GitHub wiki.\n\nAssisted-By: Gemini 2.5 Flash\n\n* Fix Rust 1.97 Clippy lints in media.rs\n\nAssisted-By: Antigravity",
-          "timestamp": "2026-08-16T19:19:02-07:00",
-          "tree_id": "5f6c7da98e5d1a0862003b59cc74c4130d097866",
-          "url": "https://github.com/l1a/retch/commit/9b8bcc71daafe3d38abb8ba9085195eef680d68f"
-        },
-        "date": 1786934421118,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1137309783.45,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 456.86057605582346,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 135.85681045928905,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.973803000241786,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 72.11240954584436,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 4966.603999930255,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1182.1747857605276,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 478.3041738476112,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 84387.6242390168,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 383.0489932308203,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "ed45ec18928bf19b4add811c3f8a567211932073",
           "message": "Add README and crate metadata for retch-sysinfo (#198)\n\nAssisted-By: Antigravity",
           "timestamp": "2026-08-16T19:39:49-07:00",
@@ -17873,6 +17799,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 342.1830439979576,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "254c13ee1e7b32c07102981c7435107fa552f75c",
+          "message": "Detect Windows Terminal in the terminal field (#248)\n\n`terminal` printed nothing on Windows Terminal. Two causes: WT_SESSION\nwas never read, and the process-tree table's capitalised \"Terminal\"\nentry was compared against a lowercased name, so it never matched.\n\nThe tree walk now has a Windows Terminal entry, and WT_SESSION is the\nfallback after it (child processes inherit it; Windows Terminal\nforwards it into WSL via WSLENV). Apple's Terminal is matched exactly,\nso a substring cannot shadow xfce4-terminal. Precedence lives in a\npure resolve_terminal, unit-tested with an injected environment and\nancestor list.\n\nAlso: the man page no longer claims `terminal` reports a version, and\nAGENTS.md says to apply the attribution rule without comment.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-13T08:21:23-07:00",
+          "tree_id": "393d0fab08e397b977ab21949d6bff6b822a857e",
+          "url": "https://github.com/l1a/retch/commit/254c13ee1e7b32c07102981c7435107fa552f75c"
+        },
+        "date": 1789314152326,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1117964674.9,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 619.7719982448226,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 163.04070290626584,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9540183649582765,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 94.01588107241004,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5372.3825595932885,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1597.0892457785214,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 579.7542971117073,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 102969.33919948732,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 551.404362959731,
             "unit": "ns"
           }
         ]
