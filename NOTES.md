@@ -117,7 +117,51 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.6)
+## Current State (v0.17.7)
+- **v0.17.7 - `terminal` names Windows Terminal, which it never had**
+  (`crates/sysinfo/src/terminal.rs`). Closes the §6a item v0.17.6 found: on arrakis retch
+  printed no `Terminal` line in any mode, while fastfetch printed
+  `Windows Terminal 1.24.11911.0` on the same machine. The installed v0.17.5 binary confirmed
+  the gap before anything changed.
+  - **Two independent causes, and on this machine fixing either alone was not enough.**
+    1. **`WT_SESSION` was never read.** `detect_terminal` returned early only for
+       `TERM_PROGRAM`, `TERMINAL_EMULATOR` and Alacritty's variables, none of which Windows
+       Terminal sets.
+    2. **The process-tree table could not match.** Its `"Terminal"` entry was capitalised
+       and compared against a *lowercased* process name, so it never matched anything - and
+       there was no Windows Terminal entry at all.
+  - **Why the tree walk alone does not cover it, measured.** From this repo's agent session
+    the chain above retch is `pwsh -> cmd -> claude -> cmd -> nu -> WindowsTerminal.exe`, one
+    past the six-process walk. Typed straight into a tab, `WindowsTerminal.exe` is two levels
+    up and the corrected table finds it; `WT_SESSION` covers the deep case. **Removing
+    `WT_SESSION` from the live run returns nothing**, which is what shows the variable is
+    doing the work there, not the table.
+  - **The tree walk comes first and `WT_SESSION` second.** Child processes inherit the
+    variable, so a terminal launched *from* a Windows Terminal tab still carries it, and an
+    ancestor that really is a terminal is the stronger evidence. It is deliberately **not**
+    Windows-only: Windows Terminal sets `WSLENV=WT_SESSION:WT_PROFILE_ID:` (read from the live
+    environment), so the variable reaches WSL, where no process walk can see the Windows side.
+  - **The obvious one-character fix was wrong.** Lowercasing `"Terminal"` would have made it a
+    substring match sitting *ahead of* `xfce4-terminal` in the table, and it also matches
+    `windowsterminal.exe`, so both would have reported a bare `terminal`. Apple's Terminal is
+    now matched exactly, as the process name it really is.
+  - **Precedence moved into a pure `resolve_terminal(env, ancestors)`**, with names from a
+    pure `terminal_from_process_name`, so the order is unit-tested with an injected
+    environment and ancestor list - including this machine's verbatim agent chain. 4 new
+    tests, **watched failing three ways**: dropping the `WT_SESSION` fallback, the naive
+    substring fix, and re-capitalising the Windows Terminal pattern (the original bug's
+    shape) each fail two of them. The file was restored byte-identical after each.
+  - **Side effect, verified live**: `"Windows Terminal"` is the label
+    `detect_terminal_theme`'s Windows branch already matched, so `Terminal Theme: Campbell`
+    now reports on arrakis as well.
+  - **The man page said `terminal` reports a name and version. It never reported a
+    version** - nothing reads `TERM_PROGRAM_VERSION`. Corrected. fastfetch does print
+    Windows Terminal's version; matching that is a possible follow-up, not done here.
+  - Every other terminal is unchanged: same labels, same precedence, same six-process bound.
+  - `AGENTS.md` §1: the attribution rule now says to apply it without comment rather than
+    re-raise the harness conflict every session (owed since v0.17.6, at the user's request).
+  - `retch-sysinfo` -> `0.1.74` (library behaviour change); `retch-cli` -> `0.17.7`. Patch
+    bump - a bug fix.
 - **v0.17.6 - Windows `--full` is faster than fastfetch: `gamepad` stops spawning
   PowerShell, and `shell`'s version spawn leaves the critical path**
   (`crates/sysinfo/src/gamepad.rs`, `crates/sysinfo/src/win_setupapi.rs`,
@@ -3535,15 +3579,15 @@ Windows 11, Windows Terminal).
   entry held: the second cause was found by absolute elapsed-time marks, not by any
   `--fields` sweep. See the v0.17.6 entry.
 
+- ~~**`terminal` reports nothing on Windows Terminal**~~ — fixed v0.17.7. Both causes this
+  entry named were real — `WT_SESSION` was never read, and the capital-T `"Terminal"` table
+  entry could never match a lowercased name — and reading `WT_SESSION` alone would **not**
+  have been enough: from a nested shell Windows Terminal sits past the six-process walk, and
+  typed into a tab it is found by the tree rather than the variable. The tree now has a
+  Windows Terminal entry, `WT_SESSION` is the fallback after it, and Apple's Terminal is an
+  exact match so it cannot shadow `xfce4-terminal`. See the v0.17.7 entry.
+
 **Open**
-- **`terminal` reports nothing on Windows Terminal** (found in v0.17.6;
-  `terminal.rs::detect_terminal`). On arrakis retch prints no `Terminal` line in any mode,
-  while fastfetch prints one on the same machine. `detect_terminal` returns early only for
-  `TERM_PROGRAM`, `TERMINAL_EMULATOR` and the Alacritty variables — Windows Terminal sets
-  `WT_SESSION` instead — and its process-tree fallback lists `"Terminal"` with a capital T
-  while comparing against a *lowercased* process name, so that entry can never match
-  anything. Not fixed in v0.17.6, which was a performance change; reading `WT_SESSION` is
-  the obvious first step.
 - **Logo renders above the text, not beside it (upper-right)** on Windows Terminal
   (CLI/rendering, retch-cli `src/`). Likely terminal-detection / cursor-positioning specific
   to Windows Terminal.
