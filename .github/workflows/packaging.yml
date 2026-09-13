@@ -44,6 +44,17 @@ permissions:
   contents: read
 
 jobs:
+  # Every channel's description and licence against packaging/metadata.toml. Offline and
+  # cheap. `just check` runs it locally, but CI invokes cargo directly and never `just` --
+  # the same reason the `copr` and `brew` jobs run their guard scripts explicitly -- so
+  # without this job a PR could drift a channel's text past CI.
+  metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Channel descriptions and licences agree with packaging/metadata.toml
+        run: python3 scripts/metadata_check.py --self-test && python3 scripts/metadata_check.py
+
   nixpkgs:
     runs-on: ubuntu-latest
     if: false  # disabled: nixpkgs PR declined due to lack of popularity

@@ -1,5 +1,5 @@
 {
-  description = "Fast system fetcher with high-quality ASCII & graphical logos, theming, and short/long output modes.";
+  description = "A fast, feature-rich system information fetcher written in Rust";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

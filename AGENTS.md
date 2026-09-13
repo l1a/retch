@@ -309,6 +309,17 @@ Clone `https://github.com/l1a/retch.wiki.git`, edit the relevant pages, and push
 - [ ] `packaging/nixpkgs/package.nix` is the one target still pinned by hand, deliberately:
       that channel is undecided and its CI job is `if: false`. Check whether it needs
       `just nix-update` only if a nixpkgs submission is actually happening.
+- [ ] **Channel text is part of publishing each channel.** `packaging/metadata.toml` holds the
+      one-line summary, the Homebrew `desc`, the licence, the GitHub description and topics,
+      and the COPR project-page files; `just check` (`metadata-check`) fails when
+      `Cargo.toml`, the PKGBUILD, the spec, the formula or the Nix files drift from it. Text
+      an artifact carries (crates.io description and README, AUR `pkgdesc`, RPM
+      `%description`, the tap's `desc`) ships with that channel's publish step. The COPR
+      project page is pushed by `copr.yml` on the tag, and GitHub's About box by
+      `just github-metadata` after it. **Before tagging, read the READMEs and those files
+      for claims that are no longer true** — the guard proves the copies agree, not that
+      they are right; the v0.17.9 review found a README flag that does not exist and a
+      crates.io example that did not compile.
 - [ ] History, for anyone reading an old commit: releases up to v0.9.10 committed the
       packaging bump straight to `main` believing the gate made a PR impossible (it did
       not); v0.9.12 turned it into a gated PR via `just post-release`; and the bump itself

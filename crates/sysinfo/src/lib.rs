@@ -19,6 +19,7 @@
 //! - [`display`] — Display detection and EDID parsing.
 //! - [`gamepad`] — Gamepad and joystick controller detection.
 //! - [`gpu`] — GPU detection and PCI ID lookup.
+//! - [`gpu_api`] — Vulkan, OpenGL and OpenCL API version detection.
 //! - [`input`] — Keyboard and pointing-device detection.
 //! - [`io`] — Disk and network I/O throughput sampling.
 //! - [`disk`] — Physical disk model, size, and type detection.
@@ -30,7 +31,7 @@
 //! - [`shell`] — Shell detection and version querying.
 //! - [`terminal`] — Terminal emulator detection and font configuration reading.
 //! - [`theme`] — UI theme, icon, cursor, and font detection.
-//! - [`weather`] — Weather information via wttr.in.
+//! - [`weather`] — Weather information via Open-Meteo.
 //! - [`wm`] — Window manager detection.
 //! - [`fetch`] — Full system information gathering (`SystemInfo`, `CollectOptions`).
 
@@ -77,3 +78,12 @@ pub(crate) mod win_users;
 pub(crate) mod macos_ffi;
 
 pub use fetch::{CollectOptions, SystemInfo};
+
+/// The crate README's code examples, compiled as doctests.
+///
+/// The README is the crates.io page, and its example had stopped compiling without anything
+/// noticing — it borrowed `CollectOptions`, ignored the `Result`, and read plain `String`
+/// fields as `Option`s. Including it here makes `cargo test --workspace` compile it.
+#[doc = include_str!("../README.md")]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;

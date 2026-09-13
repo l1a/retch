@@ -130,7 +130,7 @@ render-check:
     @{{PY}} scripts/render_packaging.py --self-test
 
 # Run strict checks (formatting and linting) as done in CI
-check: standard-check render-check aur-check copr-check brew-check
+check: standard-check render-check aur-check copr-check brew-check metadata-check
     cargo fmt -- --check
     cargo clippy --workspace -- -D warnings
     # Also lint the optional `graphics` feature (base64/image/icy_sixel in src/logo.rs),
@@ -591,6 +591,17 @@ brew-check:
     @{{PY}} scripts/brew_check.py --self-test
     @{{PY}} scripts/brew_check.py
 
+# Every channel's description and licence agrees with packaging/metadata.toml (offline)
+metadata-check:
+    @{{PY}} scripts/metadata_check.py --self-test
+    @{{PY}} scripts/metadata_check.py
+
+# Set the GitHub repository description and topics from packaging/metadata.toml, then read
+# them back. Runs metadata-check first, so text that fails it is never pushed. Pass
+# --dry-run to see the difference without changing anything.
+github-metadata *ARGS:
+    @{{PY}} scripts/metadata_check.py --sync-github {{ARGS}}
+
 #
 # Takes the version for the same reason `aur-publish` does: the formula is a template, and
 # this is the moment the released version and its checksum come into existence. There is no
@@ -718,13 +729,21 @@ brew-publish VERSION:
 #   1. main is green and Cargo.toml says X (bumped by whichever PR landed last)
 #   2. git tag -a vX -m '...' --cleanup=verbatim && git push origin vX
 #        -> the release workflow builds the GitHub Release
-#        -> .github/workflows/copr.yml rebuilds COPR from the tag
+#        -> .github/workflows/copr.yml rebuilds COPR from the tag, and pushes the COPR
+#           project page's description + instructions from packaging/copr/project-*.md
 #   3. just publish              # crates.io; refuses unless HEAD is the tag for X
 #   4. just aur-publish X        # renders + pushes to the AUR      (needs podman)
 #      just brew-publish X       # renders + pushes to the tap
+#   5. just github-metadata      # the repo's About box, from packaging/metadata.toml
 #
 # There is no step that edits a file, and therefore nothing to commit afterwards. Steps 3
 # and 4 still ask before acting: they are public and irreversible.
+#
+# CHANNEL TEXT TRAVELS WITH EACH STEP. crates.io, the AUR, COPR's RPM and the tap read their
+# description from the files they publish, and `just check` (metadata-check) keeps those in
+# step with packaging/metadata.toml. Only the COPR project page and GitHub's About box live on
+# the service rather than in a published file -- nothing ever updated them, which is how both
+# went stale -- so they get steps of their own (2 and 5).
 
 # Merge the active PR, switch to main, pull, delete the branch, and update WIP.md (requires gh)
 merge-pr:
