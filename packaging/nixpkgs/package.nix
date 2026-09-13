@@ -55,7 +55,7 @@ rustPlatform.buildRustPackage rec {
   meta = with lib; {
     description = "A fast, feature-rich system information fetcher written in Rust";
     homepage = "https://github.com/l1a/retch";
-    license = licenses.gpl3Only;
+    license = licenses.gpl3Plus;
     maintainers = with maintainers; [ ];
     mainProgram = "retch";
     platforms = platforms.unix ++ platforms.windows;

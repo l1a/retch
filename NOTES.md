@@ -105,7 +105,11 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
     it is generated from the rendered PKGBUILD by a real `makepkg --printsrcinfo` and
     compared against it field by field before the push.
     COPR needs no manual step: `copr.yml` fires on the **tag** and builds that exact
-    committish, refusing if `Cargo.toml` does not match the tag.
+    committish, refusing if `Cargo.toml` does not match the tag. It also pushes the COPR
+    project page's description and instructions from `packaging/copr/project-*.md`.
+  - **Repository About box** (after the tag): `just github-metadata` sets the GitHub
+    description and topics from `packaging/metadata.toml` and reads them back. Channel text
+    is part of each channel's publish - see the v0.17.9 entry and AGENTS.md §4.9.
     The AUR RPC lags a push by minutes to hours — the git ref is the authoritative check,
     so do not chase a stale `rpc/v5/info` reading.
   - **Publish to tldr-pages upstream** (on hold — do not run):
@@ -117,7 +121,65 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.8)
+## Current State (v0.17.9)
+- **v0.17.9 - channel descriptions are written once, and published with each channel**
+  (`packaging/metadata.toml`, `scripts/metadata_check.py` and `packaging/copr/project-*.md`,
+  all new; `.github/workflows/copr.yml`, `packaging.yml`, `Justfile`, both READMEs, both
+  `Cargo.toml`s, the PKGBUILD, `package.nix`, `flake.nix`, `crates/sysinfo/src/lib.rs`).
+  Docs, metadata and release tooling; no runtime change. At the user's request: updating the
+  README and description text "should be part of the publish process for each target
+  channel".
+  - **The review before this release found drift of every kind at once:**
+    - *README* (the retch-cli crates.io page): `--ascii-only` (the flag is `--ascii-logo`);
+      Windows `phys-mem` via `Win32_PhysicalMemory` (native SMBIOS since v0.3.47); macOS DNS
+      from `/etc/resolv.conf` (SystemConfiguration since v0.17.1); `tldr retch` (the upstream
+      submission was declined, so it finds nothing); graphical logos "via Chafa" (Chafa is the
+      fallback); nothing on terminal detection, graphics APIs, I/O rates or media.
+    - *`retch-sysinfo` README* (its crates.io page): **the example did not compile** - it
+      borrowed `CollectOptions`, ignored the `Result`, and read plain `String` fields as
+      `Option`s. It also claimed "Zero Subprocess Overhead", said Windows GPUs come from
+      "Direct3D/WMI" (they come from the display-adapter registry keys), and its module table
+      lacked `gpu_api` and `io`. `lib.rs`'s docs said weather comes "via wttr.in" (Open-Meteo
+      since v0.3.30).
+    - *Licences*: `package.nix` declared `licenses.gpl3Only` for a GPL-3.0-**or-later**
+      project; the PKGBUILD used the legacy `GPL3` rather than the SPDX identifier.
+    - *Text on the services*: GitHub's About box and `flake.nix` both advertised
+      "short/long output modes" (there are four), and the COPR project page quoted one
+      machine's benchmark numbers from an old release.
+  - **Why it drifted is the finding.** Channel text was written separately in eight places
+    and checked by nothing - and two of them, the COPR project page and GitHub's About box,
+    are not in any file a release publishes, so no release step had ever touched them.
+  - **`packaging/metadata.toml` is now the one place it is written**: the summary, the
+    Homebrew `desc`, the SPDX licence, the GitHub description and topics, and the COPR
+    project-page files. Files a channel publishes keep their own readable copy, and
+    `scripts/metadata_check.py` (`just check`, plus a new `metadata` job in `packaging.yml`,
+    since CI never runs `just`) fails when a copy drifts. Detection rather than templating,
+    deliberately: `Cargo.toml` cannot be templated, and the rest are read by people.
+  - **The guard caught all three in-repo drifts on its first run, before any was fixed** -
+    the PKGBUILD's `GPL3`, `package.nix`'s `gpl3Only` and the flake's stale description - and
+    its self-test's live-repository assertion failed for the same three reasons; both pass
+    now. The same first run also failed a malformed self-test case of mine (the
+    "expect a problem" helper used to assert "still clean", which can never pass); it was
+    removed, since the explicit check after it covers that property.
+  - **It reads bytes, not `read_text()`**: universal-newline decoding turns CRLF into LF on
+    the way in, which would have made the CR check on the COPR text a check that cannot fail.
+  - **Text on the services is pushed at release time.** `copr.yml` runs
+    `copr-cli modify --description/--instructions` from the committed files on every tag -
+    after the guard, before the build (the flags were checked against copr-cli's source, not
+    assumed). `just github-metadata` sets the description, PUTs the topics as an exact list,
+    and reads both back. Topics gain `macos` and `windows`.
+  - **The `retch-sysinfo` README example is now a doctest** (`#[doc = include_str!(...)]`
+    under `#[cfg(doctest)]` in `lib.rs`), so `cargo test --workspace` compiles it - verified,
+    `ReadmeDoctests - compile ... ok`.
+  - crates.io keywords: `retch-cli` -> `system-info`, `fetch`, `fastfetch`, `neofetch`,
+    `cli`; `retch-sysinfo`'s description says what it is rather than whose it is.
+  - **Verification limits, recorded rather than papered over:** the `copr.yml` step runs only
+    on a tag, so its first real run is this release, checked afterwards from the COPR API;
+    and `github-metadata` needs repository-administration permission that the fine-grained
+    PAT may not have - found out at release, not assumed.
+  - `retch-cli` -> `0.17.9`. `retch-sysinfo` stays `0.1.75`: it was never published, so the
+    version crates.io receives carries the corrected README and there is no repo/registry
+    divergence to prevent. Patch bump - docs and tooling.
 - **v0.17.8 - `terminal` reports Windows Terminal's version** (`crates/sysinfo/src/terminal.rs`).
   `Windows Terminal 1.24.11911.0` on arrakis, byte-identical to fastfetch. Follow-up to
   v0.17.7, at the user's request.

@@ -8,9 +8,9 @@ A fast, feature-rich system information fetcher written in Rust.
 ## Status
 
 **Active and usable.**  
-retch is under active development with a working core, rich system information output, theming, config support, and high-quality distro logos (ASCII + graphical via Chafa).
+retch is under active development with a working core, rich system information output, theming, config support, and high-quality distro logos (ASCII, plus graphical logos via the Kitty, iTerm2 and Sixel protocols with a Chafa fallback).
 
-> **Note**: This project was 100% vibe coded using Grok and Gemini. Real programmers are welcome.
+> **Note**: This project was 100% vibe coded using Grok, Gemini and Claude. Real programmers are welcome.
 
 ## Features
 
@@ -26,7 +26,9 @@ retch is under active development with a working core, rich system information o
   - **TPM**: Reports the Trusted Platform Module specification version (`2.0`, `1.2`) from `/sys/class/tpm` (Linux).
   - **Audio Devices**: Detects active audio servers (PipeWire, PulseAudio, ALSA on Linux; CoreAudio on macOS; Windows Audio on Windows).
   - **Disks & Temp**: Measures active disk mounts (hiding loopback/temporary volumes) and temperature sensors.
-  - **Physical Memory (`phys-mem`)**: Per-DIMM type, capacity, and speed via `dmidecode` (Linux, requires root), `system_profiler` (macOS), or `Win32_PhysicalMemory` (Windows). On Linux, shows the module's actual running speed alongside its rated speed when they differ (e.g. `4800 MT/s (rated 6000 MT/s)`, as when XMP/EXPO isn't enabled).
+  - **Disk & Network Throughput**: `disk-io` and `net-io` rates, measured over the run's own collection window rather than a dedicated sleep (Linux, Windows, macOS).
+  - **Graphics APIs**: Vulkan, OpenGL and OpenCL versions from the installed loaders (Linux, Windows, macOS; full mode). Each is simply absent when its loader is not installed.
+  - **Physical Memory (`phys-mem`)**: Per-DIMM type, capacity, and speed via `dmidecode` (Linux, requires root), `system_profiler` (macOS), or the SMBIOS table read natively (Windows, no PowerShell and no admin). On Linux, shows the module's actual running speed alongside its rated speed when they differ (e.g. `4800 MT/s (rated 6000 MT/s)`, as when XMP/EXPO isn't enabled).
 - **Advanced Networking & Wireless**:
   - **Network Interfaces**: Outputs IPv4 & IPv6 addresses for active interfaces.
   - **Wi-Fi**: Details SSID, band frequency, channel, link rates (RX/TX on Linux, TX-only on macOS), adapter hardware, and Wi-Fi 7 Multi-Link Operation (MLO) bands.
@@ -35,16 +37,18 @@ retch is under active development with a working core, rich system information o
 - **Software & Desktop Environment**:
   - **Shell Version**: Identifies the *running* shell (process tree, not `$SHELL`) and parses versions (`bash`, `zsh`, `fish`, `nu`, `pwsh`, `elvish`, `tcsh`).
   - **Desktop Environment & WM**: Detects GNOME, KDE, macOS Aqua, Windows, etc. WM is shown separately (e.g. Mutter under GNOME) and suppressed when identical to the DE.
-  - **DNS**: Reports configured nameservers from `/etc/resolv.conf` (Linux/macOS) or system DNS settings (Windows).
+  - **DNS**: Reports configured nameservers: from `/etc/resolv.conf` on Linux, from the default route's network service on macOS (so a split-tunnel VPN's resolver is not reported in its place), and from the network adapters on Windows.
+  - **Terminal**: Identifies the terminal emulator from its own environment variables, then the process tree. Windows Terminal is also recognised through `WT_SESSION` (including inside WSL) and reported with its Store package version, e.g. `Windows Terminal 1.24.11911.0`.
   - **Terminal Size**: Reports terminal dimensions (columns × rows).
   - **UI Themes & Styling**: Concurrently resolves GTK2/3/4 or Qt global settings, icon packs, cursors, and system fonts (macOS/Windows/Linux-compatible).
   - **Package Counts**: Counts packages across many managers (`dpkg`, `rpm`, `pacman`, `flatpak`, `snap`, `homebrew`, `scoop`, `chocolatey`, `macports`).
+  - **Media & Player**: The active media player, its playback state and the current track, through native APIs (WinRT on Windows, a direct D-Bus connection on Linux, the Objective-C runtime on macOS) rather than `playerctl` or `osascript`.
 - **Logo Rendering Modes**:
   - **ASCII art**: High-quality color ASCII art matching your distro (adapted from Fastfetch).
   - **Graphical images**: Inline image rendering support via Kitty protocol, iTerm2, and Sixel.
   - **Unicode symbols fallback**: Graphical rendering using Chafa when full image protocols are unavailable.
   - **Auto-suppressed when piped**: Logo is never printed when stdout is not a terminal (e.g. `retch | bat` or `retch > file`).
-  - **Interactive CLI tools**: Command flags like `--ascii-only`, `--logo <NAME>` to force overrides, `--print-logos`, and `--list-distros`.
+  - **Interactive CLI tools**: Command flags like `--ascii-logo`, `--chafa-logo`, `--no-logo`, `--logo <NAME>` to force overrides, `--print-logos`, and `--list-distros`.
 - **Flexible Theming**:
   - Built-in community color schemes (Catppuccin Latte/Frappé/Macchiato/Mocha, Solarized Light/Dark) or automatic dark/light preference detection.
   - Full hex code (`#RRGGBB`) color support for custom theme creation.
@@ -169,16 +173,16 @@ retch
 Output modes:
 
 ```sh
-retch --short   # hardware snapshot: OS, CPU, GPU, Memory, Disk
+retch --short   # hardware snapshot: host, OS, kernel, CPU, GPU, memory, disk, network
 retch           # standard: daily-use system overview
 retch --long    # diagnostics: firmware, thermals, shell, network, battery, …
 retch --full    # everything: theme, gamepad, weather, FUSE mounts, all sensors
 ```
 
-Force ASCII-only output:
+Force the ASCII logo (even where graphical logos are supported):
 
 ```sh
-retch --ascii-only
+retch --ascii-logo
 ```
 
 Override distribution logo:
@@ -242,10 +246,7 @@ Retch provides standard documentation and quick-reference guides:
   ```sh
   man retch
   ```
-- **TL;DR Page**: Display common command usage examples (using a `tldr` client like `tealdeer` or `tldr`):
-  ```sh
-  tldr retch
-  ```
+- **TL;DR Page**: [`docs/retch.md`](docs/retch.md) holds a page in tldr-pages format. It is not yet in the upstream tldr-pages collection, so `tldr retch` will not find it until it is.
 
 ## Configuration
 

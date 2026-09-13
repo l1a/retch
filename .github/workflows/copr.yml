@@ -1,6 +1,7 @@
 name: COPR Rebuild
 
-# Triggers a rebuild of the COPR package when a release is tagged.
+# Triggers a rebuild of the COPR package when a release is tagged, and pushes the COPR
+# project page's description and instructions from packaging/copr/project-*.md.
 #
 # THE TRIGGER USED TO BE A PACKAGING COMMIT, AND THE REASON IS WORTH KEEPING.
 #
@@ -98,6 +99,27 @@ jobs:
           } > ~/.config/copr
           chmod 600 ~/.config/copr
           echo "skip=false" >> "$GITHUB_ENV"
+
+      # THE COPR PROJECT PAGE IS THE ONE PIECE OF COPR TEXT NO BUILD CARRIES.
+      #
+      # The spec's Summary/%description ship inside the RPM, but the description and install
+      # instructions shown on copr.fedorainfracloud.org are stored on the project itself, and
+      # nothing published them -- so the page drifted, quoting one machine's benchmark numbers
+      # from an old release. They are pushed from the committed files on every release, after
+      # the same guard `just check` runs, so text that fails it is never sent. Before the
+      # build rather than after it: the text is version-independent, and a failed build must
+      # not leave a stale page behind. `$(cat ...)` rather than inline text, because COPR
+      # renders Markdown and a paragraph indented 4 spaces becomes a code block.
+      - name: Sync the COPR project description and instructions
+        if: env.skip != 'true'
+        run: |
+          set -euo pipefail
+          python3 scripts/metadata_check.py
+          copr-cli modify \
+            --description "$(cat packaging/copr/project-description.md)" \
+            --instructions "$(cat packaging/copr/project-instructions.md)" \
+            kentobias/retch
+          echo "COPR project description and instructions synced from packaging/copr/project-*.md"
 
       - name: Rebuild the COPR package
         if: env.skip != 'true'
