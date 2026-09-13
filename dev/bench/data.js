@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789315488716,
+  "lastUpdate": 1789315902090,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14239,80 +14239,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "ed45ec18928bf19b4add811c3f8a567211932073",
-          "message": "Add README and crate metadata for retch-sysinfo (#198)\n\nAssisted-By: Antigravity",
-          "timestamp": "2026-08-16T19:39:49-07:00",
-          "tree_id": "13cd0a580de7afdb2209726aa2a026b4079579a6",
-          "url": "https://github.com/l1a/retch/commit/ed45ec18928bf19b4add811c3f8a567211932073"
-        },
-        "date": 1786935641688,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1298084356.2,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 566.5669526765357,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 144.55214428721538,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.5299088497235624,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 88.2816317250719,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 6051.449350721521,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1650.0436812121873,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 518.9665939399347,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 119208.52391967058,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 459.8365496523993,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -17927,6 +17853,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 551.404362959731,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "75c9e6d408838b4b8ecc204d8cc2836a5327d716",
+          "message": "Report Windows Terminal's package version (#249)\n\n`terminal` now reads `Windows Terminal 1.24.11911.0`, matching\nfastfetch. The version is the MSIX package version, parsed from the\nrunning WindowsTerminal.exe's WindowsApps folder name; the exe's own\nfile-version resource (1.24.2607.10001) is an internal build number\nand is deliberately not used.\n\nThe path comes from one QueryFullProcessImageNameW per Windows\nTerminal process, rather than loading executable paths for every\nprocess. A Windows Terminal ancestor decides the version; otherwise\nall running instances must agree. Unpackaged installs, WSL and\ndisagreeing instances keep the bare name.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-13T08:50:22-07:00",
+          "tree_id": "ed969fa7389faafecdfaf972c4f14725a289755b",
+          "url": "https://github.com/l1a/retch/commit/75c9e6d408838b4b8ecc204d8cc2836a5327d716"
+        },
+        "date": 1789315898933,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1028926833.4,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 530.479322199341,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 186.72116469856059,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.313968287852884,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 81.21376708122102,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5988.769513746962,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1832.4207770446526,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 492.31798438787956,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 106056.79374105754,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 460.2230994470623,
             "unit": "ns"
           }
         ]
