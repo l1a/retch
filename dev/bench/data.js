@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789315326667,
+  "lastUpdate": 1789315488716,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10037,90 +10037,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "ed45ec18928bf19b4add811c3f8a567211932073",
-          "message": "Add README and crate metadata for retch-sysinfo (#198)\n\nAssisted-By: Antigravity",
-          "timestamp": "2026-08-16T19:39:49-07:00",
-          "tree_id": "13cd0a580de7afdb2209726aa2a026b4079579a6",
-          "url": "https://github.com/l1a/retch/commit/ed45ec18928bf19b4add811c3f8a567211932073"
-        },
-        "date": 1786935184140,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 881220733.5,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 991.4095679988501,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 109.88394355041862,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9465344635110724,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 51.67229965612167,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7798.791212161459,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 70374.6665461292,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4764.287259393101,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4893.229934916915,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1032256.7676218168,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 355.83692659824965,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 273.5615613297674,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -14225,6 +14141,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 265.5254666021062,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "75c9e6d408838b4b8ecc204d8cc2836a5327d716",
+          "message": "Report Windows Terminal's package version (#249)\n\n`terminal` now reads `Windows Terminal 1.24.11911.0`, matching\nfastfetch. The version is the MSIX package version, parsed from the\nrunning WindowsTerminal.exe's WindowsApps folder name; the exe's own\nfile-version resource (1.24.2607.10001) is an internal build number\nand is deliberately not used.\n\nThe path comes from one QueryFullProcessImageNameW per Windows\nTerminal process, rather than loading executable paths for every\nprocess. A Windows Terminal ancestor decides the version; otherwise\nall running instances must agree. Unpackaged installs, WSL and\ndisagreeing instances keep the bare name.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-13T08:50:22-07:00",
+          "tree_id": "ed969fa7389faafecdfaf972c4f14725a289755b",
+          "url": "https://github.com/l1a/retch/commit/75c9e6d408838b4b8ecc204d8cc2836a5327d716"
+        },
+        "date": 1789315486794,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1059446016.7,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 987.0930100403821,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 108.41028697752733,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9468575114374405,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 60.7204081810948,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7885.802853285993,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71444.86515531456,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4860.456763296954,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4962.189014016353,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1086581.7578908184,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 350.7116499829844,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 244.83417545546072,
             "unit": "ns"
           }
         ]
