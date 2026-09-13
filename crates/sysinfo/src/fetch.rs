@@ -246,6 +246,19 @@ fn should_probe_load(want_load: bool) -> bool {
     want_load && !cfg!(target_os = "windows")
 }
 
+/// Whether `sys` must be built with the process list.
+///
+/// `procs` counts processes and `audio` consults them, but `shell` and `terminal` depend
+/// on the list just as much: both identify the running program by walking the process
+/// tree up from retch's own pid, and `sys.process(pid)` finds nothing in a list that was
+/// never loaded. Keyed on `procs`/`audio` alone, that walk only worked when one of those
+/// happened to be selected as well, so `--fields shell` on its own fell through to
+/// guessing from the environment — on Windows under PowerShell 7 it reported
+/// `powershell 5.1`, the shell `PSModulePath` implies, instead of the `pwsh` running it.
+fn needs_process_list(procs: bool, audio: bool, shell: bool, terminal: bool) -> bool {
+    procs || audio || shell || terminal
+}
+
 impl SystemInfo {
     /// Collects system information using sysinfo and environment probes.
     ///
@@ -283,7 +296,12 @@ impl SystemInfo {
         {
             refresh_kind = refresh_kind.with_memory(sysinfo::MemoryRefreshKind::everything());
         }
-        if should_collect("procs") || should_collect("audio") {
+        if needs_process_list(
+            should_collect("procs"),
+            should_collect("audio"),
+            should_collect("shell"),
+            should_collect("terminal"),
+        ) {
             refresh_kind = refresh_kind.with_processes(sysinfo::ProcessRefreshKind::nothing());
         }
 
@@ -508,6 +526,7 @@ impl SystemInfo {
             zpool,
             (media, player),
             gpu_apis,
+            shell,
         ) = std::thread::scope(|s| {
             let gpu_handle = if should_collect("gpu") {
                 Some(s.spawn(|| {
@@ -627,6 +646,16 @@ impl SystemInfo {
                 } else {
                     None
                 };
+            // `shell` reports the running shell's version by spawning the shell to ask it,
+            // which on Windows means starting PowerShell — measured at ~570 ms on arrakis.
+            // Until v0.17.6 that ran serially after this scope and was the largest single
+            // cost in `--long` and `--full`; here it overlaps the other probes instead. It
+            // only reads `sys`, as `audio` does.
+            let shell_handle = if should_collect("shell") {
+                Some(s.spawn(|| crate::shell::detect_shell(&sys)))
+            } else {
+                None
+            };
 
             (
                 gpu_handle
@@ -671,6 +700,7 @@ impl SystemInfo {
                 gpu_apis_handle
                     .map(|h| h.join().unwrap_or_default())
                     .unwrap_or_default(),
+                shell_handle.and_then(|h| h.join().ok().flatten()),
             )
         });
 
@@ -712,12 +742,7 @@ impl SystemInfo {
             .unwrap_or_else(|| boot_timestamp.to_string());
         let boot_time = boot_dt;
 
-        // Environment-based info
-        let shell = if should_collect("shell") {
-            crate::shell::detect_shell(&sys)
-        } else {
-            None
-        };
+        // Environment-based info. (`shell` is collected inside the concurrent scope above.)
         let terminal = if should_collect("terminal") {
             crate::terminal::detect_terminal(&sys)
         } else {
@@ -2096,6 +2121,24 @@ mod tests {
         } else {
             assert!(should_probe_load(true));
         }
+    }
+
+    #[test]
+    fn shell_and_terminal_each_load_the_process_list_on_their_own() {
+        // Both walk the process tree from retch's own pid. Before v0.17.6 only `procs` and
+        // `audio` loaded the list, so `--fields shell` alone found no tree to walk and
+        // reported the shell the environment implied rather than the one running retch.
+        assert!(needs_process_list(false, false, true, false), "shell alone");
+        assert!(
+            needs_process_list(false, false, false, true),
+            "terminal alone"
+        );
+        assert!(needs_process_list(true, false, false, false), "procs alone");
+        assert!(needs_process_list(false, true, false, false), "audio alone");
+        assert!(
+            !needs_process_list(false, false, false, false),
+            "no consumer selected: the list must not be loaded"
+        );
     }
 
     use super::*;

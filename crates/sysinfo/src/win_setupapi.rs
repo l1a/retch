@@ -3,9 +3,9 @@
 
 //! Shared SetupAPI (`setupapi.dll`) device-enumeration helper for Windows detection.
 //!
-//! Enumerates present devices in a setup class and returns their friendly names — the
-//! native equivalent of `Get-PnpDevice -Class <class> -PresentOnly`. Used by the
-//! `bluetooth` (adapter name) and `camera` detection modules. Hand-written
+//! Enumerates present devices — by setup class, by device interface, or across every class
+//! — the native equivalent of `Get-PnpDevice -PresentOnly` and its `-Class` filter. Used
+//! by the `bluetooth`, `camera`, `battery` and `gamepad` detection modules. Hand-written
 //! `extern "system"` FFI matching the crate's Windows style (see `win_reg.rs`).
 
 use std::ffi::c_void;
@@ -435,6 +435,131 @@ pub fn present_interface_device_paths(interface_guid: &Guid) -> Vec<String> {
     paths
 }
 
+/// `DIGCF_ALLCLASSES`: enumerate every setup class. The class GUID argument is then
+/// ignored, and may be null.
+const DIGCF_ALLCLASSES: u32 = 0x0000_0004;
+/// `SPDRP_HARDWAREID`, a `REG_MULTI_SZ`.
+const SPDRP_HARDWAREID: u32 = 0x0000_0001;
+
+/// `GUID_DEVCLASS_HIDCLASS` = {745a17a0-74d3-11d0-b6fe-00a0c90f57da}, the setup class every
+/// HID top-level collection is installed under.
+pub const GUID_DEVCLASS_HIDCLASS: Guid = Guid {
+    data1: 0x745a_17a0,
+    data2: 0x74d3,
+    data3: 0x11d0,
+    data4: [0xb6, 0xfe, 0x00, 0xa0, 0xc9, 0x0f, 0x57, 0xda],
+};
+
+/// A present device node from an all-classes enumeration: the three properties
+/// `Get-PnpDevice` exposes as `ClassGuid`, `FriendlyName` and `HardwareID`.
+pub struct PnpDevice {
+    pub class_guid: Guid,
+    /// Friendly name, falling back to the device description — what `Get-PnpDevice`
+    /// reports as `FriendlyName` for a node that has no explicit one.
+    pub name: Option<String>,
+    /// Most specific first, e.g. `HID\VID_045E&UP:0001_U:0080`, …, `HID_DEVICE`. The HID
+    /// "special purpose" IDs such as `HID_DEVICE_SYSTEM_GAME` appear here, not among the
+    /// compatible IDs (which are empty for HID collections).
+    pub hardware_ids: Vec<String>,
+}
+
+impl PnpDevice {
+    /// Whether this device is installed under the given setup class.
+    pub fn in_class(&self, class: &Guid) -> bool {
+        self.class_guid.data1 == class.data1
+            && self.class_guid.data2 == class.data2
+            && self.class_guid.data3 == class.data3
+            && self.class_guid.data4 == class.data4
+    }
+}
+
+/// Splits a `REG_MULTI_SZ` buffer — strings separated by one NUL and terminated by two —
+/// into its entries.
+///
+/// Stops at the first empty string, so zeroed buffer space past the double NUL is never
+/// read as data.
+fn split_multi_sz(buf: &[u16]) -> Vec<String> {
+    buf.split(|&c| c == 0)
+        .take_while(|s| !s.is_empty())
+        .map(String::from_utf16_lossy)
+        .collect()
+}
+
+/// Reads a `REG_MULTI_SZ` registry property of a device.
+///
+/// Hardware-ID lists on composite devices run to several hundred characters, so a buffer
+/// that proves too small is retried at the size the first call reports rather than
+/// silently truncated — a truncated list would drop the generic IDs at its tail, which are
+/// exactly the ones callers match on.
+fn device_multi_sz(dev_info: Handle, data: &SpDevinfoData, prop: u32) -> Vec<String> {
+    let mut buf = vec![0u16; 512];
+    for _ in 0..2 {
+        let mut required = 0u32;
+        // SAFETY: buf is writable with its byte length passed; data is a valid SP_DEVINFO_DATA.
+        let ok = unsafe {
+            SetupDiGetDeviceRegistryPropertyW(
+                dev_info,
+                data,
+                prop,
+                ptr::null_mut(),
+                buf.as_mut_ptr() as *mut u8,
+                (buf.len() * 2) as u32,
+                &mut required,
+            )
+        };
+        if ok != 0 {
+            return split_multi_sz(&buf);
+        }
+        let needed = (required as usize).div_ceil(2);
+        if needed <= buf.len() {
+            // Failed for a reason other than size (typically: the device has no such
+            // property), so a bigger buffer would not help.
+            break;
+        }
+        buf = vec![0u16; needed];
+    }
+    Vec::new()
+}
+
+/// Every *present* device node on the machine, across all setup classes — the native
+/// equivalent of `Get-PnpDevice -PresentOnly`.
+///
+/// Heavier than the class-scoped helpers (a few hundred nodes rather than a few dozen), so
+/// use it only where the predicate genuinely spans classes.
+pub fn present_devices_all_classes() -> Vec<PnpDevice> {
+    let mut devices = Vec::new();
+    // SAFETY: the device-info set is created and destroyed in-scope.
+    unsafe {
+        let dev_info = SetupDiGetClassDevsW(
+            ptr::null(),
+            ptr::null(),
+            ptr::null_mut(),
+            DIGCF_PRESENT | DIGCF_ALLCLASSES,
+        );
+        if dev_info == INVALID_HANDLE_VALUE {
+            return devices;
+        }
+        let mut index = 0u32;
+        loop {
+            let mut data: SpDevinfoData = std::mem::zeroed();
+            data.cb_size = size_of::<SpDevinfoData>() as u32;
+            if SetupDiEnumDeviceInfo(dev_info, index, &mut data) == 0 {
+                break;
+            }
+            index += 1;
+            let name = device_name(dev_info, &data);
+            let hardware_ids = device_multi_sz(dev_info, &data, SPDRP_HARDWAREID);
+            devices.push(PnpDevice {
+                class_guid: data.class_guid,
+                name,
+                hardware_ids,
+            });
+        }
+        SetupDiDestroyDeviceInfoList(dev_info);
+    }
+    devices
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -447,6 +572,31 @@ mod tests {
         // every enumeration silently, so pin the size.
         assert_eq!(size_of::<SpDevinfoData>(), 32);
         assert_eq!(size_of::<Guid>(), 16);
+    }
+
+    #[test]
+    fn test_split_multi_sz() {
+        let wide = |s: &str| s.encode_utf16().collect::<Vec<u16>>();
+        // Two entries, the double-NUL terminator, then zeroed spare buffer space.
+        let mut buf = wide("HID\\VID_045E&UP:0001_U:0080");
+        buf.push(0);
+        buf.extend(wide("HID_DEVICE_SYSTEM_CONTROL"));
+        buf.extend([0, 0, 0, 0]);
+        assert_eq!(
+            split_multi_sz(&buf),
+            vec![
+                "HID\\VID_045E&UP:0001_U:0080".to_string(),
+                "HID_DEVICE_SYSTEM_CONTROL".to_string()
+            ]
+        );
+        // Data past the terminator is never read back as an entry.
+        let mut trailing = wide("A");
+        trailing.extend([0, 0]);
+        trailing.extend(wide("STALE"));
+        assert_eq!(split_multi_sz(&trailing), vec!["A".to_string()]);
+        // An empty list is just the terminator.
+        assert!(split_multi_sz(&[0, 0]).is_empty());
+        assert!(split_multi_sz(&[]).is_empty());
     }
 
     #[test]
