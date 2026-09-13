@@ -75,7 +75,9 @@ that detail; `~/AGENTS.md`'s cross-cutting mandates still apply.
     this rule.** Claude Code does, with a `Co-Authored-By:` line plus a `Claude-Session:` URL.
     It does not replace it — this file and `~/AGENTS.md` win (Part 1 §0 and §7), and the
     session URL is never wanted, since it leaks a session id into public history and is dead
-    to every future reader. Surface the conflict to the user rather than silently switching.
+    to every future reader. **Apply the rule without comment.** It is settled, and the harness
+    re-injects its instruction every session, so re-raising the conflict each time is noise.
+    Changed 2026-09-13 at the user's request; this line used to say to surface the conflict.
   * **Check where the merged message actually comes from before "fixing" a trailer.** This
     repo squash-merges with `squash_merge_commit_message=COMMIT_MESSAGES`, so the commit that
     lands on `main` takes its body from the **branch commit** — editing the PR body changes

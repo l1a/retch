@@ -143,62 +143,95 @@ fn window_rect_to_size(left: i16, top: i16, right: i16, bottom: i16) -> Option<S
     }
 }
 
-pub(crate) fn detect_terminal(sys: &System) -> Option<String> {
-    if let Ok(prog) = std::env::var("TERM_PROGRAM") {
-        if !prog.is_empty() {
-            return Some(prog);
-        }
+/// How many processes the terminal lookup examines: retch itself and five ancestors.
+const MAX_ANCESTORS: usize = 6;
+
+/// Process-name patterns of known terminal emulators, paired with the name retch reports.
+///
+/// Matched against the *lowercased* process name, so every pattern must be lowercase: an
+/// uppercase pattern can never match anything, which is how a `"Terminal"` entry sat in
+/// this list unmatched until v0.17.7. Apple's Terminal is handled separately, in
+/// [`terminal_from_process_name`].
+const KNOWN_TERMINALS: &[(&str, &str)] = &[
+    ("kitty", "kitty"),
+    ("alacritty", "alacritty"),
+    ("wezterm", "wezterm"),
+    ("gnome-terminal", "gnome-terminal"),
+    ("konsole", "konsole"),
+    ("iterm2", "iterm2"),
+    ("windowsterminal", "Windows Terminal"),
+    ("rio", "rio"),
+    ("foot", "foot"),
+    ("tilix", "tilix"),
+    ("xfce4-terminal", "xfce4-terminal"),
+    ("terminator", "terminator"),
+    ("st", "st"),
+    ("urxvt", "urxvt"),
+    ("ptyxis", "ptyxis"),
+];
+
+/// Maps a process name to the terminal emulator it identifies, if any.
+///
+/// Case-insensitive, and tolerant of a `.exe` suffix. Apple's Terminal runs as a process
+/// named exactly `Terminal`, so it is matched exactly rather than by substring: a substring
+/// `terminal` would also claim `xfce4-terminal` and `WindowsTerminal.exe`, ahead of their
+/// own entries.
+fn terminal_from_process_name(name: &str) -> Option<&'static str> {
+    let name = name.to_lowercase();
+    if name == "terminal" {
+        return Some("Terminal");
     }
-    if let Ok(prog) = std::env::var("TERMINAL_EMULATOR") {
-        if !prog.is_empty() {
-            return Some(prog);
-        }
+    KNOWN_TERMINALS
+        .iter()
+        .find(|(pattern, _)| {
+            name == *pattern
+                || name.ends_with(pattern)
+                || (name.contains(pattern) && pattern.len() > 3)
+        })
+        .map(|(_, label)| *label)
+}
+
+/// Decides which terminal emulator is running retch.
+///
+/// `env` reads an environment variable and `ancestors` holds process names from retch
+/// upward, nearest first. Both are parameters so the order of precedence is unit-tested
+/// without touching the real environment or process table:
+///
+/// 1. Variables a terminal sets for itself: `TERM_PROGRAM`, `TERMINAL_EMULATOR`, Alacritty's.
+/// 2. A known terminal among the ancestors.
+/// 3. `WT_SESSION`, which Windows Terminal sets. It comes after the tree walk because child
+///    processes inherit it — a terminal launched *from* a Windows Terminal tab still carries
+///    it — and an ancestor that really is a terminal is the stronger evidence. It is still
+///    needed because the walk is bounded: from an agent or a nested shell, Windows Terminal
+///    can sit above the walk's reach (six levels up, measured on arrakis). It is deliberately
+///    not Windows-only: Windows Terminal forwards it into WSL through `WSLENV`, where no
+///    process walk can see the Windows side at all.
+/// 4. `TERM`, when it names something more specific than a generic xterm.
+fn resolve_terminal(env: impl Fn(&str) -> Option<String>, ancestors: &[String]) -> Option<String> {
+    let set = |key: &str| env(key).filter(|value| !value.is_empty());
+
+    if let Some(prog) = set("TERM_PROGRAM") {
+        return Some(prog);
     }
-    if std::env::var("ALACRITTY_LOG").is_ok() || std::env::var("ALACRITTY_WINDOW_ID").is_ok() {
+    if let Some(prog) = set("TERMINAL_EMULATOR") {
+        return Some(prog);
+    }
+    if env("ALACRITTY_LOG").is_some() || env("ALACRITTY_WINDOW_ID").is_some() {
         return Some("alacritty".to_string());
     }
 
-    let current_pid = sysinfo::Pid::from_u32(std::process::id());
-    let mut current_proc = sys.process(current_pid);
-
-    let known_terms = [
-        "kitty",
-        "alacritty",
-        "wezterm",
-        "gnome-terminal",
-        "konsole",
-        "iterm2",
-        "Terminal",
-        "rio",
-        "foot",
-        "tilix",
-        "xfce4-terminal",
-        "terminator",
-        "st",
-        "urxvt",
-        "ptyxis",
-    ];
-
-    let mut depth = 0;
-    while let Some(proc) = current_proc {
-        if depth > 5 {
-            break;
-        }
-        let name = proc.name().to_string_lossy().to_lowercase();
-        for term in &known_terms {
-            if name == *term || name.ends_with(term) || (name.contains(term) && term.len() > 3) {
-                return Some(term.to_string());
-            }
-        }
-        if let Some(parent_pid) = proc.parent() {
-            current_proc = sys.process(parent_pid);
-        } else {
-            break;
-        }
-        depth += 1;
+    if let Some(term) = ancestors
+        .iter()
+        .find_map(|name| terminal_from_process_name(name))
+    {
+        return Some(term.to_string());
     }
 
-    if let Ok(term) = std::env::var("TERM") {
+    if set("WT_SESSION").is_some() {
+        return Some("Windows Terminal".to_string());
+    }
+
+    if let Some(term) = env("TERM") {
         if term != "xterm-256color" && term != "xterm" && term != "linux" && term != "cygwin" {
             if let Some(stripped) = term.strip_prefix("xterm-") {
                 return Some(stripped.to_string());
@@ -208,6 +241,22 @@ pub(crate) fn detect_terminal(sys: &System) -> Option<String> {
     }
 
     None
+}
+
+/// Names the terminal emulator running retch, or `None` when nothing identifies it.
+///
+/// See [`resolve_terminal`] for the order of precedence.
+pub(crate) fn detect_terminal(sys: &System) -> Option<String> {
+    let mut ancestors = Vec::with_capacity(MAX_ANCESTORS);
+    let mut current = sys.process(sysinfo::Pid::from_u32(std::process::id()));
+    while let Some(proc) = current {
+        if ancestors.len() == MAX_ANCESTORS {
+            break;
+        }
+        ancestors.push(proc.name().to_string_lossy().into_owned());
+        current = proc.parent().and_then(|pid| sys.process(pid));
+    }
+    resolve_terminal(|key| std::env::var(key).ok(), &ancestors)
 }
 
 pub(crate) fn detect_terminal_font(terminal: Option<&str>) -> Option<String> {
@@ -842,6 +891,117 @@ pub(crate) fn detect_terminal_theme(terminal: Option<&str>) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Stand-in for the environment in [`resolve_terminal`]: only `vars` are set.
+    fn env_of(vars: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
+        let vars: Vec<(String, String)> = vars
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        move |key: &str| vars.iter().find(|(k, _)| k == key).map(|(_, v)| v.clone())
+    }
+
+    fn names(list: &[&str]) -> Vec<String> {
+        list.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// The process chain above a `retch` launched from an agent session on arrakis,
+    /// verbatim and nearest first, cut at [`MAX_ANCESTORS`] as `detect_terminal` cuts it.
+    /// `WindowsTerminal.exe` was the next process up — one past the walk's reach.
+    const ARRAKIS_AGENT_CHAIN: [&str; MAX_ANCESTORS] = [
+        "retch.exe",
+        "pwsh.exe",
+        "cmd.exe",
+        "claude.exe",
+        "cmd.exe",
+        "nu.exe",
+    ];
+
+    #[test]
+    fn test_terminal_from_process_name() {
+        assert_eq!(
+            terminal_from_process_name("WindowsTerminal.exe"),
+            Some("Windows Terminal")
+        );
+        assert_eq!(terminal_from_process_name("kitty"), Some("kitty"));
+        assert_eq!(
+            terminal_from_process_name("wezterm-gui.exe"),
+            Some("wezterm")
+        );
+        assert_eq!(
+            terminal_from_process_name("gnome-terminal-server"),
+            Some("gnome-terminal")
+        );
+        // Apple's Terminal is matched exactly...
+        assert_eq!(terminal_from_process_name("Terminal"), Some("Terminal"));
+        // ...because a substring `terminal` would claim this one ahead of its own entry.
+        assert_eq!(
+            terminal_from_process_name("xfce4-terminal"),
+            Some("xfce4-terminal")
+        );
+        for name in ARRAKIS_AGENT_CHAIN.iter().chain(&["explorer.exe"]) {
+            assert_eq!(terminal_from_process_name(name), None, "{name}");
+        }
+    }
+
+    #[test]
+    fn test_wt_session_names_windows_terminal_beyond_the_walk() {
+        let chain = names(&ARRAKIS_AGENT_CHAIN);
+        let session = ("WT_SESSION", "3251d862-ff01-4e19-8715-e442e1c9b9bd");
+        assert_eq!(
+            resolve_terminal(env_of(&[session]), &chain),
+            Some("Windows Terminal".to_string())
+        );
+        // Without it that chain identifies nothing, which is what v0.17.6 reported.
+        assert_eq!(resolve_terminal(env_of(&[]), &chain), None);
+        // An empty value is not a session.
+        assert_eq!(
+            resolve_terminal(env_of(&[("WT_SESSION", "")]), &chain),
+            None
+        );
+    }
+
+    #[test]
+    fn test_windows_terminal_found_in_the_process_tree() {
+        // Typed straight into a Windows Terminal tab: no variable needed.
+        let chain = names(&["retch.exe", "nu.exe", "WindowsTerminal.exe"]);
+        assert_eq!(
+            resolve_terminal(env_of(&[]), &chain),
+            Some("Windows Terminal".to_string())
+        );
+    }
+
+    #[test]
+    fn test_terminal_precedence() {
+        let inherited = ("WT_SESSION", "inherited");
+        // A terminal's own variable wins over an inherited WT_SESSION...
+        assert_eq!(
+            resolve_terminal(env_of(&[("TERM_PROGRAM", "WezTerm"), inherited]), &[]),
+            Some("WezTerm".to_string())
+        );
+        assert_eq!(
+            resolve_terminal(env_of(&[("ALACRITTY_WINDOW_ID", "1"), inherited]), &[]),
+            Some("alacritty".to_string())
+        );
+        // ...and so does a terminal that really is an ancestor.
+        assert_eq!(
+            resolve_terminal(env_of(&[inherited]), &names(&["retch", "zsh", "kitty"])),
+            Some("kitty".to_string())
+        );
+        // TERM is the last resort, after WT_SESSION.
+        assert_eq!(
+            resolve_terminal(env_of(&[inherited, ("TERM", "xterm-kitty")]), &[]),
+            Some("Windows Terminal".to_string())
+        );
+        assert_eq!(
+            resolve_terminal(env_of(&[("TERM", "xterm-kitty")]), &[]),
+            Some("kitty".to_string())
+        );
+        assert_eq!(
+            resolve_terminal(env_of(&[("TERM", "xterm-256color")]), &[]),
+            None
+        );
+    }
 
     #[test]
     fn test_window_rect_to_size() {

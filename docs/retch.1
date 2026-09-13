@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.17.6" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.17.7" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -244,7 +244,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]editor\fP`: Default editor from `\f[CR]$VISUAL\fP` / `\f[CR]$EDITOR\fP`\.
 .IP \(bu 4
-`\f[CR]terminal\fP`: Terminal emulator name and version\.
+`\f[CR]terminal\fP`: Terminal emulator name (e\.g\. kitty, WezTerm, Windows Terminal)\. Taken from the terminal's own environment variables, then a walk up the process tree, then `\f[CR]WT_SESSION\fP` (Windows Terminal, including inside WSL), then `\f[CR]$TERM\fP`\.
 .IP \(bu 4
 `\f[CR]terminal\-font\fP`: Terminal emulator active font\.
 .IP \(bu 4
