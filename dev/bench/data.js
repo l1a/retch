@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789317323968,
+  "lastUpdate": 1789317707853,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10091,90 +10091,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "f75989c777d19ce11a71c02c17a50e959cdb94cb",
-          "message": "aur: bump to 0.8.0\n\nAssisted-By: Antigravity",
-          "timestamp": "2026-08-16T19:47:18-07:00",
-          "tree_id": "6e84e4f067d36b437236a783f86e1b1b04a441ca",
-          "url": "https://github.com/l1a/retch/commit/f75989c777d19ce11a71c02c17a50e959cdb94cb"
-        },
-        "date": 1786935742070,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 872864602.6,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 1005.5882187336281,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 109.89291597445379,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946794597777582,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 51.65238926298614,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7934.2828098494165,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 71707.51798106654,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4822.659230928998,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4892.567589725527,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1039828.962229933,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 355.62757634456136,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 275.13230132533965,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -14279,6 +14195,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 244.83417545546072,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5f0611407b4778aaf9ee3f9b59354ea417850436",
+          "message": "Publish channel descriptions with each channel (#250)\n\nChannel text was written in eight places and checked by nothing, and\ntwo of them (the COPR project page and GitHub's About box) live on\nthe services, where no release step reached them. The pre-release\nreview found drift of every kind: a README flag that does not exist,\na crates.io example that did not compile, a Nix licence of gpl3Only\nfor a GPL-3.0-or-later project, and stale output-mode and benchmark\nclaims.\n\npackaging/metadata.toml is now the one source. metadata_check.py\n(`just check`, and a packaging.yml job) fails when a channel's copy\ndrifts; copr.yml pushes the COPR project page on each tag, and\n`just github-metadata` sets the About box. The retch-sysinfo README\nexample is compiled as a doctest.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-13T09:28:26-07:00",
+          "tree_id": "c71512b577c23063ad0f30be66c8ec804d94516a",
+          "url": "https://github.com/l1a/retch/commit/5f0611407b4778aaf9ee3f9b59354ea417850436"
+        },
+        "date": 1789317705446,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 857463833.05,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 973.7606779379342,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 108.45353324425614,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946730134784301,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 60.763213380266755,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7684.64928240908,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70964.15744135909,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4751.024730598124,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4827.933140131821,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1069231.520557555,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 351.40583904151214,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 265.555418948971,
             "unit": "ns"
           }
         ]
