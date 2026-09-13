@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789316462495,
+  "lastUpdate": 1789316936471,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -21148,70 +21148,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "9b8bcc71daafe3d38abb8ba9085195eef680d68f",
-          "message": "Native Media and Player Detection (#197)\n\n* Add native media and player detection fields\n\nImplement 100% native FFI / direct socket media and player detection with zero subprocess forks across Windows (WinRT COM GlobalSystemMediaTransportControlsSessionManager via combase.dll), Linux (direct Unix domain socket D-Bus MPRIS client), and macOS (Objective-C runtime SBApplication FFI).\n\nAdds 'player' and 'media' to FIELDS registry (Mode::Long, available in --long and --full). Strata golden counts Long 52 -> 54, Full 58 -> 60. Regenerated man page, updated README.md, docs/retch.1.md, NOTES.md, WIP.md, and GitHub wiki.\n\nAssisted-By: Gemini 2.5 Flash\n\n* Fix Rust 1.97 Clippy lints in media.rs\n\nAssisted-By: Antigravity",
-          "timestamp": "2026-08-16T19:19:02-07:00",
-          "tree_id": "5f6c7da98e5d1a0862003b59cc74c4130d097866",
-          "url": "https://github.com/l1a/retch/commit/9b8bcc71daafe3d38abb8ba9085195eef680d68f"
-        },
-        "date": 1786935563525,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 179.0638797603917,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.956193042597625,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 98.67536913126996,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.49084923580385,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47167.49465506444,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 489.78692483445604,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 731.3465385988499,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1946138320,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "ed45ec18928bf19b4add811c3f8a567211932073",
           "message": "Add README and crate metadata for retch-sysinfo (#198)\n\nAssisted-By: Antigravity",
           "timestamp": "2026-08-16T19:39:49-07:00",
@@ -24331,6 +24267,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 562171900,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "75c9e6d408838b4b8ecc204d8cc2836a5327d716",
+          "message": "Report Windows Terminal's package version (#249)\n\n`terminal` now reads `Windows Terminal 1.24.11911.0`, matching\nfastfetch. The version is the MSIX package version, parsed from the\nrunning WindowsTerminal.exe's WindowsApps folder name; the exe's own\nfile-version resource (1.24.2607.10001) is an internal build number\nand is deliberately not used.\n\nThe path comes from one QueryFullProcessImageNameW per Windows\nTerminal process, rather than loading executable paths for every\nprocess. A Windows Terminal ancestor decides the version; otherwise\nall running instances must agree. Unpackaged installs, WSL and\ndisagreeing instances keep the bare name.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-13T08:50:22-07:00",
+          "tree_id": "ed969fa7389faafecdfaf972c4f14725a289755b",
+          "url": "https://github.com/l1a/retch/commit/75c9e6d408838b4b8ecc204d8cc2836a5327d716"
+        },
+        "date": 1789316932368,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 185.0265076310871,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9478124281944678,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 103.87075487848438,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.99379002951159,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45916.75399196793,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 488.35091609798366,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 727.3602028361322,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 889798220,
             "unit": "ns"
           }
         ]
