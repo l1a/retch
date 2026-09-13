@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789274956026,
+  "lastUpdate": 1789275439404,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20986,70 +20986,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "120ed8e2e0fe45a624212a8204ae34b082b8c360",
-          "message": "Add keyboard, mouse and tpm fields (#195)\n\n* Add keyboard, mouse and tpm fields\n\nThree NOTES.md section 6 fastfetch-gap fields, all --long and above,\nLinux-only, in the v0.5.0 shape: thin /proc and sysfs readers over pure\nhelpers that unit-test without touching host hardware.\n\nInput classification is exclusive and declines to guess. On a Logitech\nUnifying/Bolt receiver no kernel-visible signal separates a keyboard from\na mouse: handlers, capabilities/rel (0x1943 on both), the alphabet key\nblock, INPUT_PROP, udev ID_INPUT_* (POINTINGSTICK on both), USB HID\nbInterfaceProtocol and the HID report descriptor itself are all identical\nfor an MX Keys and an MX Master 3. fastfetch 2.66 gets this wrong in both\ndirections on that hardware. Ambiguous devices are resolved via the HID++\ndriver's battery model_name and, failing that, reported in neither field\nrather than asserted into the wrong one.\n\ntpm reads tpm_version_major and maps it to the published spec names\n(1 -> 1.2, 2 -> 2.0), returning None for anything unrecognised.\n\nAlso refresh packaging/aur/PKGBUILD, stranded at 0.6.12 for eleven\nreleases while the AUR moved to 0.6.23, and drop its man-page\nregeneration: the font-strip sed never matched on any platform (GNU sed\nreads \\\\f as a form feed) and $DATE/$pkgver were literal inside double\nquotes, so the installed footer read \"retch $pkgver\". The committed\ndocs/retch.1 ships in the tarball with the correct footer, so package()\ninstalls it directly and the mandown makedepend is gone.\n\nStrata golden counts move Long 49->52, Full 55->58. 11 new unit tests.\nVerified live on corrino (Fedora 44, i7-1360P).\n\nAssisted-By: Claude Opus 5\n\n* Close two holes in the aur CI job\n\nThe job rewrote source= and sha256sums= to build from local sources, so the\ndeclared checksum was never checked by anything — a stale one (as this\nPKGBUILD carried for eleven releases) stayed green and would only fail for\nsomeone installing from the AUR. Verify it against the real tag tarball\nbefore that patching, refusing a committed SKIP and skipping cleanly when the\ntag is not published yet.\n\nNothing inspected the packaged man page either, which is where both defects\nthis branch fixes actually showed. Assert the built package's .TH line carries\nno literal $ and a real retch <version> footer, and that no doubled font runs\nsurvive.\n\nAlso stop pre-installing mandown, so makedepends is load-bearing: makepkg -s\ninstalls what the PKGBUILD declares and nothing else.\n\nAssisted-By: Claude Opus 5\n\n* Fix the man-page check failing on a correct package\n\nThe new verification step used `bsdtar -tf \"$pkg\" | grep -qx …` under\n`set -o pipefail`. grep -q exits on its first match, bsdtar takes SIGPIPE and\nexits 141, and pipefail turns that into a failed pipeline — so the step\nreported the man page missing exactly when it was present, and CI went red on\na package that was correct. head -1 and grep -m1 carry the same hazard.\n\nMaterialise the listing and the page to files and grep those; select the\npackage with find -print -quit. Verified against a good package and against\npurpose-built broken ones (missing page, literal $ footer, doubled font runs).\n\nAssisted-By: Claude Opus 5\n\n* Match the gzipped man page makepkg actually ships\n\nmakepkg's zipman option is on by default, so the packaged path is\nusr/share/man/man1/retch.1.gz. The verification step looked for retch.1 and\nreported it missing — the check wrong again, the package correct again.\n\nMatch retch.1 with an optional .gz/.zst/.xz/.bz2 suffix and decompress before\ninspecting. Tested against gzipped, uncompressed, and gzipped-but-broken\npackages.\n\nThe diagnostic added in the previous commit is what made this cheap: printing\nthe real usr/share listing on failure named retch.1.gz directly in the CI log.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-14T09:49:12-07:00",
-          "tree_id": "274aff11102cf1108fb49cbe2f4d8beedda7b477",
-          "url": "https://github.com/l1a/retch/commit/120ed8e2e0fe45a624212a8204ae34b082b8c360"
-        },
-        "date": 1786728506254,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 181.1000409058924,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9558136256730108,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 98.38216050825166,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 83.34008410484556,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46734.587662465245,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 497.93314820999285,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 749.650839144773,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2195085910,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "0fb38978e0182c24717fea4d8b4a80047b15d233",
           "message": "Make packaging/aur the source, not a stale copy (#196)\n\npackaging/aur/PKGBUILD was a reference copy that nothing rendered, published or\nchecked. It reached eleven releases of lag (0.6.12 in-repo against 0.6.23\npublished), and because the copy was inert the live AUR PKGBUILD kept two\nman-page defects long after they were fixed here — Arch installs got a page\nfooted $DATE / retch $pkgver the whole time.\n\npackaging/aur is now the source. aur-bump renders it from a released tag,\naur-publish pushes exactly those files, and .SRCINFO is tracked and generated\nby a real makepkg --printsrcinfo in a container (no host here runs Arch).\nCarried over from rusticprofile: write to a temp file and move it into place so\na failure cannot truncate the committed file, check the output content rather\nthan the exit code, and mount :z never :Z.\n\nscripts/aur_check.py is the anti-drift guard and just check depends on it. It\ncompares the pair field-by-field including the expanded source URL, so it\ncatches a pair that agrees on the version and disagrees on the checksum — the\nshape that breaks on the user's machine and nowhere else. Pure Python, so it\nruns on Windows; parses rather than sourcing the PKGBUILD, and raises rather\nthan expanding unknown variables to empty.\n\nVerified end to end: the generated .SRCINFO came out byte-identical to the one\nhand-written and pushed to the AUR earlier today, and AUR_CONFIRM=n\njust aur-publish exercised every preflight check without publishing.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-14T10:43:28-07:00",
@@ -24169,6 +24105,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1163118520,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "883b970886efaf1f60302a9b018f474ee5410ab7",
+          "message": "Make Windows --full faster than fastfetch (#247)\n\ngamepad no longer spawns PowerShell on Windows: one SetupAPI\nall-classes enumeration applies the same predicate the Get-PnpDevice\npipeline did (--fields gamepad 2.02 s -> 104 ms).\n\nshell's version probe spawns the shell (~570 ms on Windows) and ran\nserially after the concurrent scope in every --long and --full run.\nIt now runs inside the scope. The process list is also loaded for\nshell and terminal, so --fields shell on its own no longer reports\npowershell 5.1 under PowerShell 7.\n\nMedians on arrakis: --full 1314 ms vs fastfetch -c all 1468 ms\n(was 3226 vs 1732 ms); --long 424 vs 1488 ms.\n\nNOTES: the v0.17.6 entry; 6a's --full item moved to Fixed; a new 6a\nOpen item for terminal on Windows Terminal; the COPR .git correction\nowed since v0.17.5; and 5's \"do not chase shell\" struck as wrong.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-12T21:20:51-07:00",
+          "tree_id": "14dc612e91a0070cf52b51ad0bc42d08a2c19979",
+          "url": "https://github.com/l1a/retch/commit/883b970886efaf1f60302a9b018f474ee5410ab7"
+        },
+        "date": 1789275435742,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 183.24952614067547,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948377439598665,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 105.01749105333074,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 82.31646026237097,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47128.19248461374,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 491.96775247621935,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 755.6393761712181,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 476502860,
             "unit": "ns"
           }
         ]
