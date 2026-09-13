@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789315902090,
+  "lastUpdate": 1789316462495,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17941,70 +17941,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "ed45ec18928bf19b4add811c3f8a567211932073",
-          "message": "Add README and crate metadata for retch-sysinfo (#198)\n\nAssisted-By: Antigravity",
-          "timestamp": "2026-08-16T19:39:49-07:00",
-          "tree_id": "13cd0a580de7afdb2209726aa2a026b4079579a6",
-          "url": "https://github.com/l1a/retch/commit/ed45ec18928bf19b4add811c3f8a567211932073"
-        },
-        "date": 1786936239198,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 221.13252046273246,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.034258465882232,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 120.85547357287336,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 98.68228004138714,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 41533.22517970421,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 565.3482077944825,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 841.4947201308341,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2208781890,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -21129,6 +21065,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2226013715,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "75c9e6d408838b4b8ecc204d8cc2836a5327d716",
+          "message": "Report Windows Terminal's package version (#249)\n\n`terminal` now reads `Windows Terminal 1.24.11911.0`, matching\nfastfetch. The version is the MSIX package version, parsed from the\nrunning WindowsTerminal.exe's WindowsApps folder name; the exe's own\nfile-version resource (1.24.2607.10001) is an internal build number\nand is deliberately not used.\n\nThe path comes from one QueryFullProcessImageNameW per Windows\nTerminal process, rather than loading executable paths for every\nprocess. A Windows Terminal ancestor decides the version; otherwise\nall running instances must agree. Unpackaged installs, WSL and\ndisagreeing instances keep the bare name.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-13T08:50:22-07:00",
+          "tree_id": "ed969fa7389faafecdfaf972c4f14725a289755b",
+          "url": "https://github.com/l1a/retch/commit/75c9e6d408838b4b8ecc204d8cc2836a5327d716"
+        },
+        "date": 1789316458108,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 225.51934222555843,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 4.570718248710209,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 129.67928454521712,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 99.83180256940933,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 44244.33437241972,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 776.2683962488052,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 895.5471340874686,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1231406095,
             "unit": "ns"
           }
         ]
