@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789314712990,
+  "lastUpdate": 1789314798313,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5796,17 +5796,17 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch",
             "unit": "ns",
-            "value": 168407792.0
+            "value": 168407792
           },
           {
             "name": "CLI execution - fastfetch",
             "unit": "ns",
-            "value": 1534139052.0
+            "value": 1534139052
           },
           {
             "name": "CLI execution - retch --short",
             "unit": "ns",
-            "value": 66662866.0
+            "value": 66662866
           },
           {
             "name": "CLI execution - fastfetch -c none",
@@ -5821,7 +5821,7 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
-            "value": 1673641630.0
+            "value": 1673641630
           }
         ]
       }
@@ -17946,70 +17946,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "9b8bcc71daafe3d38abb8ba9085195eef680d68f",
-          "message": "Native Media and Player Detection (#197)\n\n* Add native media and player detection fields\n\nImplement 100% native FFI / direct socket media and player detection with zero subprocess forks across Windows (WinRT COM GlobalSystemMediaTransportControlsSessionManager via combase.dll), Linux (direct Unix domain socket D-Bus MPRIS client), and macOS (Objective-C runtime SBApplication FFI).\n\nAdds 'player' and 'media' to FIELDS registry (Mode::Long, available in --long and --full). Strata golden counts Long 52 -> 54, Full 58 -> 60. Regenerated man page, updated README.md, docs/retch.1.md, NOTES.md, WIP.md, and GitHub wiki.\n\nAssisted-By: Gemini 2.5 Flash\n\n* Fix Rust 1.97 Clippy lints in media.rs\n\nAssisted-By: Antigravity",
-          "timestamp": "2026-08-16T19:19:02-07:00",
-          "tree_id": "5f6c7da98e5d1a0862003b59cc74c4130d097866",
-          "url": "https://github.com/l1a/retch/commit/9b8bcc71daafe3d38abb8ba9085195eef680d68f"
-        },
-        "date": 1786935039658,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 217.91818884848573,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.363957712658001,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 118.84264789772521,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 103.09795720695647,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 42144.28668497565,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 574.0117497037076,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 836.0443942371636,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2757534655,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "ed45ec18928bf19b4add811c3f8a567211932073",
           "message": "Add README and crate metadata for retch-sysinfo (#198)\n\nAssisted-By: Antigravity",
           "timestamp": "2026-08-16T19:39:49-07:00",
@@ -21129,6 +21065,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2163155000,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "254c13ee1e7b32c07102981c7435107fa552f75c",
+          "message": "Detect Windows Terminal in the terminal field (#248)\n\n`terminal` printed nothing on Windows Terminal. Two causes: WT_SESSION\nwas never read, and the process-tree table's capitalised \"Terminal\"\nentry was compared against a lowercased name, so it never matched.\n\nThe tree walk now has a Windows Terminal entry, and WT_SESSION is the\nfallback after it (child processes inherit it; Windows Terminal\nforwards it into WSL via WSLENV). Apple's Terminal is matched exactly,\nso a substring cannot shadow xfce4-terminal. Precedence lives in a\npure resolve_terminal, unit-tested with an injected environment and\nancestor list.\n\nAlso: the man page no longer claims `terminal` reports a version, and\nAGENTS.md says to apply the attribution rule without comment.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-13T08:21:23-07:00",
+          "tree_id": "393d0fab08e397b977ab21949d6bff6b822a857e",
+          "url": "https://github.com/l1a/retch/commit/254c13ee1e7b32c07102981c7435107fa552f75c"
+        },
+        "date": 1789314793862,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 236.5245455720828,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.360401807813799,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 133.4190741724385,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 97.29066047489312,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42013.90190195326,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 605.7314742916321,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 844.071831659841,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2226013715,
             "unit": "ns"
           }
         ]
