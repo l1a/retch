@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789276806801,
+  "lastUpdate": 1789312975156,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5714,6 +5714,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1714176660.0000002
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "254c13ee1e7b32c07102981c7435107fa552f75c",
+          "message": "Detect Windows Terminal in the terminal field (#248)\n\n`terminal` printed nothing on Windows Terminal. Two causes: WT_SESSION\nwas never read, and the process-tree table's capitalised \"Terminal\"\nentry was compared against a lowercased name, so it never matched.\n\nThe tree walk now has a Windows Terminal entry, and WT_SESSION is the\nfallback after it (child processes inherit it; Windows Terminal\nforwards it into WSL via WSLENV). Apple's Terminal is matched exactly,\nso a substring cannot shadow xfce4-terminal. Precedence lives in a\npure resolve_terminal, unit-tested with an injected environment and\nancestor list.\n\nAlso: the man page no longer claims `terminal` reports a version, and\nAGENTS.md says to apply the attribution rule without comment.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-13T08:21:23-07:00",
+          "tree_id": "393d0fab08e397b977ab21949d6bff6b822a857e",
+          "url": "https://github.com/l1a/retch/commit/254c13ee1e7b32c07102981c7435107fa552f75c"
+        },
+        "date": 1789312975156,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 163173950.0
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1772631020.0
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 60357482.00000001
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 107197032.00000001
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 301827194.0
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1900149873.9999998
           }
         ]
       }
