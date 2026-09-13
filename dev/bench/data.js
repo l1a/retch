@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789318157787,
+  "lastUpdate": 1789318763855,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17995,70 +17995,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "f75989c777d19ce11a71c02c17a50e959cdb94cb",
-          "message": "aur: bump to 0.8.0\n\nAssisted-By: Antigravity",
-          "timestamp": "2026-08-16T19:47:18-07:00",
-          "tree_id": "6e84e4f067d36b437236a783f86e1b1b04a441ca",
-          "url": "https://github.com/l1a/retch/commit/f75989c777d19ce11a71c02c17a50e959cdb94cb"
-        },
-        "date": 1786936823657,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 217.08180099361925,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.401556345929449,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 129.3377731486873,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 96.15231759684977,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 42350.66031297772,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 598.0674266309597,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 829.0251471238125,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2639676715,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -21183,6 +21119,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1231406095,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5f0611407b4778aaf9ee3f9b59354ea417850436",
+          "message": "Publish channel descriptions with each channel (#250)\n\nChannel text was written in eight places and checked by nothing, and\ntwo of them (the COPR project page and GitHub's About box) live on\nthe services, where no release step reached them. The pre-release\nreview found drift of every kind: a README flag that does not exist,\na crates.io example that did not compile, a Nix licence of gpl3Only\nfor a GPL-3.0-or-later project, and stale output-mode and benchmark\nclaims.\n\npackaging/metadata.toml is now the one source. metadata_check.py\n(`just check`, and a packaging.yml job) fails when a channel's copy\ndrifts; copr.yml pushes the COPR project page on each tag, and\n`just github-metadata` sets the About box. The retch-sysinfo README\nexample is compiled as a doctest.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-13T09:28:26-07:00",
+          "tree_id": "c71512b577c23063ad0f30be66c8ec804d94516a",
+          "url": "https://github.com/l1a/retch/commit/5f0611407b4778aaf9ee3f9b59354ea417850436"
+        },
+        "date": 1789318753168,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 234.01785734414847,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.417571897221129,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 143.38336865929057,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 97.84623386825349,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41875.5996450573,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 620.1985516586074,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 878.8185525662205,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1921814065,
             "unit": "ns"
           }
         ]
