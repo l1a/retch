@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789275439404,
+  "lastUpdate": 1789276806801,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4298,6 +4298,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1091796035.7799997
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "883b970886efaf1f60302a9b018f474ee5410ab7",
+          "message": "Make Windows --full faster than fastfetch (#247)\n\ngamepad no longer spawns PowerShell on Windows: one SetupAPI\nall-classes enumeration applies the same predicate the Get-PnpDevice\npipeline did (--fields gamepad 2.02 s -> 104 ms).\n\nshell's version probe spawns the shell (~570 ms on Windows) and ran\nserially after the concurrent scope in every --long and --full run.\nIt now runs inside the scope. The process list is also loaded for\nshell and terminal, so --fields shell on its own no longer reports\npowershell 5.1 under PowerShell 7.\n\nMedians on arrakis: --full 1314 ms vs fastfetch -c all 1468 ms\n(was 3226 vs 1732 ms); --long 424 vs 1488 ms.\n\nNOTES: the v0.17.6 entry; 6a's --full item moved to Fixed; a new 6a\nOpen item for terminal on Windows Terminal; the COPR .git correction\nowed since v0.17.5; and 5's \"do not chase shell\" struck as wrong.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-12T21:20:51-07:00",
+          "tree_id": "14dc612e91a0070cf52b51ad0bc42d08a2c19979",
+          "url": "https://github.com/l1a/retch/commit/883b970886efaf1f60302a9b018f474ee5410ab7"
+        },
+        "date": 1789276806801,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 439374774.88
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1176868556.48
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 12610247.46
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 55680662.85999999
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 625841182.5000001
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1075836645.9
           }
         ]
       }
