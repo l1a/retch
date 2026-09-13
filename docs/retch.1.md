@@ -149,7 +149,7 @@ You can generate a starting configuration with:
   - `power-adapter`: The attached AC power adapter. Linux reports the supply's **name** and connection state (from `/sys/class/power_supply` `Mains`); macOS reports its **wattage** (from `IOPSCopyExternalPowerAdapterDetails`, e.g. `96W (connected)`), because macOS exposes wattage but no adapter name and Linux the reverse. On macOS the field is absent when nothing is plugged in — that call returns nothing on battery, so absence is the unplugged signal. Linux and macOS. Long mode and above.
   - `shell`: Currently running shell name and version (e.g. bash, zsh, fish, nu). Detected from the process tree; falls back to `$SHELL` (login shell).
   - `editor`: Default editor from `$VISUAL` / `$EDITOR`.
-  - `terminal`: Terminal emulator name (e.g. kitty, WezTerm, Windows Terminal). Taken from the terminal's own environment variables, then a walk up the process tree, then `WT_SESSION` (Windows Terminal, including inside WSL), then `$TERM`.
+  - `terminal`: Terminal emulator name (e.g. kitty, WezTerm, Windows Terminal). Taken from the terminal's own environment variables, then a walk up the process tree, then `WT_SESSION` (Windows Terminal, including inside WSL), then `$TERM`. For a Store install of Windows Terminal the package version is appended (e.g. `Windows Terminal 1.24.11911.0`), read from the running `WindowsTerminal.exe`'s install folder; it is omitted for unpackaged installs, inside WSL, and when running instances disagree on the version.
   - `terminal-font`: Terminal emulator active font.
   - `terminal-size`: Terminal dimensions (columns × rows).
   - `desktop`: Desktop environment name (e.g. GNOME, KDE Plasma, XFCE).

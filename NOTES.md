@@ -117,7 +117,46 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.7)
+## Current State (v0.17.8)
+- **v0.17.8 - `terminal` reports Windows Terminal's version** (`crates/sysinfo/src/terminal.rs`).
+  `Windows Terminal 1.24.11911.0` on arrakis, byte-identical to fastfetch. Follow-up to
+  v0.17.7, at the user's request.
+  - **The obvious source gives the wrong number.** The executable's file-version resource
+    reads `1.24.2607.10001`, an internal build number, while fastfetch reports the MSIX
+    **package** version, `1.24.11911.0`. That exists only in the install folder's name,
+    `…\WindowsApps\Microsoft.WindowsTerminal_1.24.11911.0_x64__8wekyb3d8bbwe\`, so a pure
+    `windows_terminal_package_version` parses it from there. `GetFileVersionInfoW` would have
+    shipped a plausible-looking wrong version.
+  - **The path comes from one targeted call, not from the process list.** retch loads the
+    process list without executable paths (`ProcessRefreshKind::nothing()`), and asking
+    sysinfo for them would open every process on the machine in every mode that loads the
+    list - standard mode included, via `audio`. Instead `QueryFullProcessImageNameW` with
+    `PROCESS_QUERY_LIMITED_INFORMATION` opens only the Windows Terminal processes, and only
+    once the field has already resolved to Windows Terminal. It answers unelevated for a Store
+    app whose `WindowsApps` folder the user cannot even list.
+  - **Which instance.** A Windows Terminal ancestor found by the walk is authoritative - its
+    version or none. When only `WT_SESSION` identified it (the deep-chain case v0.17.7
+    measured), every running `WindowsTerminal.exe` is consulted and a version is reported
+    only if they all agree (pure `unanimous_version`): Stable beside Preview, an instance
+    mid-update, or an unpackaged instance leave the name bare rather than guess. Verified live
+    on exactly that path here: one instance, `1.24.11911.0`.
+  - **Left bare by design**: unpackaged installs (no package folder - including a scoop
+    directory whose name merely *looks* like a version), WSL (no Windows processes are
+    visible), and every non-Windows build.
+  - **No measurable cost.** `--fields terminal` against a 0.17.7 binary, hyperfine 40 runs
+    after 10 warmups, in both orders: **58.7 vs 58.9 ms** and **51.2 vs 50.9 ms** (baseline vs
+    new) - the difference changes sign with the order, so it is noise. The lookup runs only
+    when the field resolves to Windows Terminal, and here that is one process.
+    (A first 25-run pass read "2.45x faster" with a 173 ms sigma on a cold baseline; it was
+    discarded rather than quoted.)
+  - 2 new tests over the pure helpers, using this machine's verbatim path. **Watched failing
+    three ways** - parsing the exe name instead of the package folder, "any instance matches"
+    instead of "all agree", and dropping the four-numeric-parts check each fail their test;
+    the file was restored byte-identical after each.
+  - `detect_terminal_theme` still matches (`contains("windows terminal")`), so
+    `Terminal Theme: Campbell` is unchanged.
+  - `retch-sysinfo` -> `0.1.75`; `retch-cli` -> `0.17.8`. Patch bump - an existing field gains
+    detail, the v0.13.1 precedent.
 - **v0.17.7 - `terminal` names Windows Terminal, which it never had**
   (`crates/sysinfo/src/terminal.rs`). Closes the §6a item v0.17.6 found: on arrakis retch
   printed no `Terminal` line in any mode, while fastfetch printed
