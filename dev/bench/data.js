@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789317002907,
+  "lastUpdate": 1789317323968,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5860,12 +5860,12 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch --short",
             "unit": "ns",
-            "value": 46206776.0
+            "value": 46206776
           },
           {
             "name": "CLI execution - fastfetch -c none",
             "unit": "ns",
-            "value": 99305766.0
+            "value": 99305766
           },
           {
             "name": "CLI execution - retch --long",
@@ -5881,90 +5881,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Linux x64 Benchmarks": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "f75989c777d19ce11a71c02c17a50e959cdb94cb",
-          "message": "aur: bump to 0.8.0\n\nAssisted-By: Antigravity",
-          "timestamp": "2026-08-16T19:47:18-07:00",
-          "tree_id": "6e84e4f067d36b437236a783f86e1b1b04a441ca",
-          "url": "https://github.com/l1a/retch/commit/f75989c777d19ce11a71c02c17a50e959cdb94cb"
-        },
-        "date": 1786935352212,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 853141676.65,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2097.2845713017637,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 121.99698674381666,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.84708776398801,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 57.98325782323853,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 17988.834176007025,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 189017.60838045116,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 12860.765954902772,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 12947.25381536573,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1476376.608658257,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 370.16118660302914,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 288.9300525171577,
-            "unit": "ns"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -10077,6 +9993,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 277.49443080301864,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5f0611407b4778aaf9ee3f9b59354ea417850436",
+          "message": "Publish channel descriptions with each channel (#250)\n\nChannel text was written in eight places and checked by nothing, and\ntwo of them (the COPR project page and GitHub's About box) live on\nthe services, where no release step reached them. The pre-release\nreview found drift of every kind: a README flag that does not exist,\na crates.io example that did not compile, a Nix licence of gpl3Only\nfor a GPL-3.0-or-later project, and stale output-mode and benchmark\nclaims.\n\npackaging/metadata.toml is now the one source. metadata_check.py\n(`just check`, and a packaging.yml job) fails when a channel's copy\ndrifts; copr.yml pushes the COPR project page on each tag, and\n`just github-metadata` sets the About box. The retch-sysinfo README\nexample is compiled as a doctest.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-13T09:28:26-07:00",
+          "tree_id": "c71512b577c23063ad0f30be66c8ec804d94516a",
+          "url": "https://github.com/l1a/retch/commit/5f0611407b4778aaf9ee3f9b59354ea417850436"
+        },
+        "date": 1789317322119,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 674968502.85,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2086.503223094482,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 115.5861608806101,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.815350403324976,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 60.494428829360785,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 18050.420045006,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 187818.7817778937,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12770.188324140876,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 12922.145304997715,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1439600.2669978798,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 380.54373597614637,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 318.2681526400876,
             "unit": "ns"
           }
         ]
