@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.17.7" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.17.8" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -244,7 +244,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]editor\fP`: Default editor from `\f[CR]$VISUAL\fP` / `\f[CR]$EDITOR\fP`\.
 .IP \(bu 4
-`\f[CR]terminal\fP`: Terminal emulator name (e\.g\. kitty, WezTerm, Windows Terminal)\. Taken from the terminal's own environment variables, then a walk up the process tree, then `\f[CR]WT_SESSION\fP` (Windows Terminal, including inside WSL), then `\f[CR]$TERM\fP`\.
+`\f[CR]terminal\fP`: Terminal emulator name (e\.g\. kitty, WezTerm, Windows Terminal)\. Taken from the terminal's own environment variables, then a walk up the process tree, then `\f[CR]WT_SESSION\fP` (Windows Terminal, including inside WSL), then `\f[CR]$TERM\fP`\. For a Store install of Windows Terminal the package version is appended (e\.g\. `\f[CR]Windows Terminal 1\.24\.11911\.0\fP`), read from the running `\f[CR]WindowsTerminal\.exe\fP`'s install folder; it is omitted for unpackaged installs, inside WSL, and when running instances disagree on the version\.
 .IP \(bu 4
 `\f[CR]terminal\-font\fP`: Terminal emulator active font\.
 .IP \(bu 4

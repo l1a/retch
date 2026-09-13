@@ -146,6 +146,9 @@ fn window_rect_to_size(left: i16, top: i16, right: i16, bottom: i16) -> Option<S
 /// How many processes the terminal lookup examines: retch itself and five ancestors.
 const MAX_ANCESTORS: usize = 6;
 
+/// The name retch reports for Windows Terminal, before any version is appended.
+const WINDOWS_TERMINAL: &str = "Windows Terminal";
+
 /// Process-name patterns of known terminal emulators, paired with the name retch reports.
 ///
 /// Matched against the *lowercased* process name, so every pattern must be lowercase: an
@@ -159,7 +162,7 @@ const KNOWN_TERMINALS: &[(&str, &str)] = &[
     ("gnome-terminal", "gnome-terminal"),
     ("konsole", "konsole"),
     ("iterm2", "iterm2"),
-    ("windowsterminal", "Windows Terminal"),
+    ("windowsterminal", WINDOWS_TERMINAL),
     ("rio", "rio"),
     ("foot", "foot"),
     ("tilix", "tilix"),
@@ -228,7 +231,7 @@ fn resolve_terminal(env: impl Fn(&str) -> Option<String>, ancestors: &[String]) 
     }
 
     if set("WT_SESSION").is_some() {
-        return Some("Windows Terminal".to_string());
+        return Some(WINDOWS_TERMINAL.to_string());
     }
 
     if let Some(term) = env("TERM") {
@@ -243,20 +246,143 @@ fn resolve_terminal(env: impl Fn(&str) -> Option<String>, ancestors: &[String]) 
     None
 }
 
+/// Reads Windows Terminal's package version from the path of its executable.
+///
+/// A Store (MSIX) install runs from
+/// `…\WindowsApps\<Name>_<Version>_<Arch>_<ResourceId>_<PublisherId>\WindowsTerminal.exe`,
+/// and `<Version>` is the version Windows Terminal reports for itself — `1.24.11911.0` on
+/// arrakis, matching fastfetch. The executable's own file-version resource says
+/// `1.24.2607.10001` for that same install, an internal build number that matches neither,
+/// so it is deliberately not used. An unpackaged install has no such folder: `None`.
+#[cfg(any(target_os = "windows", test))]
+fn windows_terminal_package_version(image_path: &str) -> Option<String> {
+    let mut components = image_path.rsplit(['\\', '/']);
+    let _exe = components.next()?;
+    let mut fields = components.next()?.split('_');
+    let package_name = fields.next()?;
+    if !package_name
+        .to_ascii_lowercase()
+        .starts_with("microsoft.windowsterminal")
+    {
+        return None;
+    }
+    let version = fields.next()?;
+    let parts: Vec<&str> = version.split('.').collect();
+    let well_formed = parts.len() == 4
+        && parts
+            .iter()
+            .all(|p| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit()));
+    well_formed.then(|| version.to_string())
+}
+
+/// The version every instance agrees on, or `None`.
+///
+/// Used when the process walk did not reach Windows Terminal, so nothing says *which*
+/// running instance hosts retch. Stable beside Preview, an instance mid-update, or an
+/// unpackaged instance (`None`) all leave that open, and the name alone beats a guess.
+#[cfg(any(target_os = "windows", test))]
+fn unanimous_version(versions: &[Option<String>]) -> Option<String> {
+    let first = versions.first()?.as_ref()?;
+    versions
+        .iter()
+        .all(|v| v.as_ref() == Some(first))
+        .then(|| first.clone())
+}
+
+/// Full path of a process's executable, via `QueryFullProcessImageNameW`.
+///
+/// `PROCESS_QUERY_LIMITED_INFORMATION` is the least access that answers, and it is granted
+/// for the user's own processes without elevation — including a Store app under
+/// `WindowsApps`, a directory the user cannot even list. The process list retch loads does
+/// not carry executable paths, and asking sysinfo for them would open every process on the
+/// machine; this opens only the Windows Terminal ones.
+#[cfg(target_os = "windows")]
+fn process_image_path(pid: u32) -> Option<String> {
+    use std::ffi::c_void;
+    const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
+    // Room for the longest NT path (32 767 UTF-16 units) plus the terminator.
+    const MAX_NT_PATH: usize = 32_768;
+
+    // kernel32 is linked by default on the MSVC target.
+    extern "system" {
+        fn OpenProcess(desired_access: u32, inherit_handle: i32, process_id: u32) -> *mut c_void;
+        fn QueryFullProcessImageNameW(
+            process: *mut c_void,
+            flags: u32,
+            exe_name: *mut u16,
+            size: *mut u32,
+        ) -> i32;
+        fn CloseHandle(object: *mut c_void) -> i32;
+    }
+
+    // SAFETY: OpenProcess takes plain values and returns a handle or null.
+    let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+    if handle.is_null() {
+        return None;
+    }
+    let mut buf = vec![0u16; MAX_NT_PATH];
+    let mut len = buf.len() as u32;
+    // SAFETY: `handle` is a live process handle; `buf` holds `len` UTF-16 units, the call
+    // writes at most that many and stores the count written (excluding the NUL) in `len`.
+    let ok = unsafe { QueryFullProcessImageNameW(handle, 0, buf.as_mut_ptr(), &mut len) };
+    // SAFETY: `handle` came from OpenProcess above and is closed exactly once.
+    unsafe { CloseHandle(handle) };
+    (ok != 0).then(|| String::from_utf16_lossy(&buf[..len as usize]))
+}
+
+/// Windows Terminal's package version for the instance hosting retch, if it can be known.
+///
+/// An ancestor that is Windows Terminal is authoritative — its version or none. Without one
+/// (the walk stopped short, or only `WT_SESSION` identified it) every running instance is
+/// consulted, and a version is reported only if they all agree.
+#[cfg(target_os = "windows")]
+fn windows_terminal_version(sys: &System, chain: &[(u32, String)]) -> Option<String> {
+    let is_windows_terminal = |name: &str| {
+        let name = name.to_ascii_lowercase();
+        name.strip_suffix(".exe").unwrap_or(&name) == "windowsterminal"
+    };
+    let version_of =
+        |pid: u32| process_image_path(pid).and_then(|p| windows_terminal_package_version(&p));
+
+    if let Some((pid, _)) = chain.iter().find(|(_, name)| is_windows_terminal(name)) {
+        return version_of(*pid);
+    }
+    let running: Vec<Option<String>> = sys
+        .processes()
+        .values()
+        .filter(|p| is_windows_terminal(&p.name().to_string_lossy()))
+        .map(|p| version_of(p.pid().as_u32()))
+        .collect();
+    unanimous_version(&running)
+}
+
 /// Names the terminal emulator running retch, or `None` when nothing identifies it.
 ///
-/// See [`resolve_terminal`] for the order of precedence.
+/// See [`resolve_terminal`] for the order of precedence. On Windows, Windows Terminal's
+/// package version is appended when [`windows_terminal_version`] can establish it.
 pub(crate) fn detect_terminal(sys: &System) -> Option<String> {
-    let mut ancestors = Vec::with_capacity(MAX_ANCESTORS);
+    let mut chain: Vec<(u32, String)> = Vec::with_capacity(MAX_ANCESTORS);
     let mut current = sys.process(sysinfo::Pid::from_u32(std::process::id()));
     while let Some(proc) = current {
-        if ancestors.len() == MAX_ANCESTORS {
+        if chain.len() == MAX_ANCESTORS {
             break;
         }
-        ancestors.push(proc.name().to_string_lossy().into_owned());
+        chain.push((
+            proc.pid().as_u32(),
+            proc.name().to_string_lossy().into_owned(),
+        ));
         current = proc.parent().and_then(|pid| sys.process(pid));
     }
-    resolve_terminal(|key| std::env::var(key).ok(), &ancestors)
+    let names: Vec<String> = chain.iter().map(|(_, name)| name.clone()).collect();
+    let terminal = resolve_terminal(|key| std::env::var(key).ok(), &names)?;
+
+    #[cfg(target_os = "windows")]
+    if terminal == WINDOWS_TERMINAL {
+        if let Some(version) = windows_terminal_version(sys, &chain) {
+            return Some(format!("{terminal} {version}"));
+        }
+    }
+    Some(terminal)
 }
 
 pub(crate) fn detect_terminal_font(terminal: Option<&str>) -> Option<String> {
@@ -1001,6 +1127,69 @@ mod tests {
             resolve_terminal(env_of(&[("TERM", "xterm-256color")]), &[]),
             None
         );
+    }
+
+    #[test]
+    fn test_windows_terminal_package_version() {
+        // Verbatim from arrakis: the Store install fastfetch reports as 1.24.11911.0.
+        assert_eq!(
+            windows_terminal_package_version(
+                r"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal_1.24.11911.0_x64__8wekyb3d8bbwe\WindowsTerminal.exe"
+            ),
+            Some("1.24.11911.0".to_string())
+        );
+        // Synthetic, following the same package naming: Preview, and forward slashes.
+        assert_eq!(
+            windows_terminal_package_version(
+                "C:/Program Files/WindowsApps/Microsoft.WindowsTerminalPreview_1.25.1234.0_arm64__8wekyb3d8bbwe/WindowsTerminal.exe"
+            ),
+            Some("1.25.1234.0".to_string())
+        );
+        // Unpackaged (e.g. scoop): no package folder, so no version — even though the
+        // directory name happens to look like one.
+        assert_eq!(
+            windows_terminal_package_version(
+                r"C:\Users\kento\scoop\apps\windows-terminal\1.24.11911.0\WindowsTerminal.exe"
+            ),
+            None
+        );
+        // Another package's folder is not Windows Terminal's.
+        assert_eq!(
+            windows_terminal_package_version(
+                r"C:\Program Files\WindowsApps\Microsoft.PowerShell_7.6.6.0_x64__8wekyb3d8bbwe\pwsh.exe"
+            ),
+            None
+        );
+        // A version field that is not four numeric parts is rejected, not passed through.
+        assert_eq!(
+            windows_terminal_package_version(
+                r"C:\Program Files\WindowsApps\Microsoft.WindowsTerminal_1.24_x64__8wekyb3d8bbwe\WindowsTerminal.exe"
+            ),
+            None
+        );
+        assert_eq!(
+            windows_terminal_package_version("WindowsTerminal.exe"),
+            None
+        );
+    }
+
+    #[test]
+    fn test_unanimous_version() {
+        let v = |s: &str| Some(s.to_string());
+        assert_eq!(unanimous_version(&[v("1.24.11911.0")]), v("1.24.11911.0"));
+        assert_eq!(
+            unanimous_version(&[v("1.24.11911.0"), v("1.24.11911.0")]),
+            v("1.24.11911.0")
+        );
+        // Stable beside Preview: nothing says which one hosts retch.
+        assert_eq!(
+            unanimous_version(&[v("1.24.11911.0"), v("1.25.1234.0")]),
+            None
+        );
+        // An unpackaged instance leaves it open too, in either position.
+        assert_eq!(unanimous_version(&[v("1.24.11911.0"), None]), None);
+        assert_eq!(unanimous_version(&[None, v("1.24.11911.0")]), None);
+        assert_eq!(unanimous_version(&[]), None);
     }
 
     #[test]
