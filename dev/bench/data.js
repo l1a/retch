@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789317707853,
+  "lastUpdate": 1789318157787,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14293,80 +14293,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "f75989c777d19ce11a71c02c17a50e959cdb94cb",
-          "message": "aur: bump to 0.8.0\n\nAssisted-By: Antigravity",
-          "timestamp": "2026-08-16T19:47:18-07:00",
-          "tree_id": "6e84e4f067d36b437236a783f86e1b1b04a441ca",
-          "url": "https://github.com/l1a/retch/commit/f75989c777d19ce11a71c02c17a50e959cdb94cb"
-        },
-        "date": 1786936188702,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1119037868.65,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 495.6720983025633,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 148.46996695088885,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.10662989840234,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 77.08729222509196,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 5015.19325217852,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1221.4671363474365,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 492.1487441468732,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 86567.67748199297,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 398.9821285450569,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -17981,6 +17907,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 460.2230994470623,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5f0611407b4778aaf9ee3f9b59354ea417850436",
+          "message": "Publish channel descriptions with each channel (#250)\n\nChannel text was written in eight places and checked by nothing, and\ntwo of them (the COPR project page and GitHub's About box) live on\nthe services, where no release step reached them. The pre-release\nreview found drift of every kind: a README flag that does not exist,\na crates.io example that did not compile, a Nix licence of gpl3Only\nfor a GPL-3.0-or-later project, and stale output-mode and benchmark\nclaims.\n\npackaging/metadata.toml is now the one source. metadata_check.py\n(`just check`, and a packaging.yml job) fails when a channel's copy\ndrifts; copr.yml pushes the COPR project page on each tag, and\n`just github-metadata` sets the About box. The retch-sysinfo README\nexample is compiled as a doctest.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-13T09:28:26-07:00",
+          "tree_id": "c71512b577c23063ad0f30be66c8ec804d94516a",
+          "url": "https://github.com/l1a/retch/commit/5f0611407b4778aaf9ee3f9b59354ea417850436"
+        },
+        "date": 1789318155006,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1207995881.4,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 642.6543222950514,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 187.32698149095884,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.639756023282367,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 100.69084361820505,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 8300.005291650261,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1825.2462998563035,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 499.11279830424974,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 103788.36954149428,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 502.42746103879597,
             "unit": "ns"
           }
         ]
