@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789274450849,
+  "lastUpdate": 1789274956026,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17784,70 +17784,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "0fb38978e0182c24717fea4d8b4a80047b15d233",
-          "message": "Make packaging/aur the source, not a stale copy (#196)\n\npackaging/aur/PKGBUILD was a reference copy that nothing rendered, published or\nchecked. It reached eleven releases of lag (0.6.12 in-repo against 0.6.23\npublished), and because the copy was inert the live AUR PKGBUILD kept two\nman-page defects long after they were fixed here — Arch installs got a page\nfooted $DATE / retch $pkgver the whole time.\n\npackaging/aur is now the source. aur-bump renders it from a released tag,\naur-publish pushes exactly those files, and .SRCINFO is tracked and generated\nby a real makepkg --printsrcinfo in a container (no host here runs Arch).\nCarried over from rusticprofile: write to a temp file and move it into place so\na failure cannot truncate the committed file, check the output content rather\nthan the exit code, and mount :z never :Z.\n\nscripts/aur_check.py is the anti-drift guard and just check depends on it. It\ncompares the pair field-by-field including the expanded source URL, so it\ncatches a pair that agrees on the version and disagrees on the checksum — the\nshape that breaks on the user's machine and nowhere else. Pure Python, so it\nruns on Windows; parses rather than sourcing the PKGBUILD, and raises rather\nthan expanding unknown variables to empty.\n\nVerified end to end: the generated .SRCINFO came out byte-identical to the one\nhand-written and pushed to the AUR earlier today, and AUR_CONFIRM=n\njust aur-publish exercised every preflight check without publishing.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-14T10:43:28-07:00",
-          "tree_id": "0dcac6b08b8ab4bb34654fbcf6096f083db1f748",
-          "url": "https://github.com/l1a/retch/commit/0fb38978e0182c24717fea4d8b4a80047b15d233"
-        },
-        "date": 1786731290901,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 226.51291323891624,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.08728143909519,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 125.5395335153228,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 102.47735546636582,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 42536.78875968545,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 588.0538643131665,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 825.9462939142762,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2359147595,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "9b8bcc71daafe3d38abb8ba9085195eef680d68f",
           "message": "Native Media and Player Detection (#197)\n\n* Add native media and player detection fields\n\nImplement 100% native FFI / direct socket media and player detection with zero subprocess forks across Windows (WinRT COM GlobalSystemMediaTransportControlsSessionManager via combase.dll), Linux (direct Unix domain socket D-Bus MPRIS client), and macOS (Objective-C runtime SBApplication FFI).\n\nAdds 'player' and 'media' to FIELDS registry (Mode::Long, available in --long and --full). Strata golden counts Long 52 -> 54, Full 58 -> 60. Regenerated man page, updated README.md, docs/retch.1.md, NOTES.md, WIP.md, and GitHub wiki.\n\nAssisted-By: Gemini 2.5 Flash\n\n* Fix Rust 1.97 Clippy lints in media.rs\n\nAssisted-By: Antigravity",
           "timestamp": "2026-08-16T19:19:02-07:00",
@@ -20967,6 +20903,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1020135590,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "883b970886efaf1f60302a9b018f474ee5410ab7",
+          "message": "Make Windows --full faster than fastfetch (#247)\n\ngamepad no longer spawns PowerShell on Windows: one SetupAPI\nall-classes enumeration applies the same predicate the Get-PnpDevice\npipeline did (--fields gamepad 2.02 s -> 104 ms).\n\nshell's version probe spawns the shell (~570 ms on Windows) and ran\nserially after the concurrent scope in every --long and --full run.\nIt now runs inside the scope. The process list is also loaded for\nshell and terminal, so --fields shell on its own no longer reports\npowershell 5.1 under PowerShell 7.\n\nMedians on arrakis: --full 1314 ms vs fastfetch -c all 1468 ms\n(was 3226 vs 1732 ms); --long 424 vs 1488 ms.\n\nNOTES: the v0.17.6 entry; 6a's --full item moved to Fixed; a new 6a\nOpen item for terminal on Windows Terminal; the COPR .git correction\nowed since v0.17.5; and 5's \"do not chase shell\" struck as wrong.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-12T21:20:51-07:00",
+          "tree_id": "14dc612e91a0070cf52b51ad0bc42d08a2c19979",
+          "url": "https://github.com/l1a/retch/commit/883b970886efaf1f60302a9b018f474ee5410ab7"
+        },
+        "date": 1789274952097,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 183.56050317870938,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.9390763868190546,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 102.64724226504336,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 75.60979865637765,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 32293.72010630642,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 486.77570306394136,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 726.4105858793663,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2163155000,
             "unit": "ns"
           }
         ]
