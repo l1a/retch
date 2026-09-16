@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789532036132,
+  "lastUpdate": 1789533977408,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4460,6 +4460,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1035534287.9800005
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "ddc20c82ea43522d2d2852663c8d77c0b198b0ee",
+          "message": "Stop merge-pr converting WIP.md from CRLF to LF (#254)\n\n`scripts/update_wip.py` read with read_text() and wrote with write_text().\nBoth apply universal newlines, so \\r\\n became \\n in memory and was written\nback as whatever the PLATFORM prefers.\n\nThat made the bug platform-dependent, which is why it survived: on Windows the\nround trip is invisible, and this repo's merges were historically cut from a\nWindows host. The first merge run from Linux converted the whole file --\nmeasured immediately after #253: 0 CRLF, 4824 lone LF, where it had been pure\nCRLF.\n\nWIP.md is the one artefact with no other protection. Its CRLF is deliberate,\nand because it is gitignored `text-check` never sees it -- correctly. So the\nguard has to be about the code that rewrites it. New `just wip-check` runs the\nscript's --self-test from `just check`.\n\nA naive read-bytes fix would still have corrupted two lines: both substitutions\nuse `.*`, and in Python's re a dot matches \\r -- it excludes only \\n -- so on\nun-normalised CRLF text the replacement line comes back LF-terminated. The\nself-test pins that as a property.\n\nThe self-test was watched failing against the exact pre-fix code (crlf=0 lf=3,\nthe real corruption's signature) and carries an LF control so the fix cannot\nover-correct a repo whose WIP.md is legitimately LF.\n\nAlso: merge-pr called `python3` by hardcoded name where every other call site\nuses the resolved {{PY}}; on Windows `python3` is frequently absent.\n\nCorrects v0.17.10's claim that `git status` structurally cannot report a CRLF\nworktree. It can, once, as an ` M` with no diff behind it; what it cannot\nsurvive is a `git add`. Fixed in the docstring, the stderr message and the\nJustfile comment; the v0.17.10 entry is annotated, not rewritten.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T21:45:29-07:00",
+          "tree_id": "63209bdb0e7c24e1ba117c64339ee602b1292570",
+          "url": "https://github.com/l1a/retch/commit/ddc20c82ea43522d2d2852663c8d77c0b198b0ee"
+        },
+        "date": 1789533977408,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 273699535.0
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1036769512.3000001
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 3583533.2199999997
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 5190039.22
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 425789788.44000006
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1038866906.5400002
           }
         ]
       }
