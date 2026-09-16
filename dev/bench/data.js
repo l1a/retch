@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789528083771,
+  "lastUpdate": 1789528554356,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18054,70 +18054,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "e42fb854db13c202146dc739849f67429547ebf9",
-          "message": "deps: bump dependencies (consolidate #199) (#200)\n\nConsolidate Dependabot PR #199:\n- clap_complete_nushell 4.6.1 -> 4.6.2\n- icy_sixel 0.5.0 -> 0.5.1\n- Cargo.lock transitive dependency updates\n- Bump retch-cli to 0.8.1 and regenerate man page\n\nAssisted-By: Gemini 3.7 Flash",
-          "timestamp": "2026-08-21T15:33:39-07:00",
-          "tree_id": "f4dea1009382aed406875e53dbf14115c540f5df",
-          "url": "https://github.com/l1a/retch/commit/e42fb854db13c202146dc739849f67429547ebf9"
-        },
-        "date": 1787353573183,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 230.00024606354503,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.684159218231716,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 134.74924886429898,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 106.954993437654,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 44576.1566311685,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 610.6022666797112,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 1007.0743441484635,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2022508270,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "2b80c74b321872317f495009db27eddb70dcfe58",
           "message": "Add Desktop & UI detection probes (#201)\n\n* Add Desktop & UI detection probes\n\nImplement zero-subprocess desktop and UI detection probes:\n- WM Theme (wm-theme): KWin, Xfwm4, Openbox, Fluxbox, IceWM, GTK, Aqua, Windows.\n- Wallpaper (wallpaper): GNOME, KDE Plasma, XFCE, Hyprpaper, Sway, Feh, Nitrogen, macOS AppKit FFI, Windows registry FFI.\n- Terminal Theme (terminal-theme): Kitty, Alacritty, WezTerm, Foot, Windows Terminal, Konsole, Ptyxis, iTerm2, Apple Terminal.\n- Register fields under FIELDS (Mode::Full), update man page, README, NOTES, and wiki.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix cross-platform parser visibility on macOS/Win\n\nEnsure pure theme and terminal parser functions are available across all\ntarget platforms without cfg gating or dead-code warnings.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Make parse_ini_key available across all targets\n\nRemove target_os = \"linux\" gate from parse_ini_key so unit tests pass\non macOS and Windows.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Make all pure terminal parsers available on Win\n\nRemove target_os cfgs from parse_kitty_theme and other terminal parsers\nso they are unconditionally available on Windows.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix macOS wallpaper Obj-C FFI ABI & AppKit link\n\nAdd AppKit framework link in build.rs and use non-variadic objc_msgSend\ndeclaration (objc_msgSend_id_id) for desktopImageURLForScreen to prevent\nABI misalignments on aarch64 Apple Darwin.\n\nAssisted-By: Gemini 3.5 Flash",
           "timestamp": "2026-08-21T22:41:46-07:00",
@@ -21237,6 +21173,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1921814065,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5beed23c308e45d9ba8a4d69d8ae4c8e7ef7c0de",
+          "message": "Accept y for BREW_CONFIRM; guard mangled bytes (#252)\n\nTwo defects, neither hypothetical.\n\nBREW_CONFIRM required the literal `yes` while AUR_CONFIRM and\nPR_CONFIRM both take `y` -- three variables doing one job, with two\ndifferent accepted answers. It fired in the sibling repo etr, whose\nbrew-publish carries the same block: BREW_CONFIRM=y aborted the publish\nat the Homebrew leg, after crates.io and the AUR had already published,\nleaving a partially-released version. Now accepts y/Y/yes/YES. Not a\nbypass: every path still requires an explicit affirmative and there is\nno default.\n\nTwo collapsed backslashes, from ~/AGENTS.md sec.14 -- a double backslash\nin a command handed to an agent's shell arrives as a single one, before\nthe shell sees it, so a quoted heredoc does not prevent it.\ntemplates/justfile-common.just had `usr\\bin` as `usr` + 0x08. And\ncrates/sysinfo/src/win_setupapi.rs had the Win32 device path\n`\\\\?\\acpi#...` as `\\?` + 0x07 + `cpi#` -- TWO collapses on one line,\nsince the doubled backslash lost one AND `\\a` became BEL, degrading the\ntext into something that still looked like a device path. That one sits\nin a /// comment on a pub fn, so it is in the published retch-sysinfo\nrustdoc, which is why retch-sysinfo bumps rather than riding along: the\nv0.11.4 call about the repo and the registry not disagreeing.\n\nThe repair is written with chr(92), never a backslash literal in a shell\nstring, because writing one is the bug.\n\nNew scripts/text_check.py, wired into `just check`, closes both classes\nrather than the two instances. It also refuses carriage returns, which\ngit status structurally cannot report while .gitattributes pins eol=lf.\nWIP.md is gitignored and so out of scope by construction -- correct,\nsince its CRLF is deliberate and recorded.\n\nBuilt on byte counting, not grep: `grep -c $'\\r'` from an agent shell\nreturns the file's line count, per ~/AGENTS.md sec.17.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T19:46:38-07:00",
+          "tree_id": "04c746011f95b98034730bdeb43b626756aa7ebf",
+          "url": "https://github.com/l1a/retch/commit/5beed23c308e45d9ba8a4d69d8ae4c8e7ef7c0de"
+        },
+        "date": 1789528549601,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 178.9392125300423,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.895876295027042,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 100.63351975904185,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 77.56108749273241,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 32456.29953963778,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 441.2902095793711,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 638.7507568260584,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1189721035,
             "unit": "ns"
           }
         ]
