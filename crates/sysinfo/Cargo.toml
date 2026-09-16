@@ -1,6 +1,6 @@
 [package]
 name = "retch-sysinfo"
-version = "0.1.75"
+version = "0.1.76"
 edition = "2021"
 authors = ["Ken Tobias"]
 description = "Cross-platform system and hardware information library (Linux, macOS, Windows) behind the retch fetcher"
