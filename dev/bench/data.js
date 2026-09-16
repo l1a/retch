@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789535887431,
+  "lastUpdate": 1789536280696,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -21418,70 +21418,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "2b80c74b321872317f495009db27eddb70dcfe58",
-          "message": "Add Desktop & UI detection probes (#201)\n\n* Add Desktop & UI detection probes\n\nImplement zero-subprocess desktop and UI detection probes:\n- WM Theme (wm-theme): KWin, Xfwm4, Openbox, Fluxbox, IceWM, GTK, Aqua, Windows.\n- Wallpaper (wallpaper): GNOME, KDE Plasma, XFCE, Hyprpaper, Sway, Feh, Nitrogen, macOS AppKit FFI, Windows registry FFI.\n- Terminal Theme (terminal-theme): Kitty, Alacritty, WezTerm, Foot, Windows Terminal, Konsole, Ptyxis, iTerm2, Apple Terminal.\n- Register fields under FIELDS (Mode::Full), update man page, README, NOTES, and wiki.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix cross-platform parser visibility on macOS/Win\n\nEnsure pure theme and terminal parser functions are available across all\ntarget platforms without cfg gating or dead-code warnings.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Make parse_ini_key available across all targets\n\nRemove target_os = \"linux\" gate from parse_ini_key so unit tests pass\non macOS and Windows.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Make all pure terminal parsers available on Win\n\nRemove target_os cfgs from parse_kitty_theme and other terminal parsers\nso they are unconditionally available on Windows.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix macOS wallpaper Obj-C FFI ABI & AppKit link\n\nAdd AppKit framework link in build.rs and use non-variadic objc_msgSend\ndeclaration (objc_msgSend_id_id) for desktopImageURLForScreen to prevent\nABI misalignments on aarch64 Apple Darwin.\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-08-21T22:41:46-07:00",
-          "tree_id": "a4206d6e867d2fd2e324cf08f590848666fb1316",
-          "url": "https://github.com/l1a/retch/commit/2b80c74b321872317f495009db27eddb70dcfe58"
-        },
-        "date": 1787379678081,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 180.87369558510332,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9478425123298058,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 98.90820161852108,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.27991864854071,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47261.929451340075,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 492.3109969125054,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 764.180593027537,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2400988965,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "0a334e8187c77658e8eeb0bf56462e23810fbc20",
           "message": "Fix default recipe in Justfile to list recipes (#202)\n\nMove default recipe before COMMON block so running bare `just`\nlists available recipes instead of executing `install`.\n\nAssisted-By: Gemini 3.5 Flash",
           "timestamp": "2026-08-22T07:36:24-07:00",
@@ -24601,6 +24537,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 481450555,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ddc20c82ea43522d2d2852663c8d77c0b198b0ee",
+          "message": "Stop merge-pr converting WIP.md from CRLF to LF (#254)\n\n`scripts/update_wip.py` read with read_text() and wrote with write_text().\nBoth apply universal newlines, so \\r\\n became \\n in memory and was written\nback as whatever the PLATFORM prefers.\n\nThat made the bug platform-dependent, which is why it survived: on Windows the\nround trip is invisible, and this repo's merges were historically cut from a\nWindows host. The first merge run from Linux converted the whole file --\nmeasured immediately after #253: 0 CRLF, 4824 lone LF, where it had been pure\nCRLF.\n\nWIP.md is the one artefact with no other protection. Its CRLF is deliberate,\nand because it is gitignored `text-check` never sees it -- correctly. So the\nguard has to be about the code that rewrites it. New `just wip-check` runs the\nscript's --self-test from `just check`.\n\nA naive read-bytes fix would still have corrupted two lines: both substitutions\nuse `.*`, and in Python's re a dot matches \\r -- it excludes only \\n -- so on\nun-normalised CRLF text the replacement line comes back LF-terminated. The\nself-test pins that as a property.\n\nThe self-test was watched failing against the exact pre-fix code (crlf=0 lf=3,\nthe real corruption's signature) and carries an LF control so the fix cannot\nover-correct a repo whose WIP.md is legitimately LF.\n\nAlso: merge-pr called `python3` by hardcoded name where every other call site\nuses the resolved {{PY}}; on Windows `python3` is frequently absent.\n\nCorrects v0.17.10's claim that `git status` structurally cannot report a CRLF\nworktree. It can, once, as an ` M` with no diff behind it; what it cannot\nsurvive is a `git add`. Fixed in the docstring, the stderr message and the\nJustfile comment; the v0.17.10 entry is annotated, not rewritten.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T21:45:29-07:00",
+          "tree_id": "63209bdb0e7c24e1ba117c64339ee602b1292570",
+          "url": "https://github.com/l1a/retch/commit/ddc20c82ea43522d2d2852663c8d77c0b198b0ee"
+        },
+        "date": 1789536276903,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 184.62514289037208,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9482675306195576,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 103.87385902244186,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.90104395433497,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47860.77767105812,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 490.51281970543823,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 728.9135086550274,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 993500845,
             "unit": "ns"
           }
         ]
