@@ -121,7 +121,47 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.10)
+## Current State (v0.17.11)
+- **v0.17.11 - the vendored template is v4, and the majority was wrong**
+  (`templates/justfile-common.just`, `Justfile`). Documentation and one version marker; no
+  recipe body changed here, and no runtime change.
+  - **Three repos all declared `template v3` while `standard-check`'s body differed.** retch ran
+    four plain `@"{{PY}}"` lines; `etr` and `rusticprofile` ran a `#!/usr/bin/env bash` recipe
+    with `set -euo pipefail` and an explicit `[ "{{PY}}" != "PYTHON-NOT-FOUND" ]` guard. **Each
+    repo was internally consistent** - template file and Justfile agreed - so nothing looked
+    wrong from inside any of them. The version marker is the one thing that is supposed to make
+    a vendored copy safe, and it could not tell them apart.
+  - **Reconciling toward the majority would have been v1's mistake repeating**, which is the
+    finding rather than the fix. The decisive evidence is which recipes each repo's `check`
+    actually depends on, counted rather than argued:
+
+    | repo | `check` dependencies that are shell-free |
+    |---|---|
+    | **retch** | **7 of 7** |
+    | `etr` | 2 of 6 |
+    | `rusticprofile` | 2 of 4 |
+
+    So retch is the only repo where `just check` still runs on a default Windows PATH - no
+    `cygpath`, no Git `usr\bin` - which is the entire property **v0.6.16** bought and the whole
+    reason these helpers are Python. Adopting the shebang body would have spent it, in the one
+    repo that still had it, to match two repos that had already lost it for unrelated reasons.
+  - **The guard is worth less than it looks.** The sentinel is the literal string
+    `PYTHON-NOT-FOUND`, so the *unguarded* failure is `PYTHON-NOT-FOUND: command not found`,
+    which already names the problem. The guard buys a tidier message; the shebang costs a
+    platform.
+  - **v4 is therefore: `standard-check` is four plain lines and has no shebang.** The rule is
+    about the **gate**, not the whole block - stated precisely because the loose version is
+    false. `install-tag` inside the markers **is** a bash shebang recipe and stays one: it is an
+    explicit install action nobody runs from `check`, it needs real control flow, and whoever
+    runs it has already chosen to install a toolchain.
+  - **Nothing in retch's own files changes behaviour**, because retch already conformed. This
+    release is the marker bump plus the reasoning, so the siblings have something to point at;
+    the actual edit lands in `etr` and `rusticprofile` in their own PRs, per the block's own
+    rule that editing inside the markers means changing the standard and propagating separately.
+  - **The transferable half:** *"two of three repos agree"* is a fact about how the drift
+    **spread**, not about which side is right. Count the property at stake, not the repos. That
+    is v1 -> v2's lesson - *"the repo with the fixes"* and *"the repo with the right mechanism"*
+    were different repos - arriving in new clothes one version later.
 - **v0.17.10 - one confirm variable, and two collapsed backslashes nobody was reading**
   (`Justfile`, `templates/justfile-common.just`, `crates/sysinfo/src/win_setupapi.rs`,
   `scripts/text_check.py` (new)). Tooling and docs; no runtime change.
