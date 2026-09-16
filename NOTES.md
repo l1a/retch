@@ -121,7 +121,55 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.9)
+## Current State (v0.17.10)
+- **v0.17.10 - one confirm variable, and two collapsed backslashes nobody was reading**
+  (`Justfile`, `templates/justfile-common.just`, `crates/sysinfo/src/win_setupapi.rs`,
+  `scripts/text_check.py` (new)). Tooling and docs; no runtime change.
+  - **`BREW_CONFIRM` required the literal `yes` while `AUR_CONFIRM` and `PR_CONFIRM` both take
+    `y`.** Three variables doing one job, with two different accepted answers. It fired in the
+    sibling repo `etr`, whose `brew-publish` carries the same block: `BREW_CONFIRM=y` aborted
+    the publish **at the Homebrew leg, after crates.io and the AUR had already published**,
+    leaving a partially-released version. Now accepts `y`/`Y`/`yes`/`YES`.
+    **Not a bypass**, and the distinction is v0.6.21's: every path still requires an explicit
+    affirmative and there is no default, so an empty answer, `Yes`, `yep` and an unset variable
+    all still refuse. Verified by extracting the shipped `case` block and driving it.
+  - **Two collapsed backslashes, and one of them shipped to docs.rs.** `~/AGENTS.md` §14: a
+    double backslash in a command handed to an agent's shell arrives as a single one, *before
+    the shell sees it*, so a quoted heredoc does not prevent it.
+
+    | file | intended | what was there |
+    |---|---|---|
+    | `templates/justfile-common.just:22` | `` `usr\bin` `` | `` `usr `` + **0x08** + `` in` `` |
+    | `crates/sysinfo/src/win_setupapi.rs:348` | `` `\\?\acpi#...` `` | `` `\? `` + **0x07** + `` cpi#...` `` |
+
+    **The second is the interesting one: it collapsed TWICE on one line.** The doubled
+    backslash of the Win32 prefix `\\?\` lost one, *and* `\a` became BEL - so the text
+    degraded from a recognisable device path into something that still looked like one. It sits
+    in a `///` doc comment on a `pub fn`, so it is in the published `retch-sysinfo` rustdoc.
+    That is why **`retch-sysinfo` bumps to `0.1.76`** rather than riding along: leaving it would
+    mean the repo's `0.1.75` and the crates.io `0.1.75` differ, which is the v0.11.4 call.
+  - **The repair is written with `chr(92)`, never a backslash literal in a shell string** -
+    writing one is the bug.
+  - **New `scripts/text_check.py`, wired into `just check`**, closes both classes rather than
+    the two instances. Every C0 control byte except tab and newline, plus DEL, across all
+    tracked text - no per-file exemptions, because there was nothing to exempt.
+    - It also refuses **carriage returns**, and that half is worth explaining: `.gitattributes`
+      pins `* text=auto eol=lf`, and with that attribute set **`git status` structurally cannot
+      report a CRLF worktree** - git treats the two as equivalent, so the file reads as clean.
+      `etr` shipped exactly that in a file vendored from this repo.
+    - **`WIP.md` is deliberately CRLF and is out of scope by construction**: it is gitignored,
+      so `git ls-files` never offers it. That is the right outcome - the START HERE block
+      records that its CRLF is genuine and must not be "normalised", and a guard that fought
+      that note would be deleted within a week.
+    - **Built on byte counting, not `grep`.** `grep -c $'\r'` from an agent shell is
+      `~/AGENTS.md` §17 - the pattern collapses to empty, `grep` matches every line, and the
+      answer is the file's **line count**. This file has recorded that trap twice.
+  - **Watched failing**, with each control asserting the injected defect by **file and byte**:
+    a collapsed backslash to BACKSPACE and to BEL, a CRLF worktree copy, and a stray ESC. The
+    self-test also pins that correctly-spelled `usr\bin` does **not** trip it - a guard that
+    blocked its own fix would be worse than none.
+  - `retch-sysinfo` -> `0.1.76` (rustdoc change in the published crate); `retch-cli` ->
+    `0.17.10`. Patch bump - tooling and docs, the v0.7.1 / v0.9.7 / v0.17.2 precedent.
 - **v0.17.9 - channel descriptions are written once, and published with each channel**
   (`packaging/metadata.toml`, `scripts/metadata_check.py` and `packaging/copr/project-*.md`,
   all new; `.github/workflows/copr.yml`, `packaging.yml`, `Justfile`, both READMEs, both
