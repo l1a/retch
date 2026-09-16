@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789531512684,
+  "lastUpdate": 1789532036132,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -21310,70 +21310,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "e42fb854db13c202146dc739849f67429547ebf9",
-          "message": "deps: bump dependencies (consolidate #199) (#200)\n\nConsolidate Dependabot PR #199:\n- clap_complete_nushell 4.6.1 -> 4.6.2\n- icy_sixel 0.5.0 -> 0.5.1\n- Cargo.lock transitive dependency updates\n- Bump retch-cli to 0.8.1 and regenerate man page\n\nAssisted-By: Gemini 3.7 Flash",
-          "timestamp": "2026-08-21T15:33:39-07:00",
-          "tree_id": "f4dea1009382aed406875e53dbf14115c540f5df",
-          "url": "https://github.com/l1a/retch/commit/e42fb854db13c202146dc739849f67429547ebf9"
-        },
-        "date": 1787354119208,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 178.0503287114297,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9474512886140056,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 96.96190920102795,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.46755750429907,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47577.70967116983,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 495.52528083008644,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 743.4511385148268,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2395026220,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "2b80c74b321872317f495009db27eddb70dcfe58",
           "message": "Add Desktop & UI detection probes (#201)\n\n* Add Desktop & UI detection probes\n\nImplement zero-subprocess desktop and UI detection probes:\n- WM Theme (wm-theme): KWin, Xfwm4, Openbox, Fluxbox, IceWM, GTK, Aqua, Windows.\n- Wallpaper (wallpaper): GNOME, KDE Plasma, XFCE, Hyprpaper, Sway, Feh, Nitrogen, macOS AppKit FFI, Windows registry FFI.\n- Terminal Theme (terminal-theme): Kitty, Alacritty, WezTerm, Foot, Windows Terminal, Konsole, Ptyxis, iTerm2, Apple Terminal.\n- Register fields under FIELDS (Mode::Full), update man page, README, NOTES, and wiki.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix cross-platform parser visibility on macOS/Win\n\nEnsure pure theme and terminal parser functions are available across all\ntarget platforms without cfg gating or dead-code warnings.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Make parse_ini_key available across all targets\n\nRemove target_os = \"linux\" gate from parse_ini_key so unit tests pass\non macOS and Windows.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Make all pure terminal parsers available on Win\n\nRemove target_os cfgs from parse_kitty_theme and other terminal parsers\nso they are unconditionally available on Windows.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix macOS wallpaper Obj-C FFI ABI & AppKit link\n\nAdd AppKit framework link in build.rs and use non-variadic objc_msgSend\ndeclaration (objc_msgSend_id_id) for desktopImageURLForScreen to prevent\nABI misalignments on aarch64 Apple Darwin.\n\nAssisted-By: Gemini 3.5 Flash",
           "timestamp": "2026-08-21T22:41:46-07:00",
@@ -24493,6 +24429,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2503549755,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "372b36f96e292b4711287d1a071478de22ea3d14",
+          "message": "Settle the vendored template at v4 (#253)\n\nThree repos all declared `template v3` while `standard-check`'s body differed:\nretch ran four plain `@\"{{PY}}\"` lines, etr and rusticprofile ran a bash\nshebang recipe with an explicit PYTHON-NOT-FOUND guard. Each repo agreed with\nitself, so nothing looked wrong from inside any of them, and the marker that\nexists to make a vendored copy safe could not tell them apart.\n\nReconciling toward the majority would have repeated v1's mistake. What decides\nit is which recipes each repo's `check` actually depends on: retch 7 of 7\nshell-free, etr 2 of 6, rusticprofile 2 of 4. retch is the only repo where\n`just check` still runs on a default Windows PATH, which is the whole property\nv0.6.16 bought, so adopting the shebang body would have spent it in the one\nrepo that still had it.\n\nThe guard is worth less than it looks: the sentinel is the literal string\nPYTHON-NOT-FOUND, so the unguarded failure already names the problem.\n\nv4 is therefore: `standard-check` is four plain lines and has no shebang. The\nrule is about the gate, not the whole block -- `install-tag` stays a shebang\nrecipe because nothing runs it from `check`.\n\nretch already conformed, so no recipe body changes here. This is the marker\nbump plus the reasoning; the edit lands in etr and rusticprofile in their own\nPRs, per the block's own propagation rule.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T20:36:32-07:00",
+          "tree_id": "34f3bb8fbedeab5a69f46bdab863d91f3b8a3fd4",
+          "url": "https://github.com/l1a/retch/commit/372b36f96e292b4711287d1a071478de22ea3d14"
+        },
+        "date": 1789532032447,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 185.20746264249922,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947901531361457,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.0664650228861,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 82.00935939085966,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45470.02695817233,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 488.3327245907959,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 727.2389261033534,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 481450555,
             "unit": "ns"
           }
         ]
