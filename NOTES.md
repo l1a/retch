@@ -121,7 +121,48 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.12)
+## Current State (v0.17.13)
+- **v0.17.13 - a one-character regression I shipped in v0.17.12, and it broke `just merge-pr`**
+  (`Justfile`). One line; no runtime change.
+  - **`v0.17.12` changed `merge-pr`'s last line to `@"{{PY}}" scripts/update_wip.py`.** In a
+    `#!/usr/bin/env bash` recipe **just does not strip a leading `@`** - that is plain-recipe
+    syntax. The `@` was passed through to the shell, which looked for a command literally named
+    `@/usr/bin/python3`:
+
+    ```
+    /run/user/1000/just/just-t1faGr/merge-pr: line 847: @/usr/bin/python3: No such file or directory
+    error: recipe `merge-pr` failed with exit code 127
+    ```
+
+  - **It fired on the very next merge, which was `v0.17.12`'s own.** The squash landed and the
+    branch was deleted - those come first in the recipe - and then the `WIP.md` update never ran.
+    No data was lost and `WIP.md`'s CRLF was untouched, which is the ironic part: the step that
+    exists to preserve it was the step that did not execute.
+  - **This is rusticprofile's `0.2.2` in a new repo**, where a global regex put `@` in front of
+    lines inside shebang bodies. That write-up had been read in the same session. **A documented
+    trap is not a guard**, which is this project's own argument for `gate_conformance.py`
+    existing at all.
+  - **Reproduced in isolation before fixing**, on a throwaway justfile, so the rule is measured
+    rather than recalled:
+
+    | recipe | result |
+    |---|---|
+    | `#!/usr/bin/env bash` + `@"{{PY}}" …` | **exit 127**, `@/usr/bin/python3: No such file` |
+    | `#!/usr/bin/env bash` + `"{{PY}}" …` | runs |
+    | plain recipe + `@"{{PY}}" …` | runs - `@` is correct **here** |
+
+    So `wip-check`, added in the same release, was right to keep its `@`: it is a plain recipe.
+    Only the shebang one was wrong, which is why `just check` stayed green and could not catch it.
+  - **The whole class was swept, not just the instance:** every recipe body was scanned for an
+    `@`-prefixed line inside a shebang recipe. There are no others.
+  - **Why no gate caught it, stated rather than glossed.** `gate_conformance.py` is *structural* -
+    its own docstring says it proves a guard exists, not that it works - and nothing executes
+    `merge-pr`, because it merges PRs and deletes branches. A real guard would be a check that
+    refuses an `@`-prefixed line inside a shebang body, and that belongs in the **vendored**
+    `gate_conformance.py`, so it is a coordinated template bump across all three repos rather
+    than a patch here. Recorded for template v5; two template PRs are in flight and bundling it
+    would collide with them.
+
 - **v0.17.12 - `just merge-pr` was converting WIP.md from CRLF to LF on every merge**
   (`scripts/update_wip.py`, `Justfile`, `scripts/text_check.py`). Tooling and one correction;
   no runtime change.

@@ -844,7 +844,11 @@ merge-pr:
     git pull
     echo "Deleting local branch $BRANCH..."
     git branch -D "$BRANCH" 2>/dev/null || true
-    @"{{PY}}" scripts/update_wip.py
+    # NO `@` PREFIX HERE. This is a `#!/usr/bin/env bash` recipe, so just does not strip a
+    # leading `@` -- it is passed through to the shell, which then looks for a command literally
+    # named `@/usr/bin/python3` and fails with 127. `wip-check` below DOES take `@`, because it
+    # is a plain recipe. Same trap as rusticprofile's 0.2.2.
+    "{{PY}}" scripts/update_wip.py
 
 # Pre-PR gate: run all automated checks and print manual checklist before opening a PR.
 # All items must pass before calling `gh pr create`.
