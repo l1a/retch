@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789319264316,
+  "lastUpdate": 1789526847833,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4352,6 +4352,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1075836645.9
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "5beed23c308e45d9ba8a4d69d8ae4c8e7ef7c0de",
+          "message": "Accept y for BREW_CONFIRM; guard mangled bytes (#252)\n\nTwo defects, neither hypothetical.\n\nBREW_CONFIRM required the literal `yes` while AUR_CONFIRM and\nPR_CONFIRM both take `y` -- three variables doing one job, with two\ndifferent accepted answers. It fired in the sibling repo etr, whose\nbrew-publish carries the same block: BREW_CONFIRM=y aborted the publish\nat the Homebrew leg, after crates.io and the AUR had already published,\nleaving a partially-released version. Now accepts y/Y/yes/YES. Not a\nbypass: every path still requires an explicit affirmative and there is\nno default.\n\nTwo collapsed backslashes, from ~/AGENTS.md sec.14 -- a double backslash\nin a command handed to an agent's shell arrives as a single one, before\nthe shell sees it, so a quoted heredoc does not prevent it.\ntemplates/justfile-common.just had `usr\\bin` as `usr` + 0x08. And\ncrates/sysinfo/src/win_setupapi.rs had the Win32 device path\n`\\\\?\\acpi#...` as `\\?` + 0x07 + `cpi#` -- TWO collapses on one line,\nsince the doubled backslash lost one AND `\\a` became BEL, degrading the\ntext into something that still looked like a device path. That one sits\nin a /// comment on a pub fn, so it is in the published retch-sysinfo\nrustdoc, which is why retch-sysinfo bumps rather than riding along: the\nv0.11.4 call about the repo and the registry not disagreeing.\n\nThe repair is written with chr(92), never a backslash literal in a shell\nstring, because writing one is the bug.\n\nNew scripts/text_check.py, wired into `just check`, closes both classes\nrather than the two instances. It also refuses carriage returns, which\ngit status structurally cannot report while .gitattributes pins eol=lf.\nWIP.md is gitignored and so out of scope by construction -- correct,\nsince its CRLF is deliberate and recorded.\n\nBuilt on byte counting, not grep: `grep -c $'\\r'` from an agent shell\nreturns the file's line count, per ~/AGENTS.md sec.17.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T19:46:38-07:00",
+          "tree_id": "04c746011f95b98034730bdeb43b626756aa7ebf",
+          "url": "https://github.com/l1a/retch/commit/5beed23c308e45d9ba8a4d69d8ae4c8e7ef7c0de"
+        },
+        "date": 1789526847833,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 271912904.0
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1041211268.3000001
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 3124471.88
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 4671425.98
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 459341525.8600001
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1038065438.6599998
           }
         ]
       }
