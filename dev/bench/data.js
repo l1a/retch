@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789540370971,
+  "lastUpdate": 1789540755744,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10415,90 +10415,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "b7b198f5f57e9a249cd825fd28ff88ac2a922219",
-          "message": "Fix colour, separator and width of wrapped lines (#205)\n\nReported on a 283-column Windows Terminal: the second line of a wrapped\nBIOS value rendered in a different colour from the first. Three defects,\ntwo pre-existing and one from v0.9.2.\n\n1. Continuation lines lost the value colour. Lines are colourised before\n   they are wrapped, so a split value keeps its opening SGR on the first\n   line and its closing \\x1b[39m on the last -- every line between renders\n   in the terminal default. Reproduced byte-for-byte with the reporter's\n   string: '       LLC. HN7306EAC.310 (8//20/07/0)\\x1b[39m', no opening\n   sequence and a stray reset. carry_sgr_across_lines now re-opens the\n   active colour per continuation line and closes it per line end, so a\n   colour cannot bleed into the logo column either. Same family as v0.5.1's\n   colorize_nested. Fixed at the wrap step deliberately: wrap points are\n   chosen from visible width, so the wrapper must see the escapes anyway.\n\n2. The separator was dropped at the break. The comma branch continued a\n   line with indent + part, omitting the \", \" it had just split on, so\n   \"American Megatrends International, LLC.\" rendered as \"...International\"\n   / \"LLC.\" -- two values rather than one company name, with nothing to\n   signal the loss. This changed the data, not its presentation, which\n   makes it the more serious of the two. A test rejoins the wrapped lines\n   and asserts the original text is recovered exactly.\n\n3. Beside-logo lines still wrapped at the text column. v0.9.2 decoupled\n   logo_column from text_column_width and moved the logo to the right\n   margin, but left the wrap width at the old 45-65 clamp -- so a\n   283-column terminal wrapped BIOS at 55 columns with ~177 free to its\n   right. Beside-logo rows now wrap at logo_column - 2, matching\n   below-logo rows, which already used the full terminal width.\n\nFix 3 hides fix 1: on a wide terminal the line no longer wraps, so the\ncolour defect cannot appear there, but it stays live on any terminal narrow\nenough to wrap. Fixing only the width would have closed the report while\nleaving the bug.\n\nOnly zero-width escapes are injected, so visible_len of every wrapped line\nis unchanged and the layout numbers computed from them still hold.\n\nVerified: at 283 columns the value no longer wraps; forced to wrap at 110,\nline 1 ends \"... Rev 8,\" and line 2 opens with the value colour, and\nrejoining recovers the original text exactly.\n\nAssisted-By: Claude Opus 5 (1M context)",
-          "timestamp": "2026-08-24T15:07:58-07:00",
-          "tree_id": "aca2847305c6befa11a515975321ec95f9a5ba9c",
-          "url": "https://github.com/l1a/retch/commit/b7b198f5f57e9a249cd825fd28ff88ac2a922219"
-        },
-        "date": 1787610106018,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 680794732.85,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 966.390082113748,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 111.31836355696842,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9469556383183124,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 53.234019144788206,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7790.855310706944,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 71317.56447856946,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4809.689827850181,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4899.62307828796,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1041327.123938889,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 344.80957496570613,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 254.5938067833295,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -14603,6 +14519,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 256.56833763261403,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2c9d40d85bd27a5916f8d79291a5e9a94f2cd187",
+          "message": "Add the concatenation bullet to the Portable Core (#257)\n\nThis repo carried three of the four attribution sub-bullets; etr and\nrusticprofile carried none. The fourth was written while fixing that, so it\ncomes back here.\n\nIt makes the concatenation consequence explicit where it had been implicit:\nunder squash_merge_commit_message=COMMIT_MESSAGES the squash body concatenates\nevery branch commit message, so a trailer on each commit of a multi-commit\nbranch becomes a duplicate trailer on main.\n\nWritten generically -- no hashes, no repo names -- because Part 1 must stay\nbyte-comparable across the three repos. Each repo's evidence lives in its own\nNOTES.md.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T23:25:53-07:00",
+          "tree_id": "c347a6beb01127bd45abd1e05200d429f874b274",
+          "url": "https://github.com/l1a/retch/commit/2c9d40d85bd27a5916f8d79291a5e9a94f2cd187"
+        },
+        "date": 1789540753151,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1048290471.9,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 973.7954294443168,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 111.03301867468369,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9467831531133823,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 61.651387170259156,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7854.213698868005,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70878.56380491416,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4787.615750860314,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4908.805147461989,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1071272.7093289422,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 348.32614420197797,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 260.5211441461061,
             "unit": "ns"
           }
         ]
