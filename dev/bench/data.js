@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789536926162,
+  "lastUpdate": 1789537968948,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4568,6 +4568,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1064892225.62
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "1cd56ba20c854ae23871205e3627400085e72b6b",
+          "message": "Refuse @ inside a shebang recipe (template v5) (#256)\n\ngate_conformance.py now refuses an `@`-prefixed line inside a `#!` recipe\nbody, in ANY recipe rather than only the triad: the mistake is about a\nrecipe's shape, not the gate's behaviour, so it can land anywhere. Its own\nTEMPLATE_VERSION goes 3 -> 4; the block marker goes v4 -> v5.\n\nIn a plain recipe `@` means \"do not echo\" and just strips it. In a shebang\nrecipe just strips nothing, so the shell gets a command literally named\n`@/usr/bin/python3` and exits 127.\n\nIt exists because the trap was paid for twice: rusticprofile 0.2.2, after a\nglobal regex put `@` in front of lines in pr, merge-pr and aur-publish; and\nretch v0.17.13, in a session where that write-up had already been read, where\nit broke the very merge that shipped it. A documented trap is not a guard.\n\nValidated against the real historical commits rather than a fixture. It names\nall four sites unprompted -- rusticprofile's pr, merge-pr and aur-publish, and\nretch's merge-pr -- and is clean on both repos' fixed commits.\n\nHeredocs are skipped, and that is load-bearing: a `cat <<'MSG'` block is data,\nso a line of it starting with `@` is a literal `@`. The first detector flagged\nexactly that, caught by testing the false-positive case before writing it into\nthe vendored script. A guard that fires on correct code is deleted within a\nweek, taking the real rule with it.\n\nThe self-test pins all four outcomes, three of which are ways this check could\nbe wrong: fires on the defect, silent on a plain recipe, silent inside a\nheredoc, and still fires on a defect after a heredoc.\n\nAlso removes a \"Known divergences\" bullet that had been false for months --\netr has both install-hooks and open-pr now -- and replaces it with the\ndivergence that is actually live.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T22:52:01-07:00",
+          "tree_id": "1858988fd246182cf0e62494fe2124ba196188d3",
+          "url": "https://github.com/l1a/retch/commit/1cd56ba20c854ae23871205e3627400085e72b6b"
+        },
+        "date": 1789537968948,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 274580983.8
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1036973366.5999998
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 3579966.599999999
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 5265502.200000001
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 397191992.6400001
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1045400076.6400002
           }
         ]
       }
