@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789529839331,
+  "lastUpdate": 1789530211894,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6002,90 +6002,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "2b80c74b321872317f495009db27eddb70dcfe58",
-          "message": "Add Desktop & UI detection probes (#201)\n\n* Add Desktop & UI detection probes\n\nImplement zero-subprocess desktop and UI detection probes:\n- WM Theme (wm-theme): KWin, Xfwm4, Openbox, Fluxbox, IceWM, GTK, Aqua, Windows.\n- Wallpaper (wallpaper): GNOME, KDE Plasma, XFCE, Hyprpaper, Sway, Feh, Nitrogen, macOS AppKit FFI, Windows registry FFI.\n- Terminal Theme (terminal-theme): Kitty, Alacritty, WezTerm, Foot, Windows Terminal, Konsole, Ptyxis, iTerm2, Apple Terminal.\n- Register fields under FIELDS (Mode::Full), update man page, README, NOTES, and wiki.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix cross-platform parser visibility on macOS/Win\n\nEnsure pure theme and terminal parser functions are available across all\ntarget platforms without cfg gating or dead-code warnings.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Make parse_ini_key available across all targets\n\nRemove target_os = \"linux\" gate from parse_ini_key so unit tests pass\non macOS and Windows.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Make all pure terminal parsers available on Win\n\nRemove target_os cfgs from parse_kitty_theme and other terminal parsers\nso they are unconditionally available on Windows.\n\nAssisted-By: Gemini 3.5 Flash\n\n* Fix macOS wallpaper Obj-C FFI ABI & AppKit link\n\nAdd AppKit framework link in build.rs and use non-variadic objc_msgSend\ndeclaration (objc_msgSend_id_id) for desktopImageURLForScreen to prevent\nABI misalignments on aarch64 Apple Darwin.\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-08-21T22:41:46-07:00",
-          "tree_id": "a4206d6e867d2fd2e324cf08f590848666fb1316",
-          "url": "https://github.com/l1a/retch/commit/2b80c74b321872317f495009db27eddb70dcfe58"
-        },
-        "date": 1787377805873,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 737973815,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 1688.856083286558,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 90.46265008598306,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 3.908710893496022,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 46.92465492021441,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 16210.284639433148,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 163317.8895155585,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 11413.247379017692,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 11578.57547181532,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1175261.8924606033,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 292.39902814728197,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 215.034835945383,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "0a334e8187c77658e8eeb0bf56462e23810fbc20",
           "message": "Fix default recipe in Justfile to list recipes (#202)\n\nMove default recipe before COMMON block so running bare `just`\nlists available recipes instead of executing `install`.\n\nAssisted-By: Gemini 3.5 Flash",
           "timestamp": "2026-08-22T07:36:24-07:00",
@@ -10185,6 +10101,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 269.7045681435858,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "372b36f96e292b4711287d1a071478de22ea3d14",
+          "message": "Settle the vendored template at v4 (#253)\n\nThree repos all declared `template v3` while `standard-check`'s body differed:\nretch ran four plain `@\"{{PY}}\"` lines, etr and rusticprofile ran a bash\nshebang recipe with an explicit PYTHON-NOT-FOUND guard. Each repo agreed with\nitself, so nothing looked wrong from inside any of them, and the marker that\nexists to make a vendored copy safe could not tell them apart.\n\nReconciling toward the majority would have repeated v1's mistake. What decides\nit is which recipes each repo's `check` actually depends on: retch 7 of 7\nshell-free, etr 2 of 6, rusticprofile 2 of 4. retch is the only repo where\n`just check` still runs on a default Windows PATH, which is the whole property\nv0.6.16 bought, so adopting the shebang body would have spent it in the one\nrepo that still had it.\n\nThe guard is worth less than it looks: the sentinel is the literal string\nPYTHON-NOT-FOUND, so the unguarded failure already names the problem.\n\nv4 is therefore: `standard-check` is four plain lines and has no shebang. The\nrule is about the gate, not the whole block -- `install-tag` stays a shebang\nrecipe because nothing runs it from `check`.\n\nretch already conformed, so no recipe body changes here. This is the marker\nbump plus the reasoning; the edit lands in etr and rusticprofile in their own\nPRs, per the block's own propagation rule.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T20:36:32-07:00",
+          "tree_id": "34f3bb8fbedeab5a69f46bdab863d91f3b8a3fd4",
+          "url": "https://github.com/l1a/retch/commit/372b36f96e292b4711287d1a071478de22ea3d14"
+        },
+        "date": 1789530209713,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 776795695.65,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2212.3426126247023,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 117.00064529744853,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.032762869381594,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 64.24411067932901,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 20963.801179746417,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 210617.03865920362,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 14769.072596854476,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 14971.046035466366,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1570957.5340134103,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 373.37659287679156,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 281.23751089760145,
             "unit": "ns"
           }
         ]
