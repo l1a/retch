@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789526847833,
+  "lastUpdate": 1789527223898,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4380,7 +4380,7 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch",
             "unit": "ns",
-            "value": 271912904.0
+            "value": 271912904
           },
           {
             "name": "CLI execution - fastfetch",
@@ -5935,90 +5935,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Linux x64 Benchmarks": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "e42fb854db13c202146dc739849f67429547ebf9",
-          "message": "deps: bump dependencies (consolidate #199) (#200)\n\nConsolidate Dependabot PR #199:\n- clap_complete_nushell 4.6.1 -> 4.6.2\n- icy_sixel 0.5.0 -> 0.5.1\n- Cargo.lock transitive dependency updates\n- Bump retch-cli to 0.8.1 and regenerate man page\n\nAssisted-By: Gemini 3.7 Flash",
-          "timestamp": "2026-08-21T15:33:39-07:00",
-          "tree_id": "f4dea1009382aed406875e53dbf14115c540f5df",
-          "url": "https://github.com/l1a/retch/commit/e42fb854db13c202146dc739849f67429547ebf9"
-        },
-        "date": 1787352048580,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 669080921.6,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2213.4115637611076,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 114.69699057787531,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.040670383812744,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 60.298005691247475,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 21356.956134194712,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 210458.02012249408,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 14699.586226359737,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 14945.800065156149,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1525326.9951503843,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 364.75062743743314,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 277.5295069492394,
-            "unit": "ns"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -10131,6 +10047,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 318.2681526400876,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5beed23c308e45d9ba8a4d69d8ae4c8e7ef7c0de",
+          "message": "Accept y for BREW_CONFIRM; guard mangled bytes (#252)\n\nTwo defects, neither hypothetical.\n\nBREW_CONFIRM required the literal `yes` while AUR_CONFIRM and\nPR_CONFIRM both take `y` -- three variables doing one job, with two\ndifferent accepted answers. It fired in the sibling repo etr, whose\nbrew-publish carries the same block: BREW_CONFIRM=y aborted the publish\nat the Homebrew leg, after crates.io and the AUR had already published,\nleaving a partially-released version. Now accepts y/Y/yes/YES. Not a\nbypass: every path still requires an explicit affirmative and there is\nno default.\n\nTwo collapsed backslashes, from ~/AGENTS.md sec.14 -- a double backslash\nin a command handed to an agent's shell arrives as a single one, before\nthe shell sees it, so a quoted heredoc does not prevent it.\ntemplates/justfile-common.just had `usr\\bin` as `usr` + 0x08. And\ncrates/sysinfo/src/win_setupapi.rs had the Win32 device path\n`\\\\?\\acpi#...` as `\\?` + 0x07 + `cpi#` -- TWO collapses on one line,\nsince the doubled backslash lost one AND `\\a` became BEL, degrading the\ntext into something that still looked like a device path. That one sits\nin a /// comment on a pub fn, so it is in the published retch-sysinfo\nrustdoc, which is why retch-sysinfo bumps rather than riding along: the\nv0.11.4 call about the repo and the registry not disagreeing.\n\nThe repair is written with chr(92), never a backslash literal in a shell\nstring, because writing one is the bug.\n\nNew scripts/text_check.py, wired into `just check`, closes both classes\nrather than the two instances. It also refuses carriage returns, which\ngit status structurally cannot report while .gitattributes pins eol=lf.\nWIP.md is gitignored and so out of scope by construction -- correct,\nsince its CRLF is deliberate and recorded.\n\nBuilt on byte counting, not grep: `grep -c $'\\r'` from an agent shell\nreturns the file's line count, per ~/AGENTS.md sec.17.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T19:46:38-07:00",
+          "tree_id": "04c746011f95b98034730bdeb43b626756aa7ebf",
+          "url": "https://github.com/l1a/retch/commit/5beed23c308e45d9ba8a4d69d8ae4c8e7ef7c0de"
+        },
+        "date": 1789527222081,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 886009303.45,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2117.9109109231345,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 120.27850389649932,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.830042131444023,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 60.7555911029764,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 18110.00988748003,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 188940.37585307762,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12798.546203592454,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 12927.061999552232,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1451276.5704814214,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 372.1524144757629,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 269.7045681435858,
             "unit": "ns"
           }
         ]
