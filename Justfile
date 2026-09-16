@@ -130,7 +130,7 @@ render-check:
     @{{PY}} scripts/render_packaging.py --self-test
 
 # Run strict checks (formatting and linting) as done in CI
-check: standard-check render-check aur-check copr-check brew-check metadata-check text-check
+check: standard-check render-check aur-check copr-check brew-check metadata-check text-check wip-check
     cargo fmt -- --check
     cargo clippy --workspace -- -D warnings
     # Also lint the optional `graphics` feature (base64/image/icy_sixel in src/logo.rs),
@@ -596,14 +596,33 @@ metadata-check:
     @{{PY}} scripts/metadata_check.py --self-test
     @{{PY}} scripts/metadata_check.py
 
+# `WIP.md` is gitignored, so `text-check` never sees it and nothing else protects its line
+# endings. It is deliberately CRLF, and `scripts/update_wip.py` rewrites it on every
+# `just merge-pr` -- so the round trip is asserted here rather than discovered after a merge.
+# It converted all 4773 CRLF to LF once already; the script's docstring has the measurement.
+#
+# Self-test only, because there is no tree to check: WIP.md is per-machine and untracked, so
+# the guard has to be about the CODE that rewrites it, not about the file's current state.
+
+# Prove update_wip.py round-trips WIP.md's line endings (offline, no network)
+wip-check:
+    @"{{PY}}" scripts/update_wip.py --self-test
+
 # Refuse control characters and carriage returns in tracked text.
 #
 # Wired into `check` for the same reason metadata-check is: nothing else looks at bytes. Both
 # classes it catches had already shipped here -- a collapsed backslash in
 # templates/justfile-common.just, and another in a `crates/sysinfo` rustdoc comment that
-# therefore reached docs.rs. It also refuses carriage returns, which `git status` structurally
-# cannot report while .gitattributes pins eol=lf. WIP.md is gitignored and so is out of scope
-# by construction, which is correct: it is deliberately CRLF.
+# therefore reached docs.rs. It also refuses carriage returns: with .gitattributes pinning
+# eol=lf, git normalises a CRLF worktree copy OUT OF ITS OWN VIEW rather than reporting it --
+# `git diff` shows nothing, and one `git add` makes `git status` clean while every CR stays on
+# disk. `git ls-files --eol` is the oracle. (v0.17.10 overstated this as "git status
+# structurally cannot report it"; it can, once. See v0.17.12.)
+#
+# WIP.md is gitignored and so is out of scope here by construction, which is correct: it is
+# deliberately CRLF. `wip-check` is what protects it instead.
+
+# Refuse control characters and carriage returns in tracked text (offline, no network)
 text-check:
     @{{PY}} scripts/text_check.py --self-test
     @{{PY}} scripts/text_check.py
@@ -825,7 +844,7 @@ merge-pr:
     git pull
     echo "Deleting local branch $BRANCH..."
     git branch -D "$BRANCH" 2>/dev/null || true
-    python3 scripts/update_wip.py
+    @"{{PY}}" scripts/update_wip.py
 
 # Pre-PR gate: run all automated checks and print manual checklist before opening a PR.
 # All items must pass before calling `gh pr create`.

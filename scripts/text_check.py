@@ -20,11 +20,19 @@ are invisible to review because the damage is a byte rather than a word.
 
 2. A CARRIAGE RETURN. `.gitattributes` pins `* text=auto eol=lf` because this tree is
    Syncthing-shared across Linux, macOS and Windows. A CRLF worktree copy is therefore
-   always drift, and `git status` CANNOT report it -- with the attribute set git treats the
-   two as equivalent, so the file reads as clean while every tool that opens the worktree
-   (chezmoi, python, a shell) sees the CRs. The sibling repo `etr` shipped exactly this:
-   `scripts/install_man.py` sat CRLF in the worktree while its committed blob was LF and
-   byte-identical to the two repos it is vendored from.
+   always drift, and git NORMALISES IT OUT OF ITS OWN VIEW rather than reporting it. Measured
+   on git 2.55.0 by planting CRLF in one tracked file:
+
+       git status --short   ->  ` M <file>`
+       git diff             ->  NOTHING. No hunk, no name, just a stderr warning.
+       git add <file>       ->  git status is now CLEAN, and every CR is still on disk.
+
+   So the drift is visible exactly once, as an ` M` with no diff behind it -- which reads as
+   noise -- and the first `git add` that touches the file erases the only signal while leaving
+   every byte in place. The unambiguous oracle is `git ls-files --eol` (`i/lf w/crlf`).
+
+   (v0.17.10 shipped this as "`git status` CANNOT report it", which is wrong; the real
+   mechanism is narrower and worse. Corrected in v0.17.12.)
 
    NOTE: retch's own `WIP.md` is uniformly CRLF and that is deliberate and recorded -- it is
    gitignored, so `git ls-files` never offers it here and this guard cannot reach it. Do not
@@ -170,11 +178,12 @@ def main(argv: list[str]) -> int:
             f"\ntext_check: {len(problems)} forbidden byte(s) in tracked text.\n"
             "  A control byte is usually a backslash that collapsed in transport "
             "(~/AGENTS.md sec.14).\n"
-            "  A CARRIAGE RETURN is worktree drift that `git status` cannot show you, because "
-            ".gitattributes\n"
-            "  pins eol=lf and git then treats CRLF and LF as equal. Confirm with "
-            "`git ls-files --eol <file>`\n"
-            "  (look for `i/lf w/crlf`) and repair the worktree copy in place.",
+            "  A CARRIAGE RETURN is worktree drift that git normalises out of its own view: "
+            "`git diff` shows\n"
+            "  nothing, and one `git add` makes `git status` clean while every CR stays on "
+            "disk. Confirm with\n"
+            "  `git ls-files --eol <file>` (look for `i/lf w/crlf`) and repair the worktree "
+            "copy in place.",
             file=sys.stderr,
         )
         return 1
