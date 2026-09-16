@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789538326859,
+  "lastUpdate": 1789538709385,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10366,90 +10366,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "67cb9d13f5ff9bb518d50bdc4fe464921b107a11",
-          "message": "Anchor side-by-side logo to the right margin (#204)\n\nIn \"logo to the right\" mode the logo was drawn wherever the text column\nended rather than at the terminal's right margin. Measured on a 138-column\nterminal, `--full --ascii-logo` rendered its widest line at column 103,\nstranding 35 columns.\n\nplan_layout returned a single `text_column_width` that every render site\nused both as the wrap width for beside-logo info lines and as the column to\ndraw the logo at. That column is clamp(45, 65), so the logo could never be\ndrawn past column 65 however wide the terminal was.\n\nThis drifted out of two correct fixes, which is why it went unnoticed:\ntext_column_width was once max(widest_of_ALL_lines + 4, 45), so the long\nWi-Fi/Net lines in --long/--full inflated it and the logo happened to land\nnear the edge. #173 narrowed the basis to beside-logo lines and #186 capped\nit at 65; each removed part of the accident, and nothing asserted the\nintended property.\n\nLayoutPlan now carries a separate logo_column = term_width - logo_width.\nWrap widths and the side-by-side/stacked decision are unchanged.\n\nAlso fixed, both found while verifying the above:\n\n- visible_len measured characters, not terminal columns, so CJK/Hangul\n  values pushed a row's logo right by one column per wide glyph. media and\n  player (v0.8.0) surface arbitrary track metadata, so this was live, not\n  hypothetical. Now uses unicode-width (no transitive deps).\n\n- display() carried a local visible_len closure that shadowed the module\n  function for its whole body, where every layout decision is made. It was\n  a byte-for-byte copy of the old character-counting implementation, so the\n  unit tests and the renderer exercised different code. The closure is gone\n  and the row arithmetic moved into a free compose_side_by_side_row, which\n  a local binding cannot shadow.\n\n- fit_logo_cells computed display pixels with truncating division before\n  div_ceil-ing the cell count, so the reservation could be one pixel short\n  of the drawn image (mx.png, zorin.png). Harmless mid-screen; at the right\n  margin it is the invariant it documents.\n\nVerified in a PTY: ASCII and Chafa at 95/110/138/169/200 columns render\ntheir widest line at exactly the terminal width, with Latin, CJK and Hangul\nfield values alike; 94 columns still stacks. Kitty, iTerm2 and Sixel land\ntheir right edge on the margin across nine assets, wide and tall.\n\nAssisted-By: Claude Opus 5 (1M context)",
-          "timestamp": "2026-08-24T14:28:22-07:00",
-          "tree_id": "4c7aa387cf77288256fb0dfe6c2a36ec9c1a07dd",
-          "url": "https://github.com/l1a/retch/commit/67cb9d13f5ff9bb518d50bdc4fe464921b107a11"
-        },
-        "date": 1787607706647,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 759480371.4,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 960.7738301169662,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 111.58127349840615,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9467526190781483,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 53.79614082459294,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7765.4836190725855,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 70202.39781000857,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4737.602224608912,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4861.9924556476035,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1058803.9425747716,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 344.52967133278884,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 250.55791120121694,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "b7b198f5f57e9a249cd825fd28ff88ac2a922219",
           "message": "Fix colour, separator and width of wrapped lines (#205)\n\nReported on a 283-column Windows Terminal: the second line of a wrapped\nBIOS value rendered in a different colour from the first. Three defects,\ntwo pre-existing and one from v0.9.2.\n\n1. Continuation lines lost the value colour. Lines are colourised before\n   they are wrapped, so a split value keeps its opening SGR on the first\n   line and its closing \\x1b[39m on the last -- every line between renders\n   in the terminal default. Reproduced byte-for-byte with the reporter's\n   string: '       LLC. HN7306EAC.310 (8//20/07/0)\\x1b[39m', no opening\n   sequence and a stray reset. carry_sgr_across_lines now re-opens the\n   active colour per continuation line and closes it per line end, so a\n   colour cannot bleed into the logo column either. Same family as v0.5.1's\n   colorize_nested. Fixed at the wrap step deliberately: wrap points are\n   chosen from visible width, so the wrapper must see the escapes anyway.\n\n2. The separator was dropped at the break. The comma branch continued a\n   line with indent + part, omitting the \", \" it had just split on, so\n   \"American Megatrends International, LLC.\" rendered as \"...International\"\n   / \"LLC.\" -- two values rather than one company name, with nothing to\n   signal the loss. This changed the data, not its presentation, which\n   makes it the more serious of the two. A test rejoins the wrapped lines\n   and asserts the original text is recovered exactly.\n\n3. Beside-logo lines still wrapped at the text column. v0.9.2 decoupled\n   logo_column from text_column_width and moved the logo to the right\n   margin, but left the wrap width at the old 45-65 clamp -- so a\n   283-column terminal wrapped BIOS at 55 columns with ~177 free to its\n   right. Beside-logo rows now wrap at logo_column - 2, matching\n   below-logo rows, which already used the full terminal width.\n\nFix 3 hides fix 1: on a wide terminal the line no longer wraps, so the\ncolour defect cannot appear there, but it stays live on any terminal narrow\nenough to wrap. Fixing only the width would have closed the report while\nleaving the bug.\n\nOnly zero-width escapes are injected, so visible_len of every wrapped line\nis unchanged and the layout numbers computed from them still hold.\n\nVerified: at 283 columns the value no longer wraps; forced to wrap at 110,\nline 1 ends \"... Rev 8,\" and line 2 opens with the value colour, and\nrejoining recovers the original text exactly.\n\nAssisted-By: Claude Opus 5 (1M context)",
           "timestamp": "2026-08-24T15:07:58-07:00",
@@ -14549,6 +14465,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 244.9475721759955,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1cd56ba20c854ae23871205e3627400085e72b6b",
+          "message": "Refuse @ inside a shebang recipe (template v5) (#256)\n\ngate_conformance.py now refuses an `@`-prefixed line inside a `#!` recipe\nbody, in ANY recipe rather than only the triad: the mistake is about a\nrecipe's shape, not the gate's behaviour, so it can land anywhere. Its own\nTEMPLATE_VERSION goes 3 -> 4; the block marker goes v4 -> v5.\n\nIn a plain recipe `@` means \"do not echo\" and just strips it. In a shebang\nrecipe just strips nothing, so the shell gets a command literally named\n`@/usr/bin/python3` and exits 127.\n\nIt exists because the trap was paid for twice: rusticprofile 0.2.2, after a\nglobal regex put `@` in front of lines in pr, merge-pr and aur-publish; and\nretch v0.17.13, in a session where that write-up had already been read, where\nit broke the very merge that shipped it. A documented trap is not a guard.\n\nValidated against the real historical commits rather than a fixture. It names\nall four sites unprompted -- rusticprofile's pr, merge-pr and aur-publish, and\nretch's merge-pr -- and is clean on both repos' fixed commits.\n\nHeredocs are skipped, and that is load-bearing: a `cat <<'MSG'` block is data,\nso a line of it starting with `@` is a literal `@`. The first detector flagged\nexactly that, caught by testing the false-positive case before writing it into\nthe vendored script. A guard that fires on correct code is deleted within a\nweek, taking the real rule with it.\n\nThe self-test pins all four outcomes, three of which are ways this check could\nbe wrong: fires on the defect, silent on a plain recipe, silent inside a\nheredoc, and still fires on a defect after a heredoc.\n\nAlso removes a \"Known divergences\" bullet that had been false for months --\netr has both install-hooks and open-pr now -- and replaces it with the\ndivergence that is actually live.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T22:52:01-07:00",
+          "tree_id": "1858988fd246182cf0e62494fe2124ba196188d3",
+          "url": "https://github.com/l1a/retch/commit/1cd56ba20c854ae23871205e3627400085e72b6b"
+        },
+        "date": 1789538707903,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 868416299.1,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 973.7378238256758,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 111.01639776123838,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9467880329754483,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 61.64435713703197,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7780.262916569309,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70676.75151842393,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4798.872607947191,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4943.090118150542,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1065388.0590508352,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 348.29379962902755,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 256.56833763261403,
             "unit": "ns"
           }
         ]
