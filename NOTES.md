@@ -121,7 +121,49 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.13)
+## Current State (v0.17.14)
+- **v0.17.14 - template v5: the `@`-in-a-shebang trap becomes a guard**
+  (`scripts/gate_conformance.py`, `templates/justfile-common.just`, `Justfile`). Tooling only;
+  no runtime change.
+  - **`gate_conformance.py` now refuses an `@`-prefixed line inside a `#!` recipe body**, in
+    **any** recipe rather than only the triad - the mistake is about a recipe's *shape*, not
+    about the gate's behaviour, so it can land anywhere. Its own `TEMPLATE_VERSION` goes 3 -> 4;
+    the block marker goes v4 -> v5.
+  - **It exists because the trap was paid for twice.** rusticprofile `0.2.2` fixed it after a
+    global regex put `@` in front of lines in `pr`, `merge-pr` and `aur-publish`. `v0.17.13`
+    fixed it again in `merge-pr` - in a session where that write-up had already been read, and
+    it broke the very merge that shipped it. **A documented trap is not a guard.**
+  - **Validated against the real historical defects, not against a fixture.** Pointed at the
+    actual broken commits it names all four sites, without being told where to look:
+
+    | commit | what the guard reports |
+    |---|---|
+    | retch `ddc20c8` (v0.17.12) | `merge-pr:847:at-in-shebang` |
+    | rusticprofile, pre-`0.2.2` | `pr:543`, `merge-pr:462`, `aur-publish:370` |
+    | both repos' fixed commits | clean, exit 0 |
+
+  - **Heredocs are skipped, and that is load-bearing rather than polite.** A `cat <<'MSG'`
+    block inside a shebang recipe is **data**; a line of it starting with `@` is a literal `@`,
+    not a command. The first version of the detector flagged exactly that - caught by testing
+    the false-positive case *before* writing it into the vendored script, rather than after.
+    **A guard that fires on correct code is deleted within a week, taking the real rule with
+    it**, which is the same argument `0.2.13` made for its third severity.
+  - **The self-test pins all four outcomes**, three of which are ways the check could be wrong
+    rather than the way it is right: it fires on the defect; stays silent on a **plain** recipe,
+    where `@` is correct and required; stays silent inside a heredoc; and **still** fires on a
+    defect *after* a heredoc, so the skip cannot over-run the rest of the recipe.
+  - **Also corrected: a "Known divergences" bullet that had been false for months.** It said
+    *"etr has no `install-hooks` and no `open-pr`"*; both exist there now (`justfile:306` and
+    `justfile:268`). Removed rather than reworded, and replaced with the divergence that is
+    actually live - etr's `check` chain still needs bash where retch's does not. That is
+    `0.2.4`'s duplicated-state finding **inside the file that exists to stop duplication
+    drifting**, which is why it is worth naming rather than quietly deleting.
+  - **Two version numbers, deliberately not one.** The block marker (v5) and each helper's
+    `TEMPLATE_VERSION` (`gate_conformance.py` 4, `install_completions.py` 3, `install_man.py` 2)
+    move independently, because a helper can change without the block changing - which is
+    exactly what happened here. Stated in the header so the next reader does not "fix" them into
+    agreement.
+
 - **v0.17.13 - a one-character regression I shipped in v0.17.12, and it broke `just merge-pr`**
   (`Justfile`). One line; no runtime change.
   - **`v0.17.12` changed `merge-pr`'s last line to `@"{{PY}}" scripts/update_wip.py`.** In a
