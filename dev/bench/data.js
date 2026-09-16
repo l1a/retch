@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789529082940,
+  "lastUpdate": 1789529839331,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4406,6 +4406,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1038065438.6599998
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "372b36f96e292b4711287d1a071478de22ea3d14",
+          "message": "Settle the vendored template at v4 (#253)\n\nThree repos all declared `template v3` while `standard-check`'s body differed:\nretch ran four plain `@\"{{PY}}\"` lines, etr and rusticprofile ran a bash\nshebang recipe with an explicit PYTHON-NOT-FOUND guard. Each repo agreed with\nitself, so nothing looked wrong from inside any of them, and the marker that\nexists to make a vendored copy safe could not tell them apart.\n\nReconciling toward the majority would have repeated v1's mistake. What decides\nit is which recipes each repo's `check` actually depends on: retch 7 of 7\nshell-free, etr 2 of 6, rusticprofile 2 of 4. retch is the only repo where\n`just check` still runs on a default Windows PATH, which is the whole property\nv0.6.16 bought, so adopting the shebang body would have spent it in the one\nrepo that still had it.\n\nThe guard is worth less than it looks: the sentinel is the literal string\nPYTHON-NOT-FOUND, so the unguarded failure already names the problem.\n\nv4 is therefore: `standard-check` is four plain lines and has no shebang. The\nrule is about the gate, not the whole block -- `install-tag` stays a shebang\nrecipe because nothing runs it from `check`.\n\nretch already conformed, so no recipe body changes here. This is the marker\nbump plus the reasoning; the edit lands in etr and rusticprofile in their own\nPRs, per the block's own propagation rule.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T20:36:32-07:00",
+          "tree_id": "34f3bb8fbedeab5a69f46bdab863d91f3b8a3fd4",
+          "url": "https://github.com/l1a/retch/commit/372b36f96e292b4711287d1a071478de22ea3d14"
+        },
+        "date": 1789529839331,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 273061226.66
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1036460845.86
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 3553542.600000001
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 5293997.700000001
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 418115683.5799999
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1035534287.9800005
           }
         ]
       }
