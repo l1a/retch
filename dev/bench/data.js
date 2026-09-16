@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789534317258,
+  "lastUpdate": 1789534688834,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4514,6 +4514,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1038866906.5400002
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "9e4453a9426a46e7f8eccc05e3f26fbf91097a3d",
+          "message": "Drop the @ that broke merge-pr in a shebang recipe (#255)\n\nv0.17.12 changed merge-pr's last line to `@\"{{PY}}\" scripts/update_wip.py`.\nIn a `#!/usr/bin/env bash` recipe just does NOT strip a leading `@` -- that is\nplain-recipe syntax -- so the shell looked for a command literally named\n`@/usr/bin/python3` and exited 127.\n\nIt fired on the very next merge, which was v0.17.12's own: the squash landed\nand the branch was deleted, then the WIP.md update never ran. Nothing was lost,\nand WIP.md's CRLF was untouched -- the step that exists to preserve it is the\nstep that did not execute.\n\nThis is rusticprofile's 0.2.2 in a new repo. A documented trap is not a guard.\n\nReproduced in isolation on a throwaway justfile before fixing: shebang + `@`\nexits 127, shebang without `@` runs, and a PLAIN recipe with `@` runs. So\nwip-check, added in the same release, is right to keep its `@` -- it is a plain\nrecipe. Only the shebang one was wrong, which is why `just check` stayed green.\n\nSwept the whole class: no other `@`-prefixed line sits inside a shebang recipe.\n\nA real guard would refuse that shape, and it belongs in the vendored\ngate_conformance.py -- a coordinated template bump across three repos, recorded\nfor v5 rather than bundled here while two template PRs are in flight.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T21:57:20-07:00",
+          "tree_id": "6d89670a98cfc93608f6890dee1a32973aa8c532",
+          "url": "https://github.com/l1a/retch/commit/9e4453a9426a46e7f8eccc05e3f26fbf91097a3d"
+        },
+        "date": 1789534688834,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 273987640.92
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1039058800.6199999
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 3396612.6200000006
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 5427562.5200000005
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 428782264.62
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1064892225.62
           }
         ]
       }
