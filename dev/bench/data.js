@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789539687558,
+  "lastUpdate": 1789540001139,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4622,6 +4622,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1045400076.6400002
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "2c9d40d85bd27a5916f8d79291a5e9a94f2cd187",
+          "message": "Add the concatenation bullet to the Portable Core (#257)\n\nThis repo carried three of the four attribution sub-bullets; etr and\nrusticprofile carried none. The fourth was written while fixing that, so it\ncomes back here.\n\nIt makes the concatenation consequence explicit where it had been implicit:\nunder squash_merge_commit_message=COMMIT_MESSAGES the squash body concatenates\nevery branch commit message, so a trailer on each commit of a multi-commit\nbranch becomes a duplicate trailer on main.\n\nWritten generically -- no hashes, no repo names -- because Part 1 must stay\nbyte-comparable across the three repos. Each repo's evidence lives in its own\nNOTES.md.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T23:25:53-07:00",
+          "tree_id": "c347a6beb01127bd45abd1e05200d429f874b274",
+          "url": "https://github.com/l1a/retch/commit/2c9d40d85bd27a5916f8d79291a5e9a94f2cd187"
+        },
+        "date": 1789540001139,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 277551807.98
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 1041476144.7799999
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 3762042.82
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 5775619.72
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 393041374.98
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 1042004298.2800002
           }
         ]
       }
