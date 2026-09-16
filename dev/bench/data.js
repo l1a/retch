@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789535448796,
+  "lastUpdate": 1789535780623,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18216,70 +18216,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "0a334e8187c77658e8eeb0bf56462e23810fbc20",
-          "message": "Fix default recipe in Justfile to list recipes (#202)\n\nMove default recipe before COMMON block so running bare `just`\nlists available recipes instead of executing `install`.\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-08-22T07:36:24-07:00",
-          "tree_id": "2e46c9a115cdbc9da04af1c8945edc382c917046",
-          "url": "https://github.com/l1a/retch/commit/0a334e8187c77658e8eeb0bf56462e23810fbc20"
-        },
-        "date": 1787411097889,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 177.4768418765637,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 3.830859933331658,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 92.71990956599919,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 79.5375828752001,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 33048.40226208557,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 441.4798086601316,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 643.7995079278132,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1657531840,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "8b416c67b714e155d9d041fb7f2d1f942a38841e",
           "message": "Create .SRCINFO temp file beside its target (#203)\n\n* Create .SRCINFO temp file beside its target\n\naur-srcinfo generated to `mktemp` in /tmp and moved the result into\npackaging/aur. /tmp is tmpfs, so that mv is a cross-filesystem copy and\ncoreutils preserves the source SELinux context — the file landed with\nuser_tmp_t and mode 0600 instead of the directory's container_file_t.\n\nThis repo lives under a Syncthing folder whose container runs as\ncontainer_t and therefore could not read the file, wedging the entire\nfolder on it: `hashing: ... permission denied`, needFiles stuck at 1,\nwhile Unix permissions looked perfectly normal. The recipe already\navoided the related `:Z` trap; this is the same blast radius reached by\na different route.\n\nCreating the temp file in the destination directory inherits that\ndirectory's context by type transition and makes the mv a\nsame-filesystem rename, which cannot relabel. chmod 0644 because mktemp\ncreates 0600 and the committed file must match its PKGBUILD sibling.\n\nAssisted-By: Claude Opus 5\n\n* Document the .SRCINFO temp-file SELinux guard\n\nThe aur-srcinfo bullet presented `:z` as the Syncthing-container hazard,\nwhich was incomplete: the temp file's location was a second, unmitigated\ninstance of the same hazard and is what actually wedged the folder.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-23T21:15:51-07:00",
@@ -21399,6 +21335,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1402191650,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ddc20c82ea43522d2d2852663c8d77c0b198b0ee",
+          "message": "Stop merge-pr converting WIP.md from CRLF to LF (#254)\n\n`scripts/update_wip.py` read with read_text() and wrote with write_text().\nBoth apply universal newlines, so \\r\\n became \\n in memory and was written\nback as whatever the PLATFORM prefers.\n\nThat made the bug platform-dependent, which is why it survived: on Windows the\nround trip is invisible, and this repo's merges were historically cut from a\nWindows host. The first merge run from Linux converted the whole file --\nmeasured immediately after #253: 0 CRLF, 4824 lone LF, where it had been pure\nCRLF.\n\nWIP.md is the one artefact with no other protection. Its CRLF is deliberate,\nand because it is gitignored `text-check` never sees it -- correctly. So the\nguard has to be about the code that rewrites it. New `just wip-check` runs the\nscript's --self-test from `just check`.\n\nA naive read-bytes fix would still have corrupted two lines: both substitutions\nuse `.*`, and in Python's re a dot matches \\r -- it excludes only \\n -- so on\nun-normalised CRLF text the replacement line comes back LF-terminated. The\nself-test pins that as a property.\n\nThe self-test was watched failing against the exact pre-fix code (crlf=0 lf=3,\nthe real corruption's signature) and carries an LF control so the fix cannot\nover-correct a repo whose WIP.md is legitimately LF.\n\nAlso: merge-pr called `python3` by hardcoded name where every other call site\nuses the resolved {{PY}}; on Windows `python3` is frequently absent.\n\nCorrects v0.17.10's claim that `git status` structurally cannot report a CRLF\nworktree. It can, once, as an ` M` with no diff behind it; what it cannot\nsurvive is a `git add`. Fixed in the docstring, the stderr message and the\nJustfile comment; the v0.17.10 entry is annotated, not rewritten.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T21:45:29-07:00",
+          "tree_id": "63209bdb0e7c24e1ba117c64339ee602b1292570",
+          "url": "https://github.com/l1a/retch/commit/ddc20c82ea43522d2d2852663c8d77c0b198b0ee"
+        },
+        "date": 1789535774335,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 231.36176932666672,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.395297779184177,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 133.57396723783322,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 100.71838624368988,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42683.24381805734,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 587.8171066943921,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 828.9056337144275,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 962408465,
             "unit": "ns"
           }
         ]
