@@ -83,6 +83,10 @@ that detail; `~/AGENTS.md`'s cross-cutting mandates still apply.
     lands on `main` takes its body from the **branch commit** — editing the PR body changes
     nothing. Amend the commit (`--force-with-lease`) and re-verify CI, or the wrong trailer
     ships anyway. Read it from `gh api repos/l1a/retch` rather than assuming.
+  * **On a multi-commit branch the bodies are CONCATENATED under that setting**, so a trailer
+    on every commit becomes a duplicate trailer on `main`. Put it on the **last commit only**,
+    or squash locally first. This has already shipped in more than one of these repos; each
+    one's NOTES.md records its own instances.
 * **Constraint:** NEVER run background `git commit` or `git push` without explicit authorization.
 * **Mandate:** ALWAYS ask for explicit permission before submitting a Pull Request (PR) or performing a merge.
 * **Branch Cleanup:** Delete feature branches from the remote after they are merged. Periodically prune abandoned branches that were never PRed.
