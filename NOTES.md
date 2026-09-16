@@ -121,7 +121,61 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.11)
+## Current State (v0.17.12)
+- **v0.17.12 - `just merge-pr` was converting WIP.md from CRLF to LF on every merge**
+  (`scripts/update_wip.py`, `Justfile`, `scripts/text_check.py`). Tooling and one correction;
+  no runtime change.
+  - **Measured immediately after #253's merge: 0 CRLF, 4824 lone LF**, in a file that had been
+    pure CRLF (4773 before that session's edits). `update_wip.py` read with `read_text()` and
+    wrote with `write_text()`; both apply universal newlines, so `\r\n` became `\n` in memory
+    and was written back as whatever the **platform** prefers.
+  - **That is why nobody noticed: the bug is platform-dependent.** On Windows the round trip is
+    invisible, because `write_text` re-translates `\n` to `\r\n` on the way out. This repo's
+    merges were historically cut from a Windows host; **the first merge run from Linux converted
+    the whole file.** A defect that is correct on the machine it is usually run from is the same
+    shape as `v0.1.10`'s *"the working runs are the accident"*, one repo over.
+  - **`WIP.md` is the one artefact with no other protection.** Its CRLF is deliberate, and
+    because it is gitignored `text-check` never sees it - correctly, by construction. So the
+    guard has to be about the **code that rewrites it**: `update_wip.py` now reads bytes,
+    detects the dominant terminator by majority, normalises to `\n` for the substitutions and
+    re-applies the terminator on write. New `just wip-check` runs its `--self-test` from
+    `just check`.
+  - **A naive "just read bytes" fix would still have corrupted two lines**, and the self-test
+    pins it as a property so nobody simplifies the normalisation away: both substitutions use
+    `.*`, and in Python's `re` **a dot matches `\r`** - it excludes only `\n`. On un-normalised
+    CRLF text `.*` swallows the carriage return, and the replacement line comes back LF-
+    terminated. Two corrupt lines in an otherwise CRLF file is harder to spot than wholesale
+    conversion.
+  - **The self-test was watched failing against the exact pre-fix code**, which reported
+    `crlf=0 lf=3` - the same signature as the real corruption. It carries an LF control too, so
+    the fix cannot over-correct a repo whose `WIP.md` is legitimately LF.
+  - **Also fixed, one line:** `merge-pr` called `python3 scripts/update_wip.py` by hardcoded
+    name while every other call site uses the resolved `{{PY}}`. On Windows `python3` is
+    frequently absent.
+
+### A correction to v0.17.10, which is the more useful half
+
+`v0.17.10` and `scripts/text_check.py` both claimed **`git status` structurally cannot report a
+CRLF worktree** under `eol=lf`. **That is wrong.** Measured on git 2.55.0 by planting CRLF in one
+tracked file:
+
+| asked | answer |
+|---|---|
+| `git status --short` | `` M <file>`` |
+| `git diff` | **nothing** - no hunk, no name, only a stderr warning |
+| `git add <file>`, then `git status` | **clean**, with every CR still on disk |
+
+The real mechanism is narrower and worse than the overstatement: the drift shows exactly once, as
+an ` M` with no diff behind it - which reads as noise - and the first `git add` erases the only
+signal while leaving every byte in place. `git ls-files --eol` (`i/lf w/crlf`) is the unambiguous
+oracle.
+
+Corrected in the script's docstring, its stderr message and the `Justfile` comment; the `v0.17.10`
+entry is **annotated rather than rewritten**, per this file's convention. **It was caught by
+running the control, not by re-reading the sentence** - which is the point: an *argument* that
+returns the expected answer for the wrong reason is this project's own failure class, one level up
+from a check that does.
+
 - **v0.17.11 - the vendored template is v4, and the majority was wrong**
   (`templates/justfile-common.just`, `Justfile`). Documentation and one version marker; no
   recipe body changed here, and no runtime change.
@@ -197,6 +251,11 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
       pins `* text=auto eol=lf`, and with that attribute set **`git status` structurally cannot
       report a CRLF worktree** - git treats the two as equivalent, so the file reads as clean.
       `etr` shipped exactly that in a file vendored from this repo.
+      > **CORRECTED in v0.17.12: the sentence above is wrong.** `git status` reports it fine,
+      > once, as an ` M` with no diff behind it; what it cannot survive is a `git add`, which
+      > erases the signal and leaves every CR on disk. The real mechanism is narrower and worse
+      > than the overstatement. Left in place per this file's convention, because the error is
+      > the useful half: it was caught by running the control, not by re-reading the sentence.
     - **`WIP.md` is deliberately CRLF and is out of scope by construction**: it is gitignored,
       so `git ls-files` never offers it. That is the right outcome - the START HERE block
       records that its CRLF is genuine and must not be "normalised", and a guard that fought
