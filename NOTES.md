@@ -121,7 +121,24 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.14)
+## Current State (v0.17.15)
+- **v0.17.15 - the one attribution bullet this repo was missing** (`AGENTS.md`). Documentation
+  only; no code change.
+  - This repo already carried three of the four attribution sub-bullets, and `etr` and
+    `rusticprofile` carried **none** - a Portable Core that was not portable. Fixed in their own
+    releases. The fourth bullet was written while doing that, so it comes back here.
+  - **It states the concatenation consequence explicitly**, where it had only been implicit:
+    under `squash_merge_commit_message=COMMIT_MESSAGES` the squash body is the concatenation of
+    every branch commit message, so a trailer on each commit of a multi-commit branch becomes a
+    **duplicate trailer on `main`**. Put it on the last commit only, or squash locally first.
+  - **Written generically on purpose** - no commit hashes, no repo names - because Part 1 must be
+    byte-comparable across the three repos. Each repo's evidence lives in its own `NOTES.md`,
+    which is where per-repo facts belong. Writing this repo's instances into the Portable Core
+    would be the same mistake one level down.
+  - *This repo's own history is clean on that count, which is why the bullet arrives here without
+    a table attached: the sibling repos supplied the evidence (`etr` had five such commits, one
+    with four trailers; `rusticprofile` three, two with three).*
+
 - **v0.17.14 - template v5: the `@`-in-a-shebang trap becomes a guard**
   (`scripts/gate_conformance.py`, `templates/justfile-common.just`, `Justfile`). Tooling only;
   no runtime change.
