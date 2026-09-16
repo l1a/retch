@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789528554356,
+  "lastUpdate": 1789529082940,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -21251,70 +21251,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "f75989c777d19ce11a71c02c17a50e959cdb94cb",
-          "message": "aur: bump to 0.8.0\n\nAssisted-By: Antigravity",
-          "timestamp": "2026-08-16T19:47:18-07:00",
-          "tree_id": "6e84e4f067d36b437236a783f86e1b1b04a441ca",
-          "url": "https://github.com/l1a/retch/commit/f75989c777d19ce11a71c02c17a50e959cdb94cb"
-        },
-        "date": 1786937368738,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 179.00207297711455,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.947685243873235,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 98.64819383945806,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.45662351924472,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46257.338155732665,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 487.4565239685038,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 734.7603520301213,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2036292555,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -24439,6 +24375,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1699319195,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5beed23c308e45d9ba8a4d69d8ae4c8e7ef7c0de",
+          "message": "Accept y for BREW_CONFIRM; guard mangled bytes (#252)\n\nTwo defects, neither hypothetical.\n\nBREW_CONFIRM required the literal `yes` while AUR_CONFIRM and\nPR_CONFIRM both take `y` -- three variables doing one job, with two\ndifferent accepted answers. It fired in the sibling repo etr, whose\nbrew-publish carries the same block: BREW_CONFIRM=y aborted the publish\nat the Homebrew leg, after crates.io and the AUR had already published,\nleaving a partially-released version. Now accepts y/Y/yes/YES. Not a\nbypass: every path still requires an explicit affirmative and there is\nno default.\n\nTwo collapsed backslashes, from ~/AGENTS.md sec.14 -- a double backslash\nin a command handed to an agent's shell arrives as a single one, before\nthe shell sees it, so a quoted heredoc does not prevent it.\ntemplates/justfile-common.just had `usr\\bin` as `usr` + 0x08. And\ncrates/sysinfo/src/win_setupapi.rs had the Win32 device path\n`\\\\?\\acpi#...` as `\\?` + 0x07 + `cpi#` -- TWO collapses on one line,\nsince the doubled backslash lost one AND `\\a` became BEL, degrading the\ntext into something that still looked like a device path. That one sits\nin a /// comment on a pub fn, so it is in the published retch-sysinfo\nrustdoc, which is why retch-sysinfo bumps rather than riding along: the\nv0.11.4 call about the repo and the registry not disagreeing.\n\nThe repair is written with chr(92), never a backslash literal in a shell\nstring, because writing one is the bug.\n\nNew scripts/text_check.py, wired into `just check`, closes both classes\nrather than the two instances. It also refuses carriage returns, which\ngit status structurally cannot report while .gitattributes pins eol=lf.\nWIP.md is gitignored and so out of scope by construction -- correct,\nsince its CRLF is deliberate and recorded.\n\nBuilt on byte counting, not grep: `grep -c $'\\r'` from an agent shell\nreturns the file's line count, per ~/AGENTS.md sec.17.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T19:46:38-07:00",
+          "tree_id": "04c746011f95b98034730bdeb43b626756aa7ebf",
+          "url": "https://github.com/l1a/retch/commit/5beed23c308e45d9ba8a4d69d8ae4c8e7ef7c0de"
+        },
+        "date": 1789529078978,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 185.32809844567478,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948344667442526,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 103.76380115219709,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 81.95536538035469,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45003.088083259325,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 492.031138810096,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 741.5782644151461,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2503549755,
             "unit": "ns"
           }
         ]
