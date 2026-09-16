@@ -21,7 +21,7 @@ default:
 # vendored helpers, bump their versions, and propagate to the sibling repos in their own PRs.
 # `just standard-check` runs the helpers' self-tests and `just check` depends on it, so a
 # violation fails the build rather than being discovered years later.
-# >>> COMMON (template v3)
+# >>> COMMON (template v4)
 # The interpreter is resolved ONCE per line, and a missing one is a hard error. The
 # `python3 … 2>/dev/null || python …` idiom is deliberately NOT used: it retries on ANY
 # failure, so a real error inside the script gets re-run and reported as if the
