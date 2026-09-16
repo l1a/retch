@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789536438400,
+  "lastUpdate": 1789536926162,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -21418,70 +21418,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "0a334e8187c77658e8eeb0bf56462e23810fbc20",
-          "message": "Fix default recipe in Justfile to list recipes (#202)\n\nMove default recipe before COMMON block so running bare `just`\nlists available recipes instead of executing `install`.\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-08-22T07:36:24-07:00",
-          "tree_id": "2e46c9a115cdbc9da04af1c8945edc382c917046",
-          "url": "https://github.com/l1a/retch/commit/0a334e8187c77658e8eeb0bf56462e23810fbc20"
-        },
-        "date": 1787411618589,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 181.65350202702368,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9487985086622492,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 98.94885014995943,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 83.38861565636178,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45311.731878410224,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 488.7344483281886,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 753.4155600496032,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1607862860,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "8b416c67b714e155d9d041fb7f2d1f942a38841e",
           "message": "Create .SRCINFO temp file beside its target (#203)\n\n* Create .SRCINFO temp file beside its target\n\naur-srcinfo generated to `mktemp` in /tmp and moved the result into\npackaging/aur. /tmp is tmpfs, so that mv is a cross-filesystem copy and\ncoreutils preserves the source SELinux context — the file landed with\nuser_tmp_t and mode 0600 instead of the directory's container_file_t.\n\nThis repo lives under a Syncthing folder whose container runs as\ncontainer_t and therefore could not read the file, wedging the entire\nfolder on it: `hashing: ... permission denied`, needFiles stuck at 1,\nwhile Unix permissions looked perfectly normal. The recipe already\navoided the related `:Z` trap; this is the same blast radius reached by\na different route.\n\nCreating the temp file in the destination directory inherits that\ndirectory's context by type transition and makes the mv a\nsame-filesystem rename, which cannot relabel. chmod 0644 because mktemp\ncreates 0600 and the committed file must match its PKGBUILD sibling.\n\nAssisted-By: Claude Opus 5\n\n* Document the .SRCINFO temp-file SELinux guard\n\nThe aur-srcinfo bullet presented `:z` as the Syncthing-container hazard,\nwhich was incomplete: the temp file's location was a second, unmitigated\ninstance of the same hazard and is what actually wedged the folder.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-23T21:15:51-07:00",
@@ -24601,6 +24537,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 993500845,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9e4453a9426a46e7f8eccc05e3f26fbf91097a3d",
+          "message": "Drop the @ that broke merge-pr in a shebang recipe (#255)\n\nv0.17.12 changed merge-pr's last line to `@\"{{PY}}\" scripts/update_wip.py`.\nIn a `#!/usr/bin/env bash` recipe just does NOT strip a leading `@` -- that is\nplain-recipe syntax -- so the shell looked for a command literally named\n`@/usr/bin/python3` and exited 127.\n\nIt fired on the very next merge, which was v0.17.12's own: the squash landed\nand the branch was deleted, then the WIP.md update never ran. Nothing was lost,\nand WIP.md's CRLF was untouched -- the step that exists to preserve it is the\nstep that did not execute.\n\nThis is rusticprofile's 0.2.2 in a new repo. A documented trap is not a guard.\n\nReproduced in isolation on a throwaway justfile before fixing: shebang + `@`\nexits 127, shebang without `@` runs, and a PLAIN recipe with `@` runs. So\nwip-check, added in the same release, is right to keep its `@` -- it is a plain\nrecipe. Only the shebang one was wrong, which is why `just check` stayed green.\n\nSwept the whole class: no other `@`-prefixed line sits inside a shebang recipe.\n\nA real guard would refuse that shape, and it belongs in the vendored\ngate_conformance.py -- a coordinated template bump across three repos, recorded\nfor v5 rather than bundled here while two template PRs are in flight.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T21:57:20-07:00",
+          "tree_id": "6d89670a98cfc93608f6890dee1a32973aa8c532",
+          "url": "https://github.com/l1a/retch/commit/9e4453a9426a46e7f8eccc05e3f26fbf91097a3d"
+        },
+        "date": 1789536922032,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 188.2140851827417,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.949180225325524,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.29958966053964,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 82.07006430399346,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46451.88977536297,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 491.0479954280305,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 732.1967786230364,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1072243105,
             "unit": "ns"
           }
         ]
