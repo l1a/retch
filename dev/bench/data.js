@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789533977408,
+  "lastUpdate": 1789534317258,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4488,7 +4488,7 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch",
             "unit": "ns",
-            "value": 273699535.0
+            "value": 273699535
           },
           {
             "name": "CLI execution - fastfetch",
@@ -6043,90 +6043,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Linux x64 Benchmarks": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "0a334e8187c77658e8eeb0bf56462e23810fbc20",
-          "message": "Fix default recipe in Justfile to list recipes (#202)\n\nMove default recipe before COMMON block so running bare `just`\nlists available recipes instead of executing `install`.\n\nAssisted-By: Gemini 3.5 Flash",
-          "timestamp": "2026-08-22T07:36:24-07:00",
-          "tree_id": "2e46c9a115cdbc9da04af1c8945edc382c917046",
-          "url": "https://github.com/l1a/retch/commit/0a334e8187c77658e8eeb0bf56462e23810fbc20"
-        },
-        "date": 1787409806772,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 873426230.65,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2180.5959480263505,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 116.87620485149407,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.0696159009436,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 59.00524284776245,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 20958.725475358464,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 210360.8029822899,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 14677.039102543742,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 14840.5174383806,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1520060.0639098666,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 380.67849852442856,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 296.0193311711559,
-            "unit": "ns"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -10239,6 +10155,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 281.23751089760145,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ddc20c82ea43522d2d2852663c8d77c0b198b0ee",
+          "message": "Stop merge-pr converting WIP.md from CRLF to LF (#254)\n\n`scripts/update_wip.py` read with read_text() and wrote with write_text().\nBoth apply universal newlines, so \\r\\n became \\n in memory and was written\nback as whatever the PLATFORM prefers.\n\nThat made the bug platform-dependent, which is why it survived: on Windows the\nround trip is invisible, and this repo's merges were historically cut from a\nWindows host. The first merge run from Linux converted the whole file --\nmeasured immediately after #253: 0 CRLF, 4824 lone LF, where it had been pure\nCRLF.\n\nWIP.md is the one artefact with no other protection. Its CRLF is deliberate,\nand because it is gitignored `text-check` never sees it -- correctly. So the\nguard has to be about the code that rewrites it. New `just wip-check` runs the\nscript's --self-test from `just check`.\n\nA naive read-bytes fix would still have corrupted two lines: both substitutions\nuse `.*`, and in Python's re a dot matches \\r -- it excludes only \\n -- so on\nun-normalised CRLF text the replacement line comes back LF-terminated. The\nself-test pins that as a property.\n\nThe self-test was watched failing against the exact pre-fix code (crlf=0 lf=3,\nthe real corruption's signature) and carries an LF control so the fix cannot\nover-correct a repo whose WIP.md is legitimately LF.\n\nAlso: merge-pr called `python3` by hardcoded name where every other call site\nuses the resolved {{PY}}; on Windows `python3` is frequently absent.\n\nCorrects v0.17.10's claim that `git status` structurally cannot report a CRLF\nworktree. It can, once, as an ` M` with no diff behind it; what it cannot\nsurvive is a `git add`. Fixed in the docstring, the stderr message and the\nJustfile comment; the v0.17.10 entry is annotated, not rewritten.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T21:45:29-07:00",
+          "tree_id": "63209bdb0e7c24e1ba117c64339ee602b1292570",
+          "url": "https://github.com/l1a/retch/commit/ddc20c82ea43522d2d2852663c8d77c0b198b0ee"
+        },
+        "date": 1789534314715,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1032089309.55,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1500.6077560788065,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 63.825714642675436,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.1752263742968365,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 31.90389684458814,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 14988.60029599756,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 158950.07840475772,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 10816.593539179845,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 10786.851723247197,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1020473.0921012502,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 195.52384115578562,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 169.76457978480403,
             "unit": "ns"
           }
         ]
