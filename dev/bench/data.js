@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789540001139,
+  "lastUpdate": 1789540230695,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -21526,70 +21526,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "8b416c67b714e155d9d041fb7f2d1f942a38841e",
-          "message": "Create .SRCINFO temp file beside its target (#203)\n\n* Create .SRCINFO temp file beside its target\n\naur-srcinfo generated to `mktemp` in /tmp and moved the result into\npackaging/aur. /tmp is tmpfs, so that mv is a cross-filesystem copy and\ncoreutils preserves the source SELinux context — the file landed with\nuser_tmp_t and mode 0600 instead of the directory's container_file_t.\n\nThis repo lives under a Syncthing folder whose container runs as\ncontainer_t and therefore could not read the file, wedging the entire\nfolder on it: `hashing: ... permission denied`, needFiles stuck at 1,\nwhile Unix permissions looked perfectly normal. The recipe already\navoided the related `:Z` trap; this is the same blast radius reached by\na different route.\n\nCreating the temp file in the destination directory inherits that\ndirectory's context by type transition and makes the mv a\nsame-filesystem rename, which cannot relabel. chmod 0644 because mktemp\ncreates 0600 and the committed file must match its PKGBUILD sibling.\n\nAssisted-By: Claude Opus 5\n\n* Document the .SRCINFO temp-file SELinux guard\n\nThe aur-srcinfo bullet presented `:z` as the Syncthing-container hazard,\nwhich was incomplete: the temp file's location was a second, unmitigated\ninstance of the same hazard and is what actually wedged the folder.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-23T21:15:51-07:00",
-          "tree_id": "ba33e2439b511c5e53e43dadcde06390056bc3b4",
-          "url": "https://github.com/l1a/retch/commit/8b416c67b714e155d9d041fb7f2d1f942a38841e"
-        },
-        "date": 1787547238754,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 181.80764995163312,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.947884222794868,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 99.17761571661671,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.70595869788325,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47864.85772661956,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 491.62673805391313,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 762.1031957990953,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2049773870,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "67cb9d13f5ff9bb518d50bdc4fe464921b107a11",
           "message": "Anchor side-by-side logo to the right margin (#204)\n\nIn \"logo to the right\" mode the logo was drawn wherever the text column\nended rather than at the terminal's right margin. Measured on a 138-column\nterminal, `--full --ascii-logo` rendered its widest line at column 103,\nstranding 35 columns.\n\nplan_layout returned a single `text_column_width` that every render site\nused both as the wrap width for beside-logo info lines and as the column to\ndraw the logo at. That column is clamp(45, 65), so the logo could never be\ndrawn past column 65 however wide the terminal was.\n\nThis drifted out of two correct fixes, which is why it went unnoticed:\ntext_column_width was once max(widest_of_ALL_lines + 4, 45), so the long\nWi-Fi/Net lines in --long/--full inflated it and the logo happened to land\nnear the edge. #173 narrowed the basis to beside-logo lines and #186 capped\nit at 65; each removed part of the accident, and nothing asserted the\nintended property.\n\nLayoutPlan now carries a separate logo_column = term_width - logo_width.\nWrap widths and the side-by-side/stacked decision are unchanged.\n\nAlso fixed, both found while verifying the above:\n\n- visible_len measured characters, not terminal columns, so CJK/Hangul\n  values pushed a row's logo right by one column per wide glyph. media and\n  player (v0.8.0) surface arbitrary track metadata, so this was live, not\n  hypothetical. Now uses unicode-width (no transitive deps).\n\n- display() carried a local visible_len closure that shadowed the module\n  function for its whole body, where every layout decision is made. It was\n  a byte-for-byte copy of the old character-counting implementation, so the\n  unit tests and the renderer exercised different code. The closure is gone\n  and the row arithmetic moved into a free compose_side_by_side_row, which\n  a local binding cannot shadow.\n\n- fit_logo_cells computed display pixels with truncating division before\n  div_ceil-ing the cell count, so the reservation could be one pixel short\n  of the drawn image (mx.png, zorin.png). Harmless mid-screen; at the right\n  margin it is the invariant it documents.\n\nVerified in a PTY: ASCII and Chafa at 95/110/138/169/200 columns render\ntheir widest line at exactly the terminal width, with Latin, CJK and Hangul\nfield values alike; 94 columns still stacks. Kitty, iTerm2 and Sixel land\ntheir right edge on the margin across nine assets, wide and tall.\n\nAssisted-By: Claude Opus 5 (1M context)",
           "timestamp": "2026-08-24T14:28:22-07:00",
@@ -24709,6 +24645,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1072243105,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1cd56ba20c854ae23871205e3627400085e72b6b",
+          "message": "Refuse @ inside a shebang recipe (template v5) (#256)\n\ngate_conformance.py now refuses an `@`-prefixed line inside a `#!` recipe\nbody, in ANY recipe rather than only the triad: the mistake is about a\nrecipe's shape, not the gate's behaviour, so it can land anywhere. Its own\nTEMPLATE_VERSION goes 3 -> 4; the block marker goes v4 -> v5.\n\nIn a plain recipe `@` means \"do not echo\" and just strips it. In a shebang\nrecipe just strips nothing, so the shell gets a command literally named\n`@/usr/bin/python3` and exits 127.\n\nIt exists because the trap was paid for twice: rusticprofile 0.2.2, after a\nglobal regex put `@` in front of lines in pr, merge-pr and aur-publish; and\nretch v0.17.13, in a session where that write-up had already been read, where\nit broke the very merge that shipped it. A documented trap is not a guard.\n\nValidated against the real historical commits rather than a fixture. It names\nall four sites unprompted -- rusticprofile's pr, merge-pr and aur-publish, and\nretch's merge-pr -- and is clean on both repos' fixed commits.\n\nHeredocs are skipped, and that is load-bearing: a `cat <<'MSG'` block is data,\nso a line of it starting with `@` is a literal `@`. The first detector flagged\nexactly that, caught by testing the false-positive case before writing it into\nthe vendored script. A guard that fires on correct code is deleted within a\nweek, taking the real rule with it.\n\nThe self-test pins all four outcomes, three of which are ways this check could\nbe wrong: fires on the defect, silent on a plain recipe, silent inside a\nheredoc, and still fires on a defect after a heredoc.\n\nAlso removes a \"Known divergences\" bullet that had been false for months --\netr has both install-hooks and open-pr now -- and replaces it with the\ndivergence that is actually live.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-15T22:52:01-07:00",
+          "tree_id": "1858988fd246182cf0e62494fe2124ba196188d3",
+          "url": "https://github.com/l1a/retch/commit/1cd56ba20c854ae23871205e3627400085e72b6b"
+        },
+        "date": 1789540226565,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 193.15004683574546,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.997355792198042,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 104.13885105319113,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 82.93478286197093,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45529.66403472002,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 493.538936503957,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 754.4134826553749,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2453400390,
             "unit": "ns"
           }
         ]
