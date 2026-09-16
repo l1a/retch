@@ -130,7 +130,7 @@ render-check:
     @{{PY}} scripts/render_packaging.py --self-test
 
 # Run strict checks (formatting and linting) as done in CI
-check: standard-check render-check aur-check copr-check brew-check metadata-check
+check: standard-check render-check aur-check copr-check brew-check metadata-check text-check
     cargo fmt -- --check
     cargo clippy --workspace -- -D warnings
     # Also lint the optional `graphics` feature (base64/image/icy_sixel in src/logo.rs),
@@ -596,6 +596,18 @@ metadata-check:
     @{{PY}} scripts/metadata_check.py --self-test
     @{{PY}} scripts/metadata_check.py
 
+# Refuse control characters and carriage returns in tracked text.
+#
+# Wired into `check` for the same reason metadata-check is: nothing else looks at bytes. Both
+# classes it catches had already shipped here -- a collapsed backslash in
+# templates/justfile-common.just, and another in a `crates/sysinfo` rustdoc comment that
+# therefore reached docs.rs. It also refuses carriage returns, which `git status` structurally
+# cannot report while .gitattributes pins eol=lf. WIP.md is gitignored and so is out of scope
+# by construction, which is correct: it is deliberately CRLF.
+text-check:
+    @{{PY}} scripts/text_check.py --self-test
+    @{{PY}} scripts/text_check.py
+
 # Set the GitHub repository description and topics from packaging/metadata.toml, then read
 # them back. Runs metadata-check first, so text that fails it is never pushed. Pass
 # --dry-run to see the difference without changing anything.
@@ -649,18 +661,33 @@ brew-publish VERSION:
     # answered by a human at a terminal, so a script or agent either blocks on a stdin that
     # will never answer or dies without saying why, and that failure reads as the gate
     # REFUSING the publish rather than as a question nobody could hear. This widens who can
-    # answer, not what counts as an answer: every path still requires an explicit "yes".
+    # answer, not what counts as an answer.
+    #
+    # `y` IS ACCEPTED HERE, and that is the point of this block rather than an afterthought.
+    # This repo has THREE confirm variables and until v0.17.10 this one alone required the
+    # literal `yes`, while AUR_CONFIRM and PR_CONFIRM both take `y`. So `BREW_CONFIRM=y` --
+    # the spelling the other two take, and the one anybody who has used them reaches for --
+    # aborted the publish. It did exactly that in the sibling repo `etr` during its v0.10.1
+    # release, at the Homebrew leg, AFTER crates.io and the AUR had already published: the
+    # worst moment to discover it, and a partially-released version to recover from. Three
+    # variables doing one job must not take two different answers.
+    #
+    # Still not a bypass: every path requires an explicit affirmative and there is no default,
+    # so an empty answer, a stray newline or an unset variable all still refuse.
     if [ -n "${BREW_CONFIRM:-}" ]; then
         CONFIRM="$BREW_CONFIRM"
         echo "Type 'yes' to continue: $CONFIRM   (answered by BREW_CONFIRM)"
     elif [ -t 0 ]; then
-        echo -n "Type 'yes' to continue: "; read -r CONFIRM
+        echo -n "Type 'yes' (or 'y') to continue: "; read -r CONFIRM
     else
         read -r -t 10 CONFIRM || CONFIRM=""
         echo "$CONFIRM"
         [ -n "$CONFIRM" ] || fail "no terminal and nothing on stdin. Re-run with BREW_CONFIRM=yes"
     fi
-    [ "$CONFIRM" = "yes" ] || { echo -e "${RED}Aborted.${NC}"; exit 1; }
+    case "$CONFIRM" in
+        y|Y|yes|YES) ;;
+        *) echo -e "${RED}Aborted.${NC}"; exit 1 ;;
+    esac
 
     # Cloned fresh each time rather than kept as a working copy: a long-lived clone is how
     # the aur-retch checkout drifted eleven releases out of date. Inside the $WORK created

@@ -345,7 +345,7 @@ pub fn present_interface_device_names(interface_guid: &Guid) -> Vec<String> {
 }
 
 /// Device *paths* for every present device exposing `interface_guid`, e.g.
-/// `\?cpi#pnp0c0a#0#{72631e54-...}`.
+/// `\\?\acpi#pnp0c0a#0#{72631e54-...}`.
 ///
 /// Distinct from [`present_interface_device_names`], which returns friendly names read
 /// from the registry. A path is what `CreateFileW` accepts, so this is the entry point for
