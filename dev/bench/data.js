@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789542253222,
+  "lastUpdate": 1789795675159,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6213,90 +6213,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "94768368ccfeb8b6ea7f4d30a4126df625efd287",
-          "message": "aur: update to 0.9.3\n\nsha256 4979b91c81aa607d878abcf9278bced32a904438840d700d6ce9437630393b50,\ncomputed from the real v0.9.3 release tarball (1275088 bytes) three\nindependent ways and matching what aur-bump rendered.\n\nAssisted-By: Claude Opus 5 (1M context)",
-          "timestamp": "2026-08-24T15:26:55-07:00",
-          "tree_id": "33fd7ed59f4bb16244d984614ffc9af8cd1c5ae6",
-          "url": "https://github.com/l1a/retch/commit/94768368ccfeb8b6ea7f4d30a4126df625efd287"
-        },
-        "date": 1787610828301,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 685609101.4,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2217.9914195302645,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 115.37474082872775,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.053376949259826,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 59.67590722179922,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 20914.499080563175,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 210607.1076786283,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 14742.163048400815,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 14997.735420166404,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1545769.9290595097,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 377.55934951682434,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 298.27012528402554,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -10401,6 +10317,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 273.6143033921688,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0b87e58d2c48a0db5279b43c94a2dd3f8cbaebcd",
+          "message": "Bump toml to 1.1.6 (consolidate #251) (#258)\n\nRolls Dependabot #251 onto a gated branch so the version bump, NOTES\nentry and man-page regeneration it skips are done. Lockfile-only: the\n\"1.1\" caret spec already admits 1.1.6, and nothing else moves.\n\nThe only code change in 1.1.6 is an ownership refactor in\nde/parser/document.rs::finish_table, which toml::from_str reaches for\nevery table header. Both of its branches were exercised live against a\nthrowaway config: a [custom_theme] table applies, and a duplicated\nheader still reports the correct span.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-18T22:21:01-07:00",
+          "tree_id": "849bdc70e477f404036d4800179b15a88cd10bba",
+          "url": "https://github.com/l1a/retch/commit/0b87e58d2c48a0db5279b43c94a2dd3f8cbaebcd"
+        },
+        "date": 1789795673338,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 872620982.6,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2091.470526189646,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 117.34420490299613,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.804855589566237,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 60.404132382483525,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 18111.93107150186,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 188843.9566104968,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12775.222487957317,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 12910.968779780356,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1453432.8417099137,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 374.595883037959,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 275.77025894744077,
             "unit": "ns"
           }
         ]
