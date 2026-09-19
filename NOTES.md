@@ -121,7 +121,35 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.15)
+## Current State (v0.17.16)
+- **v0.17.16 - `toml` 1.1.5 -> 1.1.6 (consolidated Dependabot #251)** (chore; no runtime
+  behaviour change). Rolls Dependabot's PR onto a gated branch so the release hygiene it
+  bypasses - version bump, NOTES entry, man regen - is actually done, following the
+  standing pattern (#167/v0.6.3 through #228/v0.11.8).
+  - **Lockfile-only.** The spec is `"1.1"` and a caret range already admits 1.1.6, so neither
+    manifest widens. The `Cargo.lock` diff is exactly the `toml` entry plus the `retch-cli`
+    version, with **no transitive movement** - `toml_parser`, `serde_core` and `indexmap` stay
+    put, and 1.1.6's own manifest differs from 1.1.5's only in its version line (MSRV still
+    1.85).
+  - **Unlike v0.11.4's `toml` 1.1.5, this one IS reachable, and that was established from the
+    source.** Both `.crate` files were downloaded (sha256 matching the lockfile checksums) and
+    compared file by file: the whole code change is one function,
+    `src/de/parser/document.rs::finish_table`, which `toml::from_str` runs for every
+    `[table]` / `[[array]]` header - and retch's single call site is `toml::from_str` in
+    `src/config.rs`. The change is an ownership refactor only: the header key is **moved**
+    into the parent table instead of cloned, and `key_span` is computed before that move
+    rather than inside the duplicate-key error branch. Same insertions, same error, same span.
+  - **Both branches of that function were exercised live on the 1.1.6 build**, against a
+    throwaway `XDG_CONFIG_HOME` rather than the user's config (which has no table headers, so
+    it would not reach the changed code at all): a `[custom_theme]` table with
+    `label_color = "#ff0000"` renders the label as `ESC[38;2;255;0;0m`, and a duplicated
+    `[custom_theme]` header fails with `duplicate key` pointed at **line 4, column 2** - the
+    moved `key_span`, still correct.
+  - The upstream commit list names allocation reductions in `toml_edit` parsing and display;
+    **`toml_edit` is not in retch's graph**, so only the `document.rs` hunk reaches us.
+  - `retch-cli` -> `0.17.16`; `retch-sysinfo` unchanged at `0.1.76` (it does not depend on
+    `toml`). Patch bump.
+
 - **v0.17.15 - the one attribution bullet this repo was missing** (`AGENTS.md`). Documentation
   only; no code change.
   - This repo already carried three of the four attribution sub-bullets, and `etr` and
