@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789796042139,
+  "lastUpdate": 1789796559320,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14617,80 +14617,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "94768368ccfeb8b6ea7f4d30a4126df625efd287",
-          "message": "aur: update to 0.9.3\n\nsha256 4979b91c81aa607d878abcf9278bced32a904438840d700d6ce9437630393b50,\ncomputed from the real v0.9.3 release tarball (1275088 bytes) three\nindependent ways and matching what aur-bump rendered.\n\nAssisted-By: Claude Opus 5 (1M context)",
-          "timestamp": "2026-08-24T15:26:55-07:00",
-          "tree_id": "33fd7ed59f4bb16244d984614ffc9af8cd1c5ae6",
-          "url": "https://github.com/l1a/retch/commit/94768368ccfeb8b6ea7f4d30a4126df625efd287"
-        },
-        "date": 1787611776087,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 2763571652.1,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 611.6351246278698,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 141.50772676509644,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.1913745557643147,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 90.57101109052519,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 5427.795521656206,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1396.4763237128325,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 543.4415913079496,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 87919.07155428757,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 494.3826967918664,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -18305,6 +18231,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 401.46685138965273,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0b87e58d2c48a0db5279b43c94a2dd3f8cbaebcd",
+          "message": "Bump toml to 1.1.6 (consolidate #251) (#258)\n\nRolls Dependabot #251 onto a gated branch so the version bump, NOTES\nentry and man-page regeneration it skips are done. Lockfile-only: the\n\"1.1\" caret spec already admits 1.1.6, and nothing else moves.\n\nThe only code change in 1.1.6 is an ownership refactor in\nde/parser/document.rs::finish_table, which toml::from_str reaches for\nevery table header. Both of its branches were exercised live against a\nthrowaway config: a [custom_theme] table applies, and a duplicated\nheader still reports the correct span.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-18T22:21:01-07:00",
+          "tree_id": "849bdc70e477f404036d4800179b15a88cd10bba",
+          "url": "https://github.com/l1a/retch/commit/0b87e58d2c48a0db5279b43c94a2dd3f8cbaebcd"
+        },
+        "date": 1789796555984,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 2373263285.4,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 443.8026181557269,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 131.7226065380423,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.9473141544208015,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 66.7106187965607,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4477.92341377304,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1110.128298101962,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 427.0736774875213,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 102263.11727668352,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 368.66282514076414,
             "unit": "ns"
           }
         ]
