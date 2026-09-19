@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789797162354,
+  "lastUpdate": 1789797694519,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -21521,70 +21521,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "b7b198f5f57e9a249cd825fd28ff88ac2a922219",
-          "message": "Fix colour, separator and width of wrapped lines (#205)\n\nReported on a 283-column Windows Terminal: the second line of a wrapped\nBIOS value rendered in a different colour from the first. Three defects,\ntwo pre-existing and one from v0.9.2.\n\n1. Continuation lines lost the value colour. Lines are colourised before\n   they are wrapped, so a split value keeps its opening SGR on the first\n   line and its closing \\x1b[39m on the last -- every line between renders\n   in the terminal default. Reproduced byte-for-byte with the reporter's\n   string: '       LLC. HN7306EAC.310 (8//20/07/0)\\x1b[39m', no opening\n   sequence and a stray reset. carry_sgr_across_lines now re-opens the\n   active colour per continuation line and closes it per line end, so a\n   colour cannot bleed into the logo column either. Same family as v0.5.1's\n   colorize_nested. Fixed at the wrap step deliberately: wrap points are\n   chosen from visible width, so the wrapper must see the escapes anyway.\n\n2. The separator was dropped at the break. The comma branch continued a\n   line with indent + part, omitting the \", \" it had just split on, so\n   \"American Megatrends International, LLC.\" rendered as \"...International\"\n   / \"LLC.\" -- two values rather than one company name, with nothing to\n   signal the loss. This changed the data, not its presentation, which\n   makes it the more serious of the two. A test rejoins the wrapped lines\n   and asserts the original text is recovered exactly.\n\n3. Beside-logo lines still wrapped at the text column. v0.9.2 decoupled\n   logo_column from text_column_width and moved the logo to the right\n   margin, but left the wrap width at the old 45-65 clamp -- so a\n   283-column terminal wrapped BIOS at 55 columns with ~177 free to its\n   right. Beside-logo rows now wrap at logo_column - 2, matching\n   below-logo rows, which already used the full terminal width.\n\nFix 3 hides fix 1: on a wide terminal the line no longer wraps, so the\ncolour defect cannot appear there, but it stays live on any terminal narrow\nenough to wrap. Fixing only the width would have closed the report while\nleaving the bug.\n\nOnly zero-width escapes are injected, so visible_len of every wrapped line\nis unchanged and the layout numbers computed from them still hold.\n\nVerified: at 283 columns the value no longer wraps; forced to wrap at 110,\nline 1 ends \"... Rev 8,\" and line 2 opens with the value colour, and\nrejoining recovers the original text exactly.\n\nAssisted-By: Claude Opus 5 (1M context)",
-          "timestamp": "2026-08-24T15:07:58-07:00",
-          "tree_id": "aca2847305c6befa11a515975321ec95f9a5ba9c",
-          "url": "https://github.com/l1a/retch/commit/b7b198f5f57e9a249cd825fd28ff88ac2a922219"
-        },
-        "date": 1787611698228,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 175.77166128437239,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9486297340673078,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 97.26128785315,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.97267198910833,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45270.61794629607,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 483.7655078587337,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 733.282145530291,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2487334385,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -24709,6 +24645,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1401052260,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0b87e58d2c48a0db5279b43c94a2dd3f8cbaebcd",
+          "message": "Bump toml to 1.1.6 (consolidate #251) (#258)\n\nRolls Dependabot #251 onto a gated branch so the version bump, NOTES\nentry and man-page regeneration it skips are done. Lockfile-only: the\n\"1.1\" caret spec already admits 1.1.6, and nothing else moves.\n\nThe only code change in 1.1.6 is an ownership refactor in\nde/parser/document.rs::finish_table, which toml::from_str reaches for\nevery table header. Both of its branches were exercised live against a\nthrowaway config: a [custom_theme] table applies, and a duplicated\nheader still reports the correct span.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-18T22:21:01-07:00",
+          "tree_id": "849bdc70e477f404036d4800179b15a88cd10bba",
+          "url": "https://github.com/l1a/retch/commit/0b87e58d2c48a0db5279b43c94a2dd3f8cbaebcd"
+        },
+        "date": 1789797690875,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 180.10378517918826,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9506593090703106,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 99.2262805341278,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 78.17100140668899,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47717.13220162302,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 471.3300517797141,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 719.1685062467998,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2033629245,
             "unit": "ns"
           }
         ]
