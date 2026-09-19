@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789796559320,
+  "lastUpdate": 1789797162354,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18319,70 +18319,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "94768368ccfeb8b6ea7f4d30a4126df625efd287",
-          "message": "aur: update to 0.9.3\n\nsha256 4979b91c81aa607d878abcf9278bced32a904438840d700d6ce9437630393b50,\ncomputed from the real v0.9.3 release tarball (1275088 bytes) three\nindependent ways and matching what aur-bump rendered.\n\nAssisted-By: Claude Opus 5 (1M context)",
-          "timestamp": "2026-08-24T15:26:55-07:00",
-          "tree_id": "33fd7ed59f4bb16244d984614ffc9af8cd1c5ae6",
-          "url": "https://github.com/l1a/retch/commit/94768368ccfeb8b6ea7f4d30a4126df625efd287"
-        },
-        "date": 1787612664361,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 170.4023178462605,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 3.9445280823538007,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 96.22606582908688,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 77.52982571999173,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 41942.38315708078,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 459.5256201536455,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 955.416663817871,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1992976550,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -21507,6 +21443,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 984960515,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0b87e58d2c48a0db5279b43c94a2dd3f8cbaebcd",
+          "message": "Bump toml to 1.1.6 (consolidate #251) (#258)\n\nRolls Dependabot #251 onto a gated branch so the version bump, NOTES\nentry and man-page regeneration it skips are done. Lockfile-only: the\n\"1.1\" caret spec already admits 1.1.6, and nothing else moves.\n\nThe only code change in 1.1.6 is an ownership refactor in\nde/parser/document.rs::finish_table, which toml::from_str reaches for\nevery table header. Both of its branches were exercised live against a\nthrowaway config: a [custom_theme] table applies, and a duplicated\nheader still reports the correct span.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-18T22:21:01-07:00",
+          "tree_id": "849bdc70e477f404036d4800179b15a88cd10bba",
+          "url": "https://github.com/l1a/retch/commit/0b87e58d2c48a0db5279b43c94a2dd3f8cbaebcd"
+        },
+        "date": 1789797158227,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 226.96134666315373,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.361957838304182,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 128.0228312167004,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 97.45438518360454,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41788.08508556221,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 629.5890738771585,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 909.6454359868382,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2985269795,
             "unit": "ns"
           }
         ]
