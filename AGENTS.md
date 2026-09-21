@@ -336,9 +336,11 @@ Clone `https://github.com/l1a/retch.wiki.git`, edit the relevant pages, and push
 
 ## 5. Merging
 After a PR is merged, run `just merge-pr` to squash-merge via `gh`, switch to `main`,
-pull, delete the local feature branch, and update `WIP.md`
-(`Active Branch: none (main is current)`, latest commit updated). WIP.md is an ongoing
-rolling log, not reset per-PR — `merge-pr` only rewrites the Active-Branch and
-latest-commit lines and preserves the notes and open-task sections.
+pull, delete the local feature branch, and update `WIP.md`. WIP.md is an ongoing
+rolling log, not reset per-PR — `merge-pr` regenerates **only** the state block between the
+`<!-- BEGIN merge-pr state … -->` / `<!-- END merge-pr state -->` markers at the top of the
+file (active branch, main HEAD, versions, newest tag), inserting it on first run. Nothing
+outside the markers is touched, so hand-written entries and open tasks still need updating by
+hand after a merge. It refuses, writing nothing, if the markers are duplicated or unpaired.
 
 ---

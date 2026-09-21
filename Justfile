@@ -604,7 +604,7 @@ metadata-check:
 # Self-test only, because there is no tree to check: WIP.md is per-machine and untracked, so
 # the guard has to be about the CODE that rewrites it, not about the file's current state.
 
-# Prove update_wip.py round-trips WIP.md's line endings (offline, no network)
+# Prove update_wip.py touches only its marked block and keeps WIP.md's line endings (offline)
 wip-check:
     @"{{PY}}" scripts/update_wip.py --self-test
 
@@ -792,6 +792,10 @@ brew-publish VERSION:
 # went stale -- so they get steps of their own (2 and 5).
 
 # Merge the active PR, switch to main, pull, delete the branch, and update WIP.md (requires gh)
+#
+# The WIP.md update regenerates ONLY the marked state block at the top of that file (branch,
+# main HEAD, versions, newest tag); hand-written entries are never touched. It refuses, and
+# writes nothing, if the markers are duplicated or unpaired. See scripts/update_wip.py.
 merge-pr:
     #!/usr/bin/env bash
     set -euo pipefail
