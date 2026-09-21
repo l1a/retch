@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790028933112,
+  "lastUpdate": 1790029684735,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6213,90 +6213,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "d60658ca92e0dc731c0baa88ad37e8f5b75e65ed",
-          "message": "aur: update to 0.9.4\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-24T19:53:26-07:00",
-          "tree_id": "3b38c1f2608c9f32998a837ec0aae4b017319c97",
-          "url": "https://github.com/l1a/retch/commit/d60658ca92e0dc731c0baa88ad37e8f5b75e65ed"
-        },
-        "date": 1787626834382,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 707028884.4,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2196.8559831534913,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 114.99043528280227,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.048606074246789,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 59.2390413058042,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 20927.82238154091,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 211227.37734609735,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 14743.370554944191,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 14901.490317001788,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1537155.7599508467,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 376.45258879605973,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 298.26306340843183,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -10401,6 +10317,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 295.7330050125518,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "30249632aa681075b28a6b1e4c5bd3568864c4df",
+          "message": "Stop install-man rebuilding the page (template v6) (#260)\n\n`install-man` depended on `man`, so `just install` needed mandown to\ninstall a page that is already committed, and failed without it. The\ndependency dated from when etr's pages were gitignored; all three repos\ncommit their pages now, so it goes. Template v6; install_man.py v3 for\na stale docstring. Verified: `just install` with mandown off PATH\ninstalls a page byte-identical to docs/retch.1.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-21T15:21:33-07:00",
+          "tree_id": "5e0a46a24a9d6c8418881588c1a3ab51db48e27b",
+          "url": "https://github.com/l1a/retch/commit/30249632aa681075b28a6b1e4c5bd3568864c4df"
+        },
+        "date": 1790029681895,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1054425098.4,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1726.7729429297626,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 91.82708325549615,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.9086113125657405,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 51.60036058602783,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 16318.482026111198,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 164240.03351649112,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 11435.130011523896,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 11552.84857101244,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1214263.0940048906,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 295.5102057194534,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 210.48959863928212,
             "unit": "ns"
           }
         ]
