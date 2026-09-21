@@ -121,7 +121,58 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.16)
+## Current State (v0.17.17)
+- **v0.17.17 - `merge-pr` owns one marked block of WIP.md, and the install docs lead with the
+  `just` recipes** (`scripts/update_wip.py`, `Justfile`, `AGENTS.md` §5, `README.md`, wiki).
+  Tooling and docs; no runtime change, `retch-sysinfo` unchanged at `0.1.76`.
+  - **`update_wip.py` had been rewriting the wrong entries for months and saying it
+    succeeded.** It rewrote the first line anywhere in `WIP.md` matching `### Active Branch:`
+    and the first matching `**main HEAD**:`. The file's live hand-off moved to a START HERE
+    table and then to newest-first dated entries, neither of which uses those headers, so on
+    the current file the two patterns matched a dated entry ~500 lines down and a pointer
+    ~4400 lines down. Every merge rewrote those, printed "Active Branch set to none, main HEAD
+    updated to ...", and left the part anyone reads untouched. Prose that *quoted* either
+    header became the first match and was overwritten (it happened after #248), which is why
+    WIP.md had grown a rule never to quote the two strings — a rule about the text, patching
+    a defect in the code.
+  - **Now the script owns exactly one block**, between `<!-- BEGIN merge-pr state … -->` and
+    `<!-- END merge-pr state -->`, and regenerates it whole: active branch, `main` HEAD, both
+    crate versions (the two-crate publish question is answerable at a glance), newest tag,
+    date. **Nothing outside the markers is touched.** Missing markers insert the block at the
+    top, once; duplicated, unpaired or out-of-order markers **refuse and write nothing**,
+    rather than guessing which copy is real. A branch other than `main` is flagged in the
+    block instead of being reported as "none". The output message says whether it inserted or
+    replaced, and reminds that hand-written entries still need updating.
+  - **The old behaviour was reproduced before the fix**: the `main` copy of the script, run
+    against a fixture whose only `### Active Branch:` / `**main HEAD**:` lines sit in an old
+    dated entry, rewrote that entry and reported success. The new script on the same fixture
+    inserted the block at the top and left the entry byte-identical, and a second run
+    replaced in place.
+  - **The self-test grew from the line-ending round trip to 26 checks** (one of them looped
+    over four malformed-marker shapes), and four
+    mutations were each watched failing it: accepting duplicate markers, inserting at the
+    bottom, dropping the `|` escape (a commit subject containing `|` would split a table cell),
+    and a text-mode write (the v0.17.12 CRLF defect, now asserted end to end through
+    `update_file` rather than through the helpers alone).
+  - **Install-from-source docs now lead with `just install-tag`, and the reason is measured,
+    not stylistic.** `cargo install` installs the binary only; the recipes add the man page
+    and completions and keep all three at one version (the eleven-releases-stale man page
+    that `install-tag` was built for). The obvious recommendation, plain `just install`, is
+    **not** safe to give a user: it depends on `install-man` -> `man`, which needs `mandown`
+    and regenerates the committed `docs/retch.1`. Confirmed in a fresh clone with `mandown`
+    off `PATH`: `Error: 'mandown' executable not found`, exit 1, before `cargo install` runs.
+    So README and the wiki give `just install-tag "$(git describe --tags --abbrev=0)"` for a
+    release (no mandown, no tree changes), `just install` for the checkout with mandown named
+    as its prerequisite, and `cargo install` as the binary-only fallback with
+    `retch --completions <shell>`. The crates.io section now says it is binary-only.
+  - **The recommended command was run, not just read.** In a fresh clone from GitHub,
+    `just install-tag "$(git describe --tags --abbrev=0)"` resolved `v0.17.9`, built it, and
+    its post-condition read `retch 0.17.9` back from `PATH`; the man page and all six
+    completion files landed, and the zsh `fpath` hint the README promises was printed. It ran
+    against a throwaway `CARGO_INSTALL_ROOT` / `XDG_DATA_HOME` / `XDG_CONFIG_HOME`, so the
+    machine's real install was not touched.
+  - `retch-cli` -> `0.17.17`. Patch bump - tooling and docs.
+
 - **v0.17.16 - `toml` 1.1.5 -> 1.1.6 (consolidated Dependabot #251)** (chore; no runtime
   behaviour change). Rolls Dependabot's PR onto a gated branch so the release hygiene it
   bypasses - version bump, NOTES entry, man regen - is actually done, following the
@@ -3782,6 +3833,13 @@ Adds over long:
     `--long` measures 3352 ms, and removing `dns` moved the former by 3650 ms but the
     latter by only 276 ms. **The `--fields` harness does not model `--long`'s concurrency**;
     confirm any predicted win against the real mode before believing it.
+- **`just install` requires `mandown` because `install-man` depends on `man`.** Found in
+  v0.17.17. In retch `docs/retch.1` is committed and the gate keeps it current, so installing
+  it needs no regeneration — the dependency exists for `etr`, whose pages are built into an
+  ignored directory. The recipe sits inside the vendored COMMON block, so changing it is a
+  template bump propagated to all three repos (e.g. a per-repo `MAN_PREREQ` in the PROJECT
+  header), not a local edit. Until then the docs name mandown as `just install`'s
+  prerequisite and point users at `just install-tag`, which never builds the page.
 - **retch ignores `NO_COLOR`, and has no `--no-color` flag.** Noticed while writing the
   Homebrew formula's test block (v0.17.2), which had to strip ANSI itself. `NO_COLOR` is a
   widely honoured convention and retch emits colour even when stdout is not a terminal —
