@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790030546458,
+  "lastUpdate": 1790031130126,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18319,70 +18319,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "d60658ca92e0dc731c0baa88ad37e8f5b75e65ed",
-          "message": "aur: update to 0.9.4\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-24T19:53:26-07:00",
-          "tree_id": "3b38c1f2608c9f32998a837ec0aae4b017319c97",
-          "url": "https://github.com/l1a/retch/commit/d60658ca92e0dc731c0baa88ad37e8f5b75e65ed"
-        },
-        "date": 1787628302574,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 220.65592351372305,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.8763099383307535,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 140.00934443900906,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 98.4412697854365,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 43795.09972971733,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 617.5170455436456,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 840.3010004641758,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3184434270,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -21507,6 +21443,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1035383700,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "30249632aa681075b28a6b1e4c5bd3568864c4df",
+          "message": "Stop install-man rebuilding the page (template v6) (#260)\n\n`install-man` depended on `man`, so `just install` needed mandown to\ninstall a page that is already committed, and failed without it. The\ndependency dated from when etr's pages were gitignored; all three repos\ncommit their pages now, so it goes. Template v6; install_man.py v3 for\na stale docstring. Verified: `just install` with mandown off PATH\ninstalls a page byte-identical to docs/retch.1.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-21T15:21:33-07:00",
+          "tree_id": "5e0a46a24a9d6c8418881588c1a3ab51db48e27b",
+          "url": "https://github.com/l1a/retch/commit/30249632aa681075b28a6b1e4c5bd3568864c4df"
+        },
+        "date": 1790031114038,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 226.453786994037,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.3894017088558765,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 122.85040896405465,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 110.26896167899172,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45820.55446580775,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 575.6627404951445,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 837.9148914585096,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1286706220,
             "unit": "ns"
           }
         ]
