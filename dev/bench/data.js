@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790030076945,
+  "lastUpdate": 1790030546458,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14617,80 +14617,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "d60658ca92e0dc731c0baa88ad37e8f5b75e65ed",
-          "message": "aur: update to 0.9.4\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-24T19:53:26-07:00",
-          "tree_id": "3b38c1f2608c9f32998a837ec0aae4b017319c97",
-          "url": "https://github.com/l1a/retch/commit/d60658ca92e0dc731c0baa88ad37e8f5b75e65ed"
-        },
-        "date": 1787627664692,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1100259647.7,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 559.8003950238406,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 179.5009664095939,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.918291054178639,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 75.10948903917804,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 6372.089367024291,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1164.8049232904682,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 426.3772026766577,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 85782.20138174175,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 424.61481147990827,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -18305,6 +18231,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 424.06032471241906,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "30249632aa681075b28a6b1e4c5bd3568864c4df",
+          "message": "Stop install-man rebuilding the page (template v6) (#260)\n\n`install-man` depended on `man`, so `just install` needed mandown to\ninstall a page that is already committed, and failed without it. The\ndependency dated from when etr's pages were gitignored; all three repos\ncommit their pages now, so it goes. Template v6; install_man.py v3 for\na stale docstring. Verified: `just install` with mandown off PATH\ninstalls a page byte-identical to docs/retch.1.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-21T15:21:33-07:00",
+          "tree_id": "5e0a46a24a9d6c8418881588c1a3ab51db48e27b",
+          "url": "https://github.com/l1a/retch/commit/30249632aa681075b28a6b1e4c5bd3568864c4df"
+        },
+        "date": 1790030543670,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 3304034827.05,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 518.5561328999408,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 180.31544095862228,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.683515406061237,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 75.30226045598856,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4565.660468743665,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1375.2408942579852,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 513.9760664883178,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 84963.10184267009,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 389.88385647956324,
             "unit": "ns"
           }
         ]
