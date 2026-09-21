@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790031130126,
+  "lastUpdate": 1790031605958,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -21521,70 +21521,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "a495221701cb2efcd054df3a3f901bef68c28acf",
-          "message": "Refuse a path where a command name belongs (#206)\n\ninstall_completions.py takes a command NAME, but the output path is\n`directory / pattern.format(bin=binary)` and pathlib discards the left\noperand when the right side is absolute. Passing a path -- which the\nflag `--from-path` invites -- therefore wrote the completion script\nover the binary it was asked to read.\n\nFound in rusticprofile, where it destroyed a working binary on a host\ntaking hourly backups. retch's copy was byte-identical.\n\n`--from-path` runs [binary], so an absolute path works for the READ\nand only breaks the write: generation succeeds, then destroys its own\ninput, exit 0.\n\nNow refused before any file is written. Watched failing: neutering the\nguard fails --self-test and fails just standard-check, which just\ncheck depends on. retch's own recipes pass bare names and were never\nat risk; the exposure is invoking the helper directly.\n\nTemplate v3. etr still carries the pre-fix copy.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-24T19:16:29-07:00",
-          "tree_id": "14035ba3864fdeb15a23ed42bfcfbdaf8fae5357",
-          "url": "https://github.com/l1a/retch/commit/a495221701cb2efcd054df3a3f901bef68c28acf"
-        },
-        "date": 1787626563946,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 178.546878828265,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.947248769983901,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 97.13328817672304,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.33520293268143,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45593.87728046611,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 483.85274867912193,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 744.8473929663302,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1963966745,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -24709,6 +24645,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1070340480,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "30249632aa681075b28a6b1e4c5bd3568864c4df",
+          "message": "Stop install-man rebuilding the page (template v6) (#260)\n\n`install-man` depended on `man`, so `just install` needed mandown to\ninstall a page that is already committed, and failed without it. The\ndependency dated from when etr's pages were gitignored; all three repos\ncommit their pages now, so it goes. Template v6; install_man.py v3 for\na stale docstring. Verified: `just install` with mandown off PATH\ninstalls a page byte-identical to docs/retch.1.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-21T15:21:33-07:00",
+          "tree_id": "5e0a46a24a9d6c8418881588c1a3ab51db48e27b",
+          "url": "https://github.com/l1a/retch/commit/30249632aa681075b28a6b1e4c5bd3568864c4df"
+        },
+        "date": 1790031602469,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 180.46400836168146,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9503508581609488,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 98.99395467745057,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 78.30454158707755,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46436.33444441854,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 472.36105971577143,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 709.380177782239,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 909891480,
             "unit": "ns"
           }
         ]
