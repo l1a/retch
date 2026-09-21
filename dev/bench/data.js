@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789797694519,
+  "lastUpdate": 1790027123323,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6213,90 +6213,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "a495221701cb2efcd054df3a3f901bef68c28acf",
-          "message": "Refuse a path where a command name belongs (#206)\n\ninstall_completions.py takes a command NAME, but the output path is\n`directory / pattern.format(bin=binary)` and pathlib discards the left\noperand when the right side is absolute. Passing a path -- which the\nflag `--from-path` invites -- therefore wrote the completion script\nover the binary it was asked to read.\n\nFound in rusticprofile, where it destroyed a working binary on a host\ntaking hourly backups. retch's copy was byte-identical.\n\n`--from-path` runs [binary], so an absolute path works for the READ\nand only breaks the write: generation succeeds, then destroys its own\ninput, exit 0.\n\nNow refused before any file is written. Watched failing: neutering the\nguard fails --self-test and fails just standard-check, which just\ncheck depends on. retch's own recipes pass bare names and were never\nat risk; the exposure is invoking the helper directly.\n\nTemplate v3. etr still carries the pre-fix copy.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-24T19:16:29-07:00",
-          "tree_id": "14035ba3864fdeb15a23ed42bfcfbdaf8fae5357",
-          "url": "https://github.com/l1a/retch/commit/a495221701cb2efcd054df3a3f901bef68c28acf"
-        },
-        "date": 1787624586829,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 757120975.15,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 1692.452174005816,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 89.55143717227989,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 3.8967695289409208,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 45.98611502888822,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 16337.682898029077,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 162984.4008297645,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 11470.41137029938,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 11444.974187588223,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1189988.2755636931,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 298.0515693785047,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 222.86805221226373,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -10401,6 +10317,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 275.77025894744077,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f40e36b4e54c235d038d9413129b5f3bca2aa322",
+          "message": "Own one WIP.md block; lead install docs with just (#259)\n\nupdate_wip.py matched `### Active Branch:` and `**main HEAD**:` anywhere\nin WIP.md. The file's layout moved on, so both matched stale entries far\ndown the file, and the script still reported success. It now regenerates\nonly the block between its own BEGIN/END markers (inserting it at the\ntop on first run) and refuses, writing nothing, on duplicated or\nunpaired markers. Self-test extended; four mutations watched failing.\n\nREADME and the wiki now recommend `just install-tag` for installing from\nsource, since `cargo install` installs the binary only. Plain\n`just install` needs mandown (install-man depends on man), confirmed in a\nfresh clone, so the docs say so.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-21T14:38:18-07:00",
+          "tree_id": "654f76f0645af67cdfafe76fa329d675fde899f5",
+          "url": "https://github.com/l1a/retch/commit/f40e36b4e54c235d038d9413129b5f3bca2aa322"
+        },
+        "date": 1790027119439,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 897380290.05,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2213.4247548498925,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 116.36716711676418,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.031885926626932,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 64.21839779485308,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 20978.18268624455,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 210791.23589288426,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 14720.010701723993,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 14872.956355873252,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1553375.0190717473,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 368.7004760976607,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 295.7330050125518,
             "unit": "ns"
           }
         ]
