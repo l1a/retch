@@ -178,7 +178,6 @@ tag, so the three cannot disagree. It is a bash recipe, so on Windows run it fro
 To install **the current checkout** instead — unreleased changes included:
 
 ```sh
-cargo install mandown   # `just install` rebuilds the man page, so it needs mandown
 just install
 ```
 

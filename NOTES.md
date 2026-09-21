@@ -121,7 +121,41 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.17)
+## Current State (v0.17.18)
+- **v0.17.18 - template v6: `just install` no longer needs `mandown`** (`Justfile` COMMON
+  block, `templates/justfile-common.just`, `scripts/install_man.py` template v3, `README.md`,
+  wiki). Tooling and docs; no runtime change, `retch-sysinfo` unchanged at `0.1.76`.
+  - **`install-man` stops depending on `man`.** v0.17.17 found that `just install` failed in a
+    fresh clone without mandown (`'mandown' executable not found`, before `cargo install` ran)
+    and documented mandown as a prerequisite. Where mandown *was* present it also rewrote a
+    tracked file in the user's checkout, since the page's date footer moves monthly.
+  - **The dependency had outlived its reason.** It existed while etr built its pages into a
+    gitignored `man/build/`; etr has committed them since its #72 (2026-09-13). All three repos
+    now commit their pages and gate them current, so the committed page *is* the current page
+    and installing it needs no build. **The v0.17.17 backlog entry got this wrong** — it named
+    etr's ignored directory as the live reason — and is corrected in §5 rather than deleted.
+    Found by reading etr's justfile (`# Build man pages … (output is TRACKED)`) before
+    designing a per-repo switch that turned out to be unnecessary.
+  - **The same staleness sat in the standard's own text**: the template's `MAN_PAGES` example
+    still read `man/build/etr.1`, its scope note said "one repo gitignores it", and
+    `install_man.py`'s docstring said etr "builds its pages into an ignored directory". All
+    three corrected; `install_man.py` goes to template v3 for the docstring. Its
+    untracked-page skip is **kept** — `install-tag` can install an etr release from before #72.
+  - **Measured, not argued:** with mandown removed from `PATH` and throwaway
+    `CARGO_INSTALL_ROOT` / XDG directories, `just install` in this repo exited 0, installed
+    `retch-cli v0.17.17`, and the installed `retch.1` is byte-identical to `docs/retch.1`; the
+    only tracked changes afterwards were this PR's own edits. `just standard-check` passes
+    (`install_man.py` self-test at v3) and the Justfile block is byte-identical to the
+    template's canonical section.
+  - **Propagation**: the block, the template and `install_man.py` are vendored byte-identically
+    in `etr` and `rusticprofile` (verified by hash before starting), so each gets the same v6
+    edit in its own PR, applied by one script so the three cannot diverge.
+  - README and wiki drop the "`just install` needs mandown" caveat added in v0.17.17. The wiki's
+    Getting-Started also still showed `--ascii-only` (the flag is `--ascii-logo`) and
+    `tldr retch` (the upstream page was declined) — the same two errors v0.17.9 removed from
+    the README; removed here.
+  - `retch-cli` -> `0.17.18`. Patch bump - tooling and docs.
+
 - **v0.17.17 - `merge-pr` owns one marked block of WIP.md, and the install docs lead with the
   `just` recipes** (`scripts/update_wip.py`, `Justfile`, `AGENTS.md` §5, `README.md`, wiki).
   Tooling and docs; no runtime change, `retch-sysinfo` unchanged at `0.1.76`.
@@ -3833,13 +3867,11 @@ Adds over long:
     `--long` measures 3352 ms, and removing `dns` moved the former by 3650 ms but the
     latter by only 276 ms. **The `--fields` harness does not model `--long`'s concurrency**;
     confirm any predicted win against the real mode before believing it.
-- **`just install` requires `mandown` because `install-man` depends on `man`.** Found in
-  v0.17.17. In retch `docs/retch.1` is committed and the gate keeps it current, so installing
-  it needs no regeneration — the dependency exists for `etr`, whose pages are built into an
-  ignored directory. The recipe sits inside the vendored COMMON block, so changing it is a
-  template bump propagated to all three repos (e.g. a per-repo `MAN_PREREQ` in the PROJECT
-  header), not a local edit. Until then the docs name mandown as `just install`'s
-  prerequisite and point users at `just install-tag`, which never builds the page.
+- ~~**`just install` requires `mandown` because `install-man` depends on `man`.**~~ **Fixed
+  in template v6 (v0.17.18)** by dropping the dependency. The reason this entry gave for it
+  was wrong: it said the dependency "exists for `etr`, whose pages are built into an ignored
+  directory" — true until etr's #72 (2026-09-13), stale when written. All three repos commit
+  their pages, so no per-repo switch was needed; the dependency could simply go.
 - **retch ignores `NO_COLOR`, and has no `--no-color` flag.** Noticed while writing the
   Homebrew formula's test block (v0.17.2), which had to strip ANSI itself. `NO_COLOR` is a
   widely honoured convention and retch emits colour even when stdout is not a terminal —
