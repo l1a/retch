@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790027924742,
+  "lastUpdate": 1790028430010,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18319,70 +18319,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "a495221701cb2efcd054df3a3f901bef68c28acf",
-          "message": "Refuse a path where a command name belongs (#206)\n\ninstall_completions.py takes a command NAME, but the output path is\n`directory / pattern.format(bin=binary)` and pathlib discards the left\noperand when the right side is absolute. Passing a path -- which the\nflag `--from-path` invites -- therefore wrote the completion script\nover the binary it was asked to read.\n\nFound in rusticprofile, where it destroyed a working binary on a host\ntaking hourly backups. retch's copy was byte-identical.\n\n`--from-path` runs [binary], so an absolute path works for the READ\nand only breaks the write: generation succeeds, then destroys its own\ninput, exit 0.\n\nNow refused before any file is written. Watched failing: neutering the\nguard fails --self-test and fails just standard-check, which just\ncheck depends on. retch's own recipes pass bare names and were never\nat risk; the exposure is invoking the helper directly.\n\nTemplate v3. etr still carries the pre-fix copy.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-24T19:16:29-07:00",
-          "tree_id": "14035ba3864fdeb15a23ed42bfcfbdaf8fae5357",
-          "url": "https://github.com/l1a/retch/commit/a495221701cb2efcd054df3a3f901bef68c28acf"
-        },
-        "date": 1787626013640,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 231.2795419742719,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.133218303332127,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 125.20267300840365,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 102.38182740243991,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 42492.08126470568,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 588.9360332125399,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 873.6554913832788,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1510616045,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -21507,6 +21443,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2985269795,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f40e36b4e54c235d038d9413129b5f3bca2aa322",
+          "message": "Own one WIP.md block; lead install docs with just (#259)\n\nupdate_wip.py matched `### Active Branch:` and `**main HEAD**:` anywhere\nin WIP.md. The file's layout moved on, so both matched stale entries far\ndown the file, and the script still reported success. It now regenerates\nonly the block between its own BEGIN/END markers (inserting it at the\ntop on first run) and refuses, writing nothing, on duplicated or\nunpaired markers. Self-test extended; four mutations watched failing.\n\nREADME and the wiki now recommend `just install-tag` for installing from\nsource, since `cargo install` installs the binary only. Plain\n`just install` needs mandown (install-man depends on man), confirmed in a\nfresh clone, so the docs say so.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-21T14:38:18-07:00",
+          "tree_id": "654f76f0645af67cdfafe76fa329d675fde899f5",
+          "url": "https://github.com/l1a/retch/commit/f40e36b4e54c235d038d9413129b5f3bca2aa322"
+        },
+        "date": 1790028423102,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 145.838161504508,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.6172416944380132,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 78.43748826211126,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 61.54163753709637,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 29241.919351009175,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 328.9476278765336,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 482.86561276917274,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1035383700,
             "unit": "ns"
           }
         ]
