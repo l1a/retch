@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790028430010,
+  "lastUpdate": 1790028933112,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -21521,70 +21521,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "94768368ccfeb8b6ea7f4d30a4126df625efd287",
-          "message": "aur: update to 0.9.3\n\nsha256 4979b91c81aa607d878abcf9278bced32a904438840d700d6ce9437630393b50,\ncomputed from the real v0.9.3 release tarball (1275088 bytes) three\nindependent ways and matching what aur-bump rendered.\n\nAssisted-By: Claude Opus 5 (1M context)",
-          "timestamp": "2026-08-24T15:26:55-07:00",
-          "tree_id": "33fd7ed59f4bb16244d984614ffc9af8cd1c5ae6",
-          "url": "https://github.com/l1a/retch/commit/94768368ccfeb8b6ea7f4d30a4126df625efd287"
-        },
-        "date": 1787613216278,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 187.7240261598044,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9496836660163472,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 97.93445832705291,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.27733353174747,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 53754.04005294891,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 478.6685516691083,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 738.1155285456903,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2013869055,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -24709,6 +24645,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2033629245,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f40e36b4e54c235d038d9413129b5f3bca2aa322",
+          "message": "Own one WIP.md block; lead install docs with just (#259)\n\nupdate_wip.py matched `### Active Branch:` and `**main HEAD**:` anywhere\nin WIP.md. The file's layout moved on, so both matched stale entries far\ndown the file, and the script still reported success. It now regenerates\nonly the block between its own BEGIN/END markers (inserting it at the\ntop on first run) and refuses, writing nothing, on duplicated or\nunpaired markers. Self-test extended; four mutations watched failing.\n\nREADME and the wiki now recommend `just install-tag` for installing from\nsource, since `cargo install` installs the binary only. Plain\n`just install` needs mandown (install-man depends on man), confirmed in a\nfresh clone, so the docs say so.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-21T14:38:18-07:00",
+          "tree_id": "654f76f0645af67cdfafe76fa329d675fde899f5",
+          "url": "https://github.com/l1a/retch/commit/f40e36b4e54c235d038d9413129b5f3bca2aa322"
+        },
+        "date": 1790028928759,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 181.0505921220086,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.953351562789096,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 99.31001405002931,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 78.35673540746969,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 48850.62718598101,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 470.8150259492201,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 708.8942165904807,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1070340480,
             "unit": "ns"
           }
         ]
