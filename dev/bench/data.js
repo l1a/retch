@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790059146526,
+  "lastUpdate": 1790059669174,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -21521,70 +21521,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "d60658ca92e0dc731c0baa88ad37e8f5b75e65ed",
-          "message": "aur: update to 0.9.4\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-24T19:53:26-07:00",
-          "tree_id": "3b38c1f2608c9f32998a837ec0aae4b017319c97",
-          "url": "https://github.com/l1a/retch/commit/d60658ca92e0dc731c0baa88ad37e8f5b75e65ed"
-        },
-        "date": 1787628828470,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 175.33411474776253,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.948316479153925,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 97.03201876758291,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.19601100479831,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46829.95412670759,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 480.0956019552885,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 731.58700175119,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2427053340,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -24709,6 +24645,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 909891480,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "388c5712609808613dbbe5a14c9d9ca7b6f5dd0c",
+          "message": "Add --color auto|always|never; honour NO_COLOR (#261)\n\nretch coloured its output unconditionally, piped or not. Under the new\ndefault (--color auto) colour needs a terminal on stdout and a NO_COLOR\nthat is unset or empty; --color always/never override both.\n\nColour is removed by stripping SGR sequences after each line is\nformatted, which catches the Up/Down colour retch-sysinfo builds into\nthe Net line and keeps the layout byte-identical. With colour off the\nASCII logo is stripped and Chafa falls back to it; image logos stay.\n\nMinor bump to 0.18.0: piped output is now plain by default.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-21T23:08:31-07:00",
+          "tree_id": "d6485fc35d4d8d1437c5a110d2795ce01de8e44d",
+          "url": "https://github.com/l1a/retch/commit/388c5712609808613dbbe5a14c9d9ca7b6f5dd0c"
+        },
+        "date": 1790059664829,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 178.61280387123537,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.954479213425972,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 98.84194774399633,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 78.28339138284397,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 48511.9659606718,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 482.69946663287436,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 723.3720234731808,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2452227715,
             "unit": "ns"
           }
         ]
