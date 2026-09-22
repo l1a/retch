@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790090478165,
+  "lastUpdate": 1790090922269,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14676,80 +14676,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "930a7bbd91dcf099d1416e083e6e34190ca36ba1",
-          "message": "Watch the Justfile in packaging CI paths (#209)\n\nThe recipes that render packaging/aur (aur-bump, aur-srcinfo, aur-check,\naur-publish) live in the Justfile, which no workflow watched. A change to\nthe AUR tooling that did not also change a committed file under packaging/\ntriggered nothing and reported green having never been looked at -- which\nis exactly what #203 did.\n\nThe coverage this adds is artifact-level, not recipe-level: the aur job\nnever invokes just or aur-srcinfo (no just, no podman in the container).\nIt re-verifies that the committed PKGBUILD/.SRCINFO pair still checksums,\nbuilds and packages correctly at that commit.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-31T12:49:42-07:00",
-          "tree_id": "d4a0eb047736cc91bca70ce1c5ca7f8182a08880",
-          "url": "https://github.com/l1a/retch/commit/930a7bbd91dcf099d1416e083e6e34190ca36ba1"
-        },
-        "date": 1788207098738,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1194580883.45,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 517.2584567725255,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 149.0211417113388,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.246161477625926,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 79.71546463055532,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 6488.271601598375,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1505.8420099764103,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 485.06996658163615,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 122953.58862727848,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 531.8381175787488,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "a00db8aec1f839c1383bb4d2d18130866c442b02",
           "message": "Add a Fedora COPR spec, proven by building it (#210)\n\n* Add a Fedora COPR spec, proven by building it\n\npackaging/copr/retch.spec is a third packaging target beside aur and\nnixpkgs. It is written for a COPR project with internet access enabled,\nso cargo resolves crates.io at build time and there is no vendor tarball.\nTwo compromises follow and both are commented in the spec: --locked is\nthe only thing pinning resolution, and this will not build in koji.\n\nProven rather than reviewed: a fedora:latest container downloaded the\nreal v0.9.4 tarball as a COPR builder would, rpmbuild -ba produced an\nRPM and SRPM with zero warnings, %check ran all 254 tests, and the\npackage was installed and run. The man page renders with the right\nfooter and no doubled font runs; all three completion files are\nbyte-identical to the installed binary's own output.\n\nrpmlint found two real defects, both fixed: an over-long description\nand an unstripped binary (debug_package %{nil} also disables rpm's\nstrip pass).\n\nAssisted-By: Claude Opus 5\n\n* Use Fedora's rustc flags and completion macros\n\nReplaces `%global debug_package %{nil}` plus a hand-written strip with\nRUSTFLAGS=\"%{build_rustflags}\" -- Fedora's own flags from rust-srpm-macros.\nThis picks up distro hardening the spec previously ignored (frame pointers,\ncodegen-units=1, opt-level=3), and its -Cdebuginfo=2 -Cstrip=none half is\nwhat rpm's debuginfo extraction needs.\n\nIt does not ship a debug build: -Copt-level=3 is in the same flag set, and\nrpm moves symbols into retch-debuginfo/retch-debugsource while stripping\nthe binary in the main package. Verified -- `file` reports the shipped\nbinary as stripped with zero .debug_info sections, and the main package is\n22 KB smaller than the hand-stripped one.\n\nrust-packaging's %cargo_prep/%cargo_build are deliberately not used: they\nassume an offline vendored workflow and would fight the network-enabled\nbuild, and they are not installed on the dev hosts anyway.\n\nCompletion paths now use %{bash_completions_dir}, %{zsh_completions_dir}\nand %{fish_completions_dir} instead of hardcoded %{_datadir} paths.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-31T15:12:34-07:00",
@@ -18359,6 +18285,80 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 378.71261975142943,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5691ba1f32f3b52e9255911f32402cfb027544ed",
+          "message": "Make LF the base model; prune NOTES and WIP (#262)\n\nTwo user-directed changes in one round.\n\n1. LF EVERYWHERE\n\nWIP.md had been deliberately CRLF since v0.17.12. A byte-count survey across\nall three sibling repos (never `grep -c` -- ~/AGENTS.md sec.17) found it was\nthe SINGLE CRLF file in any of them: retch 140 text files / 1 with CR, etr\n73 / 0, rusticprofile 82 / 1. The outlier, not the standard. Converted in\nplace; the tracked side was already clean and stays that way.\n\nrusticprofile's TRANSCRIPT.md is deliberately NOT touched: its 25 CRs are\nlone CRs, not CRLF pairs -- download progress bars captured into the\ntranscript, i.e. content.\n\nupdate_wip.py needed no code change: it already reads bytes and re-applies\nthe majority terminator, so it follows the file. Verified end to end on a\ncopy through the real merge-pr path. Preserving rather than hardcoding \\n is\nkept on purpose -- a hardcoded terminator would convert a file as a side\neffect of a merge, which is the v0.17.12 accident pointing the other way.\n\nSo the decision gets a guard instead: new --check-endings, wired into\n`just wip-check`. WIP.md is gitignored, so .gitattributes never applies and\ntext_check.py (walks git ls-files) structurally cannot see it -- and because\nthe updater preserves what it finds, a CRLF copy would be re-entrenched by\nthe next merge rather than corrected. Absent or newline-free passes; a fresh\nclone has no WIP.md. Watched failing three ways plus a positive control on a\nreal CRLF file, script restored byte-identical after each.\n\n2. NOTES.md AND WIP.md PRUNED TO THEIR JOBS\n\nNOTES.md 5017 -> 662 lines, WIP.md 5168 -> 121.\n\nNOTES.md was ~88% per-release changelog, which buried the parts that are\nload-bearing. History is in git log and the GitHub releases, so the\nnarrative is dropped and the durable content distilled into a new section 7,\n\"Hard-won lessons\": the verification traps (the oracle that answers a\ndifferent question, in its many forms), the testing conventions, the\nplatform and FFI gotchas, and the release/packaging rules. Sections 7 (Major\nAchievements) and 9 (Historical Session Notes) are gone; section 5 keeps\nlive backlog items only, and completed ones are deleted rather than struck\nthrough.\n\nWIP.md now carries only work in flight -- active branch, what is verified,\nwhat is blocked and on whom, how to resume -- with its scope stated in its\nown header so it does not regrow.\n\nAGENTS.md 4.6 and the `just pr` manual checklist both still said \"release\nlog entry under Major Achievements\" and are updated to match; per AGENTS,\na checklist change ships in the same PR as the change it describes.\n\nREADME.md is deliberately untouched: overview, install, usage and\nconfiguration is the right role for it, and a guardrail test already pins\nthat it documents every field key.\n\nFound, not fixed here: text_check.py is vendored to both siblings, all three\nbodies differ while all three declare TEMPLATE_VERSION = 1, and etr's copy\nstill carries the v0.17.10 overstatement corrected here in v0.17.12. Each\nneeds its own PR; written up in NOTES section 5.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-22T08:07:56-07:00",
+          "tree_id": "7933b787062847e00bddfccc7f4b972ff643f87e",
+          "url": "https://github.com/l1a/retch/commit/5691ba1f32f3b52e9255911f32402cfb027544ed"
+        },
+        "date": 1790090918316,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1093661843.6,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 446.117393792834,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 183.90921915195204,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.180304456843917,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 74.672324184671,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6539.5500041584155,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1458.422935607454,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 668.7165692544925,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 112093.3522984199,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 455.67100826186663,
             "unit": "ns"
           }
         ]
