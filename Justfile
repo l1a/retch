@@ -602,17 +602,25 @@ metadata-check:
     @{{PY}} scripts/metadata_check.py --self-test
     @{{PY}} scripts/metadata_check.py
 
-# `WIP.md` is gitignored, so `text-check` never sees it and nothing else protects its line
-# endings. It is deliberately CRLF, and `scripts/update_wip.py` rewrites it on every
-# `just merge-pr` -- so the round trip is asserted here rather than discovered after a merge.
-# It converted all 4773 CRLF to LF once already; the script's docstring has the measurement.
+# `WIP.md` is gitignored, so `.gitattributes` never applies to it and `text-check` -- which
+# walks `git ls-files` -- cannot see it. It is the one text file in this tree with no
+# automatic protection, and `scripts/update_wip.py` rewrites it on every `just merge-pr`.
 #
-# Self-test only, because there is no tree to check: WIP.md is per-machine and untracked, so
-# the guard has to be about the CODE that rewrites it, not about the file's current state.
+# It is LF as of v0.18.1. It used to be deliberately CRLF; a survey of the whole three-repo
+# fleet found it was the single CRLF file in any of them, so it was the outlier rather than
+# the standard, and LF is the base model here. The updater still PRESERVES whatever it finds
+# rather than hardcoding LF -- a hardcoded terminator would convert a file as a side effect
+# of a merge, which is the v0.17.12 accident pointing the other way -- so the decision needs
+# a guard of its own rather than falling out of the code.
+#
+# Two halves, and both are needed. The self-test is about the CODE (it owns only its marked
+# block, and it round-trips CRLF *and* LF); `--check-endings` is about the FILE as it stands
+# on this machine, and passes when WIP.md is absent, since it is per-machine and untracked.
 
-# Prove update_wip.py touches only its marked block and keeps WIP.md's line endings (offline)
+# Prove update_wip.py touches only its marked block, and that WIP.md is still LF (offline)
 wip-check:
     @"{{PY}}" scripts/update_wip.py --self-test
+    @"{{PY}}" scripts/update_wip.py --check-endings
 
 # Refuse control characters and carriage returns in tracked text.
 #
@@ -625,8 +633,9 @@ wip-check:
 # disk. `git ls-files --eol` is the oracle. (v0.17.10 overstated this as "git status
 # structurally cannot report it"; it can, once. See v0.17.12.)
 #
-# WIP.md is gitignored and so is out of scope here by construction, which is correct: it is
-# deliberately CRLF. `wip-check` is what protects it instead.
+# WIP.md is gitignored and so is out of scope here by construction -- `git ls-files` never
+# offers it. That is a gap rather than a decision: since v0.18.1 it is LF like everything
+# else, so it wants the same guarantee. `wip-check` is what supplies it instead.
 
 # Refuse control characters and carriage returns in tracked text (offline, no network)
 text-check:
@@ -932,7 +941,7 @@ pr:
     echo -e "\n${BOLD}Automated checks passed.${NC}\n"
     echo -e "${BOLD}Manual checklist — confirm each before proceeding:${NC}"
     echo "  [ ] README.md reviewed and updated (new features, flags, config keys)"
-    echo "  [ ] NOTES.md release log entry added under Major Achievements"
+    echo "  [ ] NOTES.md: Current State body, gap lists (6/6a/6c), backlog (5), lessons (7)"
     echo "  [ ] GitHub wiki cloned and updated (Configuration-and-Theming.md, Workspace-Architecture.md)"
     echo "  [ ] Upstream tldr page updated / docs/retch.md synced (if CLI flags changed)"
     echo ""

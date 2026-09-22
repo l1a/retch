@@ -1,6 +1,21 @@
 # NOTES.md
 
-This file contains the details of this specific project (retch). It details the goals, purpose, codebase architecture, specific development guidelines, release checklists, current state, backlog, and release logs of the retch project.
+Project state and standing knowledge for **retch**: architecture, current status, design
+decisions, known gaps, and the lessons that cost something to learn.
+
+**What belongs here:** anything a developer or agent must keep in mind to avoid repeating a
+mistake, re-deriving a decision, or losing time to a trap this project has already hit.
+
+**What does not:** a per-release changelog. History lives in `git log` and the
+[GitHub releases](https://github.com/l1a/retch/releases); the wiki carries user-facing
+documentation. Until v0.18.1 this file held a full release log — ~4,400 lines of it — which
+buried the parts that are actually load-bearing. The durable content of those entries was
+distilled into **§7 Hard-won lessons**; the narrative was dropped rather than migrated,
+because a reader who needs "what changed in v0.9.7" is better served by `git log`.
+
+**Keep it that way.** When a release entry would only say what changed, write a good commit
+message instead. Add to this file when a change leaves behind a *rule* — something the next
+person would otherwise get wrong.
 
 ---
 
@@ -21,7 +36,7 @@ retch/                          ← retch-cli crate (binary)
     main.rs, display.rs, config.rs, ...
     fields.rs                   ← single source of truth for the field list +
                                    output strata (see §5 "Field wiring")
-  Cargo.toml                    ← version = "0.3.28" (bump on release)
+  Cargo.toml                    ← bump on release
   Justfile
   docs/retch.1.md               ← man page source (mandown)
   docs/retch.md                 ← tldr page source
@@ -33,3735 +48,129 @@ crates/sysinfo/                 ← retch-sysinfo crate (library)
     fetch.rs                    ← orchestrates concurrently-scoped thread fetches
     network.rs, battery.rs, theme.rs, ...
   build.rs                      ← framework link directives
-  Cargo.toml                    ← version = "0.1.28" (bump on release)
+  Cargo.toml                    ← bump on release
 ```
 
-The `retch-sysinfo` crate can be used independently as a library for cross-platform system information gathering without any dependency on `clap` or the CLI.
+The `retch-sysinfo` crate can be used independently as a library for cross-platform system
+information gathering without any dependency on `clap` or the CLI.
 
 ---
 
 ## 3. Specific Development Guidelines
 
-- **Man Pages**: Do NOT edit `docs/retch.1` directly. It is generated from `docs/retch.1.md` using mandown via the `just man` command. The version number in the man page is dynamically extracted from `Cargo.toml`. Always run `just man` after updating the package version.
-- **Quality & Linting**: Use `just check` to run formatting (`cargo fmt -- --check`) and linting (`cargo clippy -- -D warnings`) checks locally before committing. This matches the checks performed in the CI/CD pipeline.
+- **Man Pages**: Do NOT edit `docs/retch.1` directly. It is generated from `docs/retch.1.md`
+  using mandown via `just man`. The version is extracted from `Cargo.toml`, so always run
+  `just man` after a version bump. **mandown >= 1.1.1 is required** — older builds emit
+  `.Bl`/`.El` mdoc macros that are undefined in `man(7)`, producing a spurious ~164-line diff
+  that reads as "my change broke the man page".
+- **Quality & Linting**: `just check` runs formatting, linting and every offline guard. It
+  matches what CI enforces.
 - **Verification Routine**: Before proposing a push or Pull Request, always verify:
   1. All new and existing unit/integration tests cover changes.
   2. All documentation is kept in sync with the current features.
-  3. Default configuration templates (like `default_config_content()` in `src/main.rs`) and comment lists are fully updated with new options.
-  4. If the GitHub wiki exists, clone it (`https://github.com/l1a/retch.wiki.git`) and update any affected pages before submitting the PR.
-  5. When adding distro logos, run `cargo run -- --print-logos --ascii-logo` and confirm every new distro appears in the output. The hardcoded list in `src/main.rs` must be updated alongside `src/logo.rs`.
-  6. If package versions are bumped, run `just man` to regenerate the man pages (so `docs/retch.1` is kept in sync with the new `Cargo.toml` version) and commit the updated man page *as part of the Pull Request* before merging (never directly on `main`).
-- **Pre-PR Gate**: Never call `gh pr create` directly — always run `just open-pr` instead (any args are forwarded to `gh pr create`). `open-pr` runs `just pr` first (the full checklist: branch, version bump, AGENTS.md/NOTES.md header, man page, Cargo.lock, fmt+clippy, tests, plus the manual checklist requiring an explicit `y` confirmation for README/release-log/wiki/tldr updates) and only calls `gh pr create` if that passes. This is enforced by the Justfile, not by any editor/agent-specific config, so it applies the same way whether a human, Claude, or any other coding agent is driving — `gh`/`git` have no hook of their own for "PR about to open," so `just open-pr` is the one call site that actually gates it. Note: the tldr checklist item means updating `docs/retch.md` only — do **not** run `just tldr-release` (upstream submission on hold).
-- **Git hooks are the actual enforcement layer, not agent config**: `scripts/hooks/pre-push` (installed via `just install-hooks` into `.git/hooks/pre-push`) runs `just check` (fmt+clippy) before every `git push`, regardless of what invoked it — a human, Claude Code, or any other agent, since it's real git plumbing, not a Claude-specific hook. Prefer this pattern (a real git hook, or a Justfile recipe like `open-pr`) over anything under `.claude/` when the goal is "block an action no matter what tool is driving." `.claude/settings.json` hooks only fire inside Claude Code's own harness and are invisible to every other agent and to humans typing commands directly — do not rely on them as the sole enforcement for repo-wide rules.
-  - **Code Documentation**: Review all changed public items (`pub fn`, `pub struct`, `pub enum`, fields) for accurate doc comments. Update any doc comments that describe old behavior. New functions with non-obvious logic must have a doc comment explaining the WHY, not just the what.
-  - **Test Coverage**: Every new pure function must have unit tests. Every new CLI flag must appear in the `--help` integration test and have a smoke-test verifying it exits 0 and produces expected output. Every changed invariant (e.g. a filter condition gaining a new parameter) must have a test that exercises the new branch.
-- **PR Test Plans**: After opening a PR, immediately run each item in the test plan checklist and update the PR body via `gh pr edit` to check off passed items. Do not leave all boxes unchecked. Items requiring manual human verification (e.g. runtime output) should be left unchecked with a note.
-- **Documentation & Versioning Updates**: When branching to make changes, ensure the following updates are performed:
-  - **Version Bump**: Increment the version in `Cargo.toml`, verify compilation, and run `cargo check` to update `Cargo.lock`.
-  - **Man Pages**: Update `docs/retch.1.md` with new parameters/fields and run `just man` to rebuild `docs/retch.1`.
-  - **README**: Add new features, command examples, or configuration keys to `README.md`.
-  - **Roadmap & History**: Update `NOTES.md` by bumping the version in the "Current State" header and adding a new release log entry under "Major Achievements".
-  - **GitHub Wiki**: Clone (`https://github.com/l1a/retch.wiki.git`) and update the corresponding wiki pages (`Configuration-and-Theming.md`, `Workspace-Architecture.md`, `Home.md`, `Development-Setup.md`).
-  - **tldr Page**: Update the local `docs/retch.md` if new options are introduced. **Do NOT run `just tldr-release`** — the upstream submission to [tldr-pages/tldr](https://github.com/tldr-pages/tldr) was denied pending more community traction. Keep `docs/retch.md` and the `just tldr-release` workflow maintained, but hold all upstream submissions until further notice.
-  - **Bumping Strategy**: If the changes are significant, ALWAYS ask the user whether to perform a major, minor, or patch version bump.
-- **Command Redundancy**: Avoid running `just check && cargo test` sequentially since both build and check the project profiles, causing redundant background compilation cycles. Prefer `cargo test` during iteration and a final check before staging.
-- **Cross-Machine `target/` via Syncthing**: This working directory (`~/Sync/git/retch`) is synced across multiple machines by Syncthing, including `target/`, so a build/test can pick up artifacts compiled on a different machine. If one fails at *runtime* rather than compile time — a `SIGILL` in a build script or binary being the classic shape — the fix is `cargo clean` (or at minimum removing the offending crate's `target/debug/build/<crate>-*` dir) to purge the stale artifacts.
-  - **Correction (v0.9.10): this entry used to state that `.cargo/config.toml` sets `rustflags = ["-C", "target-cpu=native"]`. There is no such file.** Only `.cargo/audit.toml` is tracked, and no `config.toml` exists in the working tree either, so nothing here applies `-C target-cpu=native` and the SIGILL mechanism as originally described cannot arise from this repo's own configuration. The wording had described an untracked, machine-local file as though it were part of the repo — which mattered when the COPR spec was written (v0.9.7), because a builder inheriting `-march=native` would emit a binary that SIGILLs on users' machines. That was checked rather than assumed at the time (`git archive v0.9.4` carries no `config.toml`), and the AUR package is safe for the same reason; this corrects the claim that prompted the check.
-- **Benchmarking**: Use `just bench` for criterion micro-benchmarks, `just bench-cli` for hyperfine timing of the release binary, and `just bench-compare` to compare against fastfetch/neofetch. CI automatically tracks benchmark trends on pushes to `main` via GitHub Pages. Use `just bench-upload` to manually push local benchmark results to the dashboard; a `post-merge` hook installed via `just install-hooks` does this automatically after every merge to main.
-- **Performance Regression Vigilance**: After every merge, check the post-merge benchmark output. A primary goal of retch is to be faster than fastfetch — benchmarks exist to catch regressions early. If retch is slower than fastfetch in any mode, treat it as a blocking issue. Note that local benchmarks can be skewed by slow FUSE mounts (e.g. cryfs vaults) causing `statvfs` delays in disk detection — unmount them before benchmarking or discount those runs.
-- **Releases & Tagging**: Releases are triggered by pushing a `v*` tag to main. The CI pipeline runs `full-test` → `build-release` → `release` automatically.
-  - **Full release** (creates GitHub Release with binaries):
-    ```
-    just man          # ensure man page is up to date
-    git add docs/retch.1 && git commit -m "docs: regenerate man page for v<version>"  # if changed
-    git tag v<version> && git push origin v<version>
-    ```
-    The `release` job attaches all platform binaries and the man page to a GitHub Release. Only runs when the tag name contains no `-`.
-  - **Pre-release** (generates artifacts without a GitHub Release):
-    ```
-    git tag v<version>-rc.N && git push origin v<version>-rc.N
-    ```
-    Triggers `full-test` and `build-release` identically, but skips the `release` job (guarded by `!contains(github.ref_name, '-')`). Artifacts are downloadable from the GitHub Actions run page.
-  - **Publish to crates.io** (manual, after the GitHub Release):
-    ```
-    just publish        # retch-sysinfo first, then retch-cli
-    ```
-    `retch-sysinfo` goes first because `retch-cli` pins `=0.1.x`; the recipe orders them and
-    skips sysinfo when its version is already on the index (a CLI-only release). **It
-    refuses unless `HEAD` is the tag for `Cargo.toml`'s version** — see §5 for the near-miss
-    that guard exists for. Run `just publish-check` first; the retch-cli leg *skipping* is
-    expected before a release, not a failure (v0.6.13).
-  - **Distro channels — no commit, no version bump** (after the GitHub Release, because the
-    tarball has to exist before it can be checksummed):
-    ```
-    just aur-publish <version>    # renders + pushes to the AUR; needs podman
-    just brew-publish <version>   # renders + pushes to the Homebrew tap
-    ```
-    Each recipe downloads the tag's tarball, computes its sha256, renders its template
-    through `scripts/render_packaging.py`, and pushes the **rendered** file. Nothing in the
-    repository records the released version, so there is no packaging commit, no
-    `post-release` PR and **no version bump forced on a release** — which is what §5's
-    long-standing item was about. `packaging/aur/.SRCINFO` is not tracked at all any more:
-    it is generated from the rendered PKGBUILD by a real `makepkg --printsrcinfo` and
-    compared against it field by field before the push.
-    COPR needs no manual step: `copr.yml` fires on the **tag** and builds that exact
-    committish, refusing if `Cargo.toml` does not match the tag. It also pushes the COPR
-    project page's description and instructions from `packaging/copr/project-*.md`.
-  - **Repository About box** (after the tag): `just github-metadata` sets the GitHub
-    description and topics from `packaging/metadata.toml` and reads them back. Channel text
-    is part of each channel's publish - see the v0.17.9 entry and AGENTS.md §4.9.
-    The AUR RPC lags a push by minutes to hours — the git ref is the authoritative check,
-    so do not chase a stale `rpc/v5/info` reading.
-  - **Publish to tldr-pages upstream** (on hold — do not run):
-    The upstream tldr-pages submission was denied pending more community traction.
-    Keep `docs/retch.md` current but do not run `just tldr-release` until further notice.
-    ```
-    just tldr-release
-    ```
+  3. Default configuration templates (like `default_config_content()` in `src/main.rs`) and
+     comment lists are fully updated with new options.
+  4. If the GitHub wiki exists, clone it (`https://github.com/l1a/retch.wiki.git`) and update
+     any affected pages before submitting the PR.
+  5. When adding distro logos, run `cargo run -- --print-logos --ascii-logo` and confirm every
+     new distro appears. The hardcoded list in `src/main.rs` must be updated alongside
+     `src/logo.rs`.
+  6. If package versions are bumped, run `just man` and commit the regenerated page *as part
+     of the Pull Request* (never directly on `main`).
+- **Pre-PR Gate**: Never call `gh pr create` directly — always run `just open-pr`. It runs
+  `just pr` first (branch, version bump, NOTES.md header, man page, `Cargo.lock`, fmt+clippy,
+  tests, plus a manual checklist requiring an explicit `y`) and only then calls `gh pr create`.
+  This is enforced by the Justfile, not by editor- or agent-specific config, so it applies the
+  same way whether a human, Claude, or any other agent is driving — `gh`/`git` have no hook of
+  their own for "PR about to open", so `just open-pr` is the one call site that gates it.
+  The tldr checklist item means updating `docs/retch.md` only — do **not** run
+  `just tldr-release` (upstream submission is on hold).
+- **Git hooks are the actual enforcement layer, not agent config**: `scripts/hooks/pre-push`
+  (installed by `just install-hooks`) runs `just check` before every `git push`, regardless of
+  what invoked it. Prefer this pattern — a real git hook, or a Justfile recipe — over anything
+  under `.claude/` when the goal is "block an action no matter what tool is driving".
+  `.claude/settings.json` hooks only fire inside Claude Code and are invisible to every other
+  agent and to a human typing commands directly.
+- **Code Documentation**: Review all changed public items for accurate doc comments. New
+  functions with non-obvious logic must explain the WHY, not the what.
+- **Test Coverage**: Every new pure function must have unit tests. Every new CLI flag must
+  appear in the `--help` integration test and have a smoke test. Every changed invariant must
+  have a test that exercises the new branch. See §7.2 for the conventions that matter most.
+- **PR Test Plans**: After opening a PR, run each item in the test plan and update the PR body
+  via `gh pr edit` to check off passed items. Items needing manual human verification stay
+  unchecked with a note.
+- **Documentation & Versioning Updates**: when branching to make changes — bump the version in
+  `Cargo.toml` and run `cargo check` to refresh `Cargo.lock`; update `docs/retch.1.md` and run
+  `just man`; update `README.md`; update this file (the `## Current State` header, plus §5/§6
+  and §7 where the change leaves a rule behind); update the wiki; update `docs/retch.md` if
+  options changed. **If the changes are significant, ALWAYS ask the user whether to perform a
+  major, minor, or patch bump.**
+- **Command Redundancy**: Avoid running `just check && cargo test` sequentially — both build
+  the project. Prefer `cargo test` during iteration and a final `just check` before staging.
+- **Cross-Machine `target/` via Syncthing**: `~/Sync/git/retch` is synced across machines
+  including `target/`, so a build can pick up artifacts compiled elsewhere. A failure at
+  *runtime* rather than compile time — a `SIGILL` being the classic shape — means stale
+  cross-CPU artifacts: `cargo clean`.
+  - Note this repo does **not** ship a `.cargo/config.toml`; only `.cargo/audit.toml` is
+    tracked. Nothing here sets `-C target-cpu=native`. (An earlier version of this entry said
+    otherwise, which mattered when the COPR spec was written: a builder inheriting
+    `-march=native` would emit a binary that SIGILLs on users' machines. Verified absent from
+    the release tarball at the time; the AUR package is safe for the same reason.)
+- **Benchmarking**: `just bench` (criterion), `just bench-cli` (hyperfine), `just bench-compare`
+  (vs fastfetch/neofetch). CI tracks trends on pushes to `main` via GitHub Pages;
+  `just bench-upload` pushes local results, and a `post-merge` hook does it automatically.
+- **Performance Regression Vigilance**: After every merge, check the post-merge benchmark
+  output. A primary goal of retch is to be faster than fastfetch — **if retch is slower than
+  fastfetch in any mode, treat it as a blocking issue.** Local benchmarks can be skewed by slow
+  FUSE mounts (e.g. cryfs vaults) causing `statvfs` delays; unmount them or discount the run.
+- **Releases & Tagging**: a release is a tag push, and it requires **no version bump and no
+  packaging commit** — `main` sits at the released version until the next feature PR bumps it.
+  ```
+  git tag -a vX -F <msg-file> --cleanup=verbatim   # see §7.4 on --cleanup
+  git push origin vX          # CI builds the GitHub Release; copr.yml fires on the tag
+  just publish                # crates.io. Refuses unless HEAD is the tag.
+  just aur-publish X          # renders + pushes to the AUR (needs podman). AUR_CONFIRM=y
+  just brew-publish X         # renders + pushes to the tap. BREW_CONFIRM=y
+  just github-metadata        # About box from packaging/metadata.toml
+  ```
+  `retch-sysinfo` publishes before `retch-cli`, which pins `=0.1.x`; `just publish` orders them
+  and skips sysinfo when it is already on the index. `just publish-check`'s retch-cli leg
+  *skipping* before a release is expected, not a failure.
+  **Publishing to tldr-pages upstream is on hold** — the submission was declined pending more
+  community traction. Keep `docs/retch.md` current; do not run `just tldr-release`.
 
 ---
 
-## Current State (v0.18.0)
-- **v0.18.0 - `--color auto|always|never`, and `NO_COLOR` is honoured** (`src/cli.rs`,
-  `src/display.rs`, `tests/cli_tests.rs`, `docs/retch.1.md`, `README.md`, the Homebrew
-  formula's comment, wiki). Closes the §5 item recorded while writing the Homebrew test
-  block in v0.17.2. `retch-sysinfo` unchanged at `0.1.76`.
-  - **The user-visible change: piped output is now plain by default.** retch used to colour
-    unconditionally, so `retch | grep OS:` never matched (the label and its colon are
-    separated by escapes), which is why the formula's test strips ANSI itself. `auto` (the
-    default) now colours only when stdout is a terminal **and** `NO_COLOR` is unset or empty;
-    `always` and `never` override both. Anyone piping into `less -R` needs `--color always`
-    now, which is why this is a minor bump rather than a patch.
-  - **`NO_COLOR=` (empty) keeps colour on**, per no-color.org's "present and not an empty
-    string". Only `always`/`never` beat `NO_COLOR`; `auto` means "decide from the
-    environment", the ripgrep convention. Decided with the user, along with the interface.
-  - **Colour is removed by stripping SGR sequences at render time, not by teaching each
-    source to stay quiet**, and both reasons are load-bearing:
-    - One source is in the other crate: `retch-sysinfo`'s `network.rs` builds the green
-      `Up` / red `Down` into the `Net` string. A per-source switch would have needed a
-      library API change, and would have missed the next colour a probe adds.
-    - `print_line` right-aligns the **coloured** label (`{:>10}` over a string that is
-      already longer than 10), so formatting plain labels instead would suddenly pad them and
-      move every row. Stripping after formatting makes the plain output exactly the coloured
-      output minus its escapes. The integration test asserts that equality on real output,
-      and a pty comparison of `--short`/`--long --ascii-logo` with and without `NO_COLOR`
-      differed only in live values (CPU clock, Wi-Fi rate, interface order).
-  - **`strip_sgr` removes `ESC [ <digits;> m` and nothing else.** Chafa's `\x1b[?25l`, cursor
-    moves and the image protocols' escapes pass through whole, since dropping part of a
-    non-colour sequence would leave the terminal in a state nobody asked for. Mutating it to
-    strip any CSI fails `test_strip_sgr_keeps_everything_that_is_not_sgr`.
-  - **Logos, decided with the user:** without colour the ASCII logo is stripped, and Chafa
-    (explicit `--chafa-logo` or auto-selected) falls back to the ASCII logo, because Chafa
-    art is drawn *with* colour and is noise without it. Kitty/iTerm2/Sixel images are kept -
-    a picture is not text colour. Verified in a pty: `--chafa-logo --color=never` prints the
-    20-line ASCII logo with 0 SGR sequences, `--chafa-logo` alone still renders chafa.
-    `--print-logos` is deliberately untouched: it is a logo showcase.
-  - **Tests watched failing three ways**: treating an empty `NO_COLOR` as set, stripping
-    every CSI, and skipping the strip each fail the test aimed at them. The integration test
-    uses `--color=always` as its control, so the plain cases cannot pass merely because the
-    field printed nothing coloured, and it clears `NO_COLOR` itself so the developer's shell
-    cannot decide the result.
-  - **A check of mine that could not fail, recorded as the house style asks:** the first pty
-    run used `script`, which is not installed here; every case "passed" with 0 escapes
-    because all three captured `env: 'script': No such file or directory`. Redone with a
-    Python `pty.fork` harness, which showed 127 SGR sequences under `auto` and 0 under
-    `NO_COLOR=1`.
-  - Also fixed: the man page's LOGOS section still said `--ascii-only`; the flag is
-    `--ascii-logo` (v0.17.9 fixed the same error in the README, v0.17.18 in the wiki).
-  - `docs/retch.md` (tldr) is **not** given a `--color` example: it already has nine
-    examples against tldr's style limit of eight, and upstream submission is on hold.
-  - Not done, and a reasonable follow-up: a `color` key in `config.toml` (no-color.org allows
-    config to override `NO_COLOR`) and `TERM=dumb` handling.
-  - `retch-cli` -> `0.18.0`. Minor bump - a new flag and a changed default for piped output.
+## Current State (v0.18.1)
 
-- **v0.17.18 - template v6: `just install` no longer needs `mandown`** (`Justfile` COMMON
-  block, `templates/justfile-common.just`, `scripts/install_man.py` template v3, `README.md`,
-  wiki). Tooling and docs; no runtime change, `retch-sysinfo` unchanged at `0.1.76`.
-  - **`install-man` stops depending on `man`.** v0.17.17 found that `just install` failed in a
-    fresh clone without mandown (`'mandown' executable not found`, before `cargo install` ran)
-    and documented mandown as a prerequisite. Where mandown *was* present it also rewrote a
-    tracked file in the user's checkout, since the page's date footer moves monthly.
-  - **The dependency had outlived its reason.** It existed while etr built its pages into a
-    gitignored `man/build/`; etr has committed them since its #72 (2026-09-13). All three repos
-    now commit their pages and gate them current, so the committed page *is* the current page
-    and installing it needs no build. **The v0.17.17 backlog entry got this wrong** — it named
-    etr's ignored directory as the live reason — and is corrected in §5 rather than deleted.
-    Found by reading etr's justfile (`# Build man pages … (output is TRACKED)`) before
-    designing a per-repo switch that turned out to be unnecessary.
-  - **The same staleness sat in the standard's own text**: the template's `MAN_PAGES` example
-    still read `man/build/etr.1`, its scope note said "one repo gitignores it", and
-    `install_man.py`'s docstring said etr "builds its pages into an ignored directory". All
-    three corrected; `install_man.py` goes to template v3 for the docstring. Its
-    untracked-page skip is **kept** — `install-tag` can install an etr release from before #72.
-  - **Measured, not argued:** with mandown removed from `PATH` and throwaway
-    `CARGO_INSTALL_ROOT` / XDG directories, `just install` in this repo exited 0, installed
-    `retch-cli v0.17.17`, and the installed `retch.1` is byte-identical to `docs/retch.1`; the
-    only tracked changes afterwards were this PR's own edits. `just standard-check` passes
-    (`install_man.py` self-test at v3) and the Justfile block is byte-identical to the
-    template's canonical section.
-  - **Propagation**: the block, the template and `install_man.py` are vendored byte-identically
-    in `etr` and `rusticprofile` (verified by hash before starting), so each gets the same v6
-    edit in its own PR, applied by one script so the three cannot diverge.
-  - README and wiki drop the "`just install` needs mandown" caveat added in v0.17.17. The wiki's
-    Getting-Started also still showed `--ascii-only` (the flag is `--ascii-logo`) and
-    `tldr retch` (the upstream page was declined) — the same two errors v0.17.9 removed from
-    the README; removed here.
-  - `retch-cli` -> `0.17.18`. Patch bump - tooling and docs.
+`main` carries **`retch-cli` 0.18.1** / **`retch-sysinfo` 0.1.76**. Newest released tag is
+**`v0.18.0`**, live on GitHub, crates.io, the AUR, COPR and the Homebrew tap.
 
-- **v0.17.17 - `merge-pr` owns one marked block of WIP.md, and the install docs lead with the
-  `just` recipes** (`scripts/update_wip.py`, `Justfile`, `AGENTS.md` §5, `README.md`, wiki).
-  Tooling and docs; no runtime change, `retch-sysinfo` unchanged at `0.1.76`.
-  - **`update_wip.py` had been rewriting the wrong entries for months and saying it
-    succeeded.** It rewrote the first line anywhere in `WIP.md` matching `### Active Branch:`
-    and the first matching `**main HEAD**:`. The file's live hand-off moved to a START HERE
-    table and then to newest-first dated entries, neither of which uses those headers, so on
-    the current file the two patterns matched a dated entry ~500 lines down and a pointer
-    ~4400 lines down. Every merge rewrote those, printed "Active Branch set to none, main HEAD
-    updated to ...", and left the part anyone reads untouched. Prose that *quoted* either
-    header became the first match and was overwritten (it happened after #248), which is why
-    WIP.md had grown a rule never to quote the two strings — a rule about the text, patching
-    a defect in the code.
-  - **Now the script owns exactly one block**, between `<!-- BEGIN merge-pr state … -->` and
-    `<!-- END merge-pr state -->`, and regenerates it whole: active branch, `main` HEAD, both
-    crate versions (the two-crate publish question is answerable at a glance), newest tag,
-    date. **Nothing outside the markers is touched.** Missing markers insert the block at the
-    top, once; duplicated, unpaired or out-of-order markers **refuse and write nothing**,
-    rather than guessing which copy is real. A branch other than `main` is flagged in the
-    block instead of being reported as "none". The output message says whether it inserted or
-    replaced, and reminds that hand-written entries still need updating.
-  - **The old behaviour was reproduced before the fix**: the `main` copy of the script, run
-    against a fixture whose only `### Active Branch:` / `**main HEAD**:` lines sit in an old
-    dated entry, rewrote that entry and reported success. The new script on the same fixture
-    inserted the block at the top and left the entry byte-identical, and a second run
-    replaced in place.
-  - **The self-test grew from the line-ending round trip to 26 checks** (one of them looped
-    over four malformed-marker shapes), and four
-    mutations were each watched failing it: accepting duplicate markers, inserting at the
-    bottom, dropping the `|` escape (a commit subject containing `|` would split a table cell),
-    and a text-mode write (the v0.17.12 CRLF defect, now asserted end to end through
-    `update_file` rather than through the helpers alone).
-  - **Install-from-source docs now lead with `just install-tag`, and the reason is measured,
-    not stylistic.** `cargo install` installs the binary only; the recipes add the man page
-    and completions and keep all three at one version (the eleven-releases-stale man page
-    that `install-tag` was built for). The obvious recommendation, plain `just install`, is
-    **not** safe to give a user: it depends on `install-man` -> `man`, which needs `mandown`
-    and regenerates the committed `docs/retch.1`. Confirmed in a fresh clone with `mandown`
-    off `PATH`: `Error: 'mandown' executable not found`, exit 1, before `cargo install` runs.
-    So README and the wiki give `just install-tag "$(git describe --tags --abbrev=0)"` for a
-    release (no mandown, no tree changes), `just install` for the checkout with mandown named
-    as its prerequisite, and `cargo install` as the binary-only fallback with
-    `retch --completions <shell>`. The crates.io section now says it is binary-only.
-  - **The recommended command was run, not just read.** In a fresh clone from GitHub,
-    `just install-tag "$(git describe --tags --abbrev=0)"` resolved `v0.17.9`, built it, and
-    its post-condition read `retch 0.17.9` back from `PATH`; the man page and all six
-    completion files landed, and the zsh `fpath` hint the README promises was printed. It ran
-    against a throwaway `CARGO_INSTALL_ROOT` / `XDG_DATA_HOME` / `XDG_CONFIG_HOME`, so the
-    machine's real install was not touched.
-  - `retch-cli` -> `0.17.17`. Patch bump - tooling and docs.
+Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
+listed in §5, §6a and §6c.
 
-- **v0.17.16 - `toml` 1.1.5 -> 1.1.6 (consolidated Dependabot #251)** (chore; no runtime
-  behaviour change). Rolls Dependabot's PR onto a gated branch so the release hygiene it
-  bypasses - version bump, NOTES entry, man regen - is actually done, following the
-  standing pattern (#167/v0.6.3 through #228/v0.11.8).
-  - **Lockfile-only.** The spec is `"1.1"` and a caret range already admits 1.1.6, so neither
-    manifest widens. The `Cargo.lock` diff is exactly the `toml` entry plus the `retch-cli`
-    version, with **no transitive movement** - `toml_parser`, `serde_core` and `indexmap` stay
-    put, and 1.1.6's own manifest differs from 1.1.5's only in its version line (MSRV still
-    1.85).
-  - **Unlike v0.11.4's `toml` 1.1.5, this one IS reachable, and that was established from the
-    source.** Both `.crate` files were downloaded (sha256 matching the lockfile checksums) and
-    compared file by file: the whole code change is one function,
-    `src/de/parser/document.rs::finish_table`, which `toml::from_str` runs for every
-    `[table]` / `[[array]]` header - and retch's single call site is `toml::from_str` in
-    `src/config.rs`. The change is an ownership refactor only: the header key is **moved**
-    into the parent table instead of cloned, and `key_span` is computed before that move
-    rather than inside the duplicate-key error branch. Same insertions, same error, same span.
-  - **Both branches of that function were exercised live on the 1.1.6 build**, against a
-    throwaway `XDG_CONFIG_HOME` rather than the user's config (which has no table headers, so
-    it would not reach the changed code at all): a `[custom_theme]` table with
-    `label_color = "#ff0000"` renders the label as `ESC[38;2;255;0;0m`, and a duplicated
-    `[custom_theme]` header fails with `duplicate key` pointed at **line 4, column 2** - the
-    moved `key_span`, still correct.
-  - The upstream commit list names allocation reductions in `toml_edit` parsing and display;
-    **`toml_edit` is not in retch's graph**, so only the `document.rs` hunk reaches us.
-  - `retch-cli` -> `0.17.16`; `retch-sysinfo` unchanged at `0.1.76` (it does not depend on
-    `toml`). Patch bump.
+Recent work worth knowing about, beyond what `git log` says:
 
-- **v0.17.15 - the one attribution bullet this repo was missing** (`AGENTS.md`). Documentation
-  only; no code change.
-  - This repo already carried three of the four attribution sub-bullets, and `etr` and
-    `rusticprofile` carried **none** - a Portable Core that was not portable. Fixed in their own
-    releases. The fourth bullet was written while doing that, so it comes back here.
-  - **It states the concatenation consequence explicitly**, where it had only been implicit:
-    under `squash_merge_commit_message=COMMIT_MESSAGES` the squash body is the concatenation of
-    every branch commit message, so a trailer on each commit of a multi-commit branch becomes a
-    **duplicate trailer on `main`**. Put it on the last commit only, or squash locally first.
-  - **Written generically on purpose** - no commit hashes, no repo names - because Part 1 must be
-    byte-comparable across the three repos. Each repo's evidence lives in its own `NOTES.md`,
-    which is where per-repo facts belong. Writing this repo's instances into the Portable Core
-    would be the same mistake one level down.
-  - *This repo's own history is clean on that count, which is why the bullet arrives here without
-    a table attached: the sibling repos supplied the evidence (`etr` had five such commits, one
-    with four trailers; `rusticprofile` three, two with three).*
-
-- **v0.17.14 - template v5: the `@`-in-a-shebang trap becomes a guard**
-  (`scripts/gate_conformance.py`, `templates/justfile-common.just`, `Justfile`). Tooling only;
-  no runtime change.
-  - **`gate_conformance.py` now refuses an `@`-prefixed line inside a `#!` recipe body**, in
-    **any** recipe rather than only the triad - the mistake is about a recipe's *shape*, not
-    about the gate's behaviour, so it can land anywhere. Its own `TEMPLATE_VERSION` goes 3 -> 4;
-    the block marker goes v4 -> v5.
-  - **It exists because the trap was paid for twice.** rusticprofile `0.2.2` fixed it after a
-    global regex put `@` in front of lines in `pr`, `merge-pr` and `aur-publish`. `v0.17.13`
-    fixed it again in `merge-pr` - in a session where that write-up had already been read, and
-    it broke the very merge that shipped it. **A documented trap is not a guard.**
-  - **Validated against the real historical defects, not against a fixture.** Pointed at the
-    actual broken commits it names all four sites, without being told where to look:
-
-    | commit | what the guard reports |
-    |---|---|
-    | retch `ddc20c8` (v0.17.12) | `merge-pr:847:at-in-shebang` |
-    | rusticprofile, pre-`0.2.2` | `pr:543`, `merge-pr:462`, `aur-publish:370` |
-    | both repos' fixed commits | clean, exit 0 |
-
-  - **Heredocs are skipped, and that is load-bearing rather than polite.** A `cat <<'MSG'`
-    block inside a shebang recipe is **data**; a line of it starting with `@` is a literal `@`,
-    not a command. The first version of the detector flagged exactly that - caught by testing
-    the false-positive case *before* writing it into the vendored script, rather than after.
-    **A guard that fires on correct code is deleted within a week, taking the real rule with
-    it**, which is the same argument `0.2.13` made for its third severity.
-  - **The self-test pins all four outcomes**, three of which are ways the check could be wrong
-    rather than the way it is right: it fires on the defect; stays silent on a **plain** recipe,
-    where `@` is correct and required; stays silent inside a heredoc; and **still** fires on a
-    defect *after* a heredoc, so the skip cannot over-run the rest of the recipe.
-  - **Also corrected: a "Known divergences" bullet that had been false for months.** It said
-    *"etr has no `install-hooks` and no `open-pr`"*; both exist there now (`justfile:306` and
-    `justfile:268`). Removed rather than reworded, and replaced with the divergence that is
-    actually live - etr's `check` chain still needs bash where retch's does not. That is
-    `0.2.4`'s duplicated-state finding **inside the file that exists to stop duplication
-    drifting**, which is why it is worth naming rather than quietly deleting.
-  - **Two version numbers, deliberately not one.** The block marker (v5) and each helper's
-    `TEMPLATE_VERSION` (`gate_conformance.py` 4, `install_completions.py` 3, `install_man.py` 2)
-    move independently, because a helper can change without the block changing - which is
-    exactly what happened here. Stated in the header so the next reader does not "fix" them into
-    agreement.
-
-- **v0.17.13 - a one-character regression I shipped in v0.17.12, and it broke `just merge-pr`**
-  (`Justfile`). One line; no runtime change.
-  - **`v0.17.12` changed `merge-pr`'s last line to `@"{{PY}}" scripts/update_wip.py`.** In a
-    `#!/usr/bin/env bash` recipe **just does not strip a leading `@`** - that is plain-recipe
-    syntax. The `@` was passed through to the shell, which looked for a command literally named
-    `@/usr/bin/python3`:
-
-    ```
-    /run/user/1000/just/just-t1faGr/merge-pr: line 847: @/usr/bin/python3: No such file or directory
-    error: recipe `merge-pr` failed with exit code 127
-    ```
-
-  - **It fired on the very next merge, which was `v0.17.12`'s own.** The squash landed and the
-    branch was deleted - those come first in the recipe - and then the `WIP.md` update never ran.
-    No data was lost and `WIP.md`'s CRLF was untouched, which is the ironic part: the step that
-    exists to preserve it was the step that did not execute.
-  - **This is rusticprofile's `0.2.2` in a new repo**, where a global regex put `@` in front of
-    lines inside shebang bodies. That write-up had been read in the same session. **A documented
-    trap is not a guard**, which is this project's own argument for `gate_conformance.py`
-    existing at all.
-  - **Reproduced in isolation before fixing**, on a throwaway justfile, so the rule is measured
-    rather than recalled:
-
-    | recipe | result |
-    |---|---|
-    | `#!/usr/bin/env bash` + `@"{{PY}}" …` | **exit 127**, `@/usr/bin/python3: No such file` |
-    | `#!/usr/bin/env bash` + `"{{PY}}" …` | runs |
-    | plain recipe + `@"{{PY}}" …` | runs - `@` is correct **here** |
-
-    So `wip-check`, added in the same release, was right to keep its `@`: it is a plain recipe.
-    Only the shebang one was wrong, which is why `just check` stayed green and could not catch it.
-  - **The whole class was swept, not just the instance:** every recipe body was scanned for an
-    `@`-prefixed line inside a shebang recipe. There are no others.
-  - **Why no gate caught it, stated rather than glossed.** `gate_conformance.py` is *structural* -
-    its own docstring says it proves a guard exists, not that it works - and nothing executes
-    `merge-pr`, because it merges PRs and deletes branches. A real guard would be a check that
-    refuses an `@`-prefixed line inside a shebang body, and that belongs in the **vendored**
-    `gate_conformance.py`, so it is a coordinated template bump across all three repos rather
-    than a patch here. Recorded for template v5; two template PRs are in flight and bundling it
-    would collide with them.
-
-- **v0.17.12 - `just merge-pr` was converting WIP.md from CRLF to LF on every merge**
-  (`scripts/update_wip.py`, `Justfile`, `scripts/text_check.py`). Tooling and one correction;
-  no runtime change.
-  - **Measured immediately after #253's merge: 0 CRLF, 4824 lone LF**, in a file that had been
-    pure CRLF (4773 before that session's edits). `update_wip.py` read with `read_text()` and
-    wrote with `write_text()`; both apply universal newlines, so `\r\n` became `\n` in memory
-    and was written back as whatever the **platform** prefers.
-  - **That is why nobody noticed: the bug is platform-dependent.** On Windows the round trip is
-    invisible, because `write_text` re-translates `\n` to `\r\n` on the way out. This repo's
-    merges were historically cut from a Windows host; **the first merge run from Linux converted
-    the whole file.** A defect that is correct on the machine it is usually run from is the same
-    shape as `v0.1.10`'s *"the working runs are the accident"*, one repo over.
-  - **`WIP.md` is the one artefact with no other protection.** Its CRLF is deliberate, and
-    because it is gitignored `text-check` never sees it - correctly, by construction. So the
-    guard has to be about the **code that rewrites it**: `update_wip.py` now reads bytes,
-    detects the dominant terminator by majority, normalises to `\n` for the substitutions and
-    re-applies the terminator on write. New `just wip-check` runs its `--self-test` from
-    `just check`.
-  - **A naive "just read bytes" fix would still have corrupted two lines**, and the self-test
-    pins it as a property so nobody simplifies the normalisation away: both substitutions use
-    `.*`, and in Python's `re` **a dot matches `\r`** - it excludes only `\n`. On un-normalised
-    CRLF text `.*` swallows the carriage return, and the replacement line comes back LF-
-    terminated. Two corrupt lines in an otherwise CRLF file is harder to spot than wholesale
-    conversion.
-  - **The self-test was watched failing against the exact pre-fix code**, which reported
-    `crlf=0 lf=3` - the same signature as the real corruption. It carries an LF control too, so
-    the fix cannot over-correct a repo whose `WIP.md` is legitimately LF.
-  - **Also fixed, one line:** `merge-pr` called `python3 scripts/update_wip.py` by hardcoded
-    name while every other call site uses the resolved `{{PY}}`. On Windows `python3` is
-    frequently absent.
-
-### A correction to v0.17.10, which is the more useful half
-
-`v0.17.10` and `scripts/text_check.py` both claimed **`git status` structurally cannot report a
-CRLF worktree** under `eol=lf`. **That is wrong.** Measured on git 2.55.0 by planting CRLF in one
-tracked file:
-
-| asked | answer |
-|---|---|
-| `git status --short` | `` M <file>`` |
-| `git diff` | **nothing** - no hunk, no name, only a stderr warning |
-| `git add <file>`, then `git status` | **clean**, with every CR still on disk |
-
-The real mechanism is narrower and worse than the overstatement: the drift shows exactly once, as
-an ` M` with no diff behind it - which reads as noise - and the first `git add` erases the only
-signal while leaving every byte in place. `git ls-files --eol` (`i/lf w/crlf`) is the unambiguous
-oracle.
-
-Corrected in the script's docstring, its stderr message and the `Justfile` comment; the `v0.17.10`
-entry is **annotated rather than rewritten**, per this file's convention. **It was caught by
-running the control, not by re-reading the sentence** - which is the point: an *argument* that
-returns the expected answer for the wrong reason is this project's own failure class, one level up
-from a check that does.
-
-- **v0.17.11 - the vendored template is v4, and the majority was wrong**
-  (`templates/justfile-common.just`, `Justfile`). Documentation and one version marker; no
-  recipe body changed here, and no runtime change.
-  - **Three repos all declared `template v3` while `standard-check`'s body differed.** retch ran
-    four plain `@"{{PY}}"` lines; `etr` and `rusticprofile` ran a `#!/usr/bin/env bash` recipe
-    with `set -euo pipefail` and an explicit `[ "{{PY}}" != "PYTHON-NOT-FOUND" ]` guard. **Each
-    repo was internally consistent** - template file and Justfile agreed - so nothing looked
-    wrong from inside any of them. The version marker is the one thing that is supposed to make
-    a vendored copy safe, and it could not tell them apart.
-  - **Reconciling toward the majority would have been v1's mistake repeating**, which is the
-    finding rather than the fix. The decisive evidence is which recipes each repo's `check`
-    actually depends on, counted rather than argued:
-
-    | repo | `check` dependencies that are shell-free |
-    |---|---|
-    | **retch** | **7 of 7** |
-    | `etr` | 2 of 6 |
-    | `rusticprofile` | 2 of 4 |
-
-    So retch is the only repo where `just check` still runs on a default Windows PATH - no
-    `cygpath`, no Git `usr\bin` - which is the entire property **v0.6.16** bought and the whole
-    reason these helpers are Python. Adopting the shebang body would have spent it, in the one
-    repo that still had it, to match two repos that had already lost it for unrelated reasons.
-  - **The guard is worth less than it looks.** The sentinel is the literal string
-    `PYTHON-NOT-FOUND`, so the *unguarded* failure is `PYTHON-NOT-FOUND: command not found`,
-    which already names the problem. The guard buys a tidier message; the shebang costs a
-    platform.
-  - **v4 is therefore: `standard-check` is four plain lines and has no shebang.** The rule is
-    about the **gate**, not the whole block - stated precisely because the loose version is
-    false. `install-tag` inside the markers **is** a bash shebang recipe and stays one: it is an
-    explicit install action nobody runs from `check`, it needs real control flow, and whoever
-    runs it has already chosen to install a toolchain.
-  - **Nothing in retch's own files changes behaviour**, because retch already conformed. This
-    release is the marker bump plus the reasoning, so the siblings have something to point at;
-    the actual edit lands in `etr` and `rusticprofile` in their own PRs, per the block's own
-    rule that editing inside the markers means changing the standard and propagating separately.
-  - **The transferable half:** *"two of three repos agree"* is a fact about how the drift
-    **spread**, not about which side is right. Count the property at stake, not the repos. That
-    is v1 -> v2's lesson - *"the repo with the fixes"* and *"the repo with the right mechanism"*
-    were different repos - arriving in new clothes one version later.
-- **v0.17.10 - one confirm variable, and two collapsed backslashes nobody was reading**
-  (`Justfile`, `templates/justfile-common.just`, `crates/sysinfo/src/win_setupapi.rs`,
-  `scripts/text_check.py` (new)). Tooling and docs; no runtime change.
-  - **`BREW_CONFIRM` required the literal `yes` while `AUR_CONFIRM` and `PR_CONFIRM` both take
-    `y`.** Three variables doing one job, with two different accepted answers. It fired in the
-    sibling repo `etr`, whose `brew-publish` carries the same block: `BREW_CONFIRM=y` aborted
-    the publish **at the Homebrew leg, after crates.io and the AUR had already published**,
-    leaving a partially-released version. Now accepts `y`/`Y`/`yes`/`YES`.
-    **Not a bypass**, and the distinction is v0.6.21's: every path still requires an explicit
-    affirmative and there is no default, so an empty answer, `Yes`, `yep` and an unset variable
-    all still refuse. Verified by extracting the shipped `case` block and driving it.
-  - **Two collapsed backslashes, and one of them shipped to docs.rs.** `~/AGENTS.md` §14: a
-    double backslash in a command handed to an agent's shell arrives as a single one, *before
-    the shell sees it*, so a quoted heredoc does not prevent it.
-
-    | file | intended | what was there |
-    |---|---|---|
-    | `templates/justfile-common.just:22` | `` `usr\bin` `` | `` `usr `` + **0x08** + `` in` `` |
-    | `crates/sysinfo/src/win_setupapi.rs:348` | `` `\\?\acpi#...` `` | `` `\? `` + **0x07** + `` cpi#...` `` |
-
-    **The second is the interesting one: it collapsed TWICE on one line.** The doubled
-    backslash of the Win32 prefix `\\?\` lost one, *and* `\a` became BEL - so the text
-    degraded from a recognisable device path into something that still looked like one. It sits
-    in a `///` doc comment on a `pub fn`, so it is in the published `retch-sysinfo` rustdoc.
-    That is why **`retch-sysinfo` bumps to `0.1.76`** rather than riding along: leaving it would
-    mean the repo's `0.1.75` and the crates.io `0.1.75` differ, which is the v0.11.4 call.
-  - **The repair is written with `chr(92)`, never a backslash literal in a shell string** -
-    writing one is the bug.
-  - **New `scripts/text_check.py`, wired into `just check`**, closes both classes rather than
-    the two instances. Every C0 control byte except tab and newline, plus DEL, across all
-    tracked text - no per-file exemptions, because there was nothing to exempt.
-    - It also refuses **carriage returns**, and that half is worth explaining: `.gitattributes`
-      pins `* text=auto eol=lf`, and with that attribute set **`git status` structurally cannot
-      report a CRLF worktree** - git treats the two as equivalent, so the file reads as clean.
-      `etr` shipped exactly that in a file vendored from this repo.
-      > **CORRECTED in v0.17.12: the sentence above is wrong.** `git status` reports it fine,
-      > once, as an ` M` with no diff behind it; what it cannot survive is a `git add`, which
-      > erases the signal and leaves every CR on disk. The real mechanism is narrower and worse
-      > than the overstatement. Left in place per this file's convention, because the error is
-      > the useful half: it was caught by running the control, not by re-reading the sentence.
-    - **`WIP.md` is deliberately CRLF and is out of scope by construction**: it is gitignored,
-      so `git ls-files` never offers it. That is the right outcome - the START HERE block
-      records that its CRLF is genuine and must not be "normalised", and a guard that fought
-      that note would be deleted within a week.
-    - **Built on byte counting, not `grep`.** `grep -c $'\r'` from an agent shell is
-      `~/AGENTS.md` §17 - the pattern collapses to empty, `grep` matches every line, and the
-      answer is the file's **line count**. This file has recorded that trap twice.
-  - **Watched failing**, with each control asserting the injected defect by **file and byte**:
-    a collapsed backslash to BACKSPACE and to BEL, a CRLF worktree copy, and a stray ESC. The
-    self-test also pins that correctly-spelled `usr\bin` does **not** trip it - a guard that
-    blocked its own fix would be worse than none.
-  - `retch-sysinfo` -> `0.1.76` (rustdoc change in the published crate); `retch-cli` ->
-    `0.17.10`. Patch bump - tooling and docs, the v0.7.1 / v0.9.7 / v0.17.2 precedent.
-- **v0.17.9 - channel descriptions are written once, and published with each channel**
-  (`packaging/metadata.toml`, `scripts/metadata_check.py` and `packaging/copr/project-*.md`,
-  all new; `.github/workflows/copr.yml`, `packaging.yml`, `Justfile`, both READMEs, both
-  `Cargo.toml`s, the PKGBUILD, `package.nix`, `flake.nix`, `crates/sysinfo/src/lib.rs`).
-  Docs, metadata and release tooling; no runtime change. At the user's request: updating the
-  README and description text "should be part of the publish process for each target
-  channel".
-  - **The review before this release found drift of every kind at once:**
-    - *README* (the retch-cli crates.io page): `--ascii-only` (the flag is `--ascii-logo`);
-      Windows `phys-mem` via `Win32_PhysicalMemory` (native SMBIOS since v0.3.47); macOS DNS
-      from `/etc/resolv.conf` (SystemConfiguration since v0.17.1); `tldr retch` (the upstream
-      submission was declined, so it finds nothing); graphical logos "via Chafa" (Chafa is the
-      fallback); nothing on terminal detection, graphics APIs, I/O rates or media.
-    - *`retch-sysinfo` README* (its crates.io page): **the example did not compile** - it
-      borrowed `CollectOptions`, ignored the `Result`, and read plain `String` fields as
-      `Option`s. It also claimed "Zero Subprocess Overhead", said Windows GPUs come from
-      "Direct3D/WMI" (they come from the display-adapter registry keys), and its module table
-      lacked `gpu_api` and `io`. `lib.rs`'s docs said weather comes "via wttr.in" (Open-Meteo
-      since v0.3.30).
-    - *Licences*: `package.nix` declared `licenses.gpl3Only` for a GPL-3.0-**or-later**
-      project; the PKGBUILD used the legacy `GPL3` rather than the SPDX identifier.
-    - *Text on the services*: GitHub's About box and `flake.nix` both advertised
-      "short/long output modes" (there are four), and the COPR project page quoted one
-      machine's benchmark numbers from an old release.
-  - **Why it drifted is the finding.** Channel text was written separately in eight places
-    and checked by nothing - and two of them, the COPR project page and GitHub's About box,
-    are not in any file a release publishes, so no release step had ever touched them.
-  - **`packaging/metadata.toml` is now the one place it is written**: the summary, the
-    Homebrew `desc`, the SPDX licence, the GitHub description and topics, and the COPR
-    project-page files. Files a channel publishes keep their own readable copy, and
-    `scripts/metadata_check.py` (`just check`, plus a new `metadata` job in `packaging.yml`,
-    since CI never runs `just`) fails when a copy drifts. Detection rather than templating,
-    deliberately: `Cargo.toml` cannot be templated, and the rest are read by people.
-  - **The guard caught all three in-repo drifts on its first run, before any was fixed** -
-    the PKGBUILD's `GPL3`, `package.nix`'s `gpl3Only` and the flake's stale description - and
-    its self-test's live-repository assertion failed for the same three reasons; both pass
-    now. The same first run also failed a malformed self-test case of mine (the
-    "expect a problem" helper used to assert "still clean", which can never pass); it was
-    removed, since the explicit check after it covers that property.
-  - **It reads bytes, not `read_text()`**: universal-newline decoding turns CRLF into LF on
-    the way in, which would have made the CR check on the COPR text a check that cannot fail.
-  - **Text on the services is pushed at release time.** `copr.yml` runs
-    `copr-cli modify --description/--instructions` from the committed files on every tag -
-    after the guard, before the build (the flags were checked against copr-cli's source, not
-    assumed). `just github-metadata` sets the description, PUTs the topics as an exact list,
-    and reads both back. Topics gain `macos` and `windows`.
-  - **The `retch-sysinfo` README example is now a doctest** (`#[doc = include_str!(...)]`
-    under `#[cfg(doctest)]` in `lib.rs`), so `cargo test --workspace` compiles it - verified,
-    `ReadmeDoctests - compile ... ok`.
-  - crates.io keywords: `retch-cli` -> `system-info`, `fetch`, `fastfetch`, `neofetch`,
-    `cli`; `retch-sysinfo`'s description says what it is rather than whose it is.
-  - **Verification limits, recorded rather than papered over:** the `copr.yml` step runs only
-    on a tag, so its first real run is this release, checked afterwards from the COPR API;
-    and `github-metadata` needs repository-administration permission that the fine-grained
-    PAT may not have - found out at release, not assumed.
-  - `retch-cli` -> `0.17.9`. `retch-sysinfo` stays `0.1.75`: it was never published, so the
-    version crates.io receives carries the corrected README and there is no repo/registry
-    divergence to prevent. Patch bump - docs and tooling.
-- **v0.17.8 - `terminal` reports Windows Terminal's version** (`crates/sysinfo/src/terminal.rs`).
-  `Windows Terminal 1.24.11911.0` on arrakis, byte-identical to fastfetch. Follow-up to
-  v0.17.7, at the user's request.
-  - **The obvious source gives the wrong number.** The executable's file-version resource
-    reads `1.24.2607.10001`, an internal build number, while fastfetch reports the MSIX
-    **package** version, `1.24.11911.0`. That exists only in the install folder's name,
-    `…\WindowsApps\Microsoft.WindowsTerminal_1.24.11911.0_x64__8wekyb3d8bbwe\`, so a pure
-    `windows_terminal_package_version` parses it from there. `GetFileVersionInfoW` would have
-    shipped a plausible-looking wrong version.
-  - **The path comes from one targeted call, not from the process list.** retch loads the
-    process list without executable paths (`ProcessRefreshKind::nothing()`), and asking
-    sysinfo for them would open every process on the machine in every mode that loads the
-    list - standard mode included, via `audio`. Instead `QueryFullProcessImageNameW` with
-    `PROCESS_QUERY_LIMITED_INFORMATION` opens only the Windows Terminal processes, and only
-    once the field has already resolved to Windows Terminal. It answers unelevated for a Store
-    app whose `WindowsApps` folder the user cannot even list.
-  - **Which instance.** A Windows Terminal ancestor found by the walk is authoritative - its
-    version or none. When only `WT_SESSION` identified it (the deep-chain case v0.17.7
-    measured), every running `WindowsTerminal.exe` is consulted and a version is reported
-    only if they all agree (pure `unanimous_version`): Stable beside Preview, an instance
-    mid-update, or an unpackaged instance leave the name bare rather than guess. Verified live
-    on exactly that path here: one instance, `1.24.11911.0`.
-  - **Left bare by design**: unpackaged installs (no package folder - including a scoop
-    directory whose name merely *looks* like a version), WSL (no Windows processes are
-    visible), and every non-Windows build.
-  - **No measurable cost.** `--fields terminal` against a 0.17.7 binary, hyperfine 40 runs
-    after 10 warmups, in both orders: **58.7 vs 58.9 ms** and **51.2 vs 50.9 ms** (baseline vs
-    new) - the difference changes sign with the order, so it is noise. The lookup runs only
-    when the field resolves to Windows Terminal, and here that is one process.
-    (A first 25-run pass read "2.45x faster" with a 173 ms sigma on a cold baseline; it was
-    discarded rather than quoted.)
-  - 2 new tests over the pure helpers, using this machine's verbatim path. **Watched failing
-    three ways** - parsing the exe name instead of the package folder, "any instance matches"
-    instead of "all agree", and dropping the four-numeric-parts check each fail their test;
-    the file was restored byte-identical after each.
-  - `detect_terminal_theme` still matches (`contains("windows terminal")`), so
-    `Terminal Theme: Campbell` is unchanged.
-  - `retch-sysinfo` -> `0.1.75`; `retch-cli` -> `0.17.8`. Patch bump - an existing field gains
-    detail, the v0.13.1 precedent.
-- **v0.17.7 - `terminal` names Windows Terminal, which it never had**
-  (`crates/sysinfo/src/terminal.rs`). Closes the §6a item v0.17.6 found: on arrakis retch
-  printed no `Terminal` line in any mode, while fastfetch printed
-  `Windows Terminal 1.24.11911.0` on the same machine. The installed v0.17.5 binary confirmed
-  the gap before anything changed.
-  - **Two independent causes, and on this machine fixing either alone was not enough.**
-    1. **`WT_SESSION` was never read.** `detect_terminal` returned early only for
-       `TERM_PROGRAM`, `TERMINAL_EMULATOR` and Alacritty's variables, none of which Windows
-       Terminal sets.
-    2. **The process-tree table could not match.** Its `"Terminal"` entry was capitalised
-       and compared against a *lowercased* process name, so it never matched anything - and
-       there was no Windows Terminal entry at all.
-  - **Why the tree walk alone does not cover it, measured.** From this repo's agent session
-    the chain above retch is `pwsh -> cmd -> claude -> cmd -> nu -> WindowsTerminal.exe`, one
-    past the six-process walk. Typed straight into a tab, `WindowsTerminal.exe` is two levels
-    up and the corrected table finds it; `WT_SESSION` covers the deep case. **Removing
-    `WT_SESSION` from the live run returns nothing**, which is what shows the variable is
-    doing the work there, not the table.
-  - **The tree walk comes first and `WT_SESSION` second.** Child processes inherit the
-    variable, so a terminal launched *from* a Windows Terminal tab still carries it, and an
-    ancestor that really is a terminal is the stronger evidence. It is deliberately **not**
-    Windows-only: Windows Terminal sets `WSLENV=WT_SESSION:WT_PROFILE_ID:` (read from the live
-    environment), so the variable reaches WSL, where no process walk can see the Windows side.
-  - **The obvious one-character fix was wrong.** Lowercasing `"Terminal"` would have made it a
-    substring match sitting *ahead of* `xfce4-terminal` in the table, and it also matches
-    `windowsterminal.exe`, so both would have reported a bare `terminal`. Apple's Terminal is
-    now matched exactly, as the process name it really is.
-  - **Precedence moved into a pure `resolve_terminal(env, ancestors)`**, with names from a
-    pure `terminal_from_process_name`, so the order is unit-tested with an injected
-    environment and ancestor list - including this machine's verbatim agent chain. 4 new
-    tests, **watched failing three ways**: dropping the `WT_SESSION` fallback, the naive
-    substring fix, and re-capitalising the Windows Terminal pattern (the original bug's
-    shape) each fail two of them. The file was restored byte-identical after each.
-  - **Side effect, verified live**: `"Windows Terminal"` is the label
-    `detect_terminal_theme`'s Windows branch already matched, so `Terminal Theme: Campbell`
-    now reports on arrakis as well.
-  - **The man page said `terminal` reports a name and version. It never reported a
-    version** - nothing reads `TERM_PROGRAM_VERSION`. Corrected. fastfetch does print
-    Windows Terminal's version; matching that is a possible follow-up, not done here.
-  - Every other terminal is unchanged: same labels, same precedence, same six-process bound.
-  - `AGENTS.md` §1: the attribution rule now says to apply it without comment rather than
-    re-raise the harness conflict every session (owed since v0.17.6, at the user's request).
-  - `retch-sysinfo` -> `0.1.74` (library behaviour change); `retch-cli` -> `0.17.7`. Patch
-    bump - a bug fix.
-- **v0.17.6 - Windows `--full` is faster than fastfetch: `gamepad` stops spawning
-  PowerShell, and `shell`'s version spawn leaves the critical path**
-  (`crates/sysinfo/src/gamepad.rs`, `crates/sysinfo/src/win_setupapi.rs`,
-  `crates/sysinfo/src/fetch.rs`). Closes §6a's last performance item, which turned out to
-  be far worse than recorded.
-  - **The recorded gap was stale, in the wrong direction.** §6a said `--full` was 1.08×
-    slower (1.445 s against 1.334 s at v0.13.2). Re-measured on arrakis before touching
-    anything: **3.226 s against `fastfetch -c all`'s 1.732 s — 1.86× slower** — and `--long`
-    had drifted from 286 ms to ~900 ms while still beating fastfetch, so nothing flagged it.
-  - **Two causes, each found by measurement.** Isolated `--fields` timings against the
-    `--version` floor (18.9 ms, the v0.13.2 lesson — never `--fields os`) named `gamepad` at
-    **2.47 s**. With that fixed, `--full` still lost (1.85–1.91 s against 1.51 s), and the
-    remaining cost was in no single field: temporary, env-guarded, absolute elapsed-time
-    marks inside `collect()` (discarded afterwards with `git checkout`) showed **one serial
-    chunk costing ~520–570 ms in every run of both `--long` and `--full`** — `shell`.
-  - **`gamepad` (Windows): native SetupAPI instead of `Get-PnpDevice`.** One
-    `DIGCF_ALLCLASSES` enumeration of the present devices
-    (`win_setupapi::present_devices_all_classes`) reads the three properties the pipeline
-    filtered on — setup class, friendly name, hardware IDs — and the pure
-    `is_windows_gamepad` applies its predicate unchanged: a HIDClass node carrying a
-    `HID_DEVICE_SYSTEM_GAME` or `HID_DEVICE_GAME` hardware ID, or a node in any class named
-    like an Xbox controller, gamepad or joystick. **`--fields gamepad` 2.02 s → 104 ms**; the
-    old query costs 1.3–1.7 s standalone to print nothing on this machine.
-    - **The HID special-purpose IDs are hardware IDs, not compatible IDs** — measured: every
-      HID collection here has an *empty* compatible-ID list, and `HID_DEVICE_SYSTEM_CONTROL`
-      sits in its hardware IDs. Reading `SPDRP_HARDWAREID` is the faithful port, not a guess.
-    - **Checked against the live machine, not only fixtures.** A temporary probe enumerated
-      **360 devices and 29 HIDClass nodes**, matching `Get-PnpDevice` exactly (an earlier
-      reading of 361 was a Bluetooth service node that dropped off between runs — recounted
-      rather than explained away), and read hardware-ID lists byte-identical to
-      `Get-PnpDeviceProperty`'s. The grow-and-retry path for long `REG_MULTI_SZ` lists never
-      fires here (the longest list is 335 characters), so it was **forced** by starting the
-      buffer at 8 characters — same 360 devices, same lists.
-    - The negative controls are this laptop's own nodes, verbatim: `HID-compliant system
-      controller` (`HID_DEVICE_SYSTEM_CONTROL`, power/sleep buttons) and `HID-compliant
-      system multi-axis controller` (`UP:0001_U:000E`), both HIDClass "controllers", neither
-      a gamepad. **Watched failing** three ways: widening the ID match to any
-      `HID_DEVICE_SYSTEM*` catches the system controller; dropping the HIDClass scoping fails
-      its test; and a `REG_MULTI_SZ` splitter that reads past the double NUL returns
-      `["A", "STALE"]`.
-    - **Verification limit, recorded rather than papered over**: no gamepad is attached to
-      arrakis, so the positive case rests on a synthetic fixture following the documented
-      HID hardware-ID shape and on the predicate being the replaced one verbatim. Output
-      parity was checked on the case that exists here: both binaries report no gamepad.
-  - **`shell` now runs inside the concurrent scope.** It reports the version by spawning the
-    shell itself — `pwsh --version`, or Windows PowerShell evaluating `$PSVersionTable` —
-    measured at ~200–480 ms standalone and ~570 ms inside retch. Serial after the scope, it
-    sat on the critical path of every `--long` and `--full` run; inside the scope it overlaps
-    the network-bound probes. It reads `sys` only, as `audio` already did there. Output is
-    unchanged.
-  - **A latent `shell` bug fixed alongside, found by the same investigation**: `--fields
-    shell` on its own reported **`powershell 5.1.26100.9444` under PowerShell 7**. `shell`
-    and `terminal` identify the running program by walking the process tree up from retch's
-    pid, but the process list was loaded only when `procs` or `audio` was selected too —
-    with no list, `sys.process(pid)` found nothing and the walk fell back to the shell
-    `PSModulePath` implies. New `needs_process_list` includes both consumers; `--fields
-    shell` now reports `pwsh 7.6.6`, matching `--long`. Test watched failing with the two
-    consumers removed. `terminal` is included **by inspection**: on arrakis it reports
-    nothing in any mode (a separate gap, now in §6a).
-  - **Measured on arrakis — medians, hyperfine `-N`, 15–20 runs, fastfetch 2.65.2**, against
-    a binary built from `main` (exported with `git archive`, so no worktree was registered in
-    the Syncthing-replicated `.git`), interleaved in both orders:
-
-    | Mode | retch | fastfetch | |
-    |---|---|---|---|
-    | `--short` vs `-c none` | 45 ms | 79 ms | retch 1.8× |
-    | standard vs default | 142 ms | 1339 ms | retch 9.4× |
-    | `--long` vs `-c all` | 424 ms | 1488 ms | retch 3.5× |
-    | `--full` vs `-c all` | 1314 / 1346 ms | 1468 / 1462 ms | retch 1.1×, both orders |
-
-    `main` read 2.35–2.39 s for `--full` and 563–590 ms for `--long` in the same session.
-    **`--full`'s lead is thin and network-bound**: its scope is set by `weather` and
-    `public-ip`, which fastfetch pays too (`-c all` runs both), so the tails overlap —
-    retch's slowest run was 1.77 s against fastfetch's 1.60 s. The medians held in both run
-    orders; quote those, not single runs.
-  - **Output verified unchanged**: the `--full` field-label sets of the two binaries are
-    identical (44/44), as is the `Shell` line (`pwsh 7.6.6`).
-  - `retch-sysinfo` -> `0.1.73` (behaviour change; new `win_setupapi` enumeration API);
-    `retch-cli` -> `0.17.6`. Patch bump - no new field, the v0.13.1 / v0.13.2 precedent.
-- **v0.17.5 - a release no longer requires a version bump, because the packaging stopped
-  recording the release** (`scripts/render_packaging.py` (new), the three packaging
-  templates, `.copr/Makefile`, the three guards, `Justfile`, `copr.yml`, `packaging.yml`).
-  Closes the structural half of the §5 release-flow item — the half §5 itself named as
-  *"the actual work"*. Tooling and packaging only; no runtime change, `retch-sysinfo`
-  unchanged at `0.1.72`.
-  - **THE CHAIN THAT FORCED THE BUMP, since the fix only makes sense against it.** Four
-    files recorded the released version — `packaging/aur/PKGBUILD` and its `.SRCINFO` (with
-    the tarball's sha256), `packaging/copr/retch.spec`, `packaging/homebrew/retch.rb` (also
-    with the sha256). A checksum cannot be computed before its tag exists, so every release
-    ended with a post-tag commit; that commit had to be a reviewed PR (v0.9.12), and
-    `just pr` refuses a `Cargo.toml` equal to the last tag, so the PR had to **open the next
-    version**. Hence: a release forced a bump, and `main` then named a version that had
-    never been released.
-  - **That last consequence is not theoretical.** On 2026-09-11 `just publish` on `main`
-    was one command from putting `retch-cli 0.17.4` on crates.io — no tag, no GitHub
-    release, disagreeing with all three distro channels, and unyankable-but-undeletable —
-    because post-release had opened 0.17.4. It was caught by reading the index first.
-  - **The fix records the fact once, at publish time.** The three files are templates
-    carrying `@VERSION@` / `@SHA256@`; `scripts/render_packaging.py` fills them in from the
-    tag and the tarball it just downloaded. So there is no packaging commit, no
-    `post-release` recipe, no `aur-bump`/`copr-bump`/`brew-bump`, and **no bump forced on a
-    release**. `main` sits at the released version until the next feature PR bumps it.
-  - **Three guards stopped comparing four recordings of one fact.** `aur_check.py`,
-    `copr_check.py` and `brew_check.py` existed to detect disagreement between those
-    recordings — the PKGBUILD once sat **eleven releases** stale with every CI run green.
-    They now assert the templates *record nothing*, which is a smaller claim about a
-    stronger property: the drift they hunted is unrepresentable rather than detected.
-    Nothing was silently dropped — the two checks that still mattered moved to where they
-    can act: the AUR pair comparison to `aur-publish` (on the bytes being pushed, via
-    `aur_check.py --dir`), and "the newest `%changelog` entry matches `Version:`" into the
-    renderer, which writes both in one pass so they cannot disagree.
-  - **`Source0` is now a local tarball built from the checkout**, so the COPR spec needs
-    neither a published tag nor a network fetch. That has a side effect worth more than the
-    bump it removed: **a PR can now build its own SRPM.** Previously `Source0` pinned a
-    released tag, so the `copr` CI job could only ever build the *previous* release's
-    source.
-  - **`copr.yml`'s trigger became the tag**, and the long comment block explaining why a tag
-    trigger was wrong is kept as the record of why it is now right: the spec no longer trails
-    the tag, so the tag *is* the event. It uses `copr-cli buildscm --commit <tag>` rather
-    than `build-package`, which also closes a race the old trigger had — `build-package`
-    rebuilds from the stored committish `main`, so a merge landing in the minute after a tag
-    push would have built a tree ahead of the release. A guard refuses to build at all
-    unless `Cargo.toml` equals the tag.
-  - **`just publish` now refuses unless `HEAD` is the tag for `Cargo.toml`'s version.** The
-    2026-09-11 near-miss was avoided by a human reading the crates.io index; this makes it a
-    mechanism, in the spirit of "git hooks are the actual enforcement layer". `PUBLISH_ANY_REF=1`
-    overrides it deliberately. Watched failing in all four states in a throwaway repo — off
-    the tag, on the tag, no such tag, and overridden — with the guard's code **extracted
-    from the Justfile** rather than retyped.
-    - **And the first attempt at that test silently proved nothing, which is the lesson.**
-      The extractor sliced `Justfile` between two markers and the end marker
-      (`SYSINFO_VER=$(grep …`) occurs in `publish-check` **earlier in the file**, so
-      `str.index` returned a position before the start and the slice came out **empty** —
-      the harness then reported "GUARD PASSED" for a script containing nothing but `echo`,
-      i.e. it declared the guard broken while testing no guard at all. Fixed by searching
-      for the end marker *after* the start index and asserting the extraction is more than
-      20 lines. Same family as every other entry here: the oracle answered a different
-      question, and this time it answered about an empty string.
-  - **Verified by reproducing what the last release actually published, not by inspection.**
-    Rendering the AUR template for v0.17.3 and generating `.SRCINFO` from it with a real
-    `makepkg --printsrcinfo` produced a file **byte-identical** to the `.SRCINFO` v0.17.3
-    pushed to the AUR (466 bytes, sha256 `4a92102588afe38c…`), with the PKGBUILD's metadata
-    identical field for field; the Homebrew formula rendered identical to the published one
-    apart from comments, and both the template and the rendered formula pass `ruby -c`. The
-    sha256 the renderer computed from the downloaded tarball,
-    `77ccf858…2033`, is the value the old committed PKGBUILD declared. `just aur-publish
-    0.17.3` was run end to end with `AUR_CONFIRM=n`, exercising download, render, `.SRCINFO`
-    generation, the pair check and the AUR reachability probe before aborting at the
-    confirmation — the v0.6.23 "test the gate without performing the act" approach.
-  - **The COPR path was built and run in a container, in both environments and both source
-    modes.** SRPM built plain and under mock's environment (`HOME=/builddir` plus a moved
-    `%{_topdir}`, the v0.9.9 regression test), from `git archive` and from the `tar`
-    fallback, and `rpmbuild -rp` on each SRPM proves `%autosetup -n %{name}-%{version}`
-    matches the archive's prefix. The two source modes' listings were diffed against each
-    other and agree exactly on the tracked tree.
-  - **Two traps found by that diff, both mine, both silent.** First: `tar
-    --exclude-vcs-ignores` **does not implement .gitignore semantics** — against this
-    repo's ignore file it excluded `WIP.md` (a bare filename) and kept `memory/` (directory
-    form) and `/target` (anchored form), so the first version of `.copr/Makefile` packed the
-    private cross-machine handoff log and the auto-memory directory into the SRPM, where
-    they would have reached the published `-debugsource`. Second: `--exclude=./__pycache__`
-    anchors at the top level and kept `scripts/__pycache__/`. The Makefile now hard-fails on
-    an archive containing any of them, and also asserts the files whose absence would be
-    just as bad (no `Cargo.lock` means unpinned resolution; no `LICENSE`/`NOTICE` means the
-    v0.17.4 obligation shipped unmet).
-  - **That guard then corrected its author in the other direction**, which is the better
-    half of the story: it rejected `.claude/settings.json`, which is **tracked** and
-    therefore already in every GitHub tag tarball the AUR and Homebrew build from. Excluding
-    it would have made COPR's source differ from the released one. The must-not-ship list
-    names things git does not track, not things that look internal.
-  - **`packaging/aur/.SRCINFO` is no longer tracked.** It is pure derived data; it is
-    generated from the rendered PKGBUILD at publish time and compared against it there.
-  - **`packaging/nixpkgs/package.nix` is deliberately untouched** and remains the one
-    hand-pinned target: that channel is undecided, its CI job is `if: false`, and folding it
-    into this change would have widened an already large one.
-  - **The `aur` and `brew` CI jobs verify the render rather than a committed constant.**
-    Each derives the last released tag, downloads that tarball, computes its sha256, renders
-    its template, and reads the output back — then `makepkg` / `brew install` what it
-    rendered. A wrong committed checksum used to be invisible until someone installed from
-    the AUR; the check now points at the thing that can actually be wrong. `scripts/
-    render_packaging.py` is added to `packaging.yml`'s paths filter for the v0.9.6 reason:
-    `scripts/*_check.py` does not match it, and it writes the files that get published.
-  - **A verification limit, recorded rather than papered over.** COPR itself cannot be
-    exercised from here — no credentials, and its buildroot is mock. So
-    `copr-cli buildscm --commit` behaving as its `--help` documents is taken on the
-    documentation; the fallback — `copr-cli build-package --name retch kentobias/retch`,
-    unchanged and still configured — is named in the workflow.
-  - **CI answered the source-path question, and the answer was the one I did not predict.**
-    The `copr` job's own log reads `source: tar of the working tree (no git repository
-    here)` — under `actions/checkout` in a `fedora:latest` container, `git rev-parse
-    --git-dir` is false even though git 2.55 is installed, so the **fallback is what runs
-    there**, in both the plain and the mock-environment builds. That is why the Makefile
-    prints which path it took rather than assuming one. The two paths now have coverage in
-    different places: the `git archive` path locally (both environments, both verified
-    against each other's listings), the `tar` path in CI. Neither is theoretical, and the
-    guard runs on whichever produced the archive. It also means mock quite possibly takes
-    the fallback too — the first real COPR build will say so in its log.
-    - **It did, and that guess was wrong** (corrected in v0.17.6). The v0.17.5 COPR build
-      log reads `source: git archive HEAD (the committed tree)`, then `packed 173 entries as
-      retch-0.17.5/`: **mock's buildroot carries `.git`**, so the git path is what runs on
-      COPR, while GitHub Actions' container takes the `tar` fallback. Both paths are now
-      proven in a real environment — the case the two-path design was written for.
-  - **And one of my own checks failed for the documented wrong reason while writing this**:
-    a `tar -tzf … | head -3` in a verification script exited 141 under `set -o pipefail`,
-    the `bsdtar | grep -q` SIGPIPE trap NOTES §v0.7.0 names explicitly, including `head`.
-    Materialise the listing, then read the file.
-  - `retch-cli` -> 0.17.5. Patch bump — tooling and packaging only, the v0.7.1 / v0.9.7 /
-    v0.17.2 precedent.
-- **v0.17.4 - GitHub reported the licence as "other", because `LICENSE` was never the GPL**
-  (`LICENSE`, `NOTICE`, `README.md`, `packaging/aur/PKGBUILD`, `packaging/copr/retch.spec`).
-  Legal and packaging metadata only; no runtime change, `retch-sysinfo` unchanged at `0.1.72`.
-  - **The file was 31 lines, and none of them were the licence.** `LICENSE` held a heading, a
-    copyright line, the MIT attribution for the adapted Fastfetch logos, and the short
-    source-header notice ("This program is free software..."). GitHub's `licensee` needs to
-    match the licence *text*; there was none to match, so the repository page said `other`
-    while both `Cargo.toml`s declared `GPL-3.0-or-later`.
-  - **It was a compliance gap, not a cosmetic one.** The file told readers "You should have
-    received a copy of the GNU General Public License along with this program" while the
-    program shipped no such copy — and `packaging/aur/PKGBUILD` and `packaging/copr/retch.spec`
-    both install that file *as* the licence, so every AUR and COPR user got the stub.
-  - `LICENSE` is now the verbatim 674-line GPLv3, byte-identical to
-    `https://www.gnu.org/licenses/gpl-3.0.txt` (sha256 `3972dc97…3698`). **Cross-checked against
-    a second source** rather than trusted from one: normalised against SPDX's
-    `GPL-3.0-or-later`, the two agree to 99.1%, and every remaining difference is typographic
-    (SPDX uses curly quotes and `©`). The gnu.org text is plain ASCII, which is what GPLv3
-    projects normally carry.
-  - **`NOTICE` is load-bearing, not decoration.** Everything that was in `LICENSE` but is not
-    the GPL moved there: this project's copyright and grant, plus the Fastfetch MIT
-    attribution. MIT requires that notice to travel with every copy, and that obligation was
-    being met *only* because the text happened to sit inside a file the packaging installed.
-    Moving it without touching the recipes would have silently dropped it, so both now install
-    it — the spec deliberately as `%license LICENSE NOTICE`, not `%doc`, so it cannot be
-    stripped as documentation.
-  - `packaging/aur/.SRCINFO` is unchanged and correctly so: it records metadata, not the
-    `package()` body, which is what `aur_check.py` compares. The AUR and COPR edits therefore
-    take effect with the next release, not retroactively for the published `0.17.3-1`.
-  - **What this entry does not claim.** Byte-identity with the canonical text is the reason to
-    expect GitHub to detect the licence, not proof that it does. The only oracle that answers
-    that question is GitHub's own detector, queried per-branch via
-    `GET /repos/l1a/retch/license?ref=<branch>` before merging.
-- **v0.17.4 - post-release: packaging pinned to 0.17.3, next cycle opened** (packaging only; no runtime change).
-  - `packaging/aur` (PKGBUILD and .SRCINFO), `packaging/copr/retch.spec` and `packaging/homebrew/retch.rb` bumped to **0.17.3**, the version just released. All three track the last RELEASED tag, so they can only move after the tag exists. The formula joined `post-release` in v0.17.2; this is the first run that bumps all three, and the prose describing the run was still written for two (fixed in this commit).
-  - `aur-bump` and `brew-bump` each downloaded the tarball separately and hashed it with different tools (`sha256sum` vs Python `hashlib`), and agreed: `77ccf858...2033`. That is a cross-check between two independent computations, not one value copied into two files.
-  - `Cargo.toml` -> **0.17.4**, which is what lets this be a normal gated PR rather than a commit straight to `main`: `just pr`'s version check compares against the last tag, so the packaging bump passes as long as it travels with the next version bump.
-  - `retch-cli` -> 0.17.4. Patch bump.
-- **v0.17.3 - Homebrew 6.0 requires third-party taps to be TRUSTED, and the install
-  instructions shipped in v0.17.2 did not say so** (`README.md`, the wiki,
-  `packaging/homebrew/retch.rb`, `.github/workflows/packaging.yml`). Docs, packaging and CI
-  only; no runtime change, `retch-sysinfo` unchanged at `0.1.72`.
-  - **The gate, and why it is worth a release entry.** `brew tap l1a/retch` on Homebrew
-    6.0+ refuses to load the formula until `brew trust l1a/retch` has been run, and **the
-    error is actively misleading**:
-    `Refusing to load formula ... from untrusted tap` followed by
-    `Error: Cannot tap l1a/retch: invalid syntax in tap!` — for a formula whose syntax is
-    fine (`ruby -c` passes, CI installs it). Anyone following the v0.17.2 README would
-    conclude the formula was broken. Documented with the verbatim error, and framed as
-    6.0+-only since `brew trust` does not exist on 5.x.
-  - **THE CI JOB DID NOT CATCH THIS, AND THE COMMENT CLAIMING IT WOULD WAS WRONG.** The
-    `brew` job stages the formula in a `brew tap-new` **local** tap, and its comment said
-    that was "the more faithful test, because it is exactly the path a user takes". It is
-    not: a locally-created tap **bypasses the trust gate entirely**, so the job proves the
-    formula builds, installs and works — and proves nothing about whether a user can tap
-    it. The comment now says so. A local tap is still the right thing to test, because it
-    exercises *this PR's* formula where tapping the published one would test whatever is
-    already released; the claim about fidelity was the error, not the choice.
-  - **`brew audit --strict` is now a CI step**, and it immediately found two real defects
-    in the v0.17.2 formula: `shells: [:bash, :zsh, :fish]` is the **default** and passing
-    it is redundant, plus a hash-alignment violation. Both fixed; audit is now clean. The
-    step runs **after** install and test so the log distinguishes "does not work" from
-    "untidy" — an upstream audit-rule change can redden it for a formula that still
-    installs perfectly, and that must not read as a build failure.
-    - Dropping `shells:` relies on the default being bash/zsh/fish, which is exactly the
-      kind of assumption that rots silently. It is checked rather than assumed: the
-      payload step already asserts all three completion files exist and are non-empty.
-  - **How the audit step came to be possible is itself the lesson, and it is the
-    `bsdtar | grep -q` trap again.** `brew audit` could not be run on the development
-    machine because Homebrew was broken there — and it was broken *by running
-    `brew audit` piped through `head -25`*. The truncation closed stdout mid-way through
-    Homebrew's dev-gem bundle install; the native extension build took SIGPIPE and `make`
-    died, leaving `json-2.21.2`'s Ruby files on the load path with **no C extension**.
-    Ruby then fell back to portable-ruby's built-in **json 2.18.0** extension, producing
-    `already initialized constant JSON::Ext::Parser::Config` and then
-    `undefined method 'default_sort_keys_proc='` — 2.21.2 Ruby code over a 2.18.0 binary.
-    `gem_make.out` recorded it verbatim: `make failedBroken pipe @ rb_sys_fail_on_write`.
-    - **NOTES §v0.7.0 already documents this exact hazard** and names `head -1` alongside
-      `grep -q` as the same trap. It was recorded, and used anyway, on a command that
-      builds native extensions.
-    - Repaired by deleting the two half-built gems (`json`, `prism`) and re-running an
-      unpiped brew command so bundler rebuilt them; both now report `make-failed=0`.
-    - **The diagnosis was wrong twice before it was right.** The breakage was first
-      reported as pre-existing — but the very first `brew audit` was both the thing that
-      broke it and the thing that reported it, in one invocation, so there was never a
-      clean baseline to compare against. A conclusion drawn from an oracle that had
-      already been damaged by the act of consulting it.
-  - `retch-cli` -> 0.17.3. Patch bump - docs, packaging and CI only.
-- **v0.17.2 - Homebrew: a fourth packaging target, built as a source with a guard from day
-  one** (`packaging/homebrew/retch.rb`, `scripts/brew_check.py`, `Justfile`,
-  `.github/workflows/packaging.yml`). Packaging and tooling only; no runtime change,
-  `retch-sysinfo` unchanged at `0.1.72`.
-  - **Why now, and why it gates publishing.** macOS was the platform the v0.14.0-v0.17.1
-    parity work was about, and it is the one platform with **no native install path**:
-    Linux users get the AUR and COPR, everyone gets crates.io, and a Mac user had to
-    `cargo install`. The user made a Homebrew package a prerequisite for the next publish
-    round rather than a long-tail item, so it lands before v0.17.1 ships anywhere.
-  - **A tap, not homebrew-core.** homebrew-core has notability requirements comparable to
-    the tldr-pages submission this project already had declined (§3). A tap needs no
-    approval and is the realistic first step; core is a later decision, not a prerequisite.
-  - **THE STRUCTURAL POINT: `packaging/homebrew/retch.rb` is the SOURCE, not a reference
-    copy, and it ships with its guard.** `packaging/aur/PKGBUILD` was an inert reference
-    copy that nothing rendered, published or checked, and it reached **eleven releases** of
-    drift while every CI run stayed green; v0.7.1 fixed that *after* the fact. The COPR
-    spec got `copr_check.py` in v0.9.10, *before* its drift. This is the third instance of
-    the same construct and the guard was written **at the same time as the file**, so the
-    gap never opens.
-  - **`scripts/brew_check.py`** asserts six things offline: the formula's version equals
-    the PKGBUILD's `pkgver` **and** the spec's `Version:` (three independent recordings of
-    one fact); it is not *ahead* of `Cargo.toml`; `sha256` is a real 64-hex digest and not
-    a placeholder; the `url` is a `refs/tags/` archive rather than a branch tarball, which
-    would change content under a fixed hash; `cargo install` still passes `--locked`; and
-    the formula still installs the **committed** `docs/retch.1` rather than regenerating
-    it with mandown, which is how the AUR package shipped a page footed `$DATE` /
-    `retch $pkgver` for months.
-    - **10 self-test cases, and the load-bearing one is the negative**: a formula
-      *trailing* `Cargo.toml` by a whole release cycle must stay silent, because that is
-      the repo's normal resting state and a guard that fires there gets deleted within a
-      week, taking the other five with it. Same reasoning recorded for `copr_check.py`.
-    - It strips `#` comments before matching, so a comment *describing* a rule cannot
-      satisfy the check for a formula that lost it — the v0.7.0 PKGBUILD audit and the
-      v0.9.9 Makefile grep were both fooled by exactly that.
-  - **The formula was pinned at 0.13.2, not 0.17.1, and the guard is what caught that.**
-    The first draft pinned the just-released v0.17.1 tarball, which looked right and was
-    wrong: all three packaging targets track the last released tag and are bumped
-    **together** by `just post-release`, so a formula ahead of its siblings is precisely
-    the drift the guard exists to detect. It fired immediately. The formula now matches the
-    PKGBUILD and the spec at 0.13.2, and `just post-release 0.17.1` will move all three.
-  - **`just brew-bump` computes the checksum from the tarball it downloads**, never copies
-    one, and **hard-errors when a substitution matches nothing** rather than writing a file
-    that looks updated and is not — the exact defect `calculate_nix_hashes.py` shipped in
-    v0.6.13, where a no-op substitution left the previous release's hash in place.
-    `just post-release` now pins all three targets together.
-  - **`just brew-publish` clones the tap fresh each time** rather than keeping a working
-    copy: a long-lived clone is how `~/Sync/git/aur-retch` drifted out of date. It sets the
-    noreply commit identity explicitly, since a fresh clone does not inherit it and GitHub
-    rejects a push authored with a private address (hit on the wiki clone, 2026-08-11).
-  - **A `brew` CI job on `macos-latest`** does the expensive half the offline guard cannot:
-    verifies the declared sha256 against the real tarball, `brew install
-    --build-from-source`, runs the formula's own `test do` block, and then inspects the
-    installed payload directly — binary runs, man page present with **no literal `$` in its
-    `.TH`**, and all three completion files non-empty. Same division of labour as
-    `aur_check.py` against the `aur` job.
-  - **`scripts/*_check.py` added to `packaging.yml`'s paths filter.** The three guards
-    decide whether a drifted packaging file can reach a commit, and until now a PR touching
-    only a guard matched no filter and got no packaging verification at all — the v0.9.6
-    `Justfile` hole, one directory over.
-  - **Homebrew installs bash completions to `etc/bash_completion.d`, not the freedesktop
-    `share/bash-completion/completions`** the AUR and COPR packages use. `zsh_completion`
-    and `fish_completion` are where you would expect (`share/zsh/site-functions`,
-    `share/fish/vendor_completions.d`); bash is the odd one. The first payload check
-    asserted the freedesktop path and reported the completion missing on a package that
-    installs it perfectly well. The step now also **prints the whole installed tree before
-    failing**, so the next such mismatch is diagnosable from the log rather than costing a
-    round trip — the lesson from the `aur` job's `zipman` failure in v0.7.0.
-  - **The formula's test block must ANSI-strip before matching, and my first diagnosis of
-    why it failed was wrong.** The assertion `assert_match(/OS:/, ...)` fails because
-    **retch colourises even when piped**, so the label and its colon are separated by
-    escapes: `\e[38;2;0;255;255mOS\e[39m\e[38;2;128;128;128m:\e[39m …`.
-    - **The wrong diagnosis is the part worth recording.** The first failure's backtrace
-      contained `Timeout::Error.handle_timeout`, which read as "the sandbox blocked a
-      network call" — and `--short` does include `net`, which resolves the local IP with a
-      UDP-connect, so a plausible mechanism was right there. It was not the cause: those
-      `timeout.rb` frames are Homebrew's `run_test` wrapper and appear in **every** failed
-      test block. The real cause was the same ANSI mismatch both times. An oracle answering
-      a different question, and a plausible mechanism is exactly what makes that stick.
-    - The strip matches the whole `ESC [ … <final byte>` form, not SGR (`m`) only — chafa
-      opens a run with `\e[?25l` and an SGR-only strip leaves six characters behind, the
-      measurement bug recorded in v0.9.2 and again in v0.11.5.
-    - `--fields os` is kept over `--short` regardless: it is 3.4 ms against 31 ms and
-      touches no network, which is the right property for a sandboxed test even though it
-      was not what was failing.
-  - **`std_cargo_args` already passes `--locked`, and CI is what found that too.** The
-    formula's first version added an explicit one, and cargo rejected it outright:
-    *"the argument '--locked' cannot be used multiple times"*. The formula parsed, the
-    offline guard passed, and only a real install surfaced it. **The guard was asserting
-    the wrong thing** and now asserts the right one: that `*std_cargo_args` is still used
-    (that is what supplies `--locked`) and that no second `--locked` is added. Checking
-    for the literal flag was wrong in *both* directions — it would pass for a formula that
-    dropped `std_cargo_args` and unpinned resolution, and it demanded the duplicate cargo
-    refuses.
-  - **`brew install <path>` does not work any more, and CI is what found it.** The obvious
-    invocation — `brew install --build-from-source ./packaging/homebrew/retch.rb` — is
-    rejected outright by modern Homebrew: *"Homebrew requires formulae to be in a tap"*.
-    The job now stages the formula in a throwaway `brew tap-new --no-git local/test` and
-    installs from there, which is also the **more faithful** test: it is exactly the path
-    a user takes via `brew tap l1a/retch`. This is the concrete argument for having put
-    the install in CI rather than trusting a formula that merely parses.
-  - **Verification limit, recorded rather than papered over.** The formula was **not**
-    installed locally: `depends_on "rust" => :build` would have pulled ~350 MB into the
-    development machine's Homebrew. Local verification was `ruby -c` (Syntax OK), the
-    offline guard, and confirming `retch --completions=bash` produces output in the
-    `=`-joined form `shell_parameter_format` generates. **The install is proven by the CI
-    job, not locally.**
-    - Separately: **`brew audit` is broken on that machine** and it is not the formula's
-      doing — it crashes inside Homebrew's own vendored gems
-      (`json-2.21.2 ... undefined method 'default_sort_keys_proc='`) before reading
-      anything. A checker failing for its own reasons, the family this file keeps
-      recording; `ruby -c` was used as the independent syntax oracle instead.
-  - `retch-cli` -> 0.17.2. Patch bump - packaging and tooling only, the v0.7.1 / v0.9.7
-    precedent.
-- **v0.17.1 - macOS `domain` and `dns` reported a split-tunnel VPN instead of the default
-  route** (`crates/sysinfo/src/network.rs`, `crates/sysinfo/src/macos_ffi.rs`,
-  `crates/sysinfo/build.rs`). Closes the last NOTES §6c gap, and **§6a's long-standing
-  "UNCONFIRMED" marking on this item was wrong in the safe direction: it is a real bug**,
-  and it is the v0.6.11 Linux bug in macOS form.
-  - **Confirmed with measurement, not inference.** The default route on the test host is
-    `en9` (`State:/Network/Global/IPv4` → `PrimaryInterface = en9`,
-    `Router = 10.10.1.1`). Two sources disagree:
-
-    | source | servers | domain |
-    |---|---|---|
-    | `State:/Network/Global/DNS` — what `/etc/resolv.conf` mirrors | `100.101.255.254` (the VPN) | search `netbird.cloud, lan` |
-    | the **primary service** (`en9`, the default route) | **`10.10.1.1`** | **`lan`** |
-
-    retch reported the first row. It now reports the second: `Domain: lan`,
-    `DNS Server: 10.10.1.1`.
-  - **§6a's description of the cause was also wrong.** It said `/etc/resolv.conf` on macOS
-    "reflects only the *primary* service". It does not — it mirrors the **merged**
-    resolver, which is why it names the VPN *instead of* the primary service. The
-    distinction matters: the old wording suggested resolv.conf was merely incomplete, when
-    in fact it answers a different question.
-  - **`SystemConfiguration` was NOT already linked**, contrary to §6a's note that it was
-    ("the SystemConfiguration framework that `macos_ffi.rs` already links"). The only
-    mention in the crate was a *comment*. `build.rs` now links it.
-  - **The load-bearing rule, exactly as in v0.6.11: a resolvable primary service is
-    authoritative even when it lists nothing.** Falling back to the merged view when the
-    default route happens to have no domain of its own is precisely what resurrects the
-    VPN's domain. `get_primary_service_dns` therefore returns `Some(ScDnsConfig::default())`
-    rather than `None` in that case, and only a machine with **no default route at all**
-    falls back to `resolv.conf`. This is the `DefaultRouteDomain::Managed(None)` call
-    transplanted.
-  - `State:` is read before `Setup:` because the former carries what DHCP actually
-    supplied and the latter only manual overrides — measured: `Setup:` is null on a DHCP
-    service.
-  - **`domain-search` is deliberately NOT changed**, and that is a decision rather than an
-    omission. `domain` is singular and should name the default route's domain; the
-    *search list* is genuinely both entries — the machine really will search
-    `netbird.cloud` and `lan` — so reporting the merged list there is correct. Narrowing
-    it to the primary service would under-report a real behaviour.
-  - **Tests are machine-independent by construction.** They do not assert *which* servers
-    are reported, only that `detect_dns`/`detect_domain` equal what configd says the
-    primary service uses — the coupling a regression breaks. On a plain single-interface
-    CI runner the two sources agree and the test still passes; on any host with a
-    supplemental resolver they diverge and it fails.
-  - `retch-sysinfo` -> `0.1.72` (new public `get_primary_service_dns`, `ScDnsConfig`);
-    `retch-cli` -> `0.17.1`. Patch bump - a bug fix, matching the v0.6.11 call.
-- **v0.17.0 - `login-manager`, `brightness` and `power-adapter` on macOS** (`fetch.rs`,
-  `macos_ffi.rs`). Closes the fourth NOTES §6c gap — the same three fields the v0.5.0 PR
-  added for Linux, now grouped the same way.
-  - **`brightness`: the documented IOKit path does not exist on Apple Silicon.** Probed
-    `IODisplayConnect`, `AppleBacklightDisplay`, `AppleCLCD2` and `IOMobileFramebufferShim`
-    — all four returned nothing. The service that carries it is **`AppleARMBacklight`**,
-    whose `IODisplayParameters` holds a nested `brightness` sub-dictionary
-    (`value`/`min`/`max`). Measured: `32768 / 0 / 65536` = 50%.
-    - The triple is **rebased onto a zero floor** and handed to the existing
-      `brightness_percent(cur, max)` helper, so the percentage arithmetic lives in one
-      tested place rather than two. macOS reports `min = 0` in practice, but a nonzero
-      floor would inflate the figure and the shared helper takes only two arguments.
-    - **retch is ahead of fastfetch here: fastfetch reports no Brightness at all on this
-      machine.**
-    - **Verification limit, recorded rather than papered over:** the arithmetic is
-      checkable (32768/65536 is exactly 50%) but there is **no independent oracle on this
-      machine** for whether that IOKit value tracks the UI slider — fastfetch reports
-      nothing to compare against, and confirming it would mean changing the user's display
-      brightness. The reading is trusted on the raw triple alone.
-  - **`power-adapter`: macOS and Linux have opposite facts available, so they format
-    differently.** `IOPSCopyExternalPowerAdapterDetails` exposes `Watts` (96 here),
-    `Current` and `FamilyCode` but **no `Name`**; Linux's sysfs `Mains` supply exposes a
-    name and an `online` flag but no wattage. So macOS reports `96W (connected)` where
-    Linux reports `AC (connected)` — and macOS finally reports the wattage §6 recorded as
-    "not yet reported". fastfetch agrees at `96W`.
-    - The call returns NULL on battery, so **absence is the unplugged signal**; there is no
-      separate flag, and nothing to name, so the field is simply absent. A non-positive
-      wattage is dropped rather than printed, since `0W (connected)` describes no real
-      adapter.
-  - **`login-manager`: macOS has exactly one and always has.** There is no choice to
-    detect, so the informative part is the version — `Login Window 9.0`, matching
-    fastfetch. Read from `loginwindow.app`'s `Info.plist`, which on macOS 26 is **plain
-    XML** (verified: it begins `<?xml ve`, not `bplist`), so a small pure scanner suffices
-    and neither a plist dependency nor a `defaults` subprocess is needed — the crate's
-    zero-subprocess policy for detection.
-    - **The scanner guards against borrowing the next key's value.** A key whose value is
-      not a string (`<true/>`) would otherwise return the *following* key's string — a
-      confidently wrong version rather than an absent one. Pinned by a test.
-  - 6 new unit tests over the pure helpers. `brightness_percent`'s existing test was
-    widened from Linux-only to cover macOS, since both arms now share it.
-  - `retch-sysinfo` -> `0.1.71` (new public `get_backlight_brightness`,
-    `get_power_adapter_watts`); `retch-cli` -> `0.17.0`. Minor bump - new user-visible
-    fields on a platform that had none.
-- **v0.16.0 - `keyboard` and `mouse` on macOS, where the classification problem does not
-  exist** (`crates/sysinfo/src/input.rs`, `crates/sysinfo/src/macos_ffi.rs`). Closes the
-  third NOTES §6c gap.
-  - **The v0.7.0 finding still holds, and macOS simply does not present it.** On Linux a
-    peripheral behind a unifying receiver arrives with a merged capability set that is
-    byte-identical for a keyboard and a mouse, so the classifier consults the HID++
-    battery `model_name` and reports the device in *neither* field when that is absent
-    too. macOS publishes **one `IOHIDDevice` per HID interface**, each with its own
-    `PrimaryUsage`, so the role is *stated* rather than inferred. There is no ambiguous
-    case, and therefore no tiebreak and no under-reporting fallback.
-  - **A composite device is listed under both fields, and that is correct rather than a
-    bug.** `Apple Internal Keyboard / Trackpad` publishes a usage-6 interface and a
-    usage-2 interface; it genuinely is both. Pinned by a test so a future "fix" does not
-    de-duplicate it away.
-  - **retch finds a keyboard fastfetch misses.** On this machine retch lists three
-    keyboards to fastfetch's two — the extra one is a Bluetooth `Magic Keyboard`.
-    **Verified genuinely connected, not merely paired**, via `system_profiler
-    SPBluetoothDataType`, which lists it under `Connected:`. That check matters because
-    v0.10.2 recorded the opposite error on Windows, where paired-but-idle devices were
-    being counted as connected.
-  - **A TEST OF MINE COULD NOT FAIL, and finding that out is the useful part.** The first
-    version of the vendor-page test asserted that `Keyboard Backlight` and `BTM` are not
-    reported — and **passed with the page filter deleted**, because every vendor-page
-    interface in the fixture happens to carry a usage the *usage* filter already rejects.
-    The two filters overlapped on this machine's data, so the fixture could not
-    distinguish them. Replaced with a **synthetic** case pairing a vendor page with usage
-    6, labelled as synthetic since no real interface here does that; it fails correctly
-    with `left: ["Vendor Widget", "Real Keyboard"]`. HID usages are page-relative, so this
-    is a real collision rather than a contrived one. Same family as every other entry
-    here: a check that cannot fail is not a check.
-  - Filtering to usage page 1 ("Generic Desktop") is what separates input devices from the
-    rest of the HID stack — 20 of this machine's 27 interfaces sit on vendor-defined pages
-    carrying backlight, sensor and management endpoints. Usages other than Keyboard(6) and
-    Mouse(2) are ignored: gamepads have their own field, and reporting a joystick as a
-    mouse would be wrong.
-  - `iokit_property_as_i64` is new alongside the existing `iokit_property_as_u64`, which
-    rejects zero and negative values because its callers treat those as absent. **A HID
-    usage of 0 is a legitimate reading**, so the new helper preserves it.
-  - `retch-sysinfo` -> `0.1.70` (new public `get_hid_interfaces`, `classify_hid_interfaces`);
-    `retch-cli` -> `0.16.0`. Minor bump - new user-visible fields on a platform that had
-    none.
-- **v0.15.0 - `vulkan`, `opengl` and `opencl` on macOS, and the profile attribute that
-  halves the answer** (`crates/sysinfo/src/gpu_api.rs`). Closes the second NOTES §6c gap.
-  The whole §6 GPU-API group now reports on all three platforms.
-  - **Vulkan and OpenCL are the *same code* as Linux and Windows** — those APIs are
-    identical across platforms and only the loader's filename differs, so `mod dl` (raw
-    `dlopen`/`dlsym`, unchanged) simply widened to macOS along with the two `*_LIB`
-    constants. That is the v0.12.0 argument applied a third time: a second copy of the
-    `VkPhysicalDeviceProperties2` offset arithmetic is exactly the drift the shared modules
-    exist to prevent.
-  - **OpenGL is a genuinely different mechanism and therefore a third module.** Linux takes
-    a headless context from EGL; Windows needs WGL against a hidden window; macOS has
-    neither and uses **CGL**, which creates a context with **no window and no surface at
-    all**. That makes macOS the simplest of the three — there is nothing that could flash
-    on screen, so the window-visibility check v0.13.0 needed on Windows has no analogue.
-  - **THE FINDING: the CGL profile attribute decides the version, and the default is
-    wrong.** Measured on an M3 Pro, all four variants in one run:
-
-    | requested profile | `GL_VERSION` |
-    |---|---|
-    | no profile attribute | `2.1 Metal - 90.5` |
-    | `kCGLOGLPVersion_Legacy` | `2.1 Metal - 90.5` |
-    | `kCGLOGLPVersion_3_2_Core` | **`4.1 Metal - 90.5`** |
-    | `kCGLOGLPVersion_GL4_Core` | **`4.1 Metal - 90.5`** |
-
-    So writing the obvious thing — omit the attribute — reports **2.1**, less than half the
-    version the machine supports, as a perfectly plausible-looking string. Apple caps
-    OpenGL at 4.1 and exposes it only through a core profile; the legacy profile is frozen
-    at 2.1. **Watched failing both ways**: mutating the constant to
-    `kCGLOGLPVersion_Legacy` fails the pinning test *and* makes the live binary print
-    `OpenGL: 2.1 Metal - 90.5`. On Linux (v0.11.6) and Windows (v0.13.0) the same choice
-    changed only the profile *label*; here it changes the number.
-  - **macOS system frameworks do not `dlopen` by short name.** `dlopen("OpenCL")` and
-    `dlopen("libOpenCL.dylib")` both fail; the full
-    `/System/Library/Frameworks/OpenCL.framework/OpenCL` path is required, because
-    frameworks live in the dyld shared cache rather than on disk. **Watched failing**:
-    shortening the constant makes the `OpenCL` line disappear entirely — a silent
-    disable, not an error.
-  - **Vulkan reports nothing on a stock Mac, and that is the correct answer.** There is no
-    system Vulkan on macOS; it exists only through MoltenVK once a user installs it.
-    Probed for `libvulkan.1.dylib`, `libvulkan.dylib`, `libMoltenVK.dylib` and the
-    absolute `/usr/local/lib` path — **all four absent**, and fastfetch prints no Vulkan
-    line here either. The constant names the **Khronos loader** rather than MoltenVK
-    deliberately: the loader is what a portable Vulkan application actually uses, so a bare
-    MoltenVK with no loader is reported absent rather than claiming an API ordinary Vulkan
-    software could not reach — the v0.11.6 under-report rule.
-  - **The stderr suppression stays Linux-only, and the macOS no-op is measured rather than
-    assumed** — the v0.12.0 standard. Apple's framework is the only OpenCL implementation
-    on the platform, so Mesa's rusticl libclc warning cannot arise; a probe running full
-    platform *and* device enumeration wrote **0 bytes** to stderr, as did `retch --full`.
-    `test_cli_full_mode` asserts this and runs on the macOS CI leg.
-  - **Output against fastfetch on the same machine**: `OpenGL: 4.1 Metal - 90.5` is
-    **byte-identical**; `OpenCL: 1.2 (Jul 31 2026 20:36:30) - Apple (Apple M3 Pro)` is
-    deliberately **richer** than fastfetch's bare `1.2 (Jul 31 2026 20:36:30)`, matching
-    the Linux behaviour; Vulkan is absent on both.
-  - **Perf: a small real cost on `--full`, stated as such.** Two interleaved passes against
-    a `main` binary: **1.270 vs 1.264 s** and, reversed, **1.274 vs 1.260 s** — the branch
-    is slower in both, by 6-14 ms, and user time rises consistently (0.163 -> 0.170 s and
-    0.163 -> 0.167 s), which is the honest signal. The control is `--long`, where none of
-    the three is collected: it moves **7 ms in the opposite direction**, so the effect is
-    at the edge of measurability rather than comfortably inside noise.
-    Isolated, the group costs **~42 ms** over a `--fields os` floor of **3.6 ms**.
-    **`--fields vulkan` costs the same ~46 ms as the other two even though Vulkan is
-    absent**, and that is pre-existing rather than new: `fetch.rs` collects all three
-    together on purpose, because they dlopen loaders into the same driver stack and
-    splitting them across threads would buy contention rather than overlap.
-  - `retch-sysinfo` -> `0.1.69`; `retch-cli` -> `0.15.0`. Minor bump - new user-visible
-    fields on a platform that had none, the v0.6.0 / v0.11.0 / v0.12.0 precedent.
-- **v0.14.0 - `disk-io` and `net-io` on macOS, and the obvious network source was the
-  wrong one** (`crates/sysinfo/src/io.rs`, `crates/sysinfo/src/macos_ffi.rs`). Both fields
-  shipped Linux-only in v0.10.0, gained Windows arms in v0.11.0, and returned nothing on
-  macOS until now. As with v0.11.0, **nothing above the two `sample_*` functions changed**:
-  the rate arithmetic, the 100 ms floor, the sampling window in `fetch.rs`, `fields.rs` and
-  `display.rs` were already platform-independent.
-  - **THE FINDING: `getifaddrs` carries 32-bit byte counters that wrap every 4 GiB, and the
-    development machine was already 77% of the way there.** `getifaddrs` is the obvious
-    route — it is one call, it needs no framework, and `libc` exposes it directly. Its
-    `struct if_data` has `ifi_ibytes`/`ifi_obytes` as **`u32`**. Measured here: `en0` read
-    `3_317_575_680` of a 4_294_967_296 ceiling on a single boot, so the wrap would have
-    landed inside an ordinary session and produced a **plausible-looking wrong rate** rather
-    than an obvious failure. This is the `GetIfTable` vs `GetIfTable2` decision from v0.11.0
-    in macOS form, and it was caught only because the number looked suspiciously close to a
-    power of two.
-    - The correct source is **`sysctl(NET_RT_IFLIST2)`**, whose `if_msghdr2` records carry
-      `if_data64` with genuine 64-bit counters. It is what `netstat -ib` itself reads.
-    - **Pinned by a test that asserts the property by type, not by value.** A value
-      assertion cannot catch a narrowing; the annotated `let ibytes: u64 = ...` bindings
-      stop compiling if `libc` ever changes these fields. **Watched failing**: swapping
-      `if_data64` back to `if_data` fails with `expected u64, found u32` — exactly the
-      regression being guarded.
-  - **`if_data64` is 4-byte aligned but its counters are `u64`, so `&field` is undefined
-    behaviour.** rustc rejects it as E0793 ("creating a misaligned reference is undefined
-    behavior, even if that reference is never dereferenced"). The first version of the
-    64-bit test used `size_of_val(&data.ifi_ibytes)` and failed to compile for precisely
-    this reason. The production sampler is sound because it *copies* each field into a
-    struct literal rather than borrowing it, and that is now stated at the loop so a future
-    edit does not quietly reintroduce it.
-  - **Disk counters come from IOKit `IOBlockStorageDriver`'s `Statistics` dictionary**,
-    the same source `iostat` reports from. The BSD name (`disk0`) is **not on the driver** —
-    it is on the child `IOMedia`, so `block_driver_bsd_name` walks the IOService plane. The
-    first child carrying a `BSD Name` is the whole-disk media and its partitions are deeper
-    in the tree, so the partition double-counting the Linux arm filters for is
-    **structurally impossible** here rather than merely filtered.
-  - **Only drivers with a resolvable BSD name are reported.** This Mac has **4**
-    `IOBlockStorageDriver` services, of which **3** have no BSD name and all-zero counters —
-    unattached synthesized devices. Reporting them would invent disks that do not exist; the
-    `Users: 0` call (v0.6.1) applied again.
-  - **Cross-checked against independent oracles under a time-bounded load**, because
-    agreement on an idle machine proves nothing (the v0.10.0/v0.11.0 lesson):
-    - Disk, during a sustained incompressible write: IOKit **947.34 MB/s** against
-      `iostat -d disk0`'s **895.96 / 894.53 / 898.38 MB/s** over its own overlapping 1 s
-      windows. Both 0 B/s idle.
-    - Net, during a looped parallel download: **60.89 MB/s** against a `netstat -ib` delta
-      of **59.54 MB/s** (774 MB moved). Both 0 B/s idle.
-    - **The first network attempt measured nothing and is worth recording**: the load ran
-      against `en0` while this machine's default route is `en9`, so the probe and the oracle
-      *agreed at ~0* — a check that passes while measuring nothing, the exact trap the
-      v0.10.0 entry names. Only re-running against the real default-route interface, with
-      the transfer confirmed in flight, exercised it.
-  - **The name vocabulary was verified against the live field, not assumed.** `if_indextoname`
-    returns `en9` and the `Net` field reports `en9`, so [`select_net_rates`] matches; had
-    they differed it would have silently fallen through to its "everything that moved"
-    branch. Names come from `if_indextoname` rather than by parsing the trailing
-    `sockaddr_dl`, which keeps this module ignorant of the sockaddr layout entirely.
-  - **Perf: no measurable cost, and the controls are what establish that.** Four interleaved
-    A/B passes against a binary built from `main` gave gaps of −14.4, −23.5, −5.6 and
-    **+1.6** ms on `--long` — the direction flips, which is the honest reading. Three
-    controls back it: `main` against *itself* spread 703.0 vs 708.9 ms; the same binary
-    drifted 617 → 709 ms across the session; and **standard mode, where neither field is
-    collected and no code differs at all, showed a 10 ms "difference" of its own**. User
-    time is flat (123.6 vs 124.6 ms). Isolated, `--fields disk-io` is **122.8 ms** and
-    `--fields net-io` **127.3 ms** against a `--fields os` floor of **3.3 ms** — that is the
-    deliberate 100 ms top-up, not probe cost, exactly as on Linux.
-  - Worth noting for the Windows perf backlog: the macOS startup floor measures **3.3 ms**,
-    against the ~17.9 ms `--version` figure recorded for Windows in v0.13.2.
-  - `retch-sysinfo` -> `0.1.68` (new public `get_block_storage_io`); `retch-cli` ->
-    `0.14.0`. Minor bump - new user-visible fields on a platform that had none, the
-    v0.6.0 / v0.11.0 / v0.12.0 precedent.
-- **v0.13.3 - post-release: packaging pinned to 0.13.2, next cycle opened** (packaging only; no runtime change).
-  - `packaging/aur` (PKGBUILD and .SRCINFO) and `packaging/copr/retch.spec` bumped to **0.13.2**, the version just released. Both track the last RELEASED tag, so they can only move after the tag exists.
-  - `Cargo.toml` -> **0.13.3**, which is what lets this be a normal gated PR rather than a commit straight to `main`: `just pr`'s version check compares against the last tag, so the packaging bump passes as long as it travels with the next version bump.
-  - `retch-cli` -> 0.13.3. Patch bump.
-- **v0.13.2 - Windows `--short` is now FASTER than fastfetch, and the previous diagnosis in
-  this file was wrong** (`crates/sysinfo/src/fetch.rs`). Two ungated `sysinfo` calls were
-  paying for Windows performance-counter setup on every run, in every mode, for values that
-  either were not displayed or could not be correct. Nothing about process startup was
-  involved.
-  - **Measured, same session, hyperfine 8-15 runs after warmup, fastfetch 2.65.2:**
-
-    | Mode | before | after | fastfetch | verdict |
-    |------|--------|-------|-----------|---------|
-    | `--short` vs `-c none` | 239.5 ms | **50.6 ms** | 78.0 ms | **retch 1.5x faster** (was 3.1x slower) |
-    | default vs default     | 348.0 ms | **142.0 ms** | 1188 ms | **retch 8.4x faster** (was 3.4x) |
-    | `--long` vs `-c all`   | 502.0 ms | **286.4 ms** | 1312 ms | **retch 4.6x faster** (was 2.6x) |
-    | `--full` vs `-c all`   | 1.692 s | **1.445 s** | 1.334 s | still 1.08x slower |
-
-    A tighter `--short`-only run put it at **218.0 -> 38.7 ms** against fastfetch's 67.5 ms.
-    Compare the ratios rather than the absolutes across runs; the machine drifts.
-  - **The two costs, both the same underlying thing.** Windows `sysinfo` reaches for PDH
-    performance counters, and the first touch in a process costs ~180-195 ms - paid once, by
-    whichever call gets there first, which is why they looked like one mystery constant:
-    1. **`System::load_average()` was called unconditionally.** It is now gated on the `load`
-       field *and* skipped outright on Windows. `sysinfo` has no native load average there,
-       so it synthesises one: `init_load_avg()` opens a PDH query on
-       `\System\Cpu Queue Length` and registers a callback that decays a **process-local
-       static**, with `SAMPLING_INTERVAL = 5` **seconds** between samples. The static starts
-       at zero and retch exits long before the first callback fires, so it has **always**
-       returned `0.00, 0.00, 0.00`, and the caller's `avg.one > 0.0` guard has always turned
-       that into `None`. §6a has listed `load` as "deliberately not implemented on Windows"
-       for a long time; the code simply did not know it.
-    2. **`RefreshKind::with_cpu(CpuRefreshKind::everything())`** became
-       `cpu_refresh_kind()`, which asks only for what a selected field reads. `everything()`
-       sets `frequency`, and `windows/cpu.rs::init_cpus` calls `get_frequencies()` **only**
-       when that flag is set. Dropping it took `System::new_with_specifics` from **195.5 ms
-       to 0.5 ms** while the CPU line rendered identically - brand and core count come from
-       the *static* CPU list, which `with_cpu` populates whatever refresh kind it is handed.
-       `cpu-freq` still asks for `.with_frequency()`; `cpu-usage` asks for
-       `.with_cpu_usage()` off Windows only, since the Windows arm has diffed its own
-       `GetSystemTimes` samples since v0.3.49 and never read sysinfo's.
-  - **`cpu-cache` left the CPU-refresh gate entirely.** `detect_cpu_cache()` is a free
-    function that reads its own source and touches `sys` zero times, so it never needed the
-    CPU list; it had been dragging in `everything()` for nothing.
-  - **Output is unchanged on every platform, and that was verified rather than assumed.**
-    The set of rendered field labels was captured from the before and after binaries across
-    all four modes and diffed: identical. `Load` is filtered at display time by
-    `print_line`'s own `should_show`, so gating collection could not have removed a line that
-    was being shown.
-  - **THE OLD §6a ENTRY WAS CONFIDENTLY WRONG, and the way it got there is the lesson.** It
-    read: "the per-field sweep put the process-startup floor at ~314-322 ms and found 41 of
-    56 `--long` fields within 20 ms of it, so the fields are effectively free and *the floor
-    itself is the cost*." Every number in that sentence was real. The conclusion was not.
-    - **The sweep's baseline was `--fields os`, which pays the load-average cost too.** So
-      the ~314 ms "floor" was ~200 ms of PDH plus ~17 ms of actual startup, and *every* field
-      measurement had the same ~200 ms inside it. Subtracting the baseline is exactly what
-      hid the constant: a differencing harness cannot see a cost its own control shares.
-      "41 of 56 fields within 20 ms of the floor" is the fingerprint of that, read backwards.
-    - **The real floor is `retch --version` = 17.9 ms**, against `fastfetch --version` at
-      **46.8 ms**. retch starts ~2.6x *faster* than fastfetch. Startup was never the problem,
-      and a single measurement of the one command that does no probing would have said so.
-    - **What found it was absolute elapsed-time marks from process start**, printed under an
-      env guard, rather than any further differencing. The first mark alone
-      (`System::new_with_specifics` at 195.5 ms) ended the investigation.
-    - Same family as `~/AGENTS.md` §10/§11/§15 - **the oracle answered a different
-      question.** Here the control run was the thing that lied, which is the hardest shape to
-      notice, because the harness looks like it is working and every individual number it
-      reports is true.
-  - 5 new unit tests on the two extracted helpers (`cpu_refresh_kind`, `should_probe_load`),
-    all four of which were **watched failing** first: mutating `with_frequency()` away and
-    dropping the Windows guard each failed exactly the test meant to catch it.
-
-- **v0.13.1 - `battery` reads the device instead of spawning PowerShell (Windows), and
-  Windows `--long` is now FASTER than fastfetch** (`crates/sysinfo/src/battery.rs`,
-  `crates/sysinfo/src/win_setupapi.rs`). The last PowerShell spawn in `--long` is gone.
-  - **The headline is the mode, not the field.** `--long` on Windows measured **668.0 ms
-    (min 604)** against `fastfetch -c all` at **1330-1477 ms** - roughly **2x faster**,
-    where it had been 1.3-2.3x *slower*. **NOTES §3's blocking condition is now satisfied
-    for `--long` on Windows**; `--short` is still behind and is a separate problem (see §6a).
-  - **The field itself went from ~2531 ms to ~10 ms of marginal cost**: `--fields battery`
-    measures **324.2 ± 22.9 ms** against a `--fields os` floor of **314.4 ± 14.4 ms**, i.e.
-    it now costs essentially nothing over process startup. Before, it was ~2209 ms *over*
-    that floor - the single slowest field on the platform.
-  - **It also reports strictly MORE than the spawn did, which was the surprise.**
-    `Win32_Battery` returned `DesignCapacity`, `FullChargeCapacity` **and** `Manufacturer`
-    as **empty** on this machine, so ~2.5 s of PowerShell bought a model name and nothing
-    else. The device answers all of them:
-    `40% (2h 54m remaining, discharging, 98% health) [ASUSTeK ASUS Battery]` against the old
-    `42% (3h 28m remaining, discharging)`.
-  - **Access rights were measured rather than copied from the MSDN sample.** The battery
-    IOCTLs are `FILE_READ_ACCESS`: a zero-access handle fails them with
-    `ERROR_ACCESS_DENIED` (5), unlike the `FILE_ANY_ACCESS` storage IOCTLs in `disk.rs` that
-    v0.3.46 deliberately chose. `GENERIC_READ` alone works and is what this uses; the usual
-    sample code asks for `GENERIC_READ | GENERIC_WRITE`. No elevation either way.
-  - **`win_setupapi` gained device-interface *path* enumeration**
-    (`present_interface_device_paths`). It previously returned only friendly *names*, which
-    cannot be opened; a path is what `CreateFileW` takes, so this is the entry point for any
-    probe that needs to talk to a device rather than name it.
-  - **THE BUG I SHIPPED INTO MY OWN DRAFT, worth recording because it is silent.**
-    `SP_DEVICE_INTERFACE_DETAIL_DATA_W` is `{ DWORD cbSize; WCHAR DevicePath[]; }`. Its
-    `cbSize` must be set to **8** on x64 - the size of the fixed part, rounded up by the
-    DWORD's alignment - but `DevicePath` begins at offset **4**, immediately after the
-    DWORD. I used one constant for both and read the path from 8, **chopping the first two
-    characters off every device path**. The only symptom was `CreateFileW` failing to open a
-    device that plainly exists, which reads as "this machine has no battery" rather than as
-    a parsing error. The standalone probe had it right at 4; the port to the crate is where
-    it broke. Now two separately named constants, `DETAIL_CB_SIZE` and
-    `DETAIL_PATH_OFFSET`, with the trap documented at both.
-  - **`BATTERY_INFORMATION` is 36 bytes, not the 32 I predicted**, because `Technology` plus
-    3 reserved bytes plus the 4-byte `Chemistry` array fill two words ahead of the six
-    `ULONG`s. The probe printed "expect 32", got 36, **and returned correct capacities
-    anyway** - 73000 mWh designed, matching this machine's 73 Wh battery. The values
-    validated the layout; the prediction did not. Layout guard **watched failing** against
-    the wrong prediction.
-  - **A measurement caveat, recorded rather than hidden**: a second hyperfine pass hung
-    indefinitely on its `fastfetch -c all` leg and had to be killed. `fastfetch -c all` runs
-    fine standalone (1330 ms) immediately afterwards, so the hang was in that invocation,
-    not in fastfetch - but the figures quoted above come from the runs that **completed**,
-    not from the one that stalled.
-  - `retch-sysinfo` -> `0.1.66`; `retch-cli` -> `0.13.1`. Patch bump - the field already
-    existed and gains detail while losing a subprocess, the v0.6.18 / v0.10.2 / v0.11.2 call.
-
-- **v0.13.0 - `opengl` on Windows, via WGL against a hidden window**
-  (`crates/sysinfo/src/gpu_api.rs`). Completes the Windows half of the §6 GPU-API group:
-  all three now report there, and §6a's `opengl` item is closed.
-  - **Byte-identical to fastfetch**: `4.6.0 Compatibility Profile Context
-    25.20.32.06.251214`. With Vulkan already matching in v0.12.0 and OpenCL deliberately
-    richer, retch now reports at least as much as fastfetch on all three, on both platforms.
-  - **This is a different mechanism, not a wider `cfg`, which is why it is its own module.**
-    Vulkan and OpenCL share one implementation across platforms because those APIs are
-    identical and only the loader filename differs. OpenGL cannot: the Linux path takes a
-    context from EGL with no window and no display server, and **stock Windows ships no
-    EGL**. Windows has no headless equivalent in the base OS — WGL needs a device context, a
-    device context needs a window, and a window needs a registered class. So the Windows
-    arm registers a class, creates a 1x1 window, sets a pixel format, creates a context,
-    reads `GL_VERSION`, and tears all of it down.
-  - **The window is created hidden and never shown, and that was measured rather than
-    asserted.** It is created without `WS_VISIBLE` and `ShowWindow` is never called. A fetch
-    tool that flashed a window on every run would be broken, so this was checked with
-    `FindWindowEx` + `IsWindowVisible` polling across 60 back-to-back probe runs: the window
-    was **observed 134869 times in 722764 polls and was VISIBLE 0 times**. The observation
-    count is the important half - it is the positive control proving the check could see the
-    window at all. Without it, "0 visible" would have been another check that cannot fail,
-    the family this file keeps recording. **Counting `conhost` processes is NOT a valid
-    oracle for this** (`~/AGENTS.md`, arrakis): `CREATE_NO_WINDOW` still spawns a console.
-  - **`RegisterClassW`/`CreateWindowExW`/`GetDC` are wrapped in a guard type that unwinds on
-    drop**, in the reverse of acquisition order. Releasing them by hand at each `?` is how a
-    window or a class leaks, and a leaked class makes a second registration in the same
-    process fail - which would present as "no OpenGL" rather than as an error.
-  - **The pixel format must be set before `wglCreateContext`**, and its absence presents as
-    a null context handle rather than an error code that says so. `wglMakeCurrent(NULL,
-    NULL)` before `wglDeleteContext` for the same class of reason: deleting a context that
-    is current to the calling thread is documented to fail, which would leak it.
-  - **The context choice decides the string printed**, exactly as on Linux.
-    `wglCreateContext` yields the driver's highest *compatibility* profile, which is what
-    fastfetch reports. A core profile would need `wglCreateContextAttribsARB` and would
-    print a different string for the same machine, so the plain call is deliberate.
-  - `user32` and `gdi32` are **linked**, not loaded at runtime, unlike the graphics loaders:
-    they are core OS libraries present wherever the binary can run at all, and `display.rs`
-    already links `user32` on the same grounds. `opengl32` *is* loaded at runtime, because a
-    machine with no OpenGL ICD is a real case that must yield an absent field.
-  - Layout guards for `PIXELFORMATDESCRIPTOR` (40 bytes) and `WNDCLASSW` (72 bytes),
-    **watched failing** against a mutated size. `nSize` is filled from `size_of`, so struct
-    drift would hand `ChoosePixelFormat` a wrong size silently rather than fail to compile.
-  - **Perf: a real cost of ~65-90 ms on `--full`, and the isolated figure is much larger
-    than that.** The probe alone measures **878.3 ms against a 410.7 ms floor** - roughly
-    **470 ms**, three to four times what `vulkan` (+139) or `opencl` (+120) cost, because
-    creating a window and a GL context is heavier than querying a loader. Most of it
-    overlaps inside the concurrent scope: interleaved and repeated against a binary built
-    from `main`, `--full` came out **6891.9 vs 6801.2 ms** and **6853.0 vs 6788.1 ms**
-    (spreads ~50 ms, minimums agreeing with the means), so the branch is slower in **both**
-    passes by 65-90 ms. Not noise, and not free - the v0.12.0 reading again.
-    **The first attempt at this measurement was too noisy to quote** (±499 ms, with
-    hyperfine flagging an 8.0 s first run) and was re-run with more warmup rather than
-    reported; the machine had just finished 60 back-to-back probe runs for the window-
-    visibility check above.
-  - `retch-sysinfo` -> `0.1.65`; `retch-cli` -> `0.13.0`. Minor bump - a new user-visible
-    field on a platform that lacked it, the v0.6.0 / v0.11.0 / v0.12.0 precedent.
-- **v0.12.0 - `vulkan` and `opencl` on Windows** (`crates/sysinfo/src/gpu_api.rs`). v0.11.6
-  closed the last §6 fastfetch gap on Linux and, in doing so, opened a Windows parity gap:
-  fastfetch reports all three APIs on Windows and retch reported none.
-  - **The probes are the same code, because the APIs are.** Vulkan and OpenCL are identical
-    across platforms; only the loader's *filename* differs. So `mod dl` gained a Windows
-    backend (`LoadLibraryA`/`GetProcAddress`/`FreeLibrary`, the `media.rs` `combase.dll`
-    precedent) and the two `mod vulkan` / `mod opencl` bodies widened to
-    `cfg(any(linux, windows))` unchanged. **A second copy of the
-    `VkPhysicalDeviceProperties2` offset arithmetic is exactly the drift that the shared
-    `win_setupapi` and `win_iftable` modules exist to prevent**, so the split is one `dl`
-    module and two `*_LIB` constants.
-  - **Vulkan output is byte-identical to fastfetch** on this machine:
-    `1.4.329 - AMD proprietary driver [25.20.32.06 (LLPC)]`. **OpenCL is deliberately
-    richer**, as on Linux: `2.1 AMD-APP (3661.0) - AMD Accelerated Parallel Processing
-    (gfx1151)` against fastfetch's bare `2.1 AMD-APP (3661.0)`.
-  - **`opengl` is NOT included, and that is a mechanism difference rather than a missing
-    filename.** The Linux path gets a headless context via EGL (`EGL_DEFAULT_DISPLAY` plus
-    a surfaceless `eglMakeCurrent`), and **stock Windows ships no `libEGL.dll`** - verified
-    on this box, which has `vulkan-1.dll`, `opengl32.dll` and `OpenCL.dll` in `System32`
-    and no EGL at all. Windows OpenGL needs WGL against a hidden window, which is separate
-    work rather than a wider `cfg`; tracked in §6a.
-  - **The stderr suppression is Linux-only, and the Windows no-op is justified by
-    measurement rather than assumed.** The Linux `SuppressStderr` exists for one driver:
-    rusticl prints a "Patched Mesa libclc not detected" warning on every enumeration. That
-    driver does not exist on Windows, and a `--full` run plus an isolated `--fields opencl`
-    run each wrote **0 bytes** to stderr here. `test_cli_full_mode` asserts exactly this and
-    runs on the Windows CI leg, so a future leak fails loudly instead of silently spraying a
-    driver's diagnostics into the terminal. Reimplementing the `dup2` dance on the CRT for a
-    problem no observation shows would also have silenced every other thread for its
-    duration.
-  - **Perf: a real cost, stated as such.** Interleaved and repeated against a binary built
-    from `main`: `--full` **6879.7 -> 6754.9 ms** and, on the repeat, **6825.8 -> 6767.9** -
-    the branch is slower in **both** passes, so unlike the v0.10.0/v0.11.6 results this is
-    **not** noise. It matches the isolated probe costs (vulkan **+139 ms**, opencl
-    **+120 ms** over a ~312 ms floor) overlapping inside the concurrent scope. `--long` is
-    the control and moves both ways (2957.9 vs 2932.7, then 2921.3 vs 3004.0), confirming
-    the fields are `--full`-only by construction. **Context, not an excuse**: Windows
-    `--full` is ~6.8 s against `fastfetch -c all` at ~1.7 s for reasons that predate this
-    change (`battery` alone is ~2.5 s), so §6a's perf item is where that belongs.
-  - 4 new unit tests. The loader-filename guards are the ones that matter: a typo there
-    **fails silently**, reporting "not installed" on a machine that has the API. **Watched
-    failing** against `vulkan1.dll` - the test reports the mismatch while the binary just
-    prints nothing, which is the whole argument for pinning them. The other two cover an
-    AMD platform string (a non-Mesa `CL_PLATFORM_VERSION` phrasing, with a parenthesised
-    build number that must not be mistaken for the driver descriptor
-    `shorten_device_name` strips) and a bare device name with no descriptor at all - the
-    branch every Linux fixture missed, since Mesa always appends one.
-  - `retch-sysinfo` -> `0.1.64`; `retch-cli` -> `0.12.0`. Minor bump - new user-visible
-    fields on a platform that had none, the v0.6.0 and v0.11.0 precedent.
-- **v0.11.8 - dependency bump: `icy_sixel` 0.6 -> 0.7 (consolidated Dependabot #228)**
-  (chore; no runtime behavior change).
-  - Widened `icy_sixel` spec `"0.6"` -> `"0.7"` in `Cargo.toml` and updated `Cargo.lock` (0.6.0 -> 0.7.0).
-  - `icy_sixel` 0.7.0 updates internal encoder/decoder routines and hardening; `SixelImage::try_from_rgba` and `.encode()` signatures remain fully compatible.
-  - Regenerated `docs/retch.1` man page for v0.11.8.
-  - `retch-cli` -> 0.11.8; `retch-sysinfo` unchanged (`0.1.63`). Patch bump.
-- **v0.11.7 - post-release: packaging pinned to 0.11.6, next cycle opened** (packaging only; no runtime change).
-  - `packaging/aur` (PKGBUILD and .SRCINFO) and `packaging/copr/retch.spec` bumped to **0.11.6**, the version just released. Both track the last RELEASED tag, so they can only move after the tag exists.
-  - `Cargo.toml` -> **0.11.7**, which is what lets this be a normal gated PR rather than a commit straight to `main`: `just pr`'s version check compares against the last tag, so the packaging bump passes as long as it travels with the next version bump.
-  - **v0.11.6 rolled up three versions, not four**: 0.11.3, 0.11.4 and 0.11.6. There is no
-    0.11.5 release - see that entry below for why the number is skipped.
-  - `retch-cli` -> 0.11.7. Patch bump.
-- **v0.11.6 - `vulkan`, `opengl` and `opencl`: the last user-visible fastfetch gap**
-  (`crates/sysinfo/src/gpu_api.rs` (new), `crates/sysinfo/src/fetch.rs`, `src/fields.rs`,
-  `src/display.rs`). Closes the final §6 item; every group there is now closed.
-  - **The first `dlopen`-based probe in the codebase.** Every other dynamic load here is
-    Windows (`media.rs`'s `combase.dll` bootstrap); Unix code has always used `#[link]`.
-    Linking these three would be wrong: a machine without Vulkan must still run retch, and
-    `#[link(name = "vulkan")]` would refuse to start. A shared `dl` helper opens each
-    loader `RTLD_NOW | RTLD_LOCAL` - **local** so that loading a software OpenCL ICD cannot
-    shadow symbols a later probe resolves.
-  - **THE DESIGN CONSTRAINT, set by the user: report what is available WITHOUT changing the
-    user's environment.** That rules out the tempting shortcut for OpenCL. Mesa's rusticl is
-    opt-in via `RUSTICL_ENABLE`; without it the ICD registers a platform advertising
-    OpenCL 3.0 while exposing **zero devices**. retch could `setenv` that for itself before
-    loading the ICD and print a better-looking answer. It does not, for two reasons:
-    - **It would be a data race.** Fields are collected inside a `std::thread::scope`, and
-      mutating the environment while sibling threads read it is unsound. `std::env::set_var`
-      became `unsafe` in Rust 2024 for exactly this; this crate is edition 2021, where it
-      **still compiles silently** - a trap rather than a compile error.
-    - **It would report something false.** A device visible only because retch enabled it
-      for itself is not one the user's programs can use.
-    So `opencl` reports the device it actually observes and says `no device enabled` when
-    there is none. **fastfetch prints a bare `OpenCL: 3.0` in both states** - measured here
-    with and without the variable, byte-identical output - i.e. it reports a working stack
-    when nothing can run on it. Under-reporting beats asserting something false: the
-    `Users: 0` suppression (v0.6.1) and the v0.7.0 input classification, applied again.
-  - **Two findings that only measurement produced**, both of which would have shipped a
-    wrong number:
-    - **`vkEnumerateInstanceVersion` is NOT the version fastfetch prints.** It returns the
-      *loader* version - **1.4.341** here - while fastfetch reports the *device's*
-      `apiVersion`, **1.4.354**. The instance-only path is nearly free (0.39 ms) and
-      answers a different question, so the field creates an instance and reads
-      `VkPhysicalDeviceProperties2` instead.
-    - **A Vulkan instance below 1.2 SILENTLY IGNORES the `pNext` chain.** Requesting 1.0
-      returned the correct `apiVersion` with `driverName`/`driverInfo` as **empty strings
-      and no error anywhere** - a call that succeeded while producing nothing. Requesting
-      1.2 fills them (`radv` / `Mesa 26.1.8`). `format_vulkan` still renders correctly from
-      an unfilled chain rather than printing a dangling separator.
-  - **Device selection is load-bearing, not cosmetic.** Any Mesa system enumerates the
-    software rasteriser `llvmpipe` as a `CPU` device beside the real GPU - measured here:
-    the AMD 780M as `INTEGRATED_GPU` (1) and `llvmpipe` as `CPU` (4). Taking the first
-    enumerated device would report software rendering on a machine with a working GPU, so
-    `device_type_rank` orders discrete > integrated > virtual > other > CPU.
-  - **OpenGL uses headless EGL, which is what makes the no-environment-change rule
-    achievable.** `EGL_DEFAULT_DISPLAY` plus a surfaceless `eglMakeCurrent` needs no X or
-    Wayland connection. **The context choice decides the number printed**: passing no
-    attribute list yields the driver's default compatibility profile, matching fastfetch,
-    while a core-profile request reports a different string for the same machine
-    (`glxinfo -B` says `4.6 (Core Profile)` where this returns
-    `4.6 (Compatibility Profile)`). Documented at the call site so it is not "tidied".
-  - **`--full` only - and the honest measurement is more interesting than the prediction.**
-    The serial cost is real: against a `-s Title` baseline of ~0.9 ms, fastfetch pays
-    **31.1 ms** for Vulkan, **27.1 ms** for OpenGL and **23.6 ms** for OpenCL, ~80 ms
-    combined, and retch's own probes measure similarly. That is what put them in `--full`
-    rather than `--long`, since `--long` targets ~500 ms and NOTES §3 treats
-    slower-than-fastfetch as blocking.
-    **But the A/B against a binary built from `main`, interleaved and repeated, shows no
-    wall-clock cost at all**: `--full` **1.108 / 1.110 s** on the branch against
-    **1.102 / 1.113 s** on `main` - the pair moves in *both directions* across repeats,
-    which is the honest reading (noise, not a speedup and not a cost). `--long` is the
-    control and is untouched: **431.0 ms** branch vs **446.9 ms** main, and it collects
-    **0** of the three by construction.
-    **The work is nonetheless real, and CPU time is what shows it** - user time rises
-    0.068 s -> 0.122 s. It simply overlaps inside the existing concurrent scope, the
-    v0.10.0 `disk-io` result again. **Recorded rather than acted on: this suggests `--long`
-    might also absorb them for free.** That is a hypothesis about a mode with fewer
-    concurrent probes to hide behind, not a measurement of it - promote the stratum only
-    after measuring `--long` the same way.
-  - Strata golden count updated Full 65 -> 68. Vulkan/OpenGL output is **byte-identical to
-    fastfetch** on this machine; `opencl` is deliberately richer.
-  - Linux only: the loaders are opened by Linux sonames, and every other platform returns
-    an empty set rather than a wrong answer - the v0.5.0/v0.7.0 Linux-first precedent.
-  - 9 unit tests over the pure helpers. The `llvmpipe`-versus-GPU ordering, the
-    unfilled-driver-chain rendering, and the inert-versus-working OpenCL distinction each
-    have a case, since those are the three places a plausible-looking wrong answer could
-    ship.
-  - `retch-sysinfo` -> `0.1.63` (new public `gpu_api` module); `retch-cli` -> `0.11.6`.
-    Minor bump - new user-visible fields.
-
-- **v0.11.5 (never released; shipped inside v0.11.6) - `Host` is the first field, and three
-  docs claimed an ordering feature that does not exist**. This version number exists only in
-  this log: 0.11.5 was bumped on a feature branch and then amended into **0.11.6** when the
-  user asked for the two changes as one PR (#229), so `Cargo.toml` never carried 0.11.5 on
-  `main` and no tag or crates.io release bears it. The released run is 0.11.3, 0.11.4,
-  0.11.6. Kept as its own entry rather than merged into v0.11.6's, because the two changes
-  are unrelated and collapsing them would hide one. (`src/display.rs`; CLI-only, `retch-sysinfo` unchanged at `0.1.62`). User
-  request: `Host` should lead the output.
-  - **The change itself is one moved block**: the `Host` `print_line` now precedes `OS` in
-    the identity group, so every mode that shows the field leads with it. `Host` names *which
-    machine* the output describes, which is what a reader needs first when comparing runs
-    across boxes or reading a pasted screenshot.
-  - **Nothing had ever asserted the field order.** Display order is the `print_line` call
-    sequence in `display.rs` and nothing else - the config `fields` array is a **membership
-    test** (`should_show`), not an ordering. So the previous order held only by convention,
-    the same shape as the v0.9.2 `logo_column` regression that survived six months because no
-    test pinned the intended property. `test_host_is_listed_first` now pins it across
-    `--short` and standard mode, and was **watched failing** against the pre-change binary
-    with `expected `Host` to be the first field, got: "OS: Linux (Fedora Linux 44)"`.
-  - **Three documents described an ordering feature retch does not have**, all corrected
-    here and all pre-existing (the wiki's `Configuration-and-Theming.md` was the third): `docs/retch.1.md` called `fields` "active fields and **their
-    display order**", and `README.md`'s generated-config comment called it an "**Ordered**
-    list of system information fields to display". A user reordering that array would have
-    seen nothing happen, with the docs insisting otherwise. Found only because this change
-    went looking for every place the order is recorded - the same sweep that found `dirs`
-    missing from §8 one release earlier.
-  - `src/cli.rs`'s `--short` help text and `src/main.rs`'s generated-config comment both
-    listed the old order and now match.
-  - The ANSI strip in the new test deliberately matches the whole `ESC [ ... <final byte>`
-    form rather than SGR (`m`) only: chafa opens a run with `\x1b[?25l`, and an SGR-only
-    strip leaves six characters behind - the measurement bug from the 2026-08-24 session,
-    where a uniform 6-column overflow was blamed on the renderer.
-  - `retch-cli` -> 0.11.5. Patch bump (display change, no new field or flag).
-- **v0.11.4 - `dirs` 6.0 -> 7.0 and `toml` 1.1.4 -> 1.1.5 (consolidated Dependabot #222)**
-  (chore; no runtime behaviour change). Rolls Dependabot's PR onto a gated branch so the
-  release hygiene it bypasses - version bump, NOTES entry, man regen - is actually done,
-  following the #167/v0.6.3, #184/v0.6.16, #188/v0.6.19, #199/v0.8.1, #207/v0.9.5 and
-  #216-217/v0.9.13 pattern.
-  - **`dirs` is a MAJOR bump and the only one of these that could have reached us**, so it was
-    established from the source rather than from a green build. Both crate versions were
-    downloaded and compared file by file: `src/lib.rs`, `src/lin.rs`, `src/mac.rs` and
-    `src/wasm.rs` are **byte-identical** between 6.0.0 and 7.0.0. The entire behavioural
-    change is **one line in `src/win.rs`**: `preference_dir()` moves from
-    `known_folder_local_app_data()` to `known_folder_roaming_app_data()`. The rest of the
-    diff is the `repository` URL moving to Codeberg.
-  - **retch never calls `preference_dir()`.** The whole workspace uses exactly two functions
-    from this crate - `dirs::config_dir()` (3 sites, all `retch-cli`: `config.rs`, `theme.rs`,
-    `display.rs`) and `dirs::home_dir()` (9 sites, mostly `retch-sysinfo`: `theme.rs`,
-    `terminal.rs`, `packages.rs`, `fetch.rs`). On Windows those are
-    `known_folder_roaming_app_data()` and `known_folder_profile()` respectively, and **both
-    are unchanged in 7.0.0**; on Linux and macOS the implementing files are byte-identical.
-    So the major bump is structurally unreachable from retch, not merely "compiles clean".
-  - **A `0.x`-style spec widening in TWO manifests, unlike every previous roll.** A caret
-    range on `6.0` will not admit `7.0`, so both `Cargo.toml` and
-    `crates/sysinfo/Cargo.toml` widen - the same shape as v0.6.4's `base64` and v0.9.5's
-    `icy_sixel`, but reaching the library crate as well as the CLI.
-  - **`retch-sysinfo` is therefore bumped to `0.1.62` despite no `.rs` file changing, and
-    that is deliberate.** v0.6.19 and v0.9.13 both left it alone for lockfile-only rolls
-    with the reasoning "no source change - only its transitive lockfile deps moved". That
-    reasoning does not extend here: the *manifest of the published crate* changes. Leaving
-    it at `0.1.61` would mean the repo's `0.1.61` requires `dirs 7.0` while the copy on
-    crates.io requires `6.0` - so `cargo install retch-cli` would resolve a dependency CI
-    never tested, and `just publish` would skip the crate as already-published and never
-    correct it. The root `=0.1.61` pin moves to `=0.1.62` with it.
-  - **`toml` 1.1.5 is lockfile-only** (the spec is `"1.1"`, and a caret range already admits
-    it). Its whole diff is two files: `src/de/parser/devalue.rs` adds `make_owned()` to
-    `DeInteger`/`DeFloat` and wires them into `DeValue::make_owned` (a borrowed-data
-    correctness fix), and `src/ser/mod.rs` changes two doc comments into intra-doc links.
-    retch's single call site is `toml::from_str` in `src/config.rs`, deserialising through
-    serde derive; **`DeValue` appears nowhere in the workspace**, so neither change is
-    reachable.
-  - `Cargo.lock` diff is exactly the two entries with **no transitive movement** -
-    `dirs-sys` stays at `0.5.0` - and `cargo tree -i dirs` shows a single `dirs v7.0.0`
-    shared by both crates rather than a duplicated major.
-  - **§8's dependency list omitted `dirs` entirely** and now names it. A reader of that list
-    would have concluded retch does not use the crate at all - noticed only because this PR
-    went looking for every place the dependency is recorded.
-  - `retch-sysinfo` -> `0.1.62` (manifest dependency requirement change); `retch-cli` ->
-    `0.11.4`. Patch bump.
-- **v0.11.3 - post-release: packaging pinned to 0.11.2, next cycle opened** (packaging only; no runtime change).
-  - `packaging/aur` (PKGBUILD and .SRCINFO) and `packaging/copr/retch.spec` bumped to **0.11.2**, the version just released. Both track the last RELEASED tag, so they can only move after the tag exists.
-  - `Cargo.toml` -> **0.11.3**, which is what lets this be a normal gated PR rather than a commit straight to `main`: `just pr`'s version check compares against the last tag, so the packaging bump passes as long as it travels with the next version bump.
-  - `retch-cli` -> 0.11.3. Patch bump.
-- **v0.11.2 - `dns` reads `GetAdaptersAddresses` instead of spawning PowerShell (Windows)**
-  (`crates/sysinfo/src/network.rs`). The `--long` per-field sweep named this the single
-  slowest field on Windows by a wide margin.
-  - **Measured before it was touched**: `retch --fields dns` **3409 ms** against a ~322 ms
-    process-startup floor, from a hyperfine sweep of all 56 `--long` fields in which **41
-    were startup-bound**. Second was `battery` at 2531 ms. Everything else was noise.
-  - **`-NoProfile` is NOT the fix, and this was measured rather than assumed** - it was the
-    obvious one-line candidate, since this file records a ~642 ms profile cost. Bare
-    `powershell -Command exit` is **893 ms**; `-NoProfile` **878 ms**. dns 3005 vs 3058,
-    battery 2233 vs 2228. All inside noise. That ~642 ms figure is about **pwsh**
-    (PowerShell 7); these call Windows PowerShell 5.1, whose profile here is trivial. So
-    the cost is ~890 ms of interpreter startup plus ~2100 ms of cmdlet work, and only
-    removing the spawn removes it - the #146-#150 conclusion, re-derived.
-  - **The enabling detail: `GAA_FLAG_SKIP_DNS_SERVER` was set.** `GAA_FLAGS` was `0x0E` =
-    `SKIP_ANYCAST | SKIP_MULTICAST | SKIP_DNS_SERVER`, so `FirstDnsServerAddress` was
-    declared in the struct and **guaranteed null** - which is why the field spawned
-    PowerShell in the first place. Clearing that one bit (`0x06`) populates it. Worth
-    stating plainly because an earlier reading of this code claimed the DNS data was
-    "already fetched"; it was not, it was explicitly suppressed.
-  - **Output is byte-identical**, captured before and diffed after:
-    `DNS Server: 10.10.1.1, 100.101.255.254`. IPv4-only and lexicographically sorted, both
-    preserved deliberately so this is a pure performance change - the replaced query passed
-    `-AddressFamily IPv4`, and `Sort-Object -Unique` sorts as strings, which is why
-    `10.10.1.1` precedes `100.101.255.254`.
-  - **Result: `--fields dns` 3409 -> 385 ms (~8.9x), essentially the startup floor.**
-  - **But `--long` only went 3352 -> 3076 ms, and the model that predicted otherwise was
-    wrong.** Because fields collect concurrently, `dns` at 3409 ms looked like it set
-    `--long`'s wall clock, and 3409 ≈ 3352 seemed to confirm it. It did not: removing the
-    cost moved `--long` by ~8%. The `--fields`-based removal test that suggested a larger
-    win (6540 -> 2890 ms) does not model `--long`, exactly as the caveat recorded alongside
-    it warned. **`--long` on Windows is still 2.1x slower than `fastfetch -c all`**
-    (3076 vs 1467 ms), so NOTES §3's blocking condition is not cleared; `battery` is the
-    next target and this entry should not be read as having fixed the mode.
-  - 3 new unit tests over `parse_sockaddr`, keyed on byte fixtures rather than live
-    adapters so they assert the wire layout on every platform's CI. **Watched failing**
-    against the classic offset error (reading the IPv4 address at 0 instead of 4), which
-    reports `Some(2.0.0.53)` - the family and port read as an address.
-  - `retch-sysinfo` -> `0.1.61`; `retch-cli` -> `0.11.2`. Patch bump.
-- **v0.11.1 - three defects in the `Net` field, all from matching a formatted string**
-  (`crates/sysinfo/src/network.rs`, `crates/sysinfo/src/win_iftable.rs` (new),
-  `crates/sysinfo/src/io.rs`, `src/display.rs`). Found while implementing v0.11.0's
-  `net-io`; the first was recorded in §6a then, and investigating it turned up two more.
-  - **The root cause is one design choice, not three mistakes.** `detect_networks` returned
-    pre-formatted, ANSI-colourised `String`s, so `display.rs` had to recover semantics from
-    presentation by substring-matching them. Every defect below is that pattern.
-  - **1. The active interface was matched by substring, against the whole rendered line.**
-    `net.contains(active)` with `active = "Wi-Fi"` also matches
-    `Wi-Fi-Native WiFi Filter Driver-0000`, so **both** were printed as the active
-    interface, both painted bright blue. **This is cross-platform, not a Windows quirk**:
-    on Linux `eth0` matches an `eth0.100` VLAN and any `veth0…` pair. It also matched
-    against the addresses and byte counts, not just the name.
-  - **2. Windows listed NDIS filter pseudo-interfaces as interfaces**, each carrying a copy
-    of its adapter's counters - the duplicate `Net` line with identical RX/TX. Excluded now
-    on the same `FilterInterface` rule `net-io` uses.
-  - **3. The standard-mode fallback was dead code.** It tested
-    `net.contains("[Up]")`, but the status is colourised *before* the line is built, so the
-    bytes are `[` + `ESC[32m` + `Up` + `ESC[39m` + `]` and the literal `[Up]` never
-    appears. **Measured, not reasoned**: 0 occurrences in the raw output, 2 after stripping
-    ANSI. Consequence: with no resolvable active interface, standard mode printed **no
-    `Net` line at all** rather than falling back to the first interface that is up.
-  - **The fix is structural.** `detect_networks` now returns `NetworkInterface { name,
-    is_up, line }`, so identity and status are *facts* rather than things inferred from
-    presentation, and `display.rs` compares names exactly. Two pure helpers
-    (`partition_net_lines`, `choose_net_line`) carry the logic and are unit-tested without
-    a terminal or a network.
-  - **`GetIfTable2` moved into a shared `win_iftable` module** rather than being declared a
-    second time in `network.rs`: `MIB_IF_ROW2` is 1352 bytes with its useful fields past
-    1.2 KB of others, and two copies drifting is precisely what the shared `win_setupapi`
-    module exists to prevent. `io.rs` now consumes it too, so there is one definition and
-    one set of layout guards. The module is gated `#[cfg(any(target_os = "windows", test))]`
-    so the pure classification rule is exercised by the Linux and macOS CI legs as well.
-  - **All three watched failing against the code that shipped**, each for its own reason:
-    the substring match classified 2 of 2 Wi-Fi rows as active (`left: 2, right: 1`) and 3
-    of 3 `eth0*` rows on the Linux fixture (`left: 3, right: 1`), and the literal-`[Up]`
-    fallback returned `None` where a line was required.
-  - **A fixture defect of mine, caught before it could matter**: the first version of the
-    test helper built its line with a plain `[Up]`, which would have let the broken
-    `contains("[Up]")` predicate pass and proved nothing. The helper now colourises the
-    status exactly as `detect_networks` does, so the fixture reproduces the condition the
-    bug needs.
-  - Verified live on arrakis: `--long` shows **one** `Net` line where it showed two, with
-    exactly one bright-blue (`ESC[94m`) run in the output; standard mode unchanged.
-  - `retch-sysinfo` -> `0.1.60` (public API change: `detect_networks` returns
-    `Vec<NetworkInterface>`); `retch-cli` -> `0.11.1`. Patch bump - three bug fixes, no new
-    field.
-- **v0.11.0 - `disk-io` and `net-io` on Windows** (`crates/sysinfo/src/io.rs`,
-  `crates/sysinfo/src/disk.rs`). Both fields shipped Linux-only in v0.10.0 and returned
-  nothing on Windows; they now read native counters there, with no subprocess and no
-  elevation. **Nothing outside the two `sample_*` functions changed**: the rate maths, the
-  100 ms floor, the sampling window in `fetch.rs`, `fields.rs` and `display.rs` were
-  already platform-independent, which is why this is an arm rather than a redesign.
-  - **THE FINDING: `GetIfTable2` reports one row per NDIS filter instance, carrying the
-    adapter's counters again.** On this machine `Wi-Fi` appeared five times - as itself and
-    as `Wi-Fi-WFP Native MAC Layer LightWeight Filter-0000`,
-    `Wi-Fi-Native WiFi Filter Driver-0000`, `Wi-Fi-QoS Packet Scheduler-0000` and
-    `Wi-Fi-WFP 802.3 MAC Layer LightWeight Filter-0000` - every one reporting
-    `in=219996461 out=32914969`, byte-identical. Reporting them all states the machine's
-    throughput **five times**, under five names a reader would take for five devices. It is
-    the Windows form of the partition double-counting the Linux arm already excludes.
-  - **The rule is "exclude `FilterInterface`", NOT "keep `HardwareInterface` only", and the
-    difference is load-bearing.** The obvious filter is the wrong one: the `wt0` WireGuard
-    tunnel reads `HardwareInterface = false, FilterInterface = false` while carrying real
-    traffic, so keying on `HardwareInterface` drops exactly the kind of interface the Linux
-    side reports. **Watched failing against that mutation** - the kept set collapsed to
-    `["Ethernet", "Wi-Fi"]`, losing `wt0`, the Bluetooth PAN and the LAC interfaces.
-  - **`GetIfTable2`, not `GetIfTable`**: the older `MIB_IFROW` carries **32-bit** octet
-    counters, which wrap every 4 GB. This adapter had already moved 216 GB, so the legacy
-    table would produce a plausible-looking figure from a wrapped counter rather than an
-    obvious failure.
-  - **The names must match `active_interface` or `select_net_rates` silently stops
-    selecting** and falls through to its "every interface that moved" branch. Checked
-    rather than assumed: sysinfo reports `Wi-Fi` and `MIB_IF_ROW2.Alias` is `Wi-Fi`, so no
-    translation layer is needed - and the coupling is now stated in the doc comment,
-    because nothing would fail loudly if it broke.
-  - **`IOCTL_DISK_PERFORMANCE` is `FILE_ANY_ACCESS`**, so - like the two IOCTLs v0.3.46
-    chose for `phys-disk` - it answers on a handle opened with **zero** desired access and
-    needs no administrator rights. Confirmed from an unelevated shell before the code was
-    written, since designing around an IOCTL that turns out to need elevation is the
-    expensive way to discover this.
-  - **The drive-scan range is now shared** (`disk::MAX_PHYSICAL_DRIVES`) rather than a
-    second local `32`: had the two ranges drifted, `phys-disk` and `disk-io` would disagree
-    about which disks exist on a multi-disk machine. Same reasoning as sharing
-    `is_virtual_block_name` on Linux.
-  - **A layout test of mine could not fail, and finding that out is the useful part.** The
-    `MIB_IF_ROW2` counters sit 1208 and 1280 bytes into the struct, so the offsets are only
-    right if everything ahead of them is. The first version of the assertion set **passed
-    against an `alias` array mutated from 257 to 256 `WCHAR`**: the two lost bytes are
-    swallowed by the padding before `physical_address_length` (4-byte aligned at 1056), so
-    the size and every later offset are genuinely unchanged - while `wide_to_string` would
-    read one `WCHAR` short. Pinning `description`'s offset (542) closes it, and the
-    re-mutated run then failed correctly with `left: 540, right: 542`. Recorded because the
-    mutation "passing" reads exactly like the test being sound.
-  - **Cross-checked against independent oracles under a time-bounded load**, because
-    agreement on an idle machine proves nothing (the v0.10.0 lesson):
-    - Disk, against `Get-Counter '\PhysicalDisk(0 C:)\Disk Write Bytes/sec'` during a
-      sustained 25 s flushed write: retch **229.5 / 236.3 / 199.9 MB/s** against the
-      counter's **221.7 / 191.0 / 215.7 MB/s** over its own overlapping windows. Both read
-      0 B/s idle.
-    - Net, against `Get-NetAdapterStatistics` deltas during a looped download: retch
-      **68.1 / 66.3 MB/s** against **57.3 / 53.8 MB/s**. **The first attempt at this check
-      was worthless and is worth recording**: a `Start-Job` download had not begun before
-      the measurement, so retch and the oracle agreed at ~0 - a check that passed while
-      measuring nothing, which is what the v0.10.0 entry warns about in the same words. A
-      single 50 MB fetch completes in 1.23 s here, far shorter than the window, so the load
-      has to loop until a deadline.
-    - Exact agreement is not expected and is not claimed: retch's window is its own
-      collection window (~100 ms when the field is requested alone) while the oracle's is
-      the whole invocation, so a third sample read 1.5 vs 39.6 MB/s when retch's window
-      landed in the gap between two downloads. Magnitude agreement under load, plus 0/0 at
-      idle, is the claim.
-  - **Perf: no cost, and the control run is what shows it.** Interleaved and repeated,
-    branch vs a binary built from `main`: `--long` **6843.5 ± 59.3** vs **7046.4 ± 131.1**
-    ms, then on the repeat **6847.7 ± 108.1** vs **6833.0 ± 85.1** - the pair moves in
-    *both directions*, so it is inside the noise. Standard mode is the control, since
-    neither field is collected there, and it swings the same ±8 ms both ways (438.3 vs
-    446.7, then 446.1 vs 438.2). Absolute `--long` read ~6.8 s in this session against the
-    2.77 s recorded on 2026-09-08 on the same box; that is unrelated to this change (`main`
-    measures the same) and is not investigated here.
-  - Two pre-existing man-page claims corrected in passing, both false since v0.3.46/v0.3.47
-    and contradicted by README: `phys-disk` and `phys-mem` no longer say they use
-    PowerShell on Windows.
-  - **Found and deliberately NOT fixed: the `net` field itself lists filter
-    pseudo-interfaces.** A `--long` run shows `Net: Wi-Fi-Native WiFi Filter Driver-0000`
-    beside the real `Wi-Fi`, with duplicate RX/TX totals. It is the same duplication, one
-    field over, but it comes from sysinfo's interface list rather than `GetIfTable2`, so
-    fixing it means cross-referencing the two in `detect_networks` - a separate change with
-    its own blast radius. Out of scope here; recorded rather than silently dropped.
-  - 5 new unit tests over pure helpers, keyed on a **verbatim `GetIfTable2` fixture** from
-    this machine (alias, `Type`, flags) so no test depends on the interfaces of whatever
-    machine runs it - the #155/v0.6.2 pattern. Plus `size_of`/`offset_of!` layout guards
-    for both structs, per the v0.3.51 convention.
-  - `retch-sysinfo` -> `0.1.59` (library behaviour change); `retch-cli` -> `0.11.0`. Minor
-    bump - new user-visible fields on a platform that had none, matching v0.6.0's call for
-    Windows `domain`/`terminal-size`.
-- **v0.10.2 - Windows Bluetooth counted classic devices only, so every LE peripheral was
-  invisible** (`crates/sysinfo/src/bluetooth.rs`, `crates/sysinfo/src/win_setupapi.rs`).
-  Closes the first §6a open item, reported 2026-07-13 as "shows only 1 of 2 connected
-  devices".
-  - **The enumeration loop was never the bug.** The reported symptom reads like an
-    off-by-one in `BluetoothFindFirstDevice`/`FindNextDevice`, and that loop is correct.
-    `bthprops` is a **BR/EDR-only** API: an LE-only peripheral is not returned by it at
-    all - not as `fConnected = 0`, but absent from the enumeration entirely. Proved with a
-    probe that ran the exact search retch used and then widened it to every category
-    (`fReturnAuthenticated`/`Remembered`/`Unknown`/`Connected` all set): it returned two
-    classic devices and none of the three paired LE mice on the machine.
-  - **Ground truth was established before the fix, with controls**, because the obvious
-    oracle disagreed: `fastfetch` also reported 1. Two paired-but-idle mice served as
-    negative controls against the connected one - their HID child nodes read `Unknown`
-    while the connected device's read `OK`, and `System.Devices.Connected` read `False`
-    against `True`. Two devices genuinely were connected while both tools said one.
-  - **`System.Devices.Connected` ({83DA6326-97A6-4088-9453-A1923F573B29}, PID 15) is the
-    signal**, read per device node with `SetupDiGetDevicePropertyW`. Verified across all
-    five paired devices on both transports, and cross-checked against
-    `DEVPKEY_Device_DevNodeStatus`'s `DN_DEVICE_DISCONNECTED` bit, which agreed on every
-    one. The two neighbouring properties that look usable are not:
-    `DEVPKEY_Bluetooth_LastConnectedTime` is historical (it records when a link was last
-    *established*, and does not move while one is up), and
-    `DEVPKEY_DeviceContainer_AlwaysShowDeviceAsConnected` reads `True` regardless - an
-    oracle that cannot fail, the family this file keeps recording.
-  - **WinRT was the intended fix and was abandoned on evidence.** `Windows.Devices.
-    Enumeration` over association endpoints is the documented way to see LE state, and
-    v0.8.0's `media.rs` already carries a `combase.dll` bootstrap, so it was available.
-    But `FindAllAsync` with `DeviceInformationKind::AssociationEndpoint` **never
-    completed** - `status = Started`, no error, after a full 8 s - and the unfiltered
-    query that did work took ~1 s for 1489 device interfaces. A `--long` field that can
-    stall is worse than one that under-counts. SetupAPI is synchronous, needs no WinRT,
-    and enumerated the same six device nodes in **11 ms**.
-  - **Dual-mode devices are de-duplicated by address, and that is measured rather than
-    defensive**: a phone paired for both audio and LE enumerates as *both*
-    `BTHENUM\DEV_<addr>` and `BTHLE\DEV_<addr>`, so counting nodes would report it twice.
-    De-duplication keys on the address parsed from the instance id, **not** the name -
-    two distinct devices can share a name, and collapsing those would under-count.
-  - Only a definite `true` counts: a node not exposing the property is unknown and is
-    skipped rather than reported, the same call as `Users: 0` (v0.6.1) and the v0.7.0
-    input classification - under-reporting beats asserting something false.
-  - **The whole `bthprops` FFI is deleted** - `DeviceSearchParams`, `DeviceInfo`,
-    `SystemTime`, the `#[link(name = "bthprops")]` block and their layout assertions -
-    since nothing else used it. One fewer linked library, and adapter name and power state
-    are untouched.
-  - **Measured against a binary built from `main`, interleaved and repeated** because a
-    single ordered pair is not a measurement: `--fields bluetooth` 232.8 -> 235.2 ms and,
-    on the repeat, 229.4 -> 231.7 ms, against a spread of 7-10 ms; `--long` 2766.8 ->
-    2763.1 ms and, on the repeat, 2840.1 -> 2709.8 ms against spreads of 80-497 ms. The
-    `--long` pair moves in both directions across repeats, which is the honest reading -
-    inside the noise, not evidence the new path is faster.
-  - 2 new unit tests over pure helpers, both **watched failing** against mutated code:
-    relaxing the instance-id discriminator makes a GATT service node count as a device,
-    and dropping the address normalisation makes the same physical device fail to
-    de-duplicate. A third case covers the hex guard on a synthetic id, labelled as such -
-    no observed device produces it, but without the guard a malformed id becomes a
-    de-duplication key that would silently drop a real device.
-  - Verified live on arrakis: `On (MediaTek Bluetooth Adapter) - 2 connected (MX Vertical,
-    soundcore Liberty 5 Pro)` where `bthprops` reported one. **retch is now ahead of
-    fastfetch on this field**, which still reports only the classic device - so fastfetch
-    is not the oracle here, and the controls above are.
-  - `retch-sysinfo` -> `0.1.58` (library behaviour change); `retch-cli` -> `0.10.2`. Patch
-    bump (bugfix).
-- **v0.10.1 - post-release: packaging pinned to 0.10.0, next cycle opened** (packaging only; no runtime change).
-  - `packaging/aur` (PKGBUILD and .SRCINFO) and `packaging/copr/retch.spec` bumped to **0.10.0**, the version just released. Both track the last RELEASED tag, so they can only move after the tag exists.
-  - `Cargo.toml` -> **0.10.1**, which is what lets this be a normal gated PR rather than a commit straight to `main`: `just pr`'s version check compares against the last tag, so the packaging bump passes as long as it travels with the next version bump.
-  - `retch-cli` -> 0.10.1. Patch bump.
-- **v0.10.0 - `disk-io` and `net-io`: throughput without the sleep fastfetch pays for**
-  (`crates/sysinfo/src/io.rs` (new), `crates/sysinfo/src/fetch.rs`,
-  `crates/sysinfo/src/disk.rs`, `src/fields.rs`, `src/display.rs`). Two of the three
-  remaining NOTES §6 fastfetch gaps, both `--long`+, Linux-only, in the v0.5.0 shape: pure
-  helpers under a thin `/proc`+sysfs reader.
-  - **The design question is not "how do I read the counters", it is "where does the
-    interval come from".** The kernel exposes only cumulative byte counters, so a *rate*
-    needs two samples and a known window. **fastfetch sleeps ~1 s for it** - measured here,
-    not assumed: `fastfetch -s NetIO` takes **1.00 s** on two consecutive runs against
-    **0.00 s** for a counter-only module. Copying that would put `--long` (~500 ms) behind
-    fastfetch, which NOTES §3 treats as a blocking issue.
-  - **Solved with the v0.3.49 `cpu-usage` pattern instead**: sample before the concurrent
-    probe scope, diff after it, so the run's existing collection window *is* the sampling
-    window. The second sample is taken deliberately **after** the `cpu_usage` block, since
-    that block already sleeps 200 ms on Unix for sysinfo's minimum refresh interval -
-    folding that sleep into the window rather than paying for it twice.
-  - **Measured cost: none, and the control run is what proves it.** `--long` came out
-    **521.1 ± 40.3 ms** on the branch against **513.4 ± 33.2 ms** on `main` - but `main`
-    benchmarked against *itself* in the same session read **533.4 ± 69.6 ms**, i.e. the
-    branch/main gap is smaller than main's spread against itself. Standard mode at 40 runs:
-    382.3 ± 9.7 vs 381.2 ± 10.9. An earlier 3-way run showed standard +22 ms and that was
-    ordering noise, exactly what the 2026-08-27 WIP entry warns about. Against fastfetch on
-    the same box: **retch `--long` 526 ms vs `fastfetch -c all` 1.097 s**, now reporting the
-    same two fields.
-  - **The floor is the only place either field costs anything**: an isolated
-    `retch --fields disk-io` leaves no window at all, so it is topped up to ~100 ms -
-    verified at **0.10 s**, against fastfetch's 1.00 s. Short and standard modes never
-    collect these fields at all, and that is structural rather than a timing accident:
-    every mode passes `Some(fields_for(mode))`, so `should_collect` is false there.
-  - **Stated rather than glossed: the window varies by mode**, so the figure is the average
-    rate over the run (~0.4 s in `--long`, seconds in `--full`), not an instantaneous one.
-    A fixed window would be more comparable between runs and would cost a sleep on every
-    invocation. Documented in a new **I/O RATES** section of the man page, not just in code.
-  - **The load-bearing constant is `DISKSTATS_SECTOR_BYTES = 512`, and it was checked.**
-    `/proc/diskstats` counts 512-byte bio sectors regardless of the device's
-    `hw_sector_size`; keying off the hardware value inflates every figure 8× on a
-    4 KiB-sector drive. Writing a known 64 MiB of incompressible data moved the counter
-    146808 sectors = **71 MiB at 512 B/sector** (the excess is btrfs metadata and CoW)
-    against an impossible **573 MiB at 4096**. **Verification limit, recorded rather than
-    papered over:** corrino's `hw_sector_size` is itself 512, so the test confirms the value
-    without discriminating "always 512" from "the hardware sector size". A device with a
-    4 KiB logical sector would separate them.
-  - **Cross-checked against fastfetch under a real sustained load**, because agreeing on an
-    idle machine proves nothing: at ~250 MiB/s of `dd` writes, retch read 249.5 and
-    264.1 MB/s where fastfetch read 192.95 and 192.98 MiB/s over its own different window,
-    and reads of 186 KB/s vs 128 KiB/s. Both read 0 B/s idle. **The first attempt at this
-    check was worthless and is worth recording:** a 320 MiB burst finished in under a second
-    inside a 3 s sleep, so both tools sampled an idle disk and *agreed* - a check that
-    passed while measuring nothing. Only a time-bounded load exercised it.
-  - **Two tests watched failing against mutated code**, both for the right reason:
-    `DISKSTATS_SECTOR_BYTES` 512→4096 fails the column test, and `saturating_sub` →
-    `wrapping_sub` fails the reset test with **1.8e19 B/s** - literally the
-    exabyte-per-second reading its comment predicts. A third caught a mistake of mine: the
-    reset test originally asserted the post-reset counter as the delta. It is clamped to
-    **0** instead, deliberately - a decrease says the baseline is void, not how many bytes
-    followed it, and under-reporting beats asserting something false (the `Users: 0` /
-    v0.7.0 input-classification call). It now also asserts an unaffected device in the same
-    pair still reports, so it cannot pass by everything being zero.
-  - **`disk.rs`'s virtual-device name filter is now shared** (`is_virtual_block_name`)
-    rather than copied, so `phys-disk` and `disk-io` cannot drift into disagreeing about
-    what counts as a disk. Partitions are excluded because their traffic is already counted
-    against the parent device - listing both doubles the apparent throughput of every disk.
-  - `net-io` reports the default-route interface when known (matching fastfetch and the way
-    the `Net` field already singles it out), else every non-loopback interface that moved
-    data. An **idle active interface still prints `0 B/s`** - a reading, not a miss.
-  - A device present in only one sample is dropped rather than reported: an interface
-    appearing mid-run has no baseline, and its lifetime counter is not a delta.
-  - Strata golden counts updated Long 54→56, Full 63→65. 12 new unit tests, keyed on a
-    verbatim `/proc/diskstats` fixture with an **injected** device filter, so no test
-    depends on the block devices of the machine running it (the #155/v0.6.2 pattern).
-  - `retch-sysinfo` → `0.1.57` (new public `io` module); `retch-cli` → `0.10.0`. Minor bump
-    (new user-visible fields).
-- **v0.9.13 - two Dependabot bumps consolidated onto a gated branch (#216, #217)** (chore;
-  no runtime behaviour change, `retch-sysinfo` unchanged at `0.1.56`). `owo-colors`
-  4.3.0 -> 4.4.0 and `softprops/action-gh-release` 3.0.2 -> 3.0.3, rolled up so the release
-  hygiene Dependabot bypasses - version bump, NOTES entry, man regen - is actually done,
-  following the #167/v0.6.3, #184/v0.6.16, #188/v0.6.19, #199/v0.8.1 and #207/v0.9.5 pattern.
-  - **Lockfile-only, unlike v0.9.5.** `Cargo.toml`'s spec is `"4.0"`, and a caret range on a
-    1.x-or-greater version already admits 4.4 - so no spec widening, and the `Cargo.lock` diff
-    is exactly the `owo-colors` entry with **no transitive movement** (diff-verified against
-    Dependabot's own).
-  - **The entire owo-colors release is an MSRV raise, and that is the only thing in it.**
-    1.81 -> 1.83, which makes `&mut` in `const fn` unconditionally available - so the crate
-    **deletes its `build.rs`** (58 lines of rustc-version sniffing that set a `const_mut_refs`
-    cfg) and `Style`'s private bit-flag setters become `&mut self` in place rather than
-    move-and-return. Public API unchanged, and retch never constructs a `Style` at all.
-  - **A "lockfile-only" bump reads as consequence-free and this one carries a toolchain
-    floor**, so the floor was checked rather than assumed: neither `Cargo.toml` declares
-    `rust-version`, there is no `rust-toolchain.toml`, CI is `dtolnay/rust-toolchain@stable`,
-    and both packaging targets require unversioned `cargo`/`rust` (`BuildRequires` in the COPR
-    spec, `makedepends` in the PKGBUILD). The raise binds nothing here. One fewer build script
-    in the graph is a small real gain for the **COPR** build specifically, which runs
-    `cargo build --locked` with network access and no vendoring - a build script is arbitrary
-    code executed at build time.
-  - **Verified by emitting the bytes, because "it compiles" is not "it emits the same bytes"
-    for a colour library.** `src/theme.rs` hardcodes ANSI sequences that must stay identical
-    to what owo-colors produces - `rgb_prefix`, `FG_RESET`, `ACTIVE_IFACE_PREFIX` - and
-    `colorize_nested` is only a drop-in for a plain `.color()` wrap while that holds. A probe
-    covering the whole production surface (`.color(Rgb)`, `.green()`, `.red()`,
-    `.bright_blue()`; those five call sites are all of it) produced **byte-identical** output
-    under both versions. The probe's own `Cargo.lock` was read back at each step to confirm it
-    had really resolved 4.3.0 and then 4.4.0 - without that the check could pass by silently
-    testing one version twice, the v0.9.5 trap.
-  - **Two of those hardcoded couplings had a doc comment and no test. They have tests now,
-    and this is the part of the PR worth keeping.** `test_rgb_prefix_matches_owo` already
-    pinned the truecolor prefix against the live crate; `ACTIVE_IFACE_PREFIX` merely *claimed*
-    in prose to be exactly what `.bright_blue()` emits, and `FG_RESET` to be owo's closer for
-    every colour form - assertions nothing could falsify, on the two constants a bump of this
-    crate would break most quietly. Both new tests were **watched failing** against a mutated
-    constant (`94` -> `96`; `39` -> `0`) before being kept. The second covers the basic-ANSI
-    forms specifically, since the nested spans in practice are `.green()`/`.red()` from
-    `crates/sysinfo/src/network.rs`, not the truecolor form the existing test covers.
-  - **The action's pinned SHA was verified against the tag, not trusted from the PR title.**
-    `v3.0.3` is an *annotated* tag, so the ref resolves to a tag object first; dereferencing it
-    gives `efb35369e0ad2afab669f228072c1b0d510eae64`, which is what the pin now says. Of the
-    16 commits in the range, 13 are npm bumps; the one functional change is `src/github.ts`
-    "safely classify GitHub API errors" - `error: any` casts replaced by typed
-    `getErrorStatus`/`getResponseData` helpers. No behaviour change for us, and strictly
-    better error classification in the job that publishes releases.
-  - The workflow edit was **machine-checked rather than eyeballed** (the v0.9.6 standard):
-    both versions parsed as YAML and compared key by key, yielding exactly one semantic
-    difference, `.jobs.release.steps[4].uses`.
-  - **Verification limit, recorded rather than papered over**: the `release` job runs only on
-    a `v*` tag, so **no CI run on this PR exercises the bumped action**. Its first real outing
-    is the next release. Same shape as v0.9.6's note that the `Justfile` glob could not be
-    empirically proven by the PR that added it.
-  - `retch-cli` -> 0.9.13. Patch bump.
-- **v0.9.12 - the post-tag packaging commit becomes a normal PR, because the gate never
-  blocked it** (tooling + docs only; no runtime change, `retch-sysinfo` unchanged at
-  `0.1.56`). New `just post-release VERSION`.
-  - **The finding, which is the whole entry: a documented constraint was never tested.** Five
-    releases committed `packaging/aur` and `packaging/copr` straight to `main` (`9476836`,
-    `f75989c`, `d60658c`, `de1d73f`, `468efc7`), each commit message explaining that a PR was
-    *impossible* because `just pr` hard-fails once `Cargo.toml` equals the last tag. NOTES §5
-    recorded it as structural, and proposed "move the version bump out of the per-PR gate" as
-    the fix. But step 2 is `[ "$LAST_TAG" = "v$CARGO_VER" ] && fail` - an **equality test
-    against the last tag**, not "did this PR bump anything". A packaging bump that *also*
-    opens the next version passes untouched. The constraint was a misreading, propagated
-    through five commit messages and a backlog entry, and it cost the repo its gate on the one
-    commit class nobody reviews.
-  - **`just post-release VERSION`** branches, pins both packaging targets to the version just
-    released, opens `Cargo.toml` on the next patch, regenerates the man page and writes the
-    NOTES entry - then **stops before `open-pr`**, because the manual checklist needs a human
-    and a release is the worst moment to rubber-stamp one.
-  - **Proven against real history rather than a fixture.** A clone was rewound to `8fed7c2` -
-    the actual post-tag state where `Cargo.toml` equalled `v0.9.10` and packaging still read
-    0.9.7, i.e. exactly the situation called impossible - the recipe was run, and **all eight
-    automated gate steps passed** on what it produced. Its output matches what `468efc7` did
-    by hand, plus the version bump.
-  - Five guards, each watched refusing: not on `main`; dirty tree; the tag not matching
-    `VERSION`; `Cargo.toml` no longer equal to `VERSION` (already run, or wrong version); and
-    the branch already existing. The `Cargo.toml` one matters most - without it a second run
-    would bump again and pin packaging to a version that is no longer newest, silently
-    manufacturing the exact drift `copr-check` exists to catch.
-  - **A `{{` inside the recipe's embedded Python was parsed by `just` as its own
-    interpolation** and broke the whole file. Worth remembering for any recipe carrying a
-    heredoc: `just` sees `{{` before the shell or Python ever does. Written around rather than
-    escaped, since the braces were incidental.
-  - **What this does and does not close.** The *gating* half of NOTES §5 is done: nothing
-    bypasses the gate any more. The *automation* half - "push a tag and everything happens" -
-    is untouched; crates.io and the AUR still need a human. But the steps `post-release`
-    performs are exactly the ones a release workflow would run, so lifting them into CI is now
-    a port rather than a redesign. §5 records that, and what it would cost (two secrets, and a
-    bot commit traded against the gating just gained).
-  - `retch-cli` -> 0.9.12. Patch bump.
-- **v0.9.11 - `data.js` stops flip-flopping, and the attribution rule says what "model name"
-  means** (tooling + docs only; no runtime change, `retch-sysinfo` unchanged at `0.1.56`).
-  - **`scripts/upload_local_bench.py` wrote `data.js` minified while CI writes it
-    pretty-printed**, so the two rewrote the whole file back and forth: every local
-    `just bench-upload` (and the `post-merge` hook that calls it) showed
-    `1 insertion / ~22k deletions` on gh-pages, and the next CI run showed the inverse.
-    Nothing broke - the dashboard parses either - but each local upload buried its one real
-    change in a whole-file diff. Carried on the backlog since v0.3.52, when the cp1252 fix
-    first let the script run to completion and exposed it.
-  - **Fixed to match `JSON.stringify(data, null, 2)` byte-for-byte, and all three details are
-    load-bearing.** `indent=2` is the obvious one. The other two are not:
-    - **`ensure_ascii=False`** - JavaScript does not escape non-ASCII and Python's default
-      does, so the default emits `\uXXXX` where CI emits the character. On the current file
-      that is ~1000 bytes of difference: the churn would have persisted in a *less obvious*
-      form, which is worse than not fixing it.
-    - **No trailing newline** - the action ends the file at the closing brace. One byte, and
-      without it every alternating write still differs.
-  - **Established by round-tripping a real CI-written `data.js`, not by reading the action's
-    source**: re-dumping it through the fixed function reproduces it exactly (sha256
-    `67e7f21e4cbee563`, 1043724 bytes); the three other combinations of those settings do
-    not. Appending one entry now produces **+17 / -0 lines** instead of `+1 / -22558`.
-  - **A checker of mine was wrong on the way to that, and the byte count is what caught it.**
-    A `grep` for non-ASCII reported the CI file had none, which would have made
-    `ensure_ascii` look irrelevant. But `wc -c` (1044090) against the character count
-    (1043724) shows **366 bytes of multi-byte characters**. The grep answered a different
-    question; the length comparison could not. Same family as every other entry here.
-  - **`AGENTS.md` §1 now says what "model name" means**: the bare product name, no
-    context-window or variant suffix, no session URL, no second trailer. Added after
-    `Assisted-By: Claude Opus 5 (1M context)` was written on the v0.9.10 commit. It also
-    records that a coding agent's harness may inject an attribution instruction *claiming to
-    replace* this rule (Claude Code does, with `Co-Authored-By:` plus a session URL) and that
-    it does not - Part 1 §0 and §7 already say this file wins; the attribution bullet now
-    says so where the mistake actually gets made.
-  - **And the non-obvious half, which cost a force-push to discover**: this repo squash-merges
-    with `squash_merge_commit_message=COMMIT_MESSAGES`, so the commit that lands on `main`
-    takes its body from the **branch commit**. Editing the PR body does not change what ships.
-    A wrong trailer has to be amended on the branch and CI re-verified. Read the setting from
-    `gh api repos/l1a/retch` rather than assuming it.
-  - `retch-cli` -> 0.9.11. Patch bump.
-- **v0.9.10 - the COPR spec gets the drift guard and the CI job the AUR pair already had**
-  (tooling + CI only; no runtime change, `retch-sysinfo` unchanged at `0.1.56`). New
-  `scripts/copr_check.py`, `just copr-check` / `just copr-bump`, and a `copr` job in
-  `packaging.yml`.
-  - **The exposure being closed is a construct with a history, not a hypothetical.**
-    `packaging/copr/retch.spec`'s `Version:` tracks the last **released** tag, because
-    `Source0` is a tag tarball that must exist — so it is bumped by a human, at release time,
-    in a separate commit, with nothing checking the result. That is the same shape, and the
-    same absence of a guard, that let `packaging/aur/PKGBUILD` sit **eleven releases** stale
-    while every CI run stayed green. v0.7.1 fixed it for the AUR after the drift; this does
-    it for COPR before.
-  - **`scripts/copr_check.py` is the cheap offline half**, wired into `just check`, and it
-    asserts five things: `Version:` equals the PKGBUILD's `pkgver` (two independent
-    recordings of one fact, so a disagreement means one was forgotten); `Version:` is not
-    *ahead* of `Cargo.toml` (one-sided on purpose — trailing by a whole release cycle is the
-    normal state); the newest `%changelog` entry matches `Version:`-`Release:`; `Source0`
-    still refers to `%{version}` rather than a hardcoded number; and `cargo build` still
-    carries `--locked`. That last one was previously a comment saying "Never drop it",
-    which is not a guard.
-  - **It parses rather than calling `rpmspec`, and that is load-bearing twice over.**
-    `rpmspec` does not exist on Windows or macOS, where `just check` is expected to run (the
-    v0.6.16 portability reason) — and it *expands macros*, so a hardcoded `Source0` and a
-    `%{version}` one produce identical output, which would delete the fourth check entirely.
-    The text is what drifts, so the text is what is read.
-  - **Every assertion was watched failing against the REAL files**, not only its fixtures:
-    each of the five was reproduced by mutating a copy of the actual spec/PKGBUILD/Cargo.toml
-    and confirming both the failure and the message, with a clean control run either side.
-    The one that matters most is the negative: a `Version:` *trailing* `Cargo.toml` must stay
-    silent, because that is the state the repo is in for most of its life and a guard that
-    fires there would be deleted within a week.
-  - **The `copr` CI job is artifact-level, and deliberately builds the SRPM rather than the
-    RPM.** COPR itself does the full ~6-minute build on every packaging commit; what it does
-    not give is a signal *before* merge, which is the gap. The job runs `copr_check.py`
-    explicitly (CI invokes cargo directly and never `just`, so a guard wired only into
-    `just check` runs solely on the machine of whoever typed it), then builds the SRPM twice.
-  - **The second SRPM build is the regression test for v0.9.9, and reproducing it correctly
-    took two attempts — the first was a check that could not fail.** COPR runs
-    `.copr/Makefile` inside **mock**, which sets `HOME=/builddir` *and* redefines `%{_topdir}`
-    to `/builddir/build`. Forcing `%{_topdir}` **alone does not fail** on the pre-fix
-    Makefile: `rpmdev-setuptree` simply builds its tree wherever `_topdir` points. It is the
-    *combination* with `HOME=/builddir` that separates the two paths, because the failing
-    line copied into `$(HOME)/rpmbuild/SPECS`. Verified by reconstructing the pre-fix
-    Makefile from `a606bbe` and watching it die with the exact production message —
-    `cp: cannot create regular file '/builddir/rpmbuild/SPECS/': No such file or directory` —
-    then confirming the current one passes under the identical condition. A first attempt
-    that passed *both* runs also had a second defect worth recording: it reused one container,
-    so run 1's `/root/rpmbuild` was still there for run 2 to find.
-  - **Both SRPM runs are kept and neither is redundant.** The plain run catches a Makefile
-    that hardcodes `/builddir/build` (which would work on COPR and break every dev box); the
-    mock run catches one that assumes the default. The v0.9.9 entry names exactly that pair
-    as the reason not to hardcode, so the test now covers both directions rather than the one
-    that happened to break.
-  - **`.copr/**` is added to `packaging.yml`'s `pull_request` paths filter, and this is a
-    real hole rather than tidiness.** `copr.yml` watches `.copr/**` but only on *push to
-    main*, so a PR touching only `.copr/Makefile` was verified by **nothing** — which is
-    precisely how the v0.9.9 bug reached `main` and failed on COPR instead of in CI. It is
-    the v0.9.6 `Justfile` hole one directory over, found by asking the same question about a
-    different file.
-  - **There is deliberately no `copr-publish` recipe.** `copr.yml` already rebuilds when the
-    packaging commit lands on `main`; a manual publish would duplicate that build or race it.
-    The bump is the manual step, and the rebuild is not — so only `copr-bump` exists.
-  - `copr-bump` was exercised end to end against a real released tag (its output re-read, and
-    the generated spec parsed by `rpmspec` to `retch 0.9.7 1.fc44`), and its precondition
-    watched refusing an unreleased tag **before** touching the file. It prepends the
-    `%changelog` entry via `awk`, not `sed -i /a`: the entry carries an email address, and
-    sed would interpret the `&` and `/` in its replacement side.
-  - **NOTES §3's `.cargo/config.toml` claim is corrected in the same PR** — see §3. It
-    described an untracked, absent file as part of the repo; only `.cargo/audit.toml` is
-    tracked. Carried on the open-task list since the v0.9.7 COPR work, which is where the
-    claim was checked and found false.
-  - `copr-check` deliberately does **not** live in `standard-check`, and no rule for it was
-    added to `gate_conformance.py`: both are vendored byte-identically across retch,
-    rusticprofile and etr, and retch is the only one of the three with a COPR target at all.
-    Same reasoning already recorded for `aur-check`.
-  - `retch-cli` -> 0.9.10. Patch bump.
-- **v0.9.9 - the COPR SRPM step assumed `%{_topdir}`, which mock moves** (packaging fix;
-  no runtime change, `retch-sysinfo` unchanged at `0.1.56`).
-  - **The bug**: `.copr/Makefile` ran `rpmdev-setuptree` and then copied the spec into
-    `$(HOME)/rpmbuild/SPECS`. `rpmdev-setuptree` builds its tree at rpm's `%{_topdir}`, and
-    **mock redefines that to `/builddir/build`** - so on COPR the directory never existed and
-    the build died in 60 seconds with
-    `cp: cannot create regular file '/builddir/rpmbuild/SPECS/': No such file or directory`.
-  - **The verification that missed it is the point of this entry.** v0.9.8 claimed the
-    Makefile was "verified by running exactly what COPR runs". It was not: it ran in a plain
-    `fedora:latest` container, where `%{_topdir}` keeps its default and `$(HOME)/rpmbuild` is
-    exactly right. **COPR runs the Makefile inside mock**, and the one environmental
-    difference that mattered was the one the container did not reproduce. "Exactly what COPR
-    runs" was true of the *command* and false of the *environment*, which is the more
-    important half.
-  - **Fixed by removing the dependency rather than by chasing the path.** The Makefile no
-    longer calls `rpmdev-setuptree` and never mentions `%{_topdir}` or `$(HOME)`; it points
-    `_sourcedir` and `_srcrpmdir` explicitly with `--define`, so no environment can relocate
-    them. A hardcoded `/builddir/build` would have worked on COPR and broken everywhere else.
-  - **Now tested against the failure condition, not just the happy path**: the same
-    `make -f .copr/Makefile srpm outdir=...` is run twice in a container - once normally, and
-    once with `%_topdir` forced to `/builddir/build` as mock sets it. Both produce
-    `retch-0.9.7-1.fc44.src.rpm`. The second run is the one that would have caught this.
-  - `.copr-sources/` added to `.gitignore` - the Makefile creates it in the working tree when
-    run locally. Harmless on COPR, which clones fresh each time.
-  - **What did work, and is worth keeping separate from the failure**: the GitHub Actions half
-    behaved exactly as designed - it authenticated, submitted build `10927005`, watched it, and
-    **went red when COPR failed** rather than reporting success over a broken package. That is
-    the property the workflow exists for.
-  - `retch-cli` -> 0.9.9. Patch bump.
-- **v0.9.8 - COPR rebuilds are triggered by the packaging commit, not the release**
-  (CI + packaging only; no runtime change, `retch-sysinfo` unchanged at `0.1.56`). New
-  `.github/workflows/copr.yml` and `.copr/Makefile`.
-  - **The obvious trigger is the wrong one, and this is the whole point of the entry.**
-    "Rebuild COPR when we publish a GitHub release" fires too early. `packaging/copr/
-    retch.spec` pins `Version:` **and** a `Source0` tarball checksum to the last *released*
-    tag, so it can only be bumped **after** the tag exists. The real sequence is: push tag
-    (spec still names the previous version) -> release workflow runs (still previous) ->
-    commit the packaging bump to `main` (**now** current). A release- or tag-triggered
-    rebuild lands on the first two steps and rebuilds **the version already in COPR**. The
-    event that means "there is something new" is the packaging commit, so the workflow is a
-    `push` to `main` filtered to `packaging/copr/**`.
-  - **`.copr/**` is watched as well as `packaging/copr/**`.** The Makefile there is what
-    *generates* the SRPM, so a change to it alters the build without touching the spec -
-    exactly the hole v0.9.6 closed by adding `Justfile` to `packaging.yml`'s filter. Applying
-    the lesson at the point it recurs rather than rediscovering it.
-  - **`.copr/Makefile` (COPR's `make_srpm` method) rather than the `rpkg` source type.** The
-    spec's `Source0` is a remote tag tarball; `make_srpm` makes the fetch explicit instead of
-    depending on how `rpkg` handles remote sources, and it is byte-for-byte the sequence that
-    was verified by hand in a container before the spec was first committed - so a COPR
-    failure and a local failure have the same cause. **Verified by running exactly what COPR
-    runs**: `make -f .copr/Makefile srpm outdir=...` in `fedora:latest`, which downloaded the
-    real v0.9.7 tarball and produced `retch-0.9.7-1.fc44.src.rpm`.
-  - **The COPR package had to change type for any of this to work.** The API reported
-    `source_type='upload'` with `auto_rebuild: False` - an uploaded SRPM has no source for
-    COPR to re-fetch, so **no** webhook or rebuild command can act on it. It needs a one-off
-    `copr-cli edit-package-scm ... --method make_srpm` to become rebuildable; the workflow's
-    `build-package` then rebuilds from that stored config. **The v0.9.8 entry and the wiki both
-    named the wrong flags** and are corrected here: it is `--method`, not `--type` (which
-    selects the versioning tool and accepts only `git`/`svn`), and **no `--subdir`** - COPR
-    runs `.copr/Makefile` from the repository root.
-  - **COPR's own GitHub webhook was considered and declined.** It needs no secrets and is
-    COPR-native, but its SCM auto-rebuild has **no path filter**, so every push to `main`
-    would start a four-chroot rebuild of an unchanged NEVRA - roughly 12 minutes of builder
-    time per merge. That is the opposite of what v0.9.6 was for.
-  - Credentials are three GitHub secrets (`COPR_LOGIN`, `COPR_USERNAME`, `COPR_TOKEN`)
-    written to `~/.config/copr` from env and never echoed. A fork without them **skips with a
-    notice instead of failing**, since a red check about a credential a fork should not have
-    is noise, not signal.
-  - `retch-cli` -> 0.9.8. Patch bump.
-- **v0.9.7 - Fedora COPR packaging (`packaging/copr/retch.spec`)** (packaging only; no
-  runtime change, `retch-sysinfo` unchanged at `0.1.56`). A third packaging target beside
-  `packaging/aur` and `packaging/nixpkgs`, and the first one whose build was proven end to
-  end before it shipped.
-  - **COPR is the endpoint, and the spec says so.** It is written for a project with
-    **"Enable internet access during builds" ON**, so `cargo build` resolves crates.io at
-    build time and there is no vendor tarball. That is a deliberate compromise with two
-    consequences, both commented in the spec rather than left for someone to rediscover:
-    - **`--locked` is load-bearing.** With network access and no vendoring it is the only
-      thing pinning what gets resolved to what was actually tested. `Cargo.lock` is format 4
-      with **247 packages**; dropping `--locked` would let a builder silently resolve
-      something else.
-    - **This will not build in koji.** Fedora proper requires offline builds, so shipping
-      there would need a vendor tarball as `Source1` **and** `rusqlite`'s `bundled` feature
-      replaced with system sqlite. Two COPR-only compromises, named, not smuggled.
-  - **The landmine that was not there, checked rather than assumed.** NOTES 3 states that
-    `.cargo/config.toml` sets `rustflags = ["-C", "target-cpu=native"]`. Had that shipped, a
-    COPR builder would emit a `-march=native` binary that **SIGILLs on users' machines**. It
-    does not: only `.cargo/audit.toml` is tracked, and `git archive v0.9.4` confirms no
-    `config.toml` in the release tarball. The AUR package is safe for the same reason. (The
-    NOTES 3 wording describes an untracked, machine-local file as though it were part of the
-    repo - drift worth correcting separately.)
-  - **Proven by building it, not by reading it.** A `fedora:latest` container under podman
-    downloaded the real `v0.9.4` tarball exactly as a COPR builder would: `rpmbuild -ba` with
-    **zero rpm warnings**, `%check` running the full suite (**254 tests**, 87+15+152), and
-    both an RPM (3.2 MB) and an SRPM produced. The package was then **installed and run** -
-    `retch 0.9.4`, `--short` rendering real system information - rather than trusted from an
-    exit code, the same standard the crates.io releases are held to.
-  - **Verified about the payload specifically**: the man page is 395 lines and renders under
-    `man`, footer `.TH ... "retch 0.9.4"`, **0** literal `$` and **0** doubled font runs (the
-    two defects the AUR PKGBUILD carried for months); all three completion files are
-    **byte-identical** to the installed binary's own `--completions` output; auto-generated
-    `Requires` are glibc/libgcc/libm only.
-  - **`%{_mandir}/man1/retch.1*` - the glob is load-bearing.** rpm compresses man pages on
-    install, so the packaged path is `retch.1.gz`; asserting the uncompressed name reports it
-    missing precisely when it is present. That is the `zipman` trap from the `aur` CI job, in
-    RPM form, and it is commented in the spec as such.
-  - **rpmlint found two real defects, both fixed**: `description-line-too-long` (rewrapped to
-    79 columns) and `unstripped-binary-or-object`. The two remaining rpmlint errors are
-    spelling false-positives on `fastfetch` and `neofetch`, the actual project names.
-  - **The build uses Fedora's own rustc flags, `%{build_rustflags}` from `rust-srpm-macros`**,
-    which expand to `-Copt-level=3 -Cdebuginfo=2 -Ccodegen-units=1 -Cstrip=none
-    -Cforce-frame-pointers=yes --cap-lints=warn`. This replaced an earlier
-    `%global debug_package %{nil}` plus a hand-written `strip`, and it fixes three things at
-    once:
-    - **Distro hardening and codegen policy** the spec previously ignored entirely -
-      frame pointers (usable backtraces and profiling), `codegen-units=1`, `opt-level=3`.
-    - **Real debuginfo subpackages.** The flags carry `-Cdebuginfo=2 -Cstrip=none`, which is
-      precisely what rpm's extraction needs. A stock Rust release build emits no DWARF, rpm
-      finds nothing, and the build dies on an empty debuginfo package - which is why the
-      `debug_package %{nil}` shortcut existed.
-    - **It is NOT "shipping a debug build", and that is worth stating because it reads like
-      one.** `-Copt-level=3` is in the same flag set; rpm moves the symbols out into
-      `retch-debuginfo` / `retch-debugsource` and strips the binary in the main package.
-      **Verified, not assumed**: after the change `file` reports the shipped
-      `/usr/bin/retch` as `stripped` with **zero** `.debug_info` sections, and the main
-      package got *smaller* (3,225,389 vs 3,247,726 bytes) because rpm's strip is more
-      thorough than the manual one. Three packages are produced now - main plus a 23 MB
-      debuginfo and a 145 KB debugsource that nobody installs by default.
-  - **`rust-packaging`'s `%cargo_prep`/`%cargo_build` are deliberately NOT used**, and this
-    is the one place the Fedora guidelines are knowingly declined rather than merely unmet.
-    Those macros assume Fedora's offline, vendored-dependency workflow and write a cargo
-    config with `offline = true`, which would fight the network-enabled build this spec is
-    built around. They are also **not installed on the development hosts** - only
-    `rust-srpm-macros` is, so `%{rust_arches}` and `%{build_rustflags}` expand while
-    `%{cargo_prep}` expands to nothing, which would fail silently rather than loudly.
-    Taking the flags without the machinery is the whole of the available benefit.
-  - **Completion directories use the rpm macros** `%{bash_completions_dir}`,
-    `%{zsh_completions_dir}` and `%{fish_completions_dir}` rather than hardcoded paths under
-    `%{_datadir}`, so a future Fedora relocation is followed automatically.
-  - **The install layout was checked against what Fedora actually ships, not from memory, and
-    a three-package sample would have given the wrong answer.** `ripgrep`, `fd-find` and
-    `bat` all name their bash completion `<cmd>.bash`, which suggests a bare `retch` is
-    non-standard. Across the whole directory it is the opposite: **1382 completion files, only
-    10 carry a `.bash` suffix** - `git`, `dnf`, `systemctl`, `ssh`, `flatpak` and `chezmoi`
-    all use the bare command name, and bash-completion's loader accepts either. Likewise all
-    69 files in `zsh/site-functions` are `_`-prefixed, fish uses `<cmd>.fish`, and all three
-    directories are owned by `filesystem`. Generalising from a small sample of packages is
-    how a convention gets misread.
-  - **Dependency facts established with `dnf`, not from memory - two guesses were wrong.**
-    `xrandr` is its own package (not `xorg-x11-server-utils`), and **`wireless-tools` no
-    longer exists in Fedora 44**, so `iwgetid` is not listed at all. `zpool` is confirmed
-    unpackaged in Fedora. Every probe is optional, so none is a hard `Requires`; the list is
-    split between `Recommends` (light: `chafa`, `curl`, `iproute`, `dmidecode`) and
-    `Suggests` (the desktop stack), because dnf installs `Recommends` by default and pulling
-    NetworkManager, bluez and xrandr onto a server install would be obnoxious.
-  - **Three of my own checks failed for the wrong reason before the package ever did.** The
-    `fedora` container image sets `tsflags=nodocs`, so reading the *installed* man path
-    reported it missing while the package plainly contained it - read the payload with
-    `rpm2cpio` instead; `man` was not installed, and under `set -o pipefail` that killed the
-    verification script mid-run; and a nested-quoting error truncated the dependency listing.
-    Same family as the `bsdtar | grep -q` SIGPIPE and `ls`/`eza` entries: **the expensive
-    direction is a checker that cries wolf**, because the reflex is to go change working code.
-  - **`Version:` tracks the last released tag, not `Cargo.toml`**, because `Source0` is a tag
-    tarball that must exist - mirroring `packaging/aur/PKGBUILD`'s `pkgver`. It therefore
-    drifts by one command at release time. Unlike the AUR pair there is **no `copr-check`
-    guard and no CI job** yet: this change is deliberately the spec plus its proof, and the
-    `copr-*` recipes / anti-drift check / `packaging.yml` job are the natural follow-up.
-  - **The repository is `kentobias/retch`** on COPR - `sudo dnf copr enable kentobias/retch`
-    then `sudo dnf install retch`, for Fedora 43 and 44 on x86_64 and aarch64. Documented in
-    `README.md` and the wiki's `Getting-Started.md`, both of which note that COPR is a
-    community build service and not an official Fedora repository.
-  - `retch-cli` -> 0.9.7. Patch bump (packaging only, no user-visible binary change).
-- **v0.9.6 - `packaging.yml` now watches the `Justfile`** (CI configuration only; one path
-  added to a `pull_request` filter, no runtime change, `retch-sysinfo` unchanged at `0.1.56`).
-  - **The hole, and it is narrow rather than obvious.** The recipes that render
-    `packaging/aur` - `aur-bump`, `aur-srcinfo`, `aur-check`, `aur-publish` - live in the
-    `Justfile`, which **no workflow watched**. `packaging.yml` matched `packaging/**` and
-    `**/*.rs`; `rust.yml` and `security.yml` match neither. So a change to the AUR tooling
-    that did not also change a committed file under `packaging/` triggered **nothing**, and
-    the PR reported green having never been looked at by the job that exercises packaging.
-  - **This is not hypothetical: it is what #203 did.** That PR fixed the `aur-srcinfo` recipe
-    (the `mktemp`-in-`/tmp` SELinux relabel that wedged the whole Syncthing folder), touched
-    only the `Justfile` and `NOTES.md`, regenerated a **byte-identical** `.SRCINFO`, and
-    therefore matched no filter in any workflow. Only the four CodeQL checks ran. Its session
-    entry recorded the state honestly at the time: *"Green here means 'CI did not look at this
-    change', not 'CI verified it'."*
-  - **What the entry actually buys, stated precisely, because the backlog line overstated it.**
-    The carried-forward task said the `aur` job "would have covered it". Reading the job rather
-    than assuming: it sources the PKGBUILD, verifies the declared `sha256sums` against the real
-    tag tarball, runs a full `makepkg -s` in `archlinux:latest`, and inspects the packaged man
-    page. It **never invokes `just`, `aur-srcinfo` or `scripts/aur_check.py`** - there is no
-    `just` and no podman in that container. So the coverage this adds is **artifact-level**, not
-    recipe-level: it re-verifies that the committed `PKGBUILD`/`.SRCINFO` pair still checksums,
-    builds and packages correctly at that commit. That is the right guarantee for the failure
-    #203 could have caused, and it is not the same as executing the changed recipe. Claiming
-    the stronger thing would be the "what did this actually verify?" mistake this repo keeps
-    recording.
-  - **The complementary case was already covered and stays that way**: a `Justfile` change that
-    *does* alter the rendered `.SRCINFO` writes a file under `packaging/`, which the existing
-    `packaging/**` glob already matched. The uncovered half was precisely the byte-identical
-    one.
-  - **Verification limit, recorded rather than papered over.** A PR must bump `Cargo.toml`
-    (§4.7), and `**/Cargo.toml` is already in this filter, so **this PR triggers `packaging.yml`
-    regardless of the new entry and cannot empirically prove the `Justfile` glob fires** -
-    GitHub does not report which pattern matched. The glob is a bare top-level filename, the
-    simplest pattern the filter syntax has, and `Justfile` is the only tracked file it can match
-    (`templates/justfile-common.just` is a different name, and is a vendored reference block
-    nothing executes - it is guarded by `gate_conformance.py` in `standard-check` instead). The
-    honest confirmation is the next `Justfile`-only change to trigger the job; until then this
-    is verified by inspection. The YAML was machine-checked rather than eyeballed: parsed and
-    compared against `HEAD`, asserting exactly one added path and every other key byte-equal.
-  - **`rust.yml` and `security.yml` deliberately unchanged.** CI invokes `cargo` directly and
-    never `just`, so a `Justfile` change cannot alter what either job does. Adding the path
-    there would buy runs, not coverage.
-  - `retch-cli` -> 0.9.6. Patch bump.
-- **v0.9.5 - `icy_sixel` 0.5.1 -> 0.6.0 (consolidated Dependabot #207)** (chore; no runtime
-  behaviour change, `retch-sysinfo` unchanged at `0.1.56`). Rolls Dependabot's PR onto a gated
-  branch so the release hygiene it bypasses - version bump, NOTES entry, man regen - is
-  actually done, following the #167/v0.6.3, #184/v0.6.16, #188/v0.6.19 and #199/v0.8.1 pattern.
-  - **Not lockfile-only, unlike the usual roll.** A caret range on a `0.x` spec will not admit
-    `0.6`, so `Cargo.toml`'s spec widened `"0.5"` -> `"0.6"` - the same shape as v0.6.4's
-    `base64` 0.22 -> 0.23, and the reason that bump was deliberately excluded from the v0.6.3
-    consolidation. `icy_sixel` is **`graphics`-feature-only**, so `just check`'s
-    `--features graphics` clippy pass (v0.6.5) and the CI `graphics-feature` job (v0.6.7) are
-    the only legs that compile it at all; a green default matrix proves nothing here.
-  - **A `0.x` minor is semver-breaking by convention, but the break does not reach retch - and
-    that was established from the source, not from the fact that it compiled.** The two calls
-    retch makes (`SixelImage::try_from_rgba` and `.encode()`, one call site,
-    `src/logo.rs::print_sixel_rgba`) live in `sixel_image.rs`, which together with `encoder.rs`
-    is **byte-identical** between 0.5.1 and 0.6.0 (sha256-compared, not eyeballed). The entire
-    change is decoder-side: a new stateful `SixelDecoder` whose colour registers persist across
-    images (added to `lib.rs`'s exports, i.e. purely additive) plus a `MAX_PIXELS` guard against
-    decode-time memory exhaustion. **retch never decodes sixel** - it only ever emits it.
-  - **Verified empirically as well, because "it compiles" is not "it emits the same bytes" for
-    an encoder.** A throwaway probe encoding a fixed 64x48 RGBA gradient through exactly those
-    two calls produced an identical string under both versions - 9885 bytes,
-    FNV-1a `fe96948691ac471a`. The probe's own `Cargo.lock` was then read to confirm it had
-    really resolved `0.6.0`; without that step the check could have passed by silently testing
-    the same version twice, which is the `~/AGENTS.md` 10/11 family this repo keeps recording.
-  - `Cargo.lock` diff-verified against Dependabot's: exactly the `icy_sixel` entry, with **no
-    transitive movement**. Worth stating because `quantette` - icy_sixel's palette quantiser -
-    *did* move in v0.8.1, and a move here would have changed emitted **colours** rather than
-    just structure. It did not.
-  - `retch-cli` -> 0.9.5. Patch bump.
-- **The 164-line `docs/retch.1` change in this PR is NOT from the dependency bump.** mandown was
-  upgraded to **1.1.1** on the machine that ran `just man`, after v0.9.4 shipped, and it no
-  longer emits `.Bl`/`.El` around list items.
-  - **The new page is the correct one; the committed page carried a latent defect.** `.Bl`/`.El`
-    are **mdoc** macros and are undefined in `man(7)`: groff reports `macro 'Bl' not defined` and
-    `macro 'El' not defined` on the old page and **zero warnings** on the regenerated one, while
-    the **rendered output is byte-identical** (409 lines, same sha256). Nothing a reader sees
-    changed; two warnings went away.
-  - **Established as pre-existing rather than assumed**, by regenerating at the *committed*
-    version 0.9.4 and confirming the diff was exactly 164 deletions, **all** of them `.Bl`/`.El`,
-    with zero other lines changed in either direction. Had that control not been run, a 164-line
-    man-page diff arriving alongside a dependency bump would look like the bump's doing.
-  - **This is the v0.6.2/v0.6.16 flip-flop on a new axis**, and it flips the same way: a
-    contributor on an older mandown regenerates, re-adds the macros, and `just pr` fails step 4
-    with a large diff that reads as "my change broke the man page." The wiki's
-    `Development-Setup.md` now pins the prerequisite at **mandown >= 1.1.1** and explains the
-    symptom, which is the cheapest place to catch it.
-- **v0.9.4 — the completions helper could overwrite the binary it was asked to read**
-  (tooling only; no runtime change, `retch-sysinfo` unchanged at `0.1.56`).
-  `scripts/install_completions.py` → **template v3**. Found in `rusticprofile`, where this
-  helper destroyed a working binary on a host taking hourly backups; retch's copy was
-  **byte-identical** and carried the same defect.
-  - **The mechanism.** `binaries` are command *names*, and the output path is
-    `directory / pattern.format(bin=binary)` — but **`Path("/dest") / "/abs/path"` discards the
-    left operand**. So an absolute `binary` silently relocates every write out of the completion
-    directory and onto the path itself, which under `--from-path` is the installed binary: the
-    helper overwrites the executable it was asked to read. Measured: a 3.6 MB binary replaced by a
-    21 KB bash completion script.
-  - **It fails in the worst available order.** `--from-path` runs `[binary]`, so an absolute path
-    *works for the read* and only breaks the write — generation succeeds and then destroys its own
-    input, exit 0, nothing printed. And the flag is **called `--from-path`**, which invites exactly
-    the argument that breaks it, so a docstring would not have stopped it.
-  - **Fixed by making it unexpressible**: `reject_path_like()` refuses any argument containing a
-    path separator or resolving absolute, **before any file is written**, and names the correct form
-    (`install_completions.py retch --from-path`) in the error.
-  - **Watched failing in both places it is enforced.** Neutering the condition fails `--self-test`
-    (*"rejects an absolute path — expected True, got False"*) **and** fails `just standard-check`,
-    which `just check` depends on — so `pre-push` and `just pr` both catch it. Re-running the
-    original accident against a stand-in file now leaves it **byte-identical** instead of clobbered.
-  - A fourth self-test case pins the *property* rather than the mechanism — that joining a directory
-    with an absolute string yields the absolute string — so the check survives a rewrite of the guard.
-  - **retch's own recipes were never at risk**: `install`/`install-tag` pass `{{BINS}}`, i.e. bare
-    names. Checked rather than assumed. The exposure is anyone — human or agent — invoking the
-    helper directly, which is how it happened.
-  - **This is v0.6.20's standard working as designed, in the direction it was built for.** That entry
-    made these helpers canonical *and* self-testing precisely so a fix found in one repo could be
-    propagated with evidence rather than by text diff; `etr` still carries the pre-fix copy and needs
-    its own PR.
-  - `retch-cli` → 0.9.4. Patch bump.
-- **v0.9.3 — what happens to an info line that wraps: colour, separator, and width**
-  (`src/display.rs`; CLI-only, `retch-sysinfo` unchanged at `0.1.56`). User report from
-  arrakis on a 283-column Windows Terminal: the second line of a wrapped `BIOS:` value
-  rendered in a different colour from the first. Investigating it found three defects, two
-  pre-existing and one introduced by v0.9.2.
-  - **The continuation line lost the value colour** (pre-existing, since `wrap_info_line` in
-    v0.6.16). Lines are colourised *before* they are wrapped: `Theme::color_value` emits
-    `<SGR>value<reset>`, so when the value is split the opening SGR stays on the first line
-    and the closing `\x1b[39m` lands on the last — every line between renders in the
-    terminal's default colour. Reproduced byte-for-byte with the reporter's own string; the
-    continuation line's raw form was `'       LLC. HN7306EAC.310 (8//20/07/0)\x1b[39m'`: no
-    opening sequence, and a stray reset. New `carry_sgr_across_lines` re-opens the active
-    colour on each continuation line and closes it at each line end, so a colour can never
-    bleed into the logo column either. Same family as v0.5.1's `colorize_nested` — colour
-    state and layout interacting — and fixed at the wrap step deliberately, because wrap
-    points are chosen from *visible* width and so the wrapper must see the escapes anyway.
-  - **The separator was silently dropped at the break** (pre-existing, same vintage, and the
-    worse of the two because it changes the **data**). The comma branch continued a line with
-    `format!("{}{}", indent, part)`, omitting the `", "` it had just split on, so
-    `American Megatrends International, LLC.` rendered as `…International` / `LLC.` — which
-    reads as two values rather than one company name, with nothing to signal the loss. The
-    comma now stays on the preceding line, as in prose. A test rejoins the wrapped lines and
-    asserts the original text is recovered exactly.
-  - **Beside-logo lines still wrapped at the text column** (introduced by v0.9.2). Decoupling
-    `logo_column` from `text_column_width` moved the logo to the right margin but left the
-    wrap width at the old 45–65 clamp, so on the reporter's 283-column terminal `BIOS:`
-    wrapped at **55 columns with ~177 columns free to its right**. Beside-logo rows now wrap
-    at `logo_column - 2`, matching below-logo rows, which already used the full terminal
-    width. Verified: at 283 columns the line no longer wraps at all.
-  - **Worth stating plainly: the first fix would have been invisible without the third.** On
-    a wide terminal the line no longer wraps, so the colour bug cannot appear there — but it
-    is still live on any terminal narrow enough to wrap, which is why all three were fixed
-    rather than just the one that removed the symptom.
-  - Only zero-width escapes are injected, so `visible_len` of every wrapped line is unchanged
-    and every layout number computed from them still holds — pinned by a test that wraps the
-    same text with and without colour and asserts identical visible widths per line.
-  - 6 new unit tests (separator retention + exact text round-trip, colour re-opened on every
-    continuation, widths unchanged by the carry, uncoloured lines untouched, and two on
-    `active_sgr_after` including the nested `Net` `[Up]` case from v0.5.1).
-  - `retch-cli` → 0.9.3. Patch bump.
-- **v0.9.2 — the side-by-side logo is anchored to the right margin again** (rendering fix,
-  `src/display.rs`; CLI-only, `retch-sysinfo` unchanged at `0.1.56`). User report from arrakis:
-  in "logo to the right" mode the logo no longer sits on the right margin.
-  - **Measured, not inferred.** `retch --full --ascii-logo` in a 138-column PTY rendered its
-    widest line at **column 103** — 35 dead columns to the right of the logo. The graphical
-    path showed the same thing in its escapes: the Kitty emitter shifted right by `CSI 45 C`
-    on a 138-column terminal instead of `CSI 93 C`.
-  - **Root cause: one number was doing two jobs.** `plan_layout` returned only
-    `text_column_width`, and every render site — the ASCII/Chafa padding, the
-    `graphical_side_by_side_prelude` right-shift, and therefore Kitty/iTerm2/Sixel alike —
-    used it *both* as the wrap width for beside-logo info lines *and* as the column to draw
-    the logo at. The text column is `clamp(45, 65)`, so the logo could never be drawn past
-    column 65 no matter how wide the terminal was.
-  - **This is drift out of two correct fixes, not a single bad commit** — worth recording
-    because neither one looks wrong in isolation. Originally `text_column_width` was
-    `max(widest_of_ALL_lines + 4, 45)`, so in `--long`/`--full` the 150+ char `Wi-Fi`/`Net`
-    lines inflated it and the logo *happened* to land near the right edge. v0.6.8 (#173)
-    narrowed the basis to the beside-logo lines (fixing the logo being pushed above the
-    text), and v0.6.16 (#186) added the 65-column cap (fixing overlong text columns). Each
-    removed part of the accident that had been holding the logo out at the margin, and
-    nothing had ever asserted the intended property.
-  - **Fix**: `LayoutPlan` gains a separate `logo_column = term_width - logo_width`. Wrap
-    widths are untouched, so line wrapping and the side-by-side/stacked decision are
-    byte-identical; only the anchor moved. Right-anchoring can never pull the logo *left* of
-    the text, because `side_by_side` already requires
-    `term_width >= text_column_width + logo_width`.
-  - Rows with no logo content now get no padding at all. Previously they were padded to the
-    text column; keeping that while padding to the margin would have put ~90 trailing spaces
-    on every line below the logo.
-  - **Verified in a PTY across every renderer, not just the ASCII one.** ASCII and Chafa
-    (both `ActiveLogo::Lines`) at 95/110/138/169/200 columns: the widest rendered line equals
-    the terminal width **exactly** at all five, and the 94-column case still stacks. Kitty,
-    iTerm2 and Sixel at 138 columns across nine assets — wide (fedora/tux/ubuntu) and tall
-    (windows/kali/debian/macos/mx/zorin) — every one lands its right edge on column 138.
-    3 new `plan_layout` unit tests, including a sweep over every width from 95 to 199
-    asserting `logo_column + logo_width == term_width` and `logo_column >= text_column_width`,
-    plus an underflow guard for a logo wider than the terminal.
-  - **Structurally safe, not just empirically**: `plan_layout` is handed the *same* `cols`
-    that the emitter uses to size the image — `fit_logo_cells` is the single source of truth
-    for a graphical logo's footprint — so the reserved and drawn widths cannot disagree. The
-    one place they can differ is Kitty's height-limited case, where only `r=` is emitted (per
-    v0.6.18, passing both axes reintroduces stretch) and Kitty derives the width itself; the
-    reservation is `div_ceil`-rounded, so the image ends *at or before* the margin, never past
-    it. Worst measured slack is 0.87 cells (kali).
-  - **`fit_logo_cells` had a sub-pixel breach of its own documented invariant, fixed here**
-    (`src/logo.rs`). It computed the display size with **truncating** integer division and
-    only then `div_ceil`ed the cell count, so a true size sitting just above a cell boundary
-    truncated onto it and reserved one pixel too few: `mx.png` (256×232) scales to 220.69 px
-    and reserved 22 cells = 220 px; `zorin.png` likewise. Both now `div_ceil` at the pixel
-    step too (23 and 24 cells). This was harmless while the logo sat mid-screen with columns
-    to spare — right-anchored, the overflow would be at the terminal's edge. New test asserts
-    the invariant **exactly**, cross-multiplied so there is no floating point, over every
-    shipped asset's aspect ratio × four cell geometries; watched failing on the pre-fix code
-    with `256x232 cells 10x20: reserved 220px < drawn 220.69px`. The message deliberately
-    prints the drawn size as a real number — reporting it with the same truncating division
-    the bug is about renders it self-contradicting (`reserved 220px < drawn 220px`, the first
-    version of this assertion).
-  - **`visible_len` now measures terminal columns, not characters** — and the bug that hid
-    this is the most important thing in this entry. New direct dependency `unicode-width`
-    0.2.2 (zero transitive deps).
-    - **A local closure named `visible_len`, defined inside `display()`, shadowed the
-      module-level function for that entire function body** — which is where every layout
-      decision is made: `info_widths`, the logo's measured width, and the padding that
-      positions the logo. It was a byte-for-byte copy of the old character-counting
-      implementation. So making the module function width-aware, and unit-testing it, changed
-      **nothing** about the layout: the tests exercised one implementation while the renderer
-      used the other, and both looked correct in isolation.
-    - **The symptom that exposed it**: with `Locale` set to a CJK value at 138 columns, the
-      row rendered 144 columns wide — the info text grew 19→26 *columns* (19→20 *characters*)
-      and the emitted padding shrank by exactly 1, not 7. That arithmetic is only possible
-      from a character count, while instrumentation inside the module function simultaneously
-      printed `width=26`. Two correct-looking answers from one call site is what a shadow
-      looks like.
-    - **Fixed structurally, not just textually.** The closure is gone, and the row arithmetic
-      moved out of the render loop into a free `compose_side_by_side_row(info, logo,
-      logo_column)`. A free function cannot be shadowed by a local binding in another
-      function's body, so the two can no longer diverge — and the row layout is now testable
-      without a pseudo-terminal, which it previously was not. 5 unit tests on it, including
-      Latin-vs-CJK rows that must land the logo at the same column.
-    - **Why this was a live bug, not a hypothetical**: `media`/`player` (v0.8.0) surface
-      arbitrary track metadata, so CJK/Hangul values are ordinary. `Media: 宇多田ヒカル -
-      花束を君に` was undercounted by 11 columns.
-    - Verified end to end: with a CJK and a Hangul `Locale`, ASCII and Chafa rows now measure
-      exactly the terminal width at 95/138/200 columns, identical to the Latin run.
-  - **Known limitation, stated rather than papered over**: flush-right means the widest logo
-    row writes the terminal's last cell, which relies on deferred-wrap (every VT-derived
-    terminal implements it, and the `\n` that follows resolves the pending wrap).
-  - `retch-cli` → 0.9.2. Patch bump. New dependency: `unicode-width` 0.2.2.
-- **v0.9.1 — Fix `just` default recipe position in `Justfile`**:
-  - Moved `default: @just --list` before the vendored `COMMON (template v3)` block so that running bare `just` correctly lists available recipes instead of executing `install` (which was previously the first defined recipe in the file). Removed the unreachable duplicate `default:` recipe from the bottom section.
-- **v0.9.0 — Desktop & UI Detection Probes: `WMTheme`, `Wallpaper`, `TerminalTheme` (zero subprocess forking)**:
-  - **Zero-subprocess architecture**: 100% direct filesystem config parsing on Linux, native Win32 registry FFI on Windows, and Cocoa/AppKit FFI on macOS without spawning `gsettings`, `dconf`, `defaults`, `powershell.exe`, or `reg.exe`.
-  - **WM Theme (`wm-theme`)**: Detects window decoration/frame theme across Linux (KWin `kwinrc`, Xfwm4 `xfwm4.xml`, Openbox `rc.xml`, Fluxbox `init`, IceWM `theme`, Mutter/Marco/GTK `settings.ini`), macOS (Aqua), and Windows (`HKCU\Software\Microsoft\Windows\CurrentVersion\Themes`).
-  - **Wallpaper (`wallpaper`)**: Detects current background image path across Linux (GNOME/Cinnamon/Budgie/MATE config, KDE Plasma `desktop-appletsrc`, XFCE `xfce4-desktop.xml`, Hyprpaper `hyprpaper.conf`, Sway `config`, Feh `.fehbg`, Nitrogen `bg-saved.cfg`), macOS (`NSWorkspace` AppKit FFI), and Windows (`HKCU\Control Panel\Desktop\WallPaper`).
-  - **Terminal Theme (`terminal-theme`)**: Detects active color scheme / palette name or background/foreground hex codes across Kitty, Alacritty, WezTerm, Foot, Windows Terminal (`settings.json`), Konsole (`konsolerc`), Ptyxis, iTerm2, and Apple Terminal.
-  - **Output Strata & Documentation**: Added `wm-theme`, `wallpaper`, and `terminal-theme` to `FIELDS` in `src/fields.rs` (`Mode::Full`). Golden strata counts updated (Full: 60 → 63). Man page `docs/retch.1` regenerated, `README.md` and `docs/retch.1.md` updated. Unit tests added for all pure parsers and path normalization. `retch-cli` → 0.9.0; `retch-sysinfo` → 0.1.56.
-- **v0.8.1 — dependency bumps (consolidated Dependabot #199)** (chore; no runtime behavior
-  change). Rolls Dependabot's PR onto a gated branch so the release hygiene it bypasses —
-  version bump, NOTES entry, man regen — is actually done, following the #167/v0.6.3,
-  #184/v0.6.16, and #188/v0.6.19 pattern.
-  - **2 direct crates + 5 transitive** (`cargo-dependencies` group, #199), all patch-level and
-    **lockfile-only** — every spec is a caret range, so both `Cargo.toml` manifests are
-    untouched: `clap_complete_nushell` 4.6.1→4.6.2, `icy_sixel` 0.5.0→0.5.1 (pulls
-    `quantette` 0.5.1→0.6.0, `rand` 0.10.2, `rand_core` 0.10.1, `rand_xoshiro` 0.7.0→0.8.1,
-    `safe_arch` 0.9.3→1.2.0, `wide` 0.8.3→1.6.1). The resulting `Cargo.lock` was
-    **diff-verified byte-identical** to what Dependabot generated on #199.
-  - `retch-cli` → 0.8.1; `retch-sysinfo` unchanged at `0.1.55` (no source change — only its
-    transitive lockfile deps moved). Patch bump.
-- **v0.8.0 — Native `Media` and `Player` detection across Windows, Linux, and macOS (100% native OS APIs/FFI/sockets, zero subprocess forking)**:
-  - **Zero-subprocess architecture**: Spawning external CLI commands (`powershell.exe`, `playerctl`, `osascript`, `busctl`) is strictly avoided across all platforms.
-  - **Windows**: Dynamically loads `combase.dll` to query WinRT COM `GlobalSystemMediaTransportControlsSessionManager`. Retrieves active player ID (cleaned to user-friendly names e.g. Spotify, Media Player, Edge, Chrome), playback state (Playing, Paused, Stopped, Buffering), and track metadata (`Artist - Title`, `Album`) asynchronously in `< 1ms`.
-  - **Linux**: Direct Unix domain socket binary D-Bus connection (`$DBUS_SESSION_BUS_ADDRESS` or `/run/user/<uid>/bus`). Performs SASL `AUTH EXTERNAL`, enumerates `org.mpris.MediaPlayer2.*` services, and queries properties without `playerctl` or child processes (`< 2ms`).
-  - **macOS**: Native Objective-C runtime FFI via `macos_ffi.rs` messaging `SBApplication` directly without invoking `osascript`.
-  - **Output Strata & Documentation**: Added `player` and `media` to `FIELDS` in `src/fields.rs` (`Mode::Long`). Golden counts updated (Long: 54, Full: 60). Man page `docs/retch.1` regenerated, `README.md` and `docs/retch.1.md` updated. Unit tests added for formatting, ID normalization, and D-Bus parsing.
-- **v0.7.1 — `packaging/aur` becomes the source of truth, with a recipe that publishes it and
-  a check that stops it drifting** (tooling/packaging only; no runtime change, `retch-sysinfo`
-  unchanged at `0.1.54`). New `Justfile` recipes `aur-check` / `aur-srcinfo` / `aur-bump` /
-  `aur-publish`, new `scripts/aur_check.py`, and `packaging/aur/.SRCINFO` is now tracked.
-  - **The problem being fixed is drift with a mechanism, not carelessness.** `packaging/aur/
-    PKGBUILD` was a "reference copy" that nothing rendered, nothing published and nothing
-    checked. It reached **eleven releases** of lag (0.6.12 in-repo vs 0.6.23 published), and
-    because the copy was inert, the *live* AUR PKGBUILD kept both man-page defects long after
-    v0.7.0 fixed them here — Arch users' installed page read `$DATE` / `retch $pkgver` the
-    whole time. The copy looked authoritative and was not, which is worse than absent.
-  - **`packaging/aur` is now the source**: `aur-bump VERSION` renders it (verifies the tag
-    exists, downloads the tarball, rewrites `pkgver`/`pkgrel`/`sha256sums`, regenerates
-    `.SRCINFO`), and `aur-publish` pushes *exactly those files* to the AUR. Nothing is
-    hand-edited; the previous six releases each hand-typed the bump and hand-wrote `.SRCINFO`.
-  - **`.SRCINFO` is generated by a real `makepkg --printsrcinfo`** in `archlinux:base-devel`
-    under podman, because no host in this fleet runs Arch. Two guards carried over from
-    rusticprofile, both learned the hard way there: the output goes to a temp file and is
-    *moved* into place (a shell redirect truncates before the command runs, so a missing image
-    would destroy the committed file — measured there as 503 bytes → 0), and the **content** is
-    checked for a `pkgbase` line rather than the exit code, since `--printsrcinfo` can exit 0
-    having printed nothing. The mount is **`:z`, never `:Z`** — uppercase assigns a fresh
-    private MCS category pair that would permanently relabel this directory, and this repo
-    lives under a Syncthing folder whose own container then could not scan it (see
-    `~/AGENTS.md`).
-  - **The temp file is created in `packaging/aur`, not `/tmp`** — a third guard, added after
-    the `:z` one proved insufficient against the same hazard. `mktemp` in `/tmp` yields a file
-    labelled `user_tmp_t`, and `/tmp` is tmpfs, so the `mv` above is a cross-filesystem copy
-    and coreutils preserves the SELinux context — landing `user_tmp_t` (and mktemp's 0600) in
-    a directory otherwise labelled `container_file_t`. The Syncthing container runs as
-    `container_t` and cannot read that, so the entire synced folder wedged on this one
-    463-byte file: `hashing: ... permission denied`, `needFiles` stuck at 1, while Unix
-    permissions looked perfectly normal and `/rest/db/status` reported `state: idle`
-    throughout. Diagnosed on corrino 2026-08-23; the kernel AVC naming both contexts was the
-    only unambiguous evidence. Creating the temp file in the destination directory inherits
-    that directory's context by type transition and makes the `mv` a same-filesystem rename,
-    which cannot relabel; the explicit `chmod 0644` follows because `mktemp` creates 0600 and
-    the committed file must match its `PKGBUILD` sibling. **Worth stating plainly: this recipe
-    had already been hardened against `:Z` with a comment citing `~/AGENTS.md`, and still
-    shipped the bug — avoiding a documented trap did not cover its undocumented sibling.**
-  - **`scripts/aur_check.py` is the anti-drift guard, and `just check` depends on it.** It
-    compares the two files **field-by-field** — including the *expanded* `source` URL — so the
-    dangerous shape is caught: a pair agreeing on the version while disagreeing on the
-    checksum, which fails on the user's machine and nowhere else. It is pure Python with no
-    bash and no podman, so it runs on Windows too (the v0.6.16 portability reason), and it
-    parses rather than sourcing the PKGBUILD, stopping at the first function so that
-    `DATE=`/`CARGO_HOME=` inside `build()` cannot be mistaken for metadata. Unknown variables
-    and missing required fields **raise** rather than expanding to empty — an unparsed field
-    would otherwise compare equal by being absent from both sides. 9 self-test assertions,
-    watched failing on stale-pkgver, stale-checksum and dropped-makedepend fixtures.
-  - **Scope, stated honestly:** `aur-check` proves the two files agree. It does *not* verify
-    the checksum against the real tarball (that is `aur-bump`, and the `aur` CI job re-checks
-    it every PR) and does *not* prove the package builds (the `aur` CI job runs a real
-    `makepkg`). It is the cheap offline half; the expensive halves already run in CI. There is
-    deliberately **no local `aur-verify`** like rusticprofile's, because retch's CI already
-    builds the PKGBUILD and asserts the packaged man page — rusticprofile's does not.
-  - **Verified end to end rather than by inspection:** `just aur-bump 0.7.0` rendered both
-    files, and the generated `.SRCINFO` came out **byte-identical to the one hand-written and
-    pushed to the AUR earlier the same day** — which retroactively confirms that push was
-    correct. `AUR_CONFIRM=n just aur-publish` exercised all four preflight checks (pair agrees,
-    pkgver read, sha256 matches the real v0.7.0 tarball, AUR reachable and key accepted) and
-    aborted before touching the AUR — the same "test the gate without performing the act"
-    approach v0.6.23 used for `merge-pr`.
-  - **The in-repo copy still trails between `just publish` and `just aur-bump`, and that is
-    inherent**: the checksum needs a tarball that does not exist until the tag is pushed. What
-    changed is that the lag is now one command wide instead of eleven releases, and `just
-    check` fails while the pair disagrees.
-  - `aur-check`'s self-test is invoked from the `aur-check` recipe, **not** from
-    `standard-check` — that block is vendored byte-identically across retch, rusticprofile and
-    etr, and retch is the only one of the three whose AUR pair is tracked in-repo.
-  - `retch-cli` → 0.7.1. Patch bump.
-- **v0.7.0 — `keyboard`, `mouse` and `tpm`; and the input classification that cannot be done
-  from capabilities alone** (`crates/sysinfo/src/input.rs` (new), `crates/sysinfo/src/fetch.rs`,
-  `src/fields.rs`, `src/display.rs`, `packaging/aur/PKGBUILD`). Three §6 fastfetch-gap fields,
-  all `--long`+, Linux-only, in the v0.5.0 shape: a thin `/proc`+sysfs reader over pure helpers
-  that unit-test without touching host hardware.
-  - **The finding that shaped the design: on a Logitech Unifying/Bolt receiver, no
-    kernel-visible signal distinguishes a keyboard from a mouse.** Measured on corrino against
-    an MX Keys and an MX Master 3 paired to one receiver — `/proc/bus/input/devices` handlers
-    (both `sysrq kbd leds mouseN eventN`), `capabilities/rel` (**both `0x1943`**),
-    `capabilities/key` (both carry the full alphabet block), `INPUT_PROP`, udev's `ID_INPUT_*`
-    (**both tagged `POINTINGSTICK`**), USB HID `bInterfaceProtocol` (both `00`), and the HID
-    **report descriptor** itself (both open `05 01 09 06 a1 01` — "Usage: Keyboard") are
-    identical. The receiver synthesizes one merged descriptor per paired device. Every one of
-    those six sources was checked before concluding it; the report descriptor in particular
-    looks authoritative and is not.
-  - **fastfetch 2.66 gets this wrong on that hardware in both directions** — it lists the MX
-    Master 3 and the MX Vertical as *keyboards*, the MX Keys as a *mouse*, and duplicates the
-    MX Vertical in both lists (9 "mice" including the keyboard, both Wacom endpoints and a
-    phantom PS/2 node). So this gap is **not** closed by copying fastfetch's approach.
-  - **Classification is therefore exclusive, and declines to guess.** A device is a keyboard
-    (`kbd` handler **and** the full alphabetic key block), a mouse (`mouseN` handler), or
-    neither. A device claiming *both* is a merged endpoint: it is resolved via the HID++
-    driver's battery `model_name` (`"MX Keys Wireless Keyboard"` / `"Wireless Mouse MX Master
-    3"` — the only place on the system the truth survives) and, when that is absent too,
-    reported in **neither** field. Same principle as the v0.6.1 `Users: 0` suppression:
-    under-reporting beats asserting something false. Live on corrino: Keyboard = `AT Translated
-    Set 2 keyboard`, `Logitech MX Keys`; Mouse = PS/2, VEN_06CB mouse + touchpad, both Wacom
-    endpoints, `Logitech MX Master 3`; the two paired-but-idle MX Verticals expose no battery
-    node and are correctly omitted.
-  - **The `kbd` handler is not a keyboard signal on its own** and this is why the alphabet-block
-    test exists: on that machine the power button, sleep button, both `Video Bus` nodes, the PC
-    speaker, two DP audio nodes, Dell WMI hotkeys and a webcam's consumer-control endpoint all
-    register `kbd`. Only the alphabetic key block separates text entry from a few hotkeys.
-  - **`parse_bitmap` reverses the words, and that is load-bearing**: the kernel prints capability
-    bitmaps most-significant word first, so the *last* word holds bits 0–63. Getting it backwards
-    inverts every capability test silently, so it is a separate function with its own test.
-  - `tpm` reads `tpm_version_major` from `/sys/class/tpm/*`; the pure `format_tpm_version` maps
-    it to the published spec names (`1` → `1.2`, `2` → `2.0` — a lookup, not `major.0`) and
-    returns `None` for anything unrecognised rather than inventing a version. Verified live:
-    `TPM: 2.0`, matching fastfetch.
-  - Collection is sequential (one file read, plus a small sysfs lookup only for ambiguous
-    devices), not in the concurrent scope — matching `init`/`chassis`/`brightness`. Measured on
-    corrino: `--long` 451 ms against the 448 ms recorded at v0.6.18, i.e. no measurable cost.
-  - Strata golden counts updated Long 49→52, Full 55→58. 11 new unit tests (7 in `input`,
-    1 for `format_tpm_version`, plus bitmap/bit-indexing coverage), keyed on a verbatim
-    `/proc/bus/input/devices` fixture and an **injected** model-name resolver — the
-    `parse_xrandr_displays_with` pattern from v0.6.2, so no test depends on what is plugged into
-    the machine running it.
-  - **`packaging/aur/PKGBUILD` refreshed and its two long-standing man-page defects fixed.**
-    It had been stranded at `pkgver=0.6.12` for eleven releases while the AUR itself moved to
-    0.6.23 — an in-repo copy that looked authoritative and was not. Now `pkgver=0.6.23` with
-    sha256 `bf51f58b…`, computed here from the real release tarball and matching the value the
-    AUR push recorded. The `mandown | sed` man-page regeneration is **removed** rather than
-    repaired: (1) its `s/\\fB\\fB/\\fB/g` strip never matched on any platform (GNU sed reads
-    `\\f` as a form feed — the same dead code the Justfile carried until v0.6.16), and (2)
-    `\$DATE`/`\$pkgver` are literal inside bash double quotes, so the installed page's footer
-    read `$DATE` / `retch $pkgver`. The committed `docs/retch.1` ships in the tarball already
-    carrying the right footer (verified in the 0.6.23 tarball: `.TH "RETCH" "1" "August 2026"
-    "retch 0.6.23"`), so `package()` installs it directly and the `mandown` makedepend is gone.
-    **CI does verify it with `makepkg`** — `packaging.yml`'s `aur` job runs the full
-    prepare/build/check/package cycle in `archlinux:latest` and reported `Finished making:
-    retch 0.6.23-1` on this change. No Arch host exists in the fleet (corrino, irulan and
-    arrakis all lack `makepkg`), so locally it was only `bash -n` plus confirming every path
-    `package()` installs exists in the tarball. The in-repo copy remains a *reference* copy: the
-    AUR repo is the source of truth, and nothing in this repo renders or publishes it, which is
-    the underlying problem an `aur-publish` recipe (etr and rusticprofile both have one) would
-    fix. **Fixed in v0.7.1** — see that entry.
-  - **The `aur` CI job had two holes that let exactly these defects survive, both now closed.**
-    Found by reading the job rather than trusting that a green check meant the packaging was
-    checked — the same "what did this actually verify?" question that produced the empty-rollup
-    fix in v0.6.23.
-    - **The declared `sha256sums` was never checked by anything.** The job rewrites `source=`
-      to a local tarball and `sha256sums=` to `SKIP` (so it can build a tag that does not exist
-      yet), which is reasonable for the *build* but meant a stale or wrong checksum in the
-      reference PKGBUILD — precisely the state it sat in for eleven releases — sailed through
-      green and would only fail for someone installing from the AUR. A new **Verify declared
-      source checksum** step runs *before* that patching, sources the PKGBUILD, downloads the
-      real tag tarball and compares. It refuses a committed `SKIP`, and when the tag is not
-      published yet (a branch that has bumped past the last release) it emits a notice and
-      passes rather than going red for a legitimate state. Verified locally in all three
-      directions: matching checksum passes, a corrupted one fails, an unpublished tag skips.
-    - **Nothing inspected the packaged man page**, which is where both fixed defects actually
-      showed. A new **Verify packaged man page** step extracts `usr/share/man/man1/retch.1` from
-      the built package and asserts it exists, that its `.TH` line contains no literal `$` (the
-      `\$DATE`/`\$pkgver` bug), that it carries a real `retch <version>` footer, and that no
-      doubled `\fB\fB`/`\fP\fP` runs survive (the dead-sed bug). Deliberately **not** asserted
-      against `$pkgver`: this job builds from the local tree, whose committed page carries the
-      in-development version while `pkgver` tracks the last release, so coupling them would fail
-      for a reason unrelated to packaging. Each assertion was checked against both the current
-      page and the historical broken forms.
-      - **The first version of that step was itself a check that failed for the wrong reason**,
-        and it went red on CI while the package was perfectly correct. `bsdtar -tf "$pkg" |
-        grep -qx …` under `set -o pipefail`: `grep -q` exits on its first match, `bsdtar` takes
-        SIGPIPE and exits **141**, and pipefail turns that into a failed pipeline — so the step
-        reported "package does not contain the man page" **precisely when it did**. Reproduced
-        in one line locally (`tar -tzf x | grep -qx <present-entry>` → 141 with pipefail, 0
-        without). `head -1` and `grep -m1` are the same hazard, so all three are gone: the step
-        now materialises the listing and the page to files and greps *those*, and selects the
-        package with `find -print -quit` rather than `ls | grep -v | head`. Both steps also pin
-        `shell: bash` rather than relying on Arch's `/bin/sh` being bash. Exactly the family
-        `~/AGENTS.md` §10/§11 records — an oracle answering a different question from the one
-        asked — and a reminder that a *new* check earns trust by being watched fail for the
-        right reason, which these now have been (missing page, literal `$` footer, doubled font
-        runs, each confirmed against a purpose-built broken package).
-      - **It then failed a second time, on a different wrong assumption: `makepkg` gzips man
-        pages.** `zipman` is on by default, so the packaged path is `usr/share/man/man1/
-        retch.1.gz`, and an assertion looking for `retch.1` reports it missing. The step now
-        matches `retch.1` with an optional `.gz`/`.zst`/`.xz`/`.bz2` suffix and decompresses
-        before inspecting, tested against gzipped, uncompressed, and gzipped-but-broken
-        fixtures. **Both failures were the check being wrong while the package was correct** —
-        worth recording because that is the expensive direction: a checker that cries wolf gets
-        deleted, and the defect it guards then returns unnoticed. What made the second one cheap
-        was the diagnostic added after the first: printing the actual `usr/share` listing on
-        failure named the cause (`retch.1.gz`) in the log with no local reproduction needed.
-        **Any new assertion about a built artefact should print what it actually saw.**
-    - **`mandown` is no longer pre-installed in the container**, so `makedepends` is now
-      load-bearing: `makepkg -s` installs what the PKGBUILD declares and nothing else, and a
-      future `build()` that calls mandown without declaring it will fail instead of silently
-      working. `cargo` is still pre-installed, so that one makedepend remains masked — a smaller
-      instance of the same class, left alone deliberately rather than overlooked.
-  - `retch-sysinfo` → `0.1.54` (new public `input` module); `retch-cli` → `0.7.0`. Minor bump
-    (new user-visible fields).
-- **v0.6.23 — `just merge-pr` had no CI gate, and now the triad is checked** (tooling only; no
-  runtime change, `retch-sysinfo` unchanged at `0.1.53`).
-  - **`merge-pr` went straight from the branch check to `gh pr merge --squash --delete-branch`.**
-    No inspection of the status rollup, in any form. `gh pr merge` will happily merge a red PR when
-    the repository has no branch protection, and "wait for the checks to settle" is not "wait for
-    them to pass". **Every merge in this repo has been ungated** — safe only because whoever merged
-    happened to look at CI first.
-  - `rusticprofile` added this gate in its `v0.1.5` after a PR went in with a leg red, and extended
-    it in `0.2.1` after an **empty** rollup passed vacuously — printing "CI is green." over a commit
-    CI had never seen, which happened for real when GitHub stopped creating runs for pushed commits.
-    Neither fix reached here. Same cross-repo staleness as the nushell completion path, this time on
-    the recipe that performs the irreversible act.
-  - Three refusals now: a failing check, an **empty** rollup (`nothing ran` is not `everything
-    passed`), and checks still running rather than racing them. The empty-rollup state is compared
-    as a **string** rather than through `jq -e length`, because `gh --jq` is gh's built-in jq while
-    an external `jq` is not on a default Windows PATH — and a gate that silently degrades where its
-    dependency is missing is the thing being fixed, not a way to fix it.
-  - **`scripts/gate_conformance.py` (template v3) is vendored, and `standard-check` runs it**, so
-    the guards cannot quietly disappear again. It asserts nine of them across `pr`, `open-pr` and
-    `merge-pr`, with **comments stripped first** — a comment explaining a guard must not satisfy the
-    check for a recipe that lost it.
-  - **It is structural, not behavioural**, and says so: it proves a guard is present, not that it
-    works. The install helpers are pure functions their self-test can call; these recipes run the
-    suite, push branches and merge PRs, so executing them from `check` would be slow and
-    destructive.
-  - **Verified by running it, safely:** on a branch with no PR the rollup is empty, so `merge-pr`
-    refuses and exits *before* reaching `gh pr merge` — which tests the gate without merging
-    anything. The jq expression was also checked by asking gh's own jq to parse it rather than
-    reasoning about backslash layers.
-  - `retch-cli` → 0.6.23. Patch bump.
-- **v0.6.22 — the manual Claude review was available and inert** (CI configuration only; one line
-  removed, no runtime change, `retch-sysinfo` unchanged at `0.1.53`).
-  - `v0.6.17` disabled automatic review by commenting out the `pull_request` trigger **and**
-    setting `if: false` on the `claude-review` job. The trigger alone already achieved the goal, so
-    the guard added nothing there — but it also applied to `workflow_dispatch`, which was kept. The
-    result: `gh workflow run claude-code-review.yml` started a run, **skipped the job, and reported
-    success having reviewed nothing.**
-  - **A green run that did nothing is the exact failure this repo's tooling exists to refuse**, and
-    it is the one `rusticprofile` recorded twice about this very action — `0.0.11` and `0.0.14`, both
-    about a review job going green *without reviewing*, and the reason its workflow now writes its
-    outcome to the step summary. "Dispatch is available but silently inert" is worse than either
-    honest alternative: working, or absent.
-  - **Nobody had been bitten**, which is why it survived: the dispatch had never been used. Every
-    run of that workflow in its history is a `pull_request` event predating `v0.6.17`.
-  - **Automatic review stays off.** Only the job guard is removed; the `pull_request` trigger
-    remains commented immediately above it, so restoring per-PR review is still uncommenting two
-    lines. The diff is one line deleted and a comment explaining why there is deliberately no guard
-    there — because the next person to "tidy up" this file needs to know the omission is the point.
-  - Brings retch in line with `rusticprofile` and `etr`, where the dispatch genuinely runs. Found
-    while auditing the three repos' workflows against each other, which is the same cross-repo
-    comparison that surfaced the nushell completion path.
-  - `retch-cli` → 0.6.22. Patch bump.
-- **v0.6.21 — two gates that could not be satisfied from the situation they failed in**
-  (tooling only; no runtime change, `retch-sysinfo` unchanged at `0.1.53`). Both were hit by hand
-  while landing v0.6.20, and both are fixes `rusticprofile` already had.
-  - **`just pr` ended in a bare `read`, so nothing but a human at a terminal could answer it.** A
-    script, CI job or agent either blocked on a stdin that would never answer or died without
-    saying why — and that failure reads as *the gate refusing the change*, not as a question
-    nobody could hear. It now takes its answer from `PR_CONFIRM`, from an interactive stdin, or
-    from piped input under a ten-second bound, and the failure message **names `PR_CONFIRM`**.
-    It is not a bypass: all four paths still require an explicit `y`, so this widens *who can
-    answer*, not *what counts as an answer* — and the checklist must still be answered after
-    each item is actually checked.
-  - **`just open-pr` did not push, so on a never-pushed branch it printed "Gate passed" and then
-    failed.** `gh pr create` had no remote branch to open from. The observable result was a
-    command that announced the gate passing and then exited non-zero, which reads as the gate
-    rejecting work it had just approved. It now pushes **only when there is no upstream** —
-    pushing unconditionally would silently publish existing commits on a branch that already has
-    one, a different and more surprising act. `pre-push` still runs `just check`, so this cannot
-    publish a branch the gate would refuse; the push is inside the gate, not around it.
-  - **Both were verified on this PR itself**, which is the only honest test for the second one:
-    the branch had no upstream when `open-pr` ran, and that condition cannot be reproduced after
-    the fact.
-  - *Why these existed at all:* they are `rusticprofile`'s `0.0.21` and `0.2.12`, which retch
-    never received — the same cross-repo staleness that left the nushell completion path wrong
-    here for months and that v0.6.20's `standard-check` now guards for the install family. The
-    `pr`/`open-pr` triad is **not** yet covered by that standard; `templates/justfile-common.just`
-    records it as out of scope, because these recipes legitimately differ per repo.
-  - `retch-cli` → 0.6.21. Patch bump.
-- **v0.6.20 — nushell completions went where Windows nushell never looks; the install helpers
-  become a checked cross-repo standard** (tooling only; no runtime behavior change,
-  `retch-sysinfo` unchanged at `0.1.53`).
-  - **The bug: `scripts/install_completions.py` wrote nushell completions to
-    `$XDG_CONFIG_HOME/nushell/autoload`.** On Windows `$nu.user-autoload-dirs` is exactly
-    `%APPDATA%\nushell\autoload` — one entry — and nushell there does **not** read the XDG path at
-    all, whatever `XDG_CONFIG_HOME` says. So the helper wrote a real file to a directory nothing
-    consults, printed `Installed completions for retch:` with its full path, and delivered nothing.
-    Measured in `rusticprofile` (its `0.2.14`), where the same defect explained shell aliases absent
-    for months while present in the dotfiles the whole time. **Silent in exactly the direction that
-    matters.**
-  - **A second defect, in the reporting rather than the paths: the helper survived a failure and
-    then claimed success.** `except subprocess.CalledProcessError` logged to stderr and continued,
-    and `print("Installed completions for retch:")` plus the full path list ran unconditionally
-    afterwards — a step reporting success over work it did not do. The canonical helper raises.
-  - **Third, milder: nothing checked whether zsh would ever load the file.** zsh reads completion
-    functions only from directories on `fpath`, and `~/.local/share/zsh/site-functions` is not on it
-    by default on any distribution. This helper did not *claim* auto-loading (etr's does), but it did
-    not warn either. It now checks, using an **interactive** zsh — a non-interactive one sources
-    neither `.zshrc` nor anything it includes, so asking it returns the built-in default and gets the
-    answer confidently wrong in the other direction.
-  - **This repo's mechanism was right and is now the standard.** `v0.6.16` moved these recipes to
-    Python precisely so they run natively on Windows without Git's `usr\bin`, and that holds:
-    `rusticprofile` first proposed replacing them with plain-`sh` recipes because *it* held the
-    correctness fixes, which would have regressed this repo's portability work in the name of
-    consistency. **The two repos had each solved half the problem.** The standard keeps retch's
-    mechanism and rusticprofile's correctness.
-  - **`scripts/install_completions.py` and `scripts/install_man.py` are now canonical and vendored
-    byte-identically** across `retch`, `rusticprofile` and `etr` (`TEMPLATE_VERSION = 2`), alongside
-    `templates/justfile-common.just` — the reference for the Justfile block between
-    `# >>> COMMON (template v2)` and `# <<< COMMON`. Project facts (`BINS`, `MAN_PAGES`) sit in a
-    `PROJECT` header above it, because `etr` ships two binaries and a block with a hardcoded name
-    cannot be copied.
-  - **`just standard-check` runs the helpers' `--self-test`, and `just check` depends on it.** Not a
-    text diff: three separate repositories cannot diff each other's files, and a text diff would pass
-    happily on a repo that never adopted the standard. The self-tests assert the invariants directly
-    — the Windows nushell path, that `APPDATA` disturbs none of the other five directories, that XDG
-    overrides are honoured, and that an *empty* XDG variable falls back rather than resolving every
-    path against `/`. Each was watched failing; reverting the nushell line reports
-    `windows nushell dir: expected …AppData\Roaming… got …/.config/…`.
-  - **New recipe `install-tag VERSION`** — installs a released tag with all three artefacts *from
-    that tag*: binary via `cargo install --git --tag`, completions generated by **the installed
-    binary** so they cannot disagree with its CLI, and the man page read out of the tag via
-    `git show`. It deliberately does not depend on `install-man`/`install-completions`, which work
-    from the checkout: reusing them would pair a tag's binary with the worktree's man page. Prompted
-    by a fleet host found running a current binary beside a man page **eleven releases old**, because
-    every upgrade was a hand-typed `cargo install` and nothing re-ran the other two recipes.
-  - **The `python3 … 2>/dev/null || python …` idiom is gone.** It retries on *any* failure, so a real
-    error inside the script was re-run and reported as though the interpreter were missing. The
-    interpreter resolves once into `PY`, and its absence is a named error.
-  - Scope: the standard covers the install/man/completions family only. `check`/`lint`/`test`/`pr`
-    legitimately differ across the three repos (`--workspace` here, `--all-targets` in etr, bare in
-    rusticprofile) and reconciling them is a behaviour change per repo rather than a copy;
-    `templates/justfile-common.just` records that and the other known divergences.
-  - `retch-cli` → 0.6.20. Patch bump.
-- **v0.6.19 — dependency bumps (consolidated Dependabot #188)** (chore; no runtime behavior
-  change). Rolls Dependabot's PR onto a gated branch so the release hygiene it bypasses —
-  version bump, NOTES entry, man regen — is actually done, following the #167/v0.6.3 and
-  #184/v0.6.16 pattern.
-  - **3 direct crates + 2 transitive** (`cargo-dependencies` group, #188), all patch-level and
-    **lockfile-only** — every spec is a caret range, so both `Cargo.toml` manifests are
-    untouched: `clap` 4.6.5→4.6.6 (pulls `clap_builder` 4.6.5→4.6.6), `clap_complete`
-    4.6.8→4.6.9, `rusqlite` 0.40.1→0.40.2 (pulls `libsqlite3-sys` 0.38.1→0.38.2). The
-    resulting `Cargo.lock` was **diff-verified byte-identical** to what Dependabot generated on
-    #188, so this carries exactly the change its green CI validated.
-  - **`rusqlite` warranted a live check, not just a green suite.** It is a *direct* dependency
-    of `retch-sysinfo` and the crate v0.6.18's `Packages` fix had just started using
-    differently (`open_with_flags` + `SQLITE_OPEN_READ_ONLY | SQLITE_OPEN_URI |
-    SQLITE_OPEN_NO_MUTEX` over a `file:…?immutable=1` URI). `libsqlite3-sys` also bundles
-    SQLite itself, so a bump changes the engine that has to honour `immutable=1` — and the
-    `rpm_db_uri` unit tests only assert string construction, so they could not catch a
-    behavioural change there. Verified live as an unprivileged user: `Packages: 2509`,
-    unchanged. **Any future `rusqlite`/`libsqlite3-sys` bump deserves the same one-command
-    check** — `retch --fields packages` without sudo.
-  - `retch-cli` → 0.6.19; `retch-sysinfo` unchanged at `0.1.53` (no source change — only its
-    transitive lockfile deps moved, same call as v0.6.3). Patch bump.
-- **v0.6.18 — `Packages` without root, Rio detection under `sudo`, and aspect-correct logo
-  scaling** (`crates/sysinfo/src/packages.rs`, `src/logo.rs`, `src/display.rs`). Three
-  user-reported defects, all found by diffing a `sudo retch --full` run against a plain one
-  on corrino (i7-1360P, Fedora 44, Rio).
-  - **`Packages` appeared only under `sudo`** (bugfix). `detect_packages` opened
-    `/var/lib/rpm/rpmdb.sqlite` with `rusqlite::Connection::open`, i.e. **read-write**. The
-    rpmdb is `root:root 0644` inside a root-owned directory, so SQLite cannot create the
-    journal sidecars it wants and **every query** fails with `attempt to write a readonly
-    database` — note *query*, not `open()`, which is why the existing `eprintln!` (guarding
-    only the open) never fired and the field vanished with no diagnostic at all. Plain
-    `mode=ro` does not help for the same reason; it still needs to touch the directory. Fixed
-    with `open_with_flags(rpm_db_uri(path), SQLITE_OPEN_READ_ONLY | SQLITE_OPEN_URI |
-    SQLITE_OPEN_NO_MUTEX)` over a `file:…?immutable=1` URI, which lets SQLite skip locking and
-    sidecars entirely. Verified end to end: `2509` as an unprivileged user, byte-identical to
-    what the `sudo` run reported. The query error is now surfaced rather than swallowed, so
-    the next failure in this path says why. Pure `rpm_db_uri` helper, 2 unit tests.
-  - **Rio lost graphics support under `sudo`** (bugfix). `supports_kitty`/`supports_iterm2`/
-    `supports_sixel` identified Rio **only** by `TERM_PROGRAM`, which is not in sudo's default
-    `env_keep`, so `sudo retch` silently fell all the way through to Chafa while the same
-    command as the user used the Kitty protocol. New `is_rio_terminal()` also accepts
-    `TERM=rio`/`xterm-rio` — `TERM` *is* preserved by sudo — and all three checks route through
-    it. 3 unit tests, including a negative case pinning that `rioja` is not matched.
-    - **Test-isolation defect fixed in the same change, same class as #155/v0.6.2:**
-      `test_supports_iterm2_heuristics` guarded only `TERM_PROGRAM`, so once `supports_iterm2`
-      began reading `TERM` the *host's* value leaked in and its negative assertions failed on a
-      Rio box while passing on CI and everywhere else. It now guards and clears `TERM` too.
-  - **The Kitty logo was stretched ~3× vertically** (bugfix). `print_graphical_logo` emitted a
-    hardcoded `c=26,r=10`, and Kitty **forces** an image into the `c`×`r` rectangle — it does
-    not preserve aspect ratio when both are given. Five of the assets are wide horizontal
-    lockups (`fedora.png` is 384×108, i.e. 3.56:1; also arch/nixos/ubuntu/tux), so they were
-    squashed into a roughly 1:1 cell box. Compounding it, `display.rs` separately assumed a
-    fixed **40**-column width for layout while `graphical_logo_height_lines` derived the row
-    count a third way — three inconsistent answers for one footprint. Fixed with a single pure
-    `fit_logo_cells(img_w, img_h, cell_w, cell_h, max_cols, max_rows) -> LogoFit` that fits the
-    image in the cell box preserving aspect (in pixels, so non-square cells are handled), now
-    used by **all three** protocol emitters *and* by `plan_layout`. iTerm2 additionally passes
-    an explicit cell `width` alongside `preserveAspectRatio=1`; Sixel resizes to the same box
-    rather than a fixed 240×200. 6 unit tests.
-    - **Computing `c` and `r` correctly is not sufficient — Kitty must be given only *one* of
-      them.** Cells are indivisible, so the rounded rectangle is never exactly the image's
-      aspect, and Kitty scales each axis independently to fill whatever rectangle it is given.
-      Measured in a PTY with real pixel dimensions (169×47 cells, 22×51 px): passing both
-      correct values still left a **9%** vertical stretch. `LogoFit::width_limited` records
-      which dimension the image touches first and `kitty_placement_spec` emits just that one
-      (`c=45` for Fedora), letting Kitty derive the other — **0.0% aspect error**, verified the
-      same way. The layout's `div_ceil` reservation (6 rows for a 5.46-row draw) still covers
-      it, which is the safe direction.
-  - **Chafa logo box widened 28→45 columns** (`LOGO_MAX_COLS`), height cap unchanged at 10
-    (`LOGO_MAX_ROWS`). Chafa fits *within* the box preserving aspect, so a narrow box caps a
-    wide image's height long before the row cap does: at 28 columns the Fedora logo collapsed
-    to **4 rows** of symbols and was unreadable; at 45 it renders **7**. Both chafa call sites
-    now share `chafa_size_arg()`. **The side-by-side threshold is unaffected** — the text column floors
-    at 45 and 45 + 45 = 90 ≤ 95, so a full-width logo still sits beside the text at the 95-col
-    cutoff; pinned by a new `plan_layout` test at both 95 and 169 columns.
-  - Assets deliberately **not** changed: cropping the wide lockups to their square icon halves
-    would render larger still, but it is a content decision and was declined in favour of the
-    layout-only fix.
-  - New §6b documents the privilege-dependent fields in both directions (root-only
-    `phys-mem`/btrfs snapshots; user-only `editor`/`desktop`/`wm`), mirrored in `README.md`
-    and a new `PRIVILEGES` section in `docs/retch.1.md`.
-  - `retch-sysinfo` → `0.1.53` (library behaviour change); `retch-cli` → `0.6.18`. Patch bump.
-- **v0.6.17 — Disabled Claude Code Review on GitHub Actions CI** (`.github/workflows/claude-code-review.yml`).
-  Disabled the `pull_request` trigger and set `if: false` on the `claude-review` job in `claude-code-review.yml`. `retch-cli` → `0.6.17`. Patch bump.
-- **v0.6.16 — Graphic logo size reduction and controlled info line wrapping** (`src/display.rs`, `src/logo.rs`, `crates/sysinfo/src/audio.rs`).
-  Reduced Chafa logo height to `34x12` (matching standard 12-line ASCII logo heights). Filtered synthetic kernel streaming audio endpoints on Windows (`Microsoft Streaming ...`, `Microsoft Trusted Audio ...`) so `Audio:` reports real hardware devices. Updated `plan_layout` in `display.rs` to clamp `text_column_width` (max 65) and implemented `wrap_info_line` word-wrapping for info lines exceeding the text column width. Long lines wrap into indented continuation lines (aligned to the value column) rather than breaking side-by-side layout or overflowing the terminal edge.
-- **v0.6.16 — Cross-platform Justfile recipes on Windows** (`Justfile`, `scripts/install_completions.py`, `scripts/install_man.py`, `scripts/build_man.py`).
-  Converted `man`, `install-man`, and `install-completions` recipes in `Justfile` to Python helper scripts, eliminating bash shebang escaping bugs (`No such file or directory` due to unescaped Windows backslashes in `justfile_directory()`), missing `.exe` extensions on Windows binary targets, and POSIX `install` utility dependencies. `just install`, `just install-man`, `just install-completions`, and `just man` now execute 100% natively on Windows PowerShell, CMD, and Unix shells without requiring `Git\usr\bin` on PATH. Also consolidated Dependabot #182 dependency bumps. `retch-sysinfo` → `0.1.52`; `retch-cli` → `0.6.16`. Patch bump.
-  - **4 Rust crates** (`cargo-dependencies` group, #182), all patch-level and lockfile-only —
-    every spec is a caret range, so `Cargo.toml` is untouched: `clap` 4.6.4→4.6.5 (pulls
-    `clap_builder` 4.6.2→4.6.5), `toml` 1.1.3→1.1.4 (pulls `toml_parser` 1.1.2→1.1.3),
-    `clap_complete` 4.6.7→4.6.8, `base64` 0.23.0→0.23.1. The resulting `Cargo.lock` was
-    diff-verified byte-identical to what Dependabot generated on #182. `base64` is
-    graphics-feature-only, so `just check`'s `--features graphics` clippy pass (v0.6.5) is the
-    leg that actually exercises it; the CI `graphics-feature` job (v0.6.7) covers the same
-    ground and was green on #182 before the consolidation.
-  - **The `just man` font-collapsing sed has never worked, on any platform** — root-caused
-    here, which closes the question v0.6.2 left open as "not reproducible without a Windows
-    box". `mandown` emits redundant `\fB\fB…\fP\fP` runs and the recipe carried
-    `sed -e 's/\\fB\\fB/\\fB/g' -e 's/\\fP\\fP/\\fP/g'` to strip them. **GNU sed reads `\\f`
-    as the form-feed escape, not backslash-then-`f`**, so the pattern only ever matched form
-    feeds — which groff output never contains — and the replacement would have *emitted* a
-    form feed had it matched. Confirmed against GNU sed 4.9 with a minimal fixture
-    (`\fB\fB\-h\fP\fP` in, unchanged out). So v0.6.2's conclusion that "Linux output is
-    canonical" was right about *which bytes to keep* but wrong about *why*: Linux was not
-    stripping anything either — its `mandown` build simply doesn't emit the doubled runs, so
-    the difference was never the `sed` "not taking effect on Windows", it was two mandown
-    builds and a strip that was dead code everywhere. Fixed by matching the backslash as
-    `[\]` and carrying it out through a capture group (`s/[\]fB\([\]fB\)/\1/g`), so no
-    backslash escape appears on the replacement side at all. **Verified byte-identical**: with
-    the fix, `just man` on Windows reproduces exactly the file a Linux `just man` produces, so
-    `just pr`'s regen check no longer flips depending on which machine last ran it. The
-    regenerated page drops 21 doubled font runs and changes nothing else but the version
-    footer (proved by normalising HEAD's page through the same collapse and diffing).
-  - No Rust source touched, so there is nothing for `cargo test` to cover; the Justfile fix is
-    verified by direct execution and byte-comparison (same approach as v0.6.13's Python
-    helpers). `retch-cli` → 0.6.16. Patch bump.
-- **v0.6.15 — Windows `Display` monitor model EDID parsing parity** (`crates/sysinfo/src/display.rs`, `crates/sysinfo/src/win_reg.rs`).
-  On Windows, `detect_displays` now enumerates monitor devices attached to active display adapters (`EnumDisplayDevicesW`), queries registry `HKLM\SYSTEM\CurrentControlSet\Enum\DISPLAY\<HwID>\<InstanceID>\Device Parameters`, and parses raw binary `"EDID"` blobs via `parse_monitor_name_from_edid`. This outputs actual display brand and model names (e.g. `ATNA33AA08-0 (2880x1800 @ 60Hz)`) instead of falling back to GPU adapter names (`AMD Radeon(TM) 8060S Graphics`). Added `get_reg_bytes` binary reader in `win_reg.rs`. Tested live on arrakis. `retch-sysinfo` → `0.1.51`; `retch-cli` → `0.6.15`. Patch bump.
-- **v0.6.14 — Windows `Domain` & `Domain Search` parity fix** (cross-platform parity fix, `crates/sysinfo/src/network.rs`).
-  On Windows, `detect_domain` now resolves the connection-specific DNS suffix from `GetAdaptersAddresses` for the adapter carrying the default route, matching Linux/macOS semantics instead of reading the primary AD DNS suffix (`GetComputerNameExW`). `detect_domain_search` on Windows now enumerates per-adapter `DnsSuffix` values (`<FriendlyName>: <DnsSuffix>`) and the machine-wide `SearchList` registry key (`global: <domain1>, <domain2>`), achieving full cross-platform output parity. Layout assertion tests (`size_of` and `offset_of!`) added for `IpAdapterAddresses`. Tested live on arrakis (`Domain: lan`, `Domain Search: Wi-Fi: lan`). `retch-sysinfo` → `0.1.50`; `retch-cli` → `0.6.14`. Patch bump.
-- **v0.6.13 — release-tooling fixes: `publish-check` false failure, and a silent
-  nixpkgs-hash corruption** (tooling/packaging only; no runtime change, `retch-sysinfo`
-  unchanged at `0.1.49`).
-  - **`just publish-check` no longer fails spuriously before a release.** The `retch-cli`
-    leg dry-runs against a `retch-sysinfo = "=0.1.x"` pin that cannot resolve until sysinfo
-    is actually on the crates.io index — and a dry run never uploads, so on *every* release
-    it died with a confusing `failed to select a version for the requirement`. It now reads
-    the pin from `Cargo.toml`, asks the sparse index via the new
-    `scripts/crates_io_has_version.py`, and either runs the cli dry run (pin resolvable) or
-    skips it with an explicit explanation. Genuine packaging errors still hard-fail. The
-    helper queries `index.crates.io` rather than the web API (no User-Agent requirement,
-    same source cargo reads) and distinguishes published / yanked / absent / unreachable.
-    The same run exposed a sibling of the bug: both `publish-check` and `publish` always
-    attempted **both** crates, but a CLI-only release (no library change — the common case
-    lately) leaves `retch-sysinfo` at an already-published version, where re-publishing is
-    an error, not a no-op. Both recipes now skip that crate when its current version is
-    already on the index and say so. This is what previous releases worked around by hand
-    (`cargo publish --manifest-path Cargo.toml` directly); `just publish` is now correct
-    for both release shapes.
-  - **`scripts/calculate_nix_hashes.py` was silently emitting a wrong `cargoHash`.** Its
-    substitutions matched only the literal `hash = lib.fakeHash;` / `cargoHash =
-    lib.fakeHash;`, so as soon as `package.nix` held real values (done in v0.6.9) every
-    substitution became a no-op. The temp build then still carried the *previous release's*
-    hashes, failed on a **source**-hash mismatch instead of the intended cargoHash
-    mismatch, and the parser's lenient fallback — "first `sha256-` literal that isn't the
-    dummy" — returned that stale source hash. **This is why the published v0.6.12 release
-    notes' `cargoHash` is byte-identical to v0.6.8's `hash`**; two real sha256 values cannot
-    collide, which is what exposed it. Two fixes: a shared `substitute_package_nix` whose
-    patterns match `lib.fakeHash` *or* a `"sha256-..."` literal, are line-anchored (so
-    `hash` can never match the tail of `cargoHash`), and **hard-error when a substitution
-    matches nothing** instead of building with stale values; and a pure
-    `extract_cargo_hash(stderr, dummy)` that only accepts a hash reported against our own
-    dummy, returning `None` (→ hard error) for any output it cannot attribute. The
-    local in-place branch had the identical `lib.fakeHash`-only bug and now shares the same
-    helper. Verified against the real `package.nix` in four states (concrete hashes,
-    `lib.fakeHash`, mixed, missing anchors) and the parser against four stderr shapes
-    including a replay of the exact v0.6.12 source-mismatch, which now returns `None`.
-  - **In-repo packaging reference copies refreshed to the released v0.6.12.**
-    `packaging/aur/PKGBUILD` → pkgver 0.6.12 + sha256
-    `1b8ed98857b958f955281b47292eb77a536c9ede316b21cd79bbdbc1506907b3`, diff-verified
-    identical to what was actually pushed to the AUR. `packaging/nixpkgs/package.nix` →
-    version 0.6.12 with the genuine src `hash` (computed by CI's `nix-prefetch-url`
-    independently of the bug above, so trustworthy), and **`cargoHash` deliberately reset to
-    `lib.fakeHash`** rather than carrying the corrupt released value — a plausible-but-wrong
-    hash is worse than an obvious placeholder, since it fails confusingly at build time
-    instead of telling you to recompute. Run `just nix-update` on a machine with Nix to fill
-    it in (Nix is unavailable on the current Fedora dev box). nixpkgs submission itself
-    remains deferred on the maintainer follower gate.
-  - No Rust source touched, so there is nothing for `cargo test` to cover; the Python
-    helpers were verified by direct execution against real inputs (see PR test plan).
-    `retch-cli` → 0.6.13. Patch bump.
-- **v0.6.12 — `Domain Search` has one stable shape regardless of its source** (display
-  consistency fix, `crates/sysinfo/src/network.rs`). Found by comparing the CI
-  `--full --ascii-logo` dry-run across the build matrix: the field rendered
-  `eth0: <domain>` on Ubuntu but a bare `<domain>` on Fedora. The difference is **not**
-  platform-driven — the decisive evidence is that *the same OS flips format between two
-  jobs*: Ubuntu in the `build` matrix runs on a bare runner (`DNS Server: 127.0.0.53`,
-  systemd-resolved's stub) and takes the resolvectl path, while Ubuntu in `full-test` runs in
-  `container: ubuntu:latest` (`DNS Server: 127.0.0.11`, Docker's embedded DNS, no
-  systemd-resolved) and falls through to `/etc/resolv.conf`. Fedora is *always*
-  containerised, so it merely looked permanently "different from Ubuntu" for no platform
-  reason at all. Two things were inconsistent, not just the prefix: the resolvectl path
-  returns **one entry per interface** with domains joined by `", "`, whereas the raw fallback
-  returned **one entry per domain** — and `display.rs` prints one line per entry, so a host
-  with `search a b c` emitted three separate bare `Domain Search:` lines. Fix: new pure
-  `format_global_search_domains` renders the fallback in the same `"<scope>: a, b"` shape,
-  scoped `global` — labelled honestly rather than attributed to an interface, since
-  resolv.conf's `search` list carries no attribution and inventing one would be a fib on a
-  multi-homed host. `parse_search_from_resolv_conf` stays faithful to the file (still one
-  element per domain); the shape is imposed at the `detect_domain_search` layer. macOS routes
-  through the same formatter, so it is consistent too. The resolvectl path is byte-identical,
-  so bare-host rendering does not change. **Verified empirically in the exact CI
-  configuration** — the patched binary run under `podman` in `fedora:latest` (resolvectl
-  absent, confirmed) with three injected search domains prints one
-  `Domain Search: global: a.example.com, b.example.com, c.net`, while on the host it still
-  prints `wlp194s0: lan` / `wt0: netbird.cloud`. 3 new unit tests (shape parity between the
-  two paths, grouping into one entry, empty list yields no line).
-  - **Windows is deliberately NOT fixed here and is fully documented in §6a instead**: its
-    `Domain` reads `GetComputerNameExW(ComputerNameDnsDomain)` (the AD/primary suffix, empty
-    unless domain-joined) rather than the connection-specific suffix, so it means a different
-    thing than on Linux/macOS and printed nothing on CI runners that demonstrably *do* have a
-    DHCP suffix; and `detect_domain_search` has no Windows arm at all. Both need
-    `GetAdaptersAddresses` (+ registry `SearchList`), and **neither can be verified live
-    until there is a Windows box again** (arrakis was reinstalled to Fedora on 2026-07-22),
-    so they are queued into the Windows-parity series with root causes recorded. The §6a
-    entry also corrects the v0.6.0 note that wrongly justified the primary-suffix choice as
-    matching resolv.conf semantics. macOS's weaker-source issue is logged there too, flagged
-    as unconfirmed rather than a bug.
-  - `retch-sysinfo` → `0.1.49`; `retch-cli` → 0.6.12. Patch bump.
-- **v0.6.11 — `Domain` follows the default route, not a split-tunnel VPN (Linux)** (bugfix
-  ×3, `crates/sysinfo/src/network.rs`). User report: `--long` showed
-  `Domain: netbird.cloud` (a NetBird split-tunnel VPN on `wt0`) where the default route is
-  `wlp194s0`, whose domain is `lan`. Root cause: under systemd-resolved `/etc/resolv.conf`
-  is the **stub** file whose `search` line is the *merged* set of every link's domains
-  (`search netbird.cloud lan`), attributable to no interface; `parse_domain_from_resolv_conf`
-  had no `domain` directive to find and fell back to the **first `search` entry** — the
-  VPN's. The field never considered interfaces at all. Fix: on Linux, `detect_domain` now
-  resolves the **IP default-route interface** (`/proc/net/route`, reusing the existing
-  `parse_proc_net_route`) and reports *that link's* own domain from `resolvectl status`.
-  Deliberately keyed on the routing table, **not** resolvectl's per-link `Default Route:`
-  field — that is systemd-resolved's DNS-routing flag and was `yes` for both the VPN and the
-  Wi-Fi link simultaneously, so it cannot identify the default route. New pure
-  `parse_resolvectl_domains` → `ResolvectlDomains { global, links }` plus
-  `resolve_default_route_domain` → `DefaultRouteDomain::{Managed(Option<String>), Unmanaged}`.
-  The `Managed(None)` case is load-bearing: when resolved manages the default link but that
-  link has no domain, retch reports **nothing** rather than falling back to the merged
-  resolv.conf list, which would resurrect the VPN domain; a `Global` domain
-  (`resolved.conf` `Domains=`) is accepted first since it belongs to no interface.
-  `Unmanaged` (link absent from resolvectl) still falls back to resolv.conf, so
-  static-resolv.conf and non-systemd hosts behave exactly as before. A full-tunnel VPN that
-  *is* the default route correctly reports the VPN's domain.
-  - **Two latent bugs fixed in the same parser** (both visible in `--full` on the reporting
-    machine): **routing-only domains were shown as search domains** — systemd prefixes a
-    domain with `~` when it should only *route* queries to a link, never be appended as a
-    search suffix, but the filter special-cased only the exact catch-all `~.`, so
-    `Domain Search: wt0: netbird.cloud, ~gammatile.com, ~101.100.in-addr.arpa` leaked; now
-    every `~` entry is excluded. And **wrapped resolvectl output was silently dropped** —
-    resolvectl continues long values on following label-less lines, and the old
-    single-line parser ignored them (`wt0`'s continuation was lost); the parser now
-    consumes continuations, ending the value at the next `label:` line (domain names cannot
-    contain `:`). Sections are matched by content (`Global` / `Link N (iface)`) rather than
-    indentation, since label padding varies with the longest label present. A link
-    reporting both `DNS Domain:` and `DNS Search Domains:` now yields one merged entry
-    instead of two lines.
-  - **Perf:** `resolvectl status` (~5 ms) is now needed by the `--long` `domain` field, so a
-    process-lifetime `OnceLock` cache shares one invocation with `--full`'s `domain-search`
-    (which already spawned it) — `--full` keeps a single spawn instead of gaining a second,
-    `--long` grows by ~5 ms (~1%). Safe because retch is a one-shot process. Measured after:
-    `--long` 486 ms, `--full` 1294 ms.
-  - `parse_resolvectl_search` is now a thin formatter over the structured parser, so both
-    fields share one code path. macOS (configd writes the primary service's domain to
-    resolv.conf) and Windows (`GetComputerNameExW`) arms are untouched. Verified live on
-    arrakis: `Domain: lan`, `Domain Search: wlp194s0: lan` / `wt0: netbird.cloud`.
-    10 new unit tests, keyed on the machine's verbatim `resolvectl` output (default-route
-    vs. VPN selection both ways, routing-only filtering, continuation lines, other wrapped
-    fields, unmanaged fallback, managed-without-domain, Global fallback, label merging,
-    routing-table selection). `retch-sysinfo` → `0.1.48`; `retch-cli` → 0.6.11. Patch bump.
-- **v0.6.10 — correct AMD GPU marketing names via libdrm `amdgpu.ids` (Linux)** (bugfix).
-  User report: the Strix Halo box (arrakis, Ryzen AI MAX+ 395) showed `GPU: Radeon 880M /
-  890M` where fastfetch showed `AMD Radeon 8060S Graphics`. Two stacked defects in
-  `crates/sysinfo/src/gpu.rs`: (1) the pci.ids lookup already returned the correct
-  "Strix Halo [Radeon Graphics / Radeon 8050S/8060S Graphics]" name, but
-  `improve_amd_gpu_name`'s first-substring-wins codename table matched the `"Strix"` entry
-  (Strix *Point* = 880M/890M) before "Strix Halo" could be distinguished — wrong family;
-  (2) pci.ids can't disambiguate same-device variants at all (`1002:1586` is an 8040S,
-  8050S, or 8060S depending on PCI *revision*). Fix mirrors fastfetch: on Linux, AMD names
-  now resolve through **libdrm's `/usr/share/libdrm/amdgpu.ids` first**, keyed by
-  (device id, revision id) read from sysfs — pure, fixture-tested
-  `lookup_amdgpu_ids_in(content, dev, rev)` parser (accepts sysfs-style `0x`-prefixed
-  lowercase ids), thin I/O wrapper, graceful fallback to the existing pci.ids + codename
-  path when the file or entry is missing. The fallback table was also fixed: "Strix Halo"
-  → "Radeon 8050S / 8060S" inserted **before** "Strix" (ordering is load-bearing and now
-  regression-tested), and "Krackan" → "Radeon 840M / 860M" added. Non-AMD, macOS, and
-  Windows paths untouched. Verified live on arrakis: `GPU: AMD Radeon 8060S Graphics
-  (32 GB)`, matching fastfetch. 4 new unit tests (revision disambiguation, sysfs id
-  normalization, junk-line tolerance, table ordering). `retch-sysinfo` → `0.1.47` (library
-  behavior change); `retch-cli` → 0.6.10. Patch bump.
-- **v0.6.9 — graphical logo placement survives scrolling (prompt at the bottom of the
-  screen)** (rendering fix). User report: under Rio, the graphical logo rendered *above*
-  the text (indented at the logo column) instead of beside it. Root cause is **not
-  Rio-specific**: v0.6.8's `render_graphical_side_by_side` did save (`ESC 7`) → draw →
-  restore (`ESC 8`), which is only correct when nothing scrolls in between. With the shell
-  prompt at/near the bottom row — the normal state of a used terminal — the image draw and
-  its trailing newline scroll the screen, and DECSC/DECRC restore a **viewport-relative**
-  position, so the restore lands one row *below* the image bottom and all text prints under
-  the logo. Reproduced byte-for-byte in both **Rio 0.4.12 and kitty** via scripted windows
-  with `ESC [6n` cursor-position reports (fresh screen: correct in both; bottom row: broken
-  in both — v0.6.8's kitty verification had only exercised the fresh-screen case). Fix:
-  pure `graphical_side_by_side_prelude(text_column_width, logo_rows)` **reserves the logo
-  rows with newlines first, then cursor-ups back to the image-top row**, so any scrolling
-  happens *before* the cursor save and nothing between save and restore can scroll;
-  choreography after the reservation is unchanged (right-shift, DECSC, draw, DECRC, CR,
-  text). Fresh-screen rendering is unaffected (reserve-then-up is a no-op without a
-  scroll). `logo_rows == 0` emits no reservation/cursor-up (`CSI 0 A` still moves one row
-  on real terminals). Verified: fixed choreography lands the cursor on the image-top row at
-  the bottom of the screen in both Rio and kitty (DSR-verified), and the patched binary's
-  PTY byte stream shows reservation → up → right → DECSC → kitty APC → DECRC → CR → text.
-  Residual (documented) risk: the draw can only scroll if the image's real row count
-  exceeds the `graphical_logo_height_lines` estimate — the same estimate `plan_layout`
-  already trusts. 3 new prelude unit tests. Also folded in the tracked packaging-refresh
-  task: in-repo reference copies `packaging/aur/PKGBUILD` and `packaging/nixpkgs/
-  package.nix` bumped 0.3.21 → 0.6.8 (released AUR sha256 + release-CI nix hashes).
-  `retch-cli` → 0.6.9; `retch-sysinfo` unchanged (`0.1.46`). Patch bump.
-- **v0.6.8 — logo sits beside the text in `--long`/`--full` again** (layout fix). The
-  side-by-side vs. stacked decision (and the text-column width) was computed from the widest
-  of *all* info lines, so one very long line — a 150+ char `Wi-Fi` line, or the `Net`/`Battery`
-  lines — inflated the text column past the terminal width and forced the logo to stack
-  *above* the text, even though those long lines sit well *below* the logo. Extracted a pure
-  `plan_layout(info_widths, logo_height, logo_width, term_width, show_logo)` that considers
-  **only the info lines that actually sit beside the logo** (the first `logo_height` rows);
-  long lines below the logo render at column 0 with the full terminal width and no longer
-  affect placement. Logo-type-agnostic: `logo_height`/`logo_width` come from the active logo,
-  so it works identically for ASCII, Chafa (both `Lines`) and the graphical image protocols
-  (Kitty/iTerm2/Sixel — `height_lines` + fixed image column). Verified in a pseudo-terminal:
-  `--full` renders the logo beside the text at 140 cols (previously stacked) and correctly
-  stacks at 90 cols. 7 new `plan_layout` unit tests. Also made CI consistent: the `build`
-  job's "Run fetcher (dry run)" step now uses `retch --full --ascii-logo` (was `--long`,
-  no logo), matching the `full-test` dry run — so both CI dry runs exercise every field and
-  the logo/layout path.
-  - **Wi-Fi split into two lines** (`src/display.rs`). The `iw` path builds a single
-    `"{adapter} [{iface}] - {SSID} ({band/rate})"` string that ran 150+ chars and wrapped into
-    the logo. New pure `split_wifi_line` splits on the `" - "` boundary → a **`Wi-Fi`** line
-    (adapter hardware) and a **`Wi-Fi Link`** line (live connection). Fallback detectors
-    (nmcli/iwgetid/macOS/Windows) have no `" - "` and render as a single `Wi-Fi` line.
-    `Wi-Fi Link` is aliased to the `wifi` field key in `should_show` (like `dns`/`memory`).
-    3 unit tests.
-  - **macOS/Apple logo is grayscale, not rainbow** (`src/logo.rs`). The ASCII Apple logo's
-    5 colour bands were the legacy rainbow (green/yellow/red/magenta/blue); replaced with a
-    256-colour grey (silver) ramp to match the modern monochrome Apple logo. (The graphical
-    `assets/logos/macos.png` is a separate asset — untouched here.)
-  - **Graphical (image) logo no longer lands mid-text** (`src/display.rs`). The side-by-side
-    path for Kitty/iTerm2/Sixel printed *all* info lines then `\x1b[{n}A`-ed back up to draw
-    the image beside the top rows — but for tall `--long`/`--full` output the block exceeds
-    the viewport, so after scrolling the cursor-up clamped at the top of the screen and the
-    image was drawn in the *middle* of the text (seen on kitty). Now the image is drawn
-    **first**, at the top of the logo column, bracketed by save/restore, then the text prints
-    top-to-bottom and scrolls naturally with the cell-anchored image. Shared
-    `render_graphical_side_by_side` helper; byte-level choreography verified in a kitty pty.
-  - `retch-cli` → 0.6.8; `retch-sysinfo` unchanged (`0.1.46`). Patch bump.
-- **v0.6.7 — CI `graphics-feature` job** (CI only; no runtime change). Adds a dedicated
-  `graphics-feature` job to `rust.yml` that runs `cargo clippy --features graphics -- -D
-  warnings` + `cargo build --features graphics` on one ubuntu runner (same non-tag triggers
-  as `build`). Closes the *CI* half of the gap v0.6.5 fixed locally: the default `build`
-  matrix never compiles the optional `graphics` feature (base64/image/icy_sixel + the
-  `src/logo.rs` inline-image paths), so a graphics-only lint or API break could pass CI
-  unseen — as the base64 0.22→0.23 bump nearly did. Mirrors the local `just check` graphics
-  step so gate and CI agree. `retch-cli` → 0.6.7; `retch-sysinfo` unchanged (`0.1.46`).
-  Patch bump.
-- **v0.6.6 — `--ascii-logo` renders even without a TTY; CI dry-run shows the logo**
-  (small behaviour fix + CI). Previously `display.rs` gated the logo purely on
-  `stdout_is_tty`, so `retch --ascii-logo` produced no logo when piped/redirected — and the
-  CI `full-test` "Run fetcher (dry run)" step (piped, non-TTY) showed no logo. Extracted a
-  pure `should_show_logo(config_show_logo, no_logo, ascii_logo, stdout_is_tty)` helper:
-  `--no-logo` still always wins; **`--ascii-logo` now forces the logo on regardless of TTY or
-  config** (ASCII is plain, pipe-safe text — mirrors how `--no-logo` is always honored);
-  auto mode is unchanged (default-on, TTY-gated). `--chafa-logo`/graphical modes are
-  deliberately *not* forced (they emit terminal-only control sequences). The CI dry-run now
-  runs `cargo run --release -- --full --ascii-logo`, so it exercises every field **and** the
-  ASCII-logo path. 4 new unit tests on the helper; verified live that piped
-  `retch --full --ascii-logo` shows the logo while piped `retch --full` still shows none.
-  `retch-cli` → 0.6.6; `retch-sysinfo` unchanged (`0.1.46`). Patch bump.
-- **v0.6.5 — lint the `graphics` feature in `just check`** (tooling; no runtime change).
-  Adds `cargo clippy --features graphics -- -D warnings` to the `check` recipe (and thus to
-  the `just pr` gate). Closes the gap found during the v0.6.4 base64 bump: `base64`/`image`/
-  `icy_sixel` (and their `src/logo.rs` call sites) are behind the optional `graphics` feature,
-  which the default `cargo clippy --workspace` never compiles — so a graphics-only API break
-  or lint could pass the gate unseen. Targets `retch-cli` (which defines the feature), not
-  `--workspace`. Note: CI's build matrix still builds default features, so this closes the
-  **local** gate gap only; a CI graphics-feature job would be a separate follow-up.
-  `retch-cli` → 0.6.5; `retch-sysinfo` unchanged (`0.1.46`). Patch bump.
-- **v0.6.4 — `base64` 0.22 → 0.23 (Dependabot #166)** (chore; no runtime behavior change).
-  A semver-breaking 0.x bump that the v0.6.3 consolidation deliberately left out because,
-  unlike the patch bumps, it could change the API. Verified compatible: `base64` is used
-  only under the optional `graphics` feature (`src/logo.rs`, two `general_purpose::STANDARD
-  .encode()` call sites for the Kitty/iTerm2 inline-image protocol), and the `Engine` encode
-  API is unchanged in 0.23 — builds and clippy (`-D warnings`) are clean **with the
-  `graphics` feature enabled**, which the default gate does not exercise. `Cargo.toml` spec
-  widened `"0.22"` → `"0.23"` (caret range wouldn't admit 0.23 otherwise). Tests green with
-  and without `graphics`; `cargo bench` unchanged (base64 is not on any benchmarked path —
-  it only runs when emitting a graphical logo). `retch-cli` → 0.6.4; `retch-sysinfo`
-  unchanged (`0.1.46`). Patch bump.
-- **v0.6.3 — dependency + CI-action bumps (consolidated Dependabot #161/#163/#164)**
-  (chore; no runtime behavior change). Rolls three open Dependabot PRs into one gated PR so
-  the release-hygiene steps Dependabot skips (retch version bump, NOTES/man regen) are done:
-  - **8 Rust crates** (`cargo-dependencies` group, #164), all patch-level, lockfile-only
-    (specs are caret ranges so `Cargo.toml` is untouched): `clap` 4.6.1→4.6.4 (pulls
-    `syn` v3 via `clap_builder`/`clap_derive`), `serde` 1.0.228→1.0.229, `toml`
-    1.1.2→1.1.3, `clap_complete_nushell` 4.6.0→4.6.1, `anyhow` 1.0.103→1.0.104, `libc`
-    0.2.186→0.2.189, `sysinfo` 0.39.5→0.39.6, `serde_json` 1.0.150→1.0.151.
-  - **2 GitHub Actions**: `actions/checkout` 7.0.0→7.0.1 (#163 — both the SHA-pinned and
-    `@v7`→`@v7.0.1` uses across benchmark/claude/claude-code-review/packaging/rust/security)
-    and `softprops/action-gh-release` 3.0.1→3.0.2 (#161, rust.yml release job).
-  - `retch-cli` → 0.6.3; `retch-sysinfo` unchanged (`0.1.46` — no source change, only its
-    transitive lockfile deps moved). Patch bump. All workspace tests/clippy/fmt green.
-- **v0.6.2 — unblock `just pr` on Linux: machine-independent display tests + man-page
-  regen** (docs/test hygiene; no runtime behavior change). Two coupled fixes, bundled
-  because the second is what actually let the gate pass on the reinstalled Fedora box:
-  - **Machine-independent xrandr display tests** (`crates/sysinfo/src/display.rs`,
-    `retch-sysinfo` → `0.1.46`). `parse_xrandr_displays` called `get_monitor_name_for_port`
-    directly, which reads live `/sys/class/drm/*/edid`, so the "parse this fixture" tests
-    substituted whatever monitor was physically attached to the test machine for the
-    fixture's connector name. They were `#[cfg(not(macos/windows))]`, so they never ran on
-    the old Windows arrakis; the first `cargo test` after the Fedora reinstall failed
-    (`DP-1` → the panel's EDID model `ATNA33AA08-0`). Same defect class as #155. Fix
-    (same pattern as #155): extracted a pure `parse_xrandr_displays_with(stdout, resolve)`
-    parameterised over the port→name resolver; the public `parse_xrandr_displays` passes
-    `get_monitor_name_for_port` (production unchanged), and the fixture tests pass `|_| None`
-    so they assert connector names. Added a regression test asserting the resolver *is*
-    honored when it returns `Some`. No runtime change.
-  - **Man page regen** (`docs/retch.1`). The committed page carried double-bold groff runs
-    (`\fB\fB…\fP\fP`) from the Windows #160 `just man` run, where the recipe's
-    `sed 's/\\fB\\fB/\\fB/g'` strip didn't take effect. `just man` on Linux produces the
-    intended single-bold output (0 double-bold sequences), matching the recipe's intent, so
-    the Linux output is canonical. **Cross-machine caveat:** a future Windows `just man` may
-    re-introduce the double-bold diff; the next Windows session should regenerate and expect
-    the single-bold form (tracked in WIP.md).
-    - **RESOLVED in v0.6.16 — and the diagnosis above is wrong on the mechanism.** The
-      caveat came true (v0.6.15 was generated on Windows and committed a double-bold page),
-      and root-causing it showed the strip was never "not taking effect on Windows": the sed
-      is a no-op on *every* platform, because GNU sed reads `\\f` as a form feed. Linux's
-      page was single-bold only because its `mandown` build does not emit the doubled runs.
-      See the v0.6.16 entry; the recipe now strips correctly and both platforms produce
-      identical bytes.
-  - Patch bump. `retch-sysinfo` → `0.1.46` (new `pub parse_xrandr_displays_with`).
-- **v0.6.1 — fix two Windows output bugs: `Camera` listing scanners, `Users` = 0**
-  (Windows cross-platform-parity series, bugfix group):
-  - **Camera**: the Windows path enumerated the `Camera` **and** `Image` (WIA) *setup*
-    classes, but scanners/printers share the Image class with some real webcams (a
-    Logitech BRIO is Image-class here), so a scanner (`EPSON ET-3850 Series`) was listed as
-    a camera. Fixed by enumerating the `KSCATEGORY_VIDEO_CAMERA` **device-interface** class
-    instead (`win_setupapi::present_interface_device_names`, new `DIGCF_DEVICEINTERFACE`
-    path) — only real cameras register that interface, so scanners are excluded while
-    Image-class webcams are kept. Also filters the synthetic "Windows Virtual Camera Device"
-    (Windows-only helper `is_windows_virtual_camera`, so Linux/macOS virtual-cam naming is
-    untouched). The now-unused `GUID_DEVCLASS_CAMERA`/`GUID_DEVCLASS_IMAGE` consts were
-    removed. Verified live on arrakis: `Camera` now lists only `Logitech BRIO` + `ASUS FHD
-    webcam` (EPSON scanner, ASUS IR camera, and the virtual camera all gone).
-  - **Users**: `sysinfo`'s `Users` on Windows are keyed by SID, so the Unix `uid >= 1000`
-    filter never matched and the count was 0. New `win_users` module counts active
-    interactive login sessions via `WTSEnumerateSessionsW` + `WTSQuerySessionInformationW`
-    (wtsapi32) — `query user`/"who" semantics; the pure `count_active_user_sessions` helper
-    is unit-tested. Verified live: `Users: 1`. Additionally, per the "if it doesn't work,
-    don't show it" request, `display.rs` now **suppresses `Users` when the count is 0**
-    (mirrors the `packages` guard), so an undetermined count shows nothing rather than a
-    misleading `0` (also hides the macOS 501-vs-1000 undercount case).
-  - Non-Windows camera/users behavior unchanged. FFI house style (hand-written
-    `extern "system"`, `// SAFETY:`, `size_of` layout guards for `WTS_SESSION_INFOW`).
-    The camera enumeration change is FFI (verified live, not unit-testable); the virtual-cam
-    filter, the WTS session-count logic, and the layout are unit-tested. `retch-sysinfo`
-    → `0.1.45`. Patch bump (bugfixes).
-- **v0.6.0 — Windows `domain` + `terminal-size` (cross-platform parity, quick wins)**:
-  two `--long` fields that previously returned `None` on Windows now have native arms,
-  the first of the Windows cross-platform-parity feature series (distinct from the earlier
-  PowerShell→FFI *perf* migration). `domain` (`crates/sysinfo/src/network.rs`) queries the
-  primary DNS suffix via `GetComputerNameExW(ComputerNameDnsDomain)` (kernel32, default-linked,
-  two-call size probe); a workgroup host reports an empty suffix → `None` (the pure
-  `clean_domain` helper maps empty→None), deliberately **not** the NetBIOS `WORKGROUP` name,
-  matching the Linux/macOS `/etc/resolv.conf` DNS-domain semantics. `terminal-size`
-  (`crates/sysinfo/src/terminal.rs`) reads the console viewport via `GetStdHandle` +
-  `GetConsoleScreenBufferInfo`, using the **window** rect (not `dwSize`, which is the huge
-  scrollback buffer); the pure `window_rect_to_size` helper does the inclusive-rect→`"CxR"`
-  arithmetic. When stdout is redirected/piped there is no console → graceful `None` → the
-  existing `$COLUMNS`/`$LINES` env fallback (same as Linux piped). Hand-written
-  `extern "system"` FFI, no binding crate (house style). Both Linux/macOS arms are
-  byte-identical (new `#[cfg(target_os = "windows")]` arms only). New tests: `clean_domain`,
-  `window_rect_to_size`, and a `CONSOLE_SCREEN_BUFFER_INFO` `size_of` layout guard (Windows).
-  Verified live on the AMD Ryzen AI MAX+ 395 box (arrakis): `domain` correctly absent
-  (primary DNS suffix genuinely empty, confirmed vs `IPGlobalProperties`/registry);
-  `terminal-size` renders `100x40` through the display path. `retch-sysinfo` → `0.1.44`.
-  Minor bump (new user-visible fields on Windows). `load`/`editor`/`terminal-font` on Windows
-  deliberately **not** implemented — no faithful native source (documented in the feature-gap
-  notes).
-- **v0.5.1 — fix nested ANSI color reset on the network line (`[Up]` bracket color)**:
-  `owo_colors` closes every foreground color with `\x1b[39m` (reset to the terminal
-  *default*, not to the enclosing color). The `Net` value embeds a green `"Up"` / red
-  `"Down"` inside a value string that `Theme::color_value` wraps in the theme value color
-  (white) and — for the **active** interface — `display.rs` additionally wraps in
-  bright-blue. That inner reset dropped everything after `[Up]` (the closing `]` and the
-  RX/TX stats) back to the terminal default: on the active interface the opening `[` was
-  blue but the `]` was not, and on every interface the RX/TX tail lost the value color.
-  Fixed with a new `colorize_nested(text, prefix)` helper (`src/theme.rs`) that re-asserts
-  the enclosing color after every interior `\x1b[39m`, so nested colored spans restore the
-  surrounding color instead of falling to default; it composes at arbitrary depth and is
-  byte-identical to the old plain wrap when there is no nested reset (so **all non-`Net`
-  fields are unchanged**). `Theme::color_value` routes through it, and the active-interface
-  highlight uses it with the bright-blue prefix (`ACTIVE_IFACE_PREFIX`). Library
-  `crates/sysinfo/src/network.rs` is untouched — the green/red `Up`/`Down` stays; only the
-  CLI wrapping layers changed. Four regression tests cover the helper, including a
-  "no default-colored tail" invariant. Verified live: the active `Net` line now renders
-  name/brackets/RX/TX uniformly bright-blue with only `Up` green; non-active lines render
-  the whole value in the value color with only `Up`/`Down` colored. CLI-only fix;
-  `retch-sysinfo` unchanged at `0.1.43`. Patch bump.
-- **v0.5.0 — three new Linux fastfetch-gap fields (`login-manager`, `brightness`,
-  `power-adapter`)**: closes three of the NOTES §6 hardware/UI gaps, each a cheap
-  single-source Linux probe in the simple sequential `detect_*` style (like `init`/`chassis`):
-  `login-manager` resolves the `display-manager.service` systemd unit symlink (GDM/SDDM/
-  LightDM/greetd/…); `brightness` reads `/sys/class/backlight/*/{brightness,max_brightness}`
-  as a percentage; `power-adapter` reads the `Mains` supply under `/sys/class/power_supply`
-  (name + connected state; wattage deliberately omitted — sysfs `Mains` rarely exposes it).
-  All three are `--long`+, Linux-only (`None` elsewhere). Each has a **pure formatting helper**
-  (`login_manager_from_unit`/`brightness_percent`/`format_power_adapter`) split out from its
-  `/sys`-reading detector and unit-tested host-independently — applying the PR #155
-  `format_cpu_cores` lesson. Verified live on corrino (greetd, 51%, `AC (connected)`).
-  `retch-sysinfo` → `0.1.43`. Minor bump (new user-visible fields).
-- **v0.4.3 — enforce LF line endings via `.gitattributes`**: added a repo-root
-  `.gitattributes` (`* text=auto eol=lf`, `*.png binary`) so every checkout uses LF on all
-  platforms. The working tree is shared across Linux/macOS/Windows via Syncthing, so a
-  Windows checkout writing CRLF would propagate those CRLFs to the Linux/macOS clones,
-  making git report the *entire* tree as modified — a phantom whole-tree diff with zero
-  content changes (observed on the corrino box: 13811 insertions / 13811 deletions, all
-  line-ending flips, `git diff --ignore-all-space` empty). Pinning `eol=lf` keeps every
-  machine byte-identical; `*.png binary` protects the 17 `assets/logos/*.png` from any
-  normalization. Same class of cross-OS Syncthing artifact as the `core.filemode false`
-  exec-bit workaround. Tooling/repo-hygiene only — no Rust source or library change;
-  `retch-sysinfo` unchanged at `0.1.42`.
-- **v0.4.2 — fix machine-dependent `format_cpu_cores` unit tests**: `format_cpu_cores` reads
-  the *host's* real CPU topology (`/sys/.../cpufreq` on Linux, `hw.perflevel*` sysctls on
-  macOS) and returns a `"NP + ME / KT"` hybrid string on Intel P/E (and Apple Silicon)
-  machines, ignoring its passed-in `(logical, physical)` counts. The four fallback unit tests
-  called it with fixed args, so they passed on non-hybrid CPUs/CI runners but failed on a
-  hybrid host — an i7-1360P produced `"8P + 8E / 16T"` where the test expected `"8C / 16T"`,
-  hard-failing `just pr` there. Extracted the pure fallback into `format_cpu_cores_plain`
-  (public behavior unchanged) and retargeted the four tests at it, so they no longer depend
-  on the runner's hardware. Internal refactor + test fix; `retch-sysinfo` → `0.1.42`.
-- **v0.4.1 — license SPDX fix + first crates.io publish of the 0.4.x line**: corrected the
-  deprecated `license = "GPL-3.0"` to `GPL-3.0-or-later` in both crate manifests (matching the
-  source SPDX headers), since per-version crates.io license metadata is permanent. This is the
-  version published to crates.io — reversing the long-standing GitHub-only hold. `retch-cli`
-  → `0.4.1`, `retch-sysinfo` → `0.1.41`. No functional code change vs v0.4.0.
-- **v0.4.0 milestone release**: minor version bump marking the completed Windows native-FFI
-  migration (the first GitHub Release since v0.3.40). Rolls up #141–#152 — every Windows
-  PowerShell-spawn probe replaced with native Win32 FFI (net, phys-disk, phys-mem, bluetooth,
-  cpu-usage, camera), the `--workspace` test/lint gate fix, FFI struct-layout assertion tests,
-  and the WIP/bench tooling fixes. Headline: retch on Windows went from slower-than-fastfetch
-  across the board to **~4.9× faster in standard mode** (273 vs 1348 ms) and parity in
-  `--long`. Version-marker bump only — no code change in this step; `retch-sysinfo` stays at
-  `0.1.40`. crates.io intentionally remains at `retch-cli 0.3.35` / `retch-sysinfo 0.1.31`.
-- **`upload_local_bench.py` cp1252 crash fixed (Windows)**: `just bench-upload` (and the
-  `post-merge` hook that runs it) crashed on Windows with `UnicodeDecodeError: 'charmap'
-  codec can't decode byte 0x9d` — the gh-pages `data.js` is UTF-8 (commit messages embed
-  `→`/em-dashes) but was read with the default cp1252. Pinned UTF-8 on all file I/O
-  (`data.js` read+write, the hyperfine JSON temp read) and on `run_capture`'s subprocess
-  decoding (`git log --format=%B`), plus a UTF-8 stdout guard — the same fix class as
-  `update_wip.py` (#142). Verified: the crash reproduces on the live `data.js` with the
-  default encoding and reads cleanly (845 KB) with UTF-8; `append_entry` and
-  `git_commit_info` run without error. This unblocks the Windows "real hardware" numbers
-  reaching the benchmark dashboard. Tooling-only; `retch-sysinfo` unchanged.
-- **FFI struct-layout assertion tests (test hardening)**: added `size_of`/`offset_of!`
-  assertions for the Windows `#[repr(C)]` FFI structs whose layout the drivers/APIs depend
-  on — disk (`StoragePropertyQuery`, `StorageDeviceDescriptor` incl. `bus_type`/vendor/product
-  offsets, `DeviceSeekPenaltyDescriptor`, `DiskGeometryEx` incl. `disk_size`), memory
-  (`MemoryStatusEx`), bluetooth (`ServiceStatus`, `DeviceSearchParams`, `SystemTime`,
-  `DeviceInfo` incl. `f_connected`/`sz_name`), cpu (`FileTime`), and `win_setupapi`
-  (`SpDevinfoData`, already present). These guard against accidental field reorder/padding
-  regressions — the class of bug the pure parse tests can't catch (cf. the #147 phys-mem
-  offset bug). Test-only; no runtime change. `retch-sysinfo` bumped to `0.1.40`.
-- **Windows `camera` perf: drop PowerShell spawn (~9× faster field) — completes the Windows
-  native-FFI migration**: `detect_camera` on Windows no longer spawns PowerShell
-  (`Get-PnpDevice -Class Camera,Image -PresentOnly`, ~1.36 s). It now enumerates the Camera
-  and Image device setup classes via a new shared SetupAPI helper
-  (`crate::win_setupapi::present_device_names`), then applies the same `is_real_camera`
-  filter, `clean_camera_name` cleanup, and de-duplication as the other platforms. The
-  `win_setupapi` module (hand-written `extern "system"` FFI, links `setupapi`) is shared with
-  `bluetooth`, which was refactored onto it (removing its private SetupAPI copy). Measured on
-  the AMD Ryzen AI MAX+ 395 box: `--fields camera` ~1359 ms → ~155 ms. Camera was the last
-  standard-mode PowerShell pole, so **standard mode dropped 1558 ms → 273 ms**. Output
-  verified against `Get-PnpDevice` (all real cameras; the IR camera is filtered as before).
-  `retch-sysinfo` bumped to `0.1.39`.
-- **Windows perf milestone**: with `net` (#144) plus phys-disk/phys-mem/bluetooth/cpu-usage/
-  camera all native, retch on Windows went from slower-than-fastfetch across the board to
-  **faster in standard mode and at parity in long** (AMD Ryzen AI MAX+ 395, vs fastfetch):
-  short 164 ms vs 74 ms; **standard 273 ms vs 1348 ms (~4.9× faster)**; long 1554 ms vs
-  1340 ms. Cumulative since the start of the migration: short 1149→164, standard 1993→273,
-  long 3462→1554 ms. Remaining Windows PowerShell spawns are `--full`-only (`gamepad`) or
-  `--long` (`dns`, `battery`) — candidates for future migration.
-- **Windows `cpu-usage` perf: drop the serial 200 ms sleep**: the CPU-usage field needs a
-  delta between two samples. sysinfo enforces a ~200 ms minimum interval, so the code slept
-  200 ms — and that sleep ran **serially, after** the concurrent probe scope, adding ~200 ms
-  to every standard/long run. On Windows it now diffs a `GetSystemTimes` (kernel32) snapshot
-  taken *before* the concurrent scope against a fresh one, so the collection window is the
-  delta — no dedicated sleep in a normal run. A ~100 ms floor is topped up only when very
-  few fields are requested (so an isolated `--fields cpu-usage` reads sensibly instead of
-  sampling noise). Linux/macOS keep the sysinfo+sleep path (sysinfo's minimum interval).
-  Measured on the AMD Ryzen AI MAX+ 395 box: standard mode 1757 ms → 1558 ms; isolated
-  `--fields cpu-usage` ~340 ms → ~253 ms. `retch-sysinfo` bumped to `0.1.38`.
-- **Windows `bluetooth` perf: drop PowerShell spawn (~12× faster field)**:
-  `detect_bluetooth` on Windows no longer spawns PowerShell (`Get-Service bthserv` + two
-  `Get-PnpDevice -Class Bluetooth` queries, ~1.8 s). Power state now comes from the
-  `bthserv` service state via the Service Control Manager (advapi32); the adapter's
-  hardware name via SetupAPI enumeration of the Bluetooth device class
-  (`SetupDiGetClassDevsW` + `SetupDiGetDeviceRegistryPropertyW`); and connected devices via
-  the classic `bthprops` Bluetooth API (`BluetoothFindFirstDevice` with `fReturnConnected`).
-  Hand-written `extern "system"` FFI (no WinRT, no binding crate; links `bthprops`/`setupapi`).
-  Measured on the AMD Ryzen AI MAX+ 395 box: `--fields bluetooth` ~1765 ms → ~150 ms;
-  `--long` mode 3462 ms → 2934 ms (bluetooth was the `--long` pole). **Behavior change:** the
-  "N connected" count now reflects *actually-connected* devices (what `fReturnConnected`
-  returns), not the old count of all paired/present PnP device nodes — the label is now
-  accurate and matches fastfetch. Adapter name is unchanged (e.g. "MediaTek Bluetooth
-  Adapter"). `retch-sysinfo` bumped to `0.1.37`.
-- **Windows `phys-mem` perf: drop PowerShell spawns (~4× faster field)**:
-  `detect_physical_memory` on Windows no longer spawns PowerShell twice
-  (`Get-CimInstance Win32_PhysicalMemory` + a `Win32_ComputerSystem` fallback, ~600 ms).
-  It now reads the raw SMBIOS table via `GetSystemFirmwareTable('RSMB')` (kernel32) and
-  parses type-17 (Memory Device) structures directly, with `GlobalMemoryStatusEx` as the
-  VM fallback — hand-written `extern "system"` FFI, no new dependency. Measured on the AMD
-  Ryzen AI MAX+ 395 box: `--fields phys-mem` ~597 ms → ~152 ms. **Display enhancement:** the
-  SMBIOS Configured Memory Speed field (offset 0x20) is now surfaced, so Windows shows the
-  actual running speed alongside the rated speed when they differ (e.g.
-  `8× 16 GB LPDDR5 8000 MT/s (rated 8533 MT/s)`) — matching the Linux dmidecode behavior;
-  the old WMI path only reported the rated speed. `retch-sysinfo` bumped to `0.1.36`.
-- **Windows `phys-disk` perf: drop PowerShell spawn (~8× faster field)**:
-  `detect_physical_disks` on Windows no longer shells out to PowerShell
-  (`Get-PhysicalDisk | ConvertTo-Csv`, ~1.7 s of interpreter startup). It now opens
-  each `\\.\PhysicalDriveN` (0..32) with zero desired access and queries native storage
-  IOCTLs via hand-written `extern "system"` FFI (matching `win_reg.rs`, no new crate
-  dependency): `IOCTL_STORAGE_QUERY_PROPERTY` (`StorageDeviceProperty` → model/bus type,
-  `StorageDeviceSeekPenaltyProperty` → HDD vs SSD) and `IOCTL_DISK_GET_DRIVE_GEOMETRY_EX`
-  → total size. Both IOCTLs are `FILE_ANY_ACCESS`, so **no elevation is required**
-  (deliberately avoids `IOCTL_DISK_GET_LENGTH_INFO`, which needs read access → admin).
-  Classification mirrors the old parser exactly (NVMe bus → "NVMe SSD"; seek penalty →
-  "HDD"; otherwise "SSD"), and the model string reproduces `Get-PhysicalDisk`'s
-  `FriendlyName` (generic "ATA" vendor id suppressed). Measured on the AMD Ryzen AI MAX+
-  395 / Windows 11 box: `--fields phys-disk` ~1684 ms → ~210 ms; output verified
-  byte-identical to `Get-PhysicalDisk`. First of the Windows PowerShell-spawn probe
-  migrations tracked in WIP.md. `retch-sysinfo` bumped to `0.1.35`.
-- **Pre-PR gate + CI now cover `retch-sysinfo` (`--workspace`)**: the root `Cargo.toml`
-  is both the `retch-cli` package and the workspace root, so a bare `cargo test` /
-  `cargo clippy` only covered `retch-cli` and silently skipped the `crates/sysinfo`
-  member — exactly where most probe code (and this phys-disk change) lives. `just check`,
-  `just test`, `just lint`, the `just pr` test/check/`cargo check` steps, and both
-  `rust.yml` CI jobs now pass `--workspace`. Target scope is unchanged (lib + bins, not
-  `--all-targets`), so test/bench code is still not linted. AGENTS.md §4.0/§4.1 updated
-  to match. This gap let the new phys-disk FFI's clippy lints go unchecked until caught
-  by hand; the gate now enforces them.
-- **`just bench-cli`/`bench-compare` fixed on Windows**: the recipes passed a POSIX-style
-  `./target/release/retch` to hyperfine, whose default shell is `cmd.exe` on Windows —
-  which can't execute that path (forward slashes, no `.exe`), so hyperfine aborted with a
-  non-zero warmup exit. Added an `os_family()`-selected `retch_release_bin` Justfile
-  variable (`target\release\retch.exe` on Windows, `./target/release/retch` elsewhere) and
-  routed all bench hyperfine calls through it. `just bench` (criterion) was never affected.
-  Justfile-only; verified both recipes now run to completion on Windows.
-- **Windows `net` perf fix (~7× faster `--short`)**: `detect_active_interface_and_local_ip`
-  no longer spawns PowerShell (`Get-NetRoute`) to find the default-route interface on
-  Windows — that single spawn cost ~977 ms and dominated every mode (`net` is in
-  short/standard/long). It now derives the active interface as the adapter whose
-  sysinfo-reported IPs include the outbound `local_ip` (already resolved via the
-  UDP-connect trick), via the new pure `match_active_interface` helper. Measured on an
-  AMD Ryzen AI MAX+ 395 / Windows 11 box: `--short` 1149 ms → 163 ms. Same
-  `active_interface` value as before (verified: matches the "Wi-Fi" adapter), so display
-  behavior is unchanged; falls back to `None` only when no adapter IP matches (offline),
-  which degrades gracefully to the existing "first Up interface" display path.
-  `retch-sysinfo` bumped to `0.1.34` for the library behavior change.
-- **`update_wip.py` substitutions bounded with `count=1`**: the v0.3.42 regex retarget
-  (below) rewrote *every* line containing the header string — including verbatim mentions
-  in WIP.md's notes/open-task prose — which clobbered task lines during the #142 merge.
-  Both `re.sub` calls now pass `count=1` so only the first (top-of-file header) occurrence
-  is rewritten. Verified against a sample with the header strings in both a header line and
-  later prose. Docs/tooling only.
-- **`update_wip.py` fixed**: the post-merge WIP updater now targets the current
-  `**main HEAD**:` header (it previously matched an obsolete `**Latest commit on main**:`
-  line and silently no-op'd, leaving the pointer stale after every merge). It also
-  reconstructs the `— **v<version>**` suffix from `Cargo.toml` and forces UTF-8 on file
-  I/O, subprocess decoding, and stdout so commit subjects containing `→`/em-dashes (common
-  in this repo) don't crash `just merge-pr` on a cp1252 Windows console. Docs/tooling only.
-- **WIP.md handling wording**: AGENTS.md §5, the `just merge-pr` recipe, and the
-  helper script now consistently say *update* (not *reset*) WIP.md, reflecting that
-  WIP.md is an ongoing rolling log whose notes/open-tasks are preserved across merges.
-  `scripts/reset_wip.py` was renamed to `scripts/update_wip.py`. Docs/tooling only —
-  no runtime behavior change.
-- **Field registry**: The displayable-field list and its output strata now live in
-  one place — `src/fields.rs` (`FIELDS` table + `Mode` enum). `main.rs` (collection)
-  and `display.rs` (display) derive their per-strata allow-lists from
-  `fields::fields_for(mode)`, and both config-generation paths (`main.rs`'s
-  full-write template and `config.rs`'s `merge_defaults`) derive the commented
-  `fields = [...]` block from `fields::config_fields_block()`. This replaced the
-  four in-code copies that previously drifted. Two guardrail tests in
-  `tests/cli_tests.rs` assert every registry key is documented in `README.md` and
-  `docs/retch.1.md` and appears in generated config, so drift now fails CI.
-- **Security**: `cargo audit` clean — `crossbeam-epoch` bumped `0.9.18 → 0.9.20`
-  (Cargo.lock only) to clear RUSTSEC-2026-0204 (invalid pointer dereference in the
-  `fmt::Pointer` impl for `Atomic`/`Shared`). Transitive dependency via `rayon`
-  (`image`/graphics feature and dev-only `criterion`); no manifest change.
-- **Pre-PR gate now runs `cargo audit`**: `just pr` step 8 installs `cargo-audit`
-  if missing, then runs it and prints any advisories. It is **advisory only** (never
-  blocks the gate) so newly-published advisories against unchanged transitive deps
-  don't hard-fail otherwise-ready work — it surfaces them locally before the separate
-  (also non-required) CI `audit` job does. The RUSTSEC-2026-0204 miss motivated this:
-  the gate never ran audit, so nothing caught it before CI.
-- **Parallelization**: Core fetching pipeline executes slow queries (GPU, packages, IPs, active interface, motherboard, BIOS, displays, audio, WiFi, Bluetooth, UI Theme/Fonts, Camera, Gamepad) concurrently using scoped threads.
-- **Architecture**: Modularized GPU detection into a dedicated `gpu` module and all display detection/EDID parsing into a dedicated `display` module.
-- **Visuals**: Added leading newline to output for better separation.
-- **Graphical Support**: Robust support for Kitty, iTerm2, and Sixel protocols.
-- **Terminal Detection**: Heuristic detection for Rio, foot, WezTerm, iTerm2, and modern VTE-based terminals (with Chafa fallback).
-- **Quality**: Strict `just check` (fmt + lint), unit test coverage (39 `retch-sysinfo` and 26 `retch-cli` passing unit tests), and automated CLI integration test suite (8 tests).
-- **CI/CD**: Multi-platform build/testing on Linux (Fedora & Ubuntu), macOS, and Windows. Releases compiled for Fedora (x86_64/ARM), macOS (ARM), and Windows (x86_64/ARM) on native host/container runner environments.
-- **Documentation**: Full internal Rustdoc coverage and updated README/man pages.
-- **Completions**: Shell completion generation for Bash, Zsh, Fish, Nushell, Elvish, and PowerShell.
-- **UX**: Improved error visibility for slow external queries (GPU detection, RPM packages, chafa).
-- **Battery**: Added time remaining, health, vendor/model, and improved formatting.
-- **Network**: Added local IPv4 and larger-scoped IPv6 address display for all "Up" interfaces with loopback and link-local filtering.
-- **WiFi & Bluetooth**: Integrated detailed connection parameters, link rates (macOS: TX only via CoreWLAN), MLO bands, adapter hardware names, power states, and connected Bluetooth device profiles.
-- **Input Hardware**: Added cross-platform camera/webcam and gamepad/controller detection.
-- **Storage**: Added `btrfs` (label + space allocation via `btrfs filesystem show`/`usage`, Linux) and `zpool` (ZFS pool allocation + health via `zpool list`, Linux/macOS) fields, both in `--long` and above.
-- **Physical Memory**: `phys-mem` now reports the module's actual running speed alongside
-  its rated speed on Linux when they differ (dmidecode's "Configured Memory Speed" vs.
-  "Speed"), e.g. `4800 MT/s (rated 6000 MT/s)`. The `Memory` display label was renamed to
-  `Memory Usage` for clarity (config/`--fields` key `memory` unaffected via an alias).
-- **Tooling**: `just open-pr` is now the only sanctioned way to open a PR — it runs
-  `just pr`'s full checklist and only calls `gh pr create` if it passes, since `gh` has
-  no hook of its own to gate it otherwise. `scripts/hooks/pre-push` remains the
-  agent-agnostic enforcement layer for `git push` (real git hook, fires for any tool or
-  human, not just one AI agent's config).
+- **v0.18.1 — LF is the base model for every non-binary file.** `WIP.md` had been deliberately
+  CRLF; a byte-count survey of retch, `etr` and `rusticprofile` found it was the only CRLF file
+  in any of them, so it was converted. `just wip-check --check-endings` now guards it, because
+  `WIP.md` is gitignored and therefore invisible to both `.gitattributes` and `text_check.py`.
+  `update_wip.py` needed no change — it already follows the file's own terminator.
+- **v0.18.0 — `--color auto|always|never`, and `NO_COLOR` is honoured.** The user-visible
+  change is that **piped output is now plain by default**; `less -R` users need
+  `--color always`. Colour is removed by stripping SGR at render time rather than teaching each
+  source to stay quiet, because one source lives in the other crate and because `print_line`
+  right-aligns the *coloured* label. Without colour the ASCII logo is stripped and Chafa falls
+  back to it; Kitty/iTerm2/Sixel images are kept — a picture is not text colour.
+- **Open follow-up from v0.18.0**: a `color` key in `config.toml` (no-color.org permits config
+  to override `NO_COLOR`) and `TERM=dumb` handling.
 
 ---
 
 ## 4. Output Mode Strata
 
-retch has four output modes with increasing verbosity and acceptable runtime. Each mode is a strict superset of the one above it.
+retch has four output modes with increasing verbosity and acceptable runtime. Each mode is a
+strict superset of the one above it.
 
 | Mode | Flag | Typical runtime | Purpose |
 |---|---|---|---|
@@ -3776,7 +185,9 @@ Fields: `os`, `kernel`, `host`, `cpu`, `gpu`, `memory`, `disk`, `net`
 
 ### Standard (no flag)
 Full system overview suitable for daily use. No slow fields, no sensors, no cosmetic fields.
-Fields: `os`, `kernel`, `host`, `cpu`, `cpu-cache`, `cpu-usage`, `motherboard`, `gpu`, `display`, `audio`, `camera`, `memory`, `phys-mem`, `swap`, `load`, `disk`, `phys-disk`, `net`, `uptime`
+Fields: `os`, `kernel`, `host`, `cpu`, `cpu-cache`, `cpu-usage`, `motherboard`, `gpu`,
+`display`, `audio`, `camera`, `memory`, `phys-mem`, `swap`, `load`, `disk`, `phys-disk`, `net`,
+`uptime`
 - BIOS moves to `--long` (firmware detail, not needed at a glance)
 - Gamepad moves to `--full` (cosmetic/slow)
 
@@ -3784,351 +195,152 @@ Fields: `os`, `kernel`, `host`, `cpu`, `cpu-cache`, `cpu-usage`, `motherboard`, 
 Standard plus diagnostics. Aimed at understanding system health and network configuration.
 Adds over standard:
 - `bios` — firmware vendor, version, date
-- `temp` (consolidated) — **one representative reading per physical unit**: CPU, GPU, SSD/NVMe, WiFi adapter, System/Motherboard. Rule: highest sensor within each category (worst-case thermal indicator). All other sensor readings are deferred to `--full`.
-- `domain` — current DNS domain name. Linux: the default-route interface's own domain (via
-  `resolvectl`), so a split-tunnel VPN's domain is not reported unless the VPN *is* the
-  default route; falls back to `/etc/resolv.conf`'s `domain`/first `search` entry
-- `public-ip`, `wifi`, `bluetooth`, `battery`, `power-adapter`, `shell`, `editor`, `terminal`, `terminal-size`, `desktop`, `wm`, `login-manager`, `brightness`, `dns`, `users`, `packages`, `locale`, `init`, `chassis`, `bootmgr`
-- `brightness` (Linux), `power-adapter` (Linux), `login-manager` (Linux) — new v0.5.0 fastfetch-gap fields
-- `keyboard` (Linux), `mouse` (Linux), `tpm` (Linux) — new v0.7.0 fastfetch-gap fields
-- `player`, `media` — new v0.8.0 fastfetch-gap fields (100% native FFI / socket communication, zero subprocess forking)
-- `disk-io`, `net-io` — new v0.10.0 fastfetch-gap fields (Linux; Windows added in v0.11.0).
-  Throughput rates measured across the run's own collection window rather than a dedicated
-  sleep, so they add no wall-clock in `--long`/`--full`; see the v0.10.0 and v0.11.0
-  release entries
+- `temp` (consolidated) — **one representative reading per physical unit**: CPU, GPU, SSD/NVMe,
+  WiFi adapter, System/Motherboard. Rule: highest sensor within each category (worst-case
+  thermal indicator). All other sensor readings are deferred to `--full`.
+- `domain` — current DNS domain. Reported for the **default-route interface** on every
+  platform, so a split-tunnel VPN's domain is not reported unless the VPN *is* the default
+  route (Linux via `resolvectl`, macOS via SystemConfiguration's primary service, Windows via
+  `GetAdaptersAddresses`).
+- `public-ip`, `wifi`, `bluetooth`, `battery`, `power-adapter`, `shell`, `editor`, `terminal`,
+  `terminal-size`, `desktop`, `wm`, `login-manager`, `brightness`, `dns`, `users`, `packages`,
+  `locale`, `init`, `chassis`, `bootmgr`, `keyboard`, `mouse`, `tpm`, `player`, `media`
+- `disk-io`, `net-io` — throughput rates measured across the run's **own collection window**
+  rather than a dedicated sleep, so they add no wall-clock. fastfetch sleeps ~1 s for the same
+  figures. Consequence, stated rather than hidden: the number is the average over the run
+  (~0.4 s in `--long`, seconds in `--full`), not an instantaneous rate. Documented in the man
+  page's I/O RATES section.
 
 ### `--full`
-Long plus everything slow, verbose, or cosmetic. Suitable for reporting, screenshots, or deep diagnostics. Users should expect multi-second runtimes.
+Long plus everything slow, verbose, or cosmetic. Users should expect multi-second runtimes.
 Adds over long:
-- `temp` (all sensors) — replaces the consolidated view with every sensor reading
-- `domain-search` — DNS search domain lists, one entry per scope, rendered `scope: a, b`. The
-  scope is the interface name when per-interface data exists (`resolvectl status`), or
-  `global` for the `/etc/resolv.conf` `search` fallback, which has no interface attribution
-- Cosmetic fields: `theme`, `icons`, `cursor` (font and terminal-font remain in `--long`)
-- `weather` — current conditions via Open-Meteo (~4s network timeout)
-- FUSE mounts — disk detection re-enables `statvfs` for `fuse.*` entries (skipped in all other modes to avoid 600ms+ hangs from cryfs/EncFS vaults)
-- `phys-disk`, `phys-mem` — may be promoted here if runtime warrants it
+- `temp` (all sensors) — replaces the consolidated view
+- `domain-search` — one entry per scope, rendered `scope: a, b`. The scope is the interface name
+  when per-interface data exists, or `global` for the `/etc/resolv.conf` `search` fallback,
+  which carries no interface attribution. Deliberately **not** narrowed to the primary service
+  on macOS: the machine really does search every listed domain.
+- Cosmetic fields: `theme`, `icons`, `cursor` (`font` and `terminal-font` remain in `--long`)
+- `vulkan`, `opengl`, `opencl` — collected together on purpose; they dlopen loaders into the
+  same driver stack, so splitting them across threads buys contention, not overlap
+- `gamepad`, `weather` (Open-Meteo, ~4 s network timeout)
+- FUSE mounts — disk detection re-enables `statvfs` for `fuse.*` entries (skipped elsewhere to
+  avoid 600ms+ hangs from cryfs/EncFS vaults)
 
 ### Design notes
-- **Temperature consolidation logic** for `--long`: classify sensors by name patterns (e.g. `k10temp`/`coretemp` → CPU, `amdgpu`/`nvidia` → GPU, `nvme` → SSD, `ath`/`iwl` → WiFi, `acpitz`/`thinkpad` → System). Within each category, report the highest reading.
-- **`--full` as a superset**: every field visible in `--long` also appears in `--full`; nothing is hidden or replaced except the temp view (consolidated → all sensors).
-- **Breaking change note**: cosmetic fields (`theme`, `icons`, `cursor`) and `gamepad` have moved from `--long` to `--full`. `font` and `terminal-font` remain in `--long`. This is intentional — theme/icon/cursor detection involves sqlite/gsettings queries and is cosmetic, not diagnostic.
-- **Alternative considered**: `--verbose` instead of `--full`. Rejected — `--full` is more intuitive as the natural escalation from `--long`, and `--verbose` implies logging noise rather than field breadth.
+- **Temperature consolidation** for `--long`: classify sensors by name pattern
+  (`k10temp`/`coretemp` → CPU, `amdgpu`/`nvidia` → GPU, `nvme` → SSD, `ath`/`iwl` → WiFi,
+  `acpitz`/`thinkpad` → System), then report the highest within each category.
+- **`--full` as a superset**: everything in `--long` also appears in `--full`; nothing is hidden
+  or replaced except the temp view.
+- **Alternative considered**: `--verbose` instead of `--full`. Rejected — `--full` reads as the
+  natural escalation from `--long`, while `--verbose` implies logging noise rather than breadth.
+- **Known wart, not fixed**: `--long`/`--full` override `--fields` (`retch --long --fields cpu`
+  prints all lines). Pre-existing and out of scope when found; worth a decision, since
+  `--fields` reads as a filter.
 
 ---
 
 ## 5. Future Work / Backlog
-- **"Real hardware" benchmark section on the wiki**: The wiki benchmark pages
-  currently reflect CI-runner / local numbers, which are noisy and not
-  representative (e.g. GitHub-hosted runners, or local runs skewed by FUSE
-  statvfs delays — see §9 session notes). Add a dedicated "real hardware"
-  benchmarks section documenting retch-vs-fastfetch timings measured on actual
-  physical machines (with CPU/OS/spec context per run), so the published numbers
-  are meaningful rather than runner-dependent.
-- **Revisit the whole release/publish flow: one tag should do everything.** Recorded
-  2026-08-31 after the v0.9.7 release, which touched four channels and needed a different
-  trigger and a different manual step for each. **The sequencing is the complaint, and it is
-  structural rather than a matter of adding automation on top.**
-  - **THE STRUCTURAL HALF IS DONE (v0.17.5), and it was exactly where this entry said it
-    was:** *"the root cause is that two packaging targets pin a checksum of an artifact that
-    does not exist until the tag is pushed"* and *"changing the pinning is the actual
-    work"*. All three hash- or version-pinned targets are now templates rendered at publish
-    time by `scripts/render_packaging.py`, so **a release requires no packaging commit and
-    no version bump**, and `main` sits at the released version between releases. Options 1
-    and 2 below are superseded by that; what remains of option 1 is only the CI automation,
-    described at the bottom of this entry. The rest of the entry is kept because its
-    diagnosis is what the fix was built from.
-  - How it worked until v0.17.5:
-  - `git push origin vX` -> CI builds binaries and publishes the GitHub Release. Automatic.
-  - crates.io -> a human runs `just publish` afterwards.
-  - AUR -> `just aur-bump X` **cannot run until the tag tarball exists**, because the PKGBUILD
-    carries its sha256; then the result must be committed and `just aur-publish` run.
-  - COPR -> `packaging/copr/retch.spec` pins `Version:` and the same tarball checksum, so it
-    too can only be bumped after the tag, and only then can a rebuild be triggered.
-  - ~~**The bump for the next dev cycle then collides with the gate**: once `Cargo.toml`'s
-    version equals the last tag, `just pr` hard-fails step 2, which is why both packaging
-    bumps have to go **direct to main** with no PR.~~ **RESOLVED in v0.9.12, and the premise
-    was simply wrong.** `just pr`'s step 2 is
-    `[ "$LAST_TAG" = "v$CARGO_VER" ] && fail` - an **equality test against the last tag**, not
-    "did this PR bump anything". So the packaging bump always could have been a normal PR, as
-    long as it also opened the next version - which every PR is supposed to do anyway (§4.7).
-    Five commits went straight to `main` on a belief nobody had tested (`9476836`, `f75989c`,
-    `d60658c`, `de1d73f`, `468efc7`). `just post-release VERSION` now prepares exactly that
-    PR, and it was proven by rewinding a clone to `8fed7c2` - the real post-tag state where
-    the process claimed a PR was impossible - running the recipe, and watching all eight
-    automated gate steps pass. **Nothing in the gate needed changing; option 3 below was
-    solving a problem that did not exist.**
-  - **The root cause is that two packaging targets pin a checksum of an artifact that does not
-    exist until the tag is pushed.** Everything downstream follows from that. Options worth
-    weighing when this is picked up, none free:
-    1. **Compute the checksums in CI at release time** and have the release workflow commit the
-       packaging bumps itself, then publish to crates.io, push to the AUR and trigger COPR.
-       Keeps the pinning; needs a crates.io token, an AUR SSH key and a COPR token as secrets,
-       and a bot commit to `main`.
-    2. **Stop pinning tarballs.** Build COPR from the checkout (a `.copr/Makefile` deriving the
-       version from `Cargo.toml`), which removes the post-tag commit entirely for that channel.
-       The AUR cannot follow - `makepkg` genuinely requires real `sha256sums` - so this only
-       half-solves it and splits the two targets' models apart.
-    3. ~~**Move the version bump out of the per-PR gate**~~ - **unnecessary; see above.** The
-       gate never forced the packaging commit out of the PR flow, so this option was
-       addressing a symptom that was itself a misreading. Recorded rather than deleted,
-       because "the obvious fix was aimed at the wrong thing" is the useful part.
-  - **Do not start this by adding more automation to the current shape.** Each channel's
-    trigger is currently correct *given* the pinning - see the comment block in
-    `.github/workflows/copr.yml` for why a release-triggered COPR rebuild builds the previous
-    version. Changing the pinning is the actual work; the triggers fall out of it.
-    **This is the instruction v0.17.5 followed, and the parenthetical turned out to be
-    literally true**: once the pinning went, the COPR trigger became a tag trigger, and the
-    comment block that explained why a tag was wrong is now the record of why it is right.
-  - **Where this stands after v0.17.5.** The *gating* half closed in v0.9.12 (the packaging
-    commit became a reviewed PR). The *pinning* half is now closed too, and it took the
-    packaging commit with it — so the version bump a release used to force is gone, `main`
-    no longer names an unreleased version between releases, and three anti-drift guards
-    stopped comparing four recordings of one fact because there is only one recording left,
-    made at publish time.
-  - **What is left is only CI automation, and it needs credentials this repo does not
-    hold.** A tag still does not, by itself, publish to crates.io or push to the AUR and the
-    tap. That is now a genuine port rather than a redesign: the release workflow would run
-    the same two recipes a human runs, with nothing to commit afterwards. It needs three
-    secrets — a crates.io token, an AUR SSH key, and a tap push token — and it trades a
-    human's confirmation before each irreversible public act for automation, which is a
-    decision rather than a free win. **The COPR half of that automation is already done**:
-    `copr.yml` fires on the tag, so one channel out of four is fully hands-off.
-- **Windows `--long` is slower than fastfetch, and §3 calls that blocking.** Measured
-  2026-09-09 on arrakis: `retch --long` **3076 ms** vs `fastfetch -c all` **1467 ms**. The
-  standard mode is fine (327 vs 1361 ms, 4.2x faster); it is `--long` and `--short` that
-  are behind.
-  - **Per-field sweep (hyperfine, all 56 `--long` fields, `--fields {f}`)**: the process
-    startup floor is **~322 ms** and **41 of 56 fields sit within 20 ms of it**. The
-    outliers were `dns` 3409 ms, `battery` 2531 ms, `shell` 1284 ms, `public-ip` 518 ms.
-  - **`dns` is fixed in v0.11.2** (3409 -> 385 ms). **`battery` is the next target**: it
-    spawns `powershell -Command "Get-CimInstance Win32_Battery …"`. The native route is the
-    battery IOCTL interface (`GUID_DEVCLASS_BATTERY` via SetupAPI +
-    `IOCTL_BATTERY_QUERY_INFORMATION`) - more work than `dns` was, because
-    `GetSystemPowerStatus` alone does not give design/full-charge capacity.
-  - ~~**Do not chase `shell`**: 1284 ms in isolation but **19 ms** when removed from the full
-    set, i.e. it overlaps and is not on the critical path.~~ **WRONG, corrected in
-    v0.17.6.** `shell` never overlapped anything: it ran *serially* after the concurrent
-    scope, and absolute elapsed-time marks put it at ~570 ms on the critical path of every
-    `--long` and `--full` run. The 19 ms came from the `--fields` removal harness, which the
-    caveat below already says does not model `--long`. Kept rather than deleted, because the
-    isolated sweep that "points straight at it" was right, and the removal test that
-    overruled it was the measurement answering a different question.
-  - **`-NoProfile` is not a shortcut for any of these** - measured, see the v0.11.2 entry.
-  - **A caveat on method**: `--fields <all 56 long fields>` measures 6540 ms while real
-    `--long` measures 3352 ms, and removing `dns` moved the former by 3650 ms but the
-    latter by only 276 ms. **The `--fields` harness does not model `--long`'s concurrency**;
-    confirm any predicted win against the real mode before believing it.
-- ~~**`just install` requires `mandown` because `install-man` depends on `man`.**~~ **Fixed
-  in template v6 (v0.17.18)** by dropping the dependency. The reason this entry gave for it
-  was wrong: it said the dependency "exists for `etr`, whose pages are built into an ignored
-  directory" — true until etr's #72 (2026-09-13), stale when written. All three repos commit
-  their pages, so no per-repo switch was needed; the dependency could simply go.
-- ~~**retch ignores `NO_COLOR`, and has no `--no-color` flag.**~~ **Done in v0.18.0** as
-  `--color auto|always|never`, with `NO_COLOR` honoured under `auto`. Noticed while writing the
-  Homebrew formula's test block (v0.17.2), which had to strip ANSI itself. `NO_COLOR` is a
-  widely honoured convention and retch emits colour even when stdout is not a terminal —
-  note that is deliberate for the *logo* (v0.6.6 forces `--ascii-logo` on when piped) but
-  the field colouring is a separate question. A `--no-color` flag, or honouring `NO_COLOR`,
-  would make retch easier to consume from scripts and test harnesses. Not urgent; recorded
-  rather than dropped.
-- **Package repository submissions**: Submit retch to AUR (Arch User Repository) and nixpkgs so it appears in the [Repology](https://repology.org/project/retch/versions) packaging status widget. The Nix flake (contributed by @quixaq) is a useful starting point for the nixpkgs submission.
-- **macOS code signing & notarization**: Sign and notarize the macOS release binary so users don't need to run `xattr -dr com.apple.quarantine` after downloading. Requires Apple Developer Program membership and CI secrets.
-- ~~**Homebrew tap / formula**~~ — done in v0.17.2 as `packaging/homebrew/retch.rb` plus
-  `just brew-bump`/`brew-check`/`brew-publish`, a `brew` CI job and a drift guard. The tap
-  is `l1a/homebrew-retch`. Submitting to **homebrew-core** remains open and is a separate
-  decision — its notability bar is comparable to the tldr-pages submission that was declined.
-- **FUSE mounts in `--full`**: v0.3.26 skips all `fuse.*` mounts to avoid 600ms+ hangs from cryfs/EncFS vaults. The `--full` mode redesign (§4) resolves this by re-enabling `statvfs` for fuse.* entries in `--full` only — no separate config key or flag needed.
-- ~~**Field wiring de-duplication (tech debt)**~~ — resolved in v0.3.39. The field
-  list is now a single `FIELDS` table in `src/fields.rs`. The four *in-code* copies
-  (`main.rs` collection allow-lists + config template, `display.rs` display
-  allow-lists, `config.rs`'s `DEFAULT_FIELDS_BLOCK`) all derive from it via
-  `fields::fields_for(mode)` / `fields::config_fields_block()`. The two *doc* copies
-  (`docs/retch.1.md`, `README.md`) can't be generated from Rust, so a guardrail test
-  (`test_docs_cover_all_registry_fields`) fails CI if either omits a registry key —
-  which caught real pre-existing drift when added (the man page was missing
-  `cpu-cache`/`cpu-usage`/`public-ip`; README was missing `gamepad`/`public-ip`).
-  *Not folded in (deliberate):* the per-collector `should_collect("…")` calls in
-  `crates/sysinfo/src/fetch.rs` remain decentralized — each collector checks its own
-  key, matching is spelling-tolerant, and it lives across the crate boundary, so the
-  drift risk there is low and unifying it would widen the blast radius.
+
+Live items only. Completed items are removed rather than struck through — `git log` has them.
+
+- **Review the Continuous Benchmarking CI workflow** (`.github/workflows/benchmark.yml`).
+  Two questions, both raised 2026-09-21 and neither investigated: is each runner rebuilding
+  retch from scratch when a build could be shared or cached, and are all the per-OS builds
+  needed? And can the per-machine jobs run in **parallel** rather than serially — check for
+  `needs:` chains, `max-parallel` or a `concurrency` group. Parallel jobs pushing to the
+  gh-pages branch would race, so the shape may be parallel benchmark jobs feeding one publish
+  job.
+- **Make the benchmark charts' x axis meaningful.** The dashboard (gh-pages `data.js`, linked
+  from the wiki) labels each point by commit hash; show the version where one exists (the tag,
+  or that commit's `Cargo.toml`), falling back to the short hash. Two producers must agree —
+  CI's benchmark action and `scripts/upload_local_bench.py` — so establish how the dashboard is
+  generated before changing either.
+- **`scripts/text_check.py` is vendored to `etr` and `rusticprofile`, all three bodies differ,
+  and all three still declare `TEMPLATE_VERSION = 1`.** Found during the v0.18.1 line-ending
+  survey. sha256: retch `a3e84cd6`, etr `e1e7bd9a`, rusticprofile `e3423b71`.
+  - **The actionable half: `etr`'s copy still carries the v0.17.10 overstatement** —
+    "`git status` CANNOT report it" — which retch corrected in v0.17.12 and rusticprofile
+    already has. Its docstring *and* its failure message tell a reader something false about
+    how to find CRLF drift. One small PR in `etr`.
+  - **The half that needs a decision first**: part of the divergence is *legitimate*, because
+    each copy cites its own repo's defects as the evidence for why the guard exists. A file
+    meant to differ per repo should not carry a shared `TEMPLATE_VERSION` at all — a marker
+    that cannot distinguish two bodies is not a marker. Settle which it is (shared logic with a
+    per-repo evidence block, or genuinely byte-identical with the evidence moved into each
+    NOTES.md) **before** bumping anything, or the bump re-declares an identity that is still
+    untrue. Do not start by reconciling toward the majority; count the property at stake.
+- **CI automation of the publish steps.** A tag still does not, by itself, publish to crates.io
+  or push to the AUR and the tap. Since v0.17.5 this is a genuine port rather than a redesign —
+  the workflow would run the same recipes a human runs, with nothing to commit afterwards — but
+  it needs three secrets (crates.io token, AUR SSH key, tap push token) and it trades away a
+  human's confirmation before each irreversible public act. That is a decision, not a free win.
+  The COPR quarter is already done: `copr.yml` fires on the tag.
+- **`packaging/nixpkgs/package.nix` is the one hand-pinned target**, still at 0.6.12 with
+  `cargoHash = lib.fakeHash`, its CI job `if: false`, and no host in the fleet has Nix. This
+  has been carried for well over a dozen PRs. **It needs a decision — track it properly or stop
+  tracking it — not another carry-forward.**
+- **Investigate a single source for the long-form text each channel shows.** Only GitHub and
+  crates.io render a full README, and they already share the root `README.md`. The rest show a
+  one-liner that `packaging/metadata.toml` centralises, or the COPR project page
+  (`packaging/copr/project-description.md`). Options: generate the COPR description from a
+  marked section of `README.md` so it cannot drift; make repo-relative links absolute in that
+  section, since the COPR page will not resolve them. Keep `crates/sysinfo/README.md` separate
+  on purpose — it documents the library API — but consider
+  `#![doc = include_str!("../README.md")]` so docs.rs and that README are one text.
+  **Settle first**: whether crates.io resolves repo-relative links, checked on the live page.
+- **"Real hardware" benchmark section on the wiki.** The published numbers are CI-runner or
+  local figures, which are noisy and unrepresentative. Document retch-vs-fastfetch timings from
+  actual physical machines with CPU/OS context per run.
+- **homebrew-core submission** remains open and is a separate decision from the tap (which
+  shipped in v0.17.2). Its notability bar is comparable to the tldr-pages submission that was
+  declined.
+- **macOS code signing & notarization** so users need not `xattr -dr com.apple.quarantine`.
+  Requires Apple Developer Program membership and CI secrets.
+- **nixpkgs submission** so retch appears in the
+  [Repology](https://repology.org/project/retch/versions) widget. The Nix flake (contributed by
+  @quixaq) is a starting point.
 
 ---
 
 ## 6. Feature Gap with Fastfetch
 
-Below is a comparison of information gathered by `fastfetch` that is currently missing in `retch`.
+**Every field-level gap is closed, on all three platforms.** Hardware (`brightness`,
+`keyboard`, `mouse`, `power-adapter`, `tpm`), GPU APIs (`vulkan`, `opengl`, `opencl`), storage
+(`btrfs`, `zpool`, `disk-io`), network (`net-io`), desktop/UI (`wm-theme`, `login-manager`,
+`wallpaper`, `terminal-theme`) and media (`player`, `media`) all report.
 
-### Hardware
-- ~~**Brightness**: Monitor brightness level~~ — added in v0.5.0 (`brightness` field, Linux; `/sys/class/backlight`) and macOS in v0.17.0 (IOKit `AppleARMBacklight`). **fastfetch reports no Brightness on macOS**, so retch is ahead of it there
-- ~~**Keyboard**: Connected keyboards~~ — added in v0.7.0 (`keyboard` field, Linux;
-  `/proc/bus/input/devices`) and macOS in v0.16.0 (IOKit `IOHIDDevice`, usage page 1 /
-  usage 6). Devices whose class the kernel cannot express — merged HID++
-  receiver endpoints — are deliberately listed in neither `keyboard` nor `mouse`; see the
-  v0.7.0 release entry for the evidence
-- ~~**Mouse**: Connected mice~~ — added in v0.7.0 (`mouse` field, Linux; same source, covers
-  mice, touchpads and tablets, de-duplicated by name) and macOS in v0.16.0 (usage page 1 /
-  usage 2). On macOS the merged-receiver ambiguity does not arise — one interface per role
-- ~~**PowerAdapter**: Charger name and wattage~~ — added in v0.5.0 (`power-adapter` field, Linux; `/sys/class/power_supply` `Mains`. Name + connection state) and macOS in v0.17.0 (`IOPSCopyExternalPowerAdapterDetails`). **Wattage is now reported on macOS**, which exposes it but no adapter name — the reverse of Linux
-- ~~**TPM**: Trusted Platform Module device info~~ — added in v0.7.0 (`tpm` field, Linux;
-  `/sys/class/tpm` `tpm_version_major`. Specification version only — `2.0`/`1.2` — not the
-  manufacturer or PCR state)
+Where retch deliberately reports **more** than fastfetch: `opencl` (fastfetch prints a platform
+version even when the platform exposes no device), Windows Bluetooth (fastfetch misses LE
+peripherals), macOS `keyboard` (finds a connected Bluetooth keyboard fastfetch misses), macOS
+`brightness` and Windows `disk-io` (fastfetch reports neither).
 
-### GPU / Graphics
-- ~~**OpenCL / OpenGL / Vulkan**: Highest supported API versions~~ — added in v0.11.6
-  (`vulkan`, `opengl`, `opencl` fields, Linux; `dlopen` of each loader, `--full`), extended
-  to Windows in v0.12.0 (`vulkan`, `opencl`) and v0.13.0 (`opengl`, via WGL), and to macOS
-  in v0.15.0 (`opengl` via CGL; `vulkan`/`opencl` the same code as elsewhere) — so the
-  whole group now reports on all three platforms. On macOS `vulkan` is normally absent and
-  correctly so: the platform ships no Vulkan, only MoltenVK if a user installs it. This was
-  the **last remaining user-visible fastfetch gap**; every group in §6 is now closed.
-  retch reports strictly more than fastfetch on `opencl`: fastfetch prints the platform
-  version even when the platform exposes **no device**, which is the normal state for Mesa's
-  rusticl until `RUSTICL_ENABLE` is set.
+Where retch deliberately reports **less**: any case where the honest answer is unknown. See
+§7.2's under-reporting rule.
 
-### Storage & Filesystems
-- ~~**Btrfs**: Btrfs volume info~~ — added in v0.3.37 (`btrfs` field)
-- ~~**Zpool**: ZFS storage pool info~~ — added in v0.3.37 (`zpool` field)
-- ~~**DiskIO**: Disk I/O throughput~~ — added in v0.10.0 (`disk-io` field, Linux;
-  `/proc/diskstats`, rate averaged over the run's own collection window), extended to
-  Windows in v0.11.0 (`IOCTL_DISK_PERFORMANCE`, no admin) and to macOS in v0.14.0 (IOKit
-  `IOBlockStorageDriver` `Statistics`, the source `iostat` reads). **fastfetch reports no
-  DiskIO on Windows at all**, so retch is ahead of it on this field there. All three
-  platforms now report.
-
-### Network
-- ~~**NetIO**: Network I/O throughput~~ — added in v0.10.0 (`net-io` field, Linux;
-  `/sys/class/net/*/statistics`, same sampling window as `disk-io`), extended to Windows
-  in v0.11.0 (`GetIfTable2`, NDIS filter instances excluded so each adapter is counted
-  once) and to macOS in v0.14.0 (`sysctl(NET_RT_IFLIST2)`, **not** `getifaddrs`, whose
-  32-bit counters wrap every 4 GiB). fastfetch reports NetIO on Windows and pays ~0.59 s
-  for it there. All three platforms now report.
-
-### Desktop Environment & UI
-- ~~**WMTheme**: Window manager theme~~ — added in v0.9.0 (`wm-theme` field; KWin, Xfwm4, Openbox, Fluxbox, IceWM, GTK/Mutter, Aqua, Windows themes)
-- ~~**LM**: Login manager (GDM, SDDM, etc.)~~ — added in v0.5.0 (`login-manager` field, Linux; `display-manager.service` systemd unit) and macOS in v0.17.0 (`loginwindow` plus its version)
-- ~~**Wallpaper**: Current wallpaper file path~~ — added in v0.9.0 (`wallpaper` field; GNOME/Cinnamon/Budgie/MATE, KDE Plasma, XFCE, Hyprland, Sway, Feh, Nitrogen, macOS AppKit FFI, Windows registry FFI)
-- ~~**TerminalTheme**: Terminal foreground/background colors and themes~~ — added in v0.9.0 (`terminal-theme` field; Kitty, Alacritty, WezTerm, Foot, Windows Terminal, Konsole, Ptyxis, iTerm2, Apple Terminal)
-
-### Media
-- ~~**Media / Player**: Currently playing song and active music player~~ — added in v0.8.0 (`player` and `media` fields; 100% native WinRT COM FFI on Windows, direct Unix domain socket binary D-Bus on Linux, native Objective-C runtime on macOS; 0 subprocess forking)
+Remaining platform-specific defects are in §6a and §6c.
 
 ---
 
-## 6a. Windows cross-platform parity — known issues / backlog
+## 6a. Windows cross-platform parity — open items
 
-Existing `retch` fields that behave worse (or not at all) on Windows than on Linux/macOS.
-Distinct from the §6 fastfetch gap and from the completed PowerShell→FFI *perf* migration.
-Tracked as the "Windows parity" series; reported by the maintainer 2026-07-13 (arrakis,
-Windows 11, Windows Terminal).
-
-**Fixed**
-- ~~**Camera lists scanners as cameras**~~ — fixed v0.6.1 (enumerate the
-  `KSCATEGORY_VIDEO_CAMERA` interface, not the Image setup class; also drops the synthetic
-  virtual camera).
-- ~~**`Domain` & `Domain Search` on Windows**~~ — fixed v0.6.14 (uses
-  `GetAdaptersAddresses` connection-specific `DnsSuffix` for the default-route adapter, plus
-  registry `SearchList` and per-adapter suffixes for `Domain Search`, matching Linux/macOS
-  semantics).
-- ~~**`Display` shows the GPU name + resolution, not the monitor model**~~ — fixed v0.6.15
-  (enumerates attached monitor devices via `EnumDisplayDevicesW`, queries `EDID` from
-  `HKLM\SYSTEM\CurrentControlSet\Enum\DISPLAY\...` registry keys, and parses monitor brand/model
-  names using `parse_monitor_name_from_edid`).
-
-- ~~**Bluetooth shows only 1 of 2 connected devices**~~ — fixed v0.10.2. Not the
-  enumeration loop, which was correct: `bthprops` is BR/EDR-only and never returned an LE
-  peripheral at all, so every LE mouse, keyboard and headset was invisible to the count.
-  Now enumerates Bluetooth device nodes via SetupAPI and reads `System.Devices.Connected`,
-  covering both transports, with dual-mode devices de-duplicated by address.
-
-- ~~**`disk-io` and `net-io` are Linux-only**~~ — fixed v0.11.0. Both now read native
-  Windows counters (`IOCTL_DISK_PERFORMANCE`, `GetIfTable2`) with no subprocess and no
-  elevation. The non-obvious half was that `GetIfTable2` returns a row per NDIS filter
-  instance carrying the adapter's counters again, so an adapter is reported once only by
-  excluding `FilterInterface` rows — and *not* by keeping `HardwareInterface` rows, which
-  would drop tunnel interfaces like WireGuard's.
-
-- ~~**The `net` field lists NDIS filter pseudo-interfaces on Windows**~~ — fixed v0.11.1,
-  and **the v0.11.0 entry describing it here was wrong on the cause**, which is worth
-  keeping rather than quietly overwriting. It attributed the duplicate line solely to
-  sysinfo's interface list. That was half of it: the second line existed because sysinfo
-  lists the filter instance, but *both* lines rendered as the active interface because
-  `display.rs` matched the active interface with `line.contains(active)` — a substring test
-  over the rendered string, which is a **cross-platform** defect (`eth0` matches
-  `eth0.100`) and was not mentioned at all. A third defect in the same block, a fallback
-  keyed on a literal `[Up]` that the colourised line never contains, was also missed. See
-  the v0.11.1 entry.
-
-- ~~**`vulkan` and `opencl` are Linux-only**~~ — fixed v0.12.0. The Vulkan and OpenCL APIs
-  are identical across platforms, so the probes are literally the same code; only the
-  loader filename differs (`vulkan-1.dll` / `OpenCL.dll` against the Linux sonames), which
-  is why `mod dl` gained a Windows backend rather than the probes being duplicated.
-
-- ~~**Windows `--long` is slower than fastfetch**~~ — fixed v0.13.1, by the last
-  PowerShell spawn in that mode going native. `--long` now measures **668 ms (min 604)**
-  against `fastfetch -c all` at **1330–1477 ms**, i.e. roughly **2× faster**, where it had
-  been 1.3–2.3× slower. The pole was `battery` at ~2531 ms; it now costs ~10 ms over the
-  startup floor. The per-field sweep that located it is worth reusing: time each field with
-  `--fields <name>`, but **confirm the predicted win against the real mode** — that harness
-  mispredicted the `dns` win by an order of magnitude in v0.11.2.
-- ~~**Windows `--short` is slower than fastfetch, and no probe explains it**~~ — fixed
-  v0.13.2, and **the diagnosis in this entry was wrong**, which is why it is quoted rather
-  than deleted. It read: "the per-field sweep put the process-startup floor at ~314–322 ms
-  and found 41 of 56 `--long` fields within 20 ms of it, so the fields are effectively free
-  and *the floor itself is the cost*... it is startup, not probing." Every number was real
-  and the conclusion was not: the sweep's `--fields os` baseline **also** paid the ~200 ms
-  of Windows PDH setup it was looking for, so subtracting the baseline cancelled the very
-  constant under investigation — and "41 of 56 fields within 20 ms of the floor" is that
-  cancellation seen from the other side. The true floor is `retch --version` at **17.9 ms**
-  against `fastfetch --version` at **46.8 ms**; retch starts ~2.6× *faster*. `--short` now
-  measures **50.6 ms against `fastfetch -c none` at 78.0 ms**. See the v0.13.2 entry for the
-  two ungated `sysinfo` calls and the full before/after table.
-- ~~**`opengl` has no Windows implementation**~~ — fixed v0.13.0, and it needed a different
-  mechanism rather than a wider `cfg`: WGL against a window created hidden and never shown,
-  because stock Windows has no EGL and therefore no headless context. Output is
-  byte-identical to fastfetch. **The whole §6 GPU-API group now reports on Windows as well
-  as Linux.**
-
-- ~~**Windows `--full` is marginally slower than fastfetch**~~ — fixed v0.17.6, and the
-  "marginally" was stale: re-measured before the fix it was **3.226 s against 1.732 s
-  (1.86×)**. The hypothesis this entry recorded — `weather`, the GPU-API group, all sensors —
-  was wrong: the poles were `gamepad`, still spawning PowerShell (~2.5 s), and `shell`,
-  whose ~570 ms version spawn ran serially after the concurrent scope in `--long` too. Now
-  **1314 ms against 1468 ms** (medians, both run orders). The warning that closed the old
-  entry held: the second cause was found by absolute elapsed-time marks, not by any
-  `--fields` sweep. See the v0.17.6 entry.
-
-- ~~**`terminal` reports nothing on Windows Terminal**~~ — fixed v0.17.7. Both causes this
-  entry named were real — `WT_SESSION` was never read, and the capital-T `"Terminal"` table
-  entry could never match a lowercased name — and reading `WT_SESSION` alone would **not**
-  have been enough: from a nested shell Windows Terminal sits past the six-process walk, and
-  typed into a tab it is found by the tree rather than the variable. The tree now has a
-  Windows Terminal entry, `WT_SESSION` is the fallback after it, and Apple's Terminal is an
-  exact match so it cannot shadow `xfce4-terminal`. See the v0.17.7 entry.
-
-**Open**
 - **Logo renders above the text, not beside it (upper-right)** on Windows Terminal
-  (CLI/rendering, retch-cli `src/`). Likely terminal-detection / cursor-positioning specific
-  to Windows Terminal.
-- **`chafa` mode doesn't work on Windows even when requested on the CLI** (CLI). Investigate
-  PATH resolution, protocol-detection override, and Windows spawn/path handling.
-- ~~**macOS reads a weaker DNS source than it should** (latent; no demonstrated miss)~~ —
-  **CONFIRMED as a real bug and fixed in v0.17.1.** It was not latent: on a host with a
-  split-tunnel VPN, `domain` and `dns` reported the VPN's values rather than the default
-  route's. Two details in the original entry were also wrong — `/etc/resolv.conf` mirrors
-  the **merged** resolver rather than "only the primary service", and SystemConfiguration
-  was **not** already linked by `macos_ffi.rs`. See the v0.17.1 entry.
+  (CLI/rendering, `retch-cli` `src/`). Likely terminal-detection or cursor-positioning specific
+  to Windows Terminal. Do **not** conflate this with the v0.9.2 flush-right fix, which was
+  "beside, but not on the margin".
+- **`chafa` mode is ignored on Windows even when requested on the CLI.** Investigate PATH
+  resolution, protocol-detection override, and Windows spawn/path handling.
 
-**Deliberately not implemented on Windows** (no faithful native source): `load` (no
-load-average equivalent), `editor` (env-only `$VISUAL`/`$EDITOR`), conhost `terminal-font`
-(only Windows Terminal has a parseable config).
+Both need a TTY, so both need real hardware (arrakis) — a piped run cannot distinguish the
+chafa case from the documented v0.6.6 behaviour.
 
-Since v0.13.2 the `load` exclusion is **enforced in code** rather than being a property of
-the data: `should_probe_load()` skips `System::load_average()` on Windows outright. It had
-been called on every run and had always returned `0.00, 0.00, 0.00` — sysinfo synthesises a
-Windows load average from a PDH counter sampled every 5 *seconds* into a process-local
-static, so a fetch tool can never observe anything but the zero it starts at. The call was
-free of output consequences and cost ~183–194 ms.
+**Deliberately not implemented on Windows** (no faithful native source): `load` (no load-average
+equivalent), `editor` (env-only `$VISUAL`/`$EDITOR`), conhost `terminal-font` (only Windows
+Terminal has a parseable config).
+
+The `load` exclusion is **enforced in code**, not merely a property of the data:
+`should_probe_load()` skips `System::load_average()` on Windows outright. It had been called on
+every run, had always returned `0.00, 0.00, 0.00`, and cost ~183–194 ms — see §7.3.
 
 ---
 
@@ -4137,736 +349,294 @@ free of output consequences and cost ~183–194 ms.
 Running retch under `sudo` does not simply add fields: it adds some and **removes others**,
 because `sudo`'s default `env_reset` strips most of the environment. Diffing a `sudo --full`
 run against a plain one is therefore not a fair before/after, and the differences below are
-expected behaviour, not bugs. (`Packages` used to be on this list and no longer is — see the
-v0.6.18 entry.)
+expected behaviour, not bugs.
 
 **Only available as root**
 - **`phys-mem`** — reads `/sys/firmware/dmi/tables/DMI`, mode `0400 root`, via `dmidecode`.
   There is no unprivileged source for per-DIMM type/capacity/speed on Linux, so the field is
   omitted rather than guessed. (Windows reads SMBIOS natively and needs no elevation.)
-- **`btrfs` snapshot count** — `btrfs subvolume list -s` requires root. Deliberately
-  **omitted rather than shown as `0`** when it cannot be read, so "couldn't check" is never
-  mistaken for "no snapshots"; the label/subvolume/space part of the field still renders.
+- **`btrfs` snapshot count** — `btrfs subvolume list -s` requires root. Deliberately **omitted
+  rather than shown as `0`** when it cannot be read, so "couldn't check" is never mistaken for
+  "no snapshots"; the rest of the field still renders.
 
 **Only available as the logged-in user** (lost under `sudo`, since `env_reset` drops them)
 - **`editor`** — `$VISUAL` / `$EDITOR`.
 - **`desktop`**, **`wm`** — `XDG_CURRENT_DESKTOP` / `XDG_SESSION_DESKTOP` / `GDMSESSION`.
 - **Logo protocol selection** — `TERM_PROGRAM` is not in sudo's `env_keep`. This used to
-  silently downgrade Rio from the Kitty graphics protocol to Chafa; since v0.6.18 the Rio
-  check also consults `TERM` (`xterm-rio`), which sudo *does* preserve. Any other terminal
-  identified solely by `TERM_PROGRAM` still degrades under sudo by design — it is a heuristic
-  over an environment sudo is entitled to clear.
+  silently downgrade Rio from the Kitty graphics protocol to Chafa; the Rio check now also
+  consults `TERM` (`xterm-rio`), which sudo *does* preserve. Any terminal identified solely by
+  `TERM_PROGRAM` still degrades under sudo by design.
 
 **Rule of thumb for this class of bug:** if a field is missing only for the unprivileged user,
-check whether the underlying source is genuinely root-only before adding an elevation note —
+check whether the underlying source is genuinely root-only before adding an elevation note.
 `Packages` looked exactly like a permissions limit for a long time and was in fact a fixable
-SQLite open-mode defect.
+SQLite open-mode defect — see §7.3.
 
 ---
 
-## 6c. macOS cross-platform parity — known issues / backlog
+## 6c. macOS cross-platform parity — open items
 
-Existing `retch` fields that behave worse (or not at all) on macOS than on Linux/Windows.
-The macOS counterpart to §6a, added in v0.14.0 — until then these gaps existed only as
-scattered `- [ ]` lines in frozen WIP.md session entries, which is precisely how they went
-unworked for so long. Derived from the code's own `cfg` gates rather than from prose.
+- **`Bluetooth` reports `Off` while Bluetooth devices are connected**
+  (`macos_ffi.rs::get_bluetooth_state`). `iokit_property_as_bool(service,
+  "BluetoothControllerPowerIsOn")` returns `None` on macOS 26 — **the property does not
+  exist**; `IOBluetoothHCIController` exposes only `IOClass`, `Built-In` and
+  `BluetoothTransportConnected = Yes`. The `.unwrap_or(false)` then turns "could not read" into
+  a confident `Off`. The three chipset-name properties it tries are absent too, yet the field
+  still prints a name — so that comes from a fallback elsewhere, worth tracing at the same time.
+  - **Deliberately not fixed blind.** `BluetoothTransportConnected` is the obvious replacement,
+    but confirming it tracks the *radio* being switched off means toggling Bluetooth off, which
+    would disconnect the keyboard in use. **Confirm it reads `No` with the radio off before
+    relying on it.**
+  - **The safe partial fix is independent of that question and can be done anywhere**: stop
+    reporting `Off` when the property cannot be read at all.
 
-**Every field-parity gap in this section is now closed** (v0.14.0 - v0.17.1). What remains
-is one defect found while closing them, and one deliberate decision.
-
-**Fixed**
-- ~~**`disk-io` and `net-io` are Linux/Windows-only**~~ — fixed v0.14.0. IOKit
-  `IOBlockStorageDriver` statistics and `sysctl(NET_RT_IFLIST2)`. The non-obvious half was
-  that the natural network source, `getifaddrs`, carries **32-bit** counters that wrap
-  every 4 GiB — and the development machine sat at 77% of that ceiling, so it would have
-  wrapped mid-session and reported a plausible wrong rate.
-- ~~**`vulkan`, `opengl`, `opencl` have no macOS arm**~~ — fixed v0.15.0. Vulkan and
-  OpenCL are the same code as Linux/Windows (only the loader filename differs); OpenGL
-  needed a third mechanism, CGL, which unlike EGL and WGL needs no window at all. Two
-  traps: **the CGL profile attribute decides the version** — the default and legacy
-  profiles report `2.1` where a core profile reports `4.1` on the same machine — and
-  **macOS system frameworks do not `dlopen` by short name**, so the absolute framework
-  path is required or the field silently disappears. Vulkan reports nothing on a stock
-  Mac, which is correct.
-- ~~**`keyboard` and `mouse` have no macOS arm**~~ — fixed v0.16.0. IOKit `IOHIDDevice`
-  interfaces, filtered to usage page 1. The v0.7.0 receiver ambiguity does not arise on
-  macOS, which publishes one interface per role; a composite keyboard-and-trackpad is
-  correctly listed under both fields, and retch finds a connected Bluetooth keyboard that
-  fastfetch misses.
-- ~~**`login-manager`, `brightness` and `power-adapter` have no macOS arm**~~ — fixed
-  v0.17.0. The documented brightness path does not exist on Apple Silicon;
-  `AppleARMBacklight` carries it. macOS reports adapter **wattage** where Linux reports a
-  name, and `loginwindow` is reported with its version.
-- ~~**macOS reads a weaker DNS source than it should**~~ — **CONFIRMED and fixed in
-  v0.17.1.** It was never latent: `domain` and `dns` reported a split-tunnel VPN's values
-  rather than the default route's. Both now come from the default route's own network
-  service via SystemConfiguration. `domain-search` deliberately still reports the merged
-  search list, because that is genuinely what the machine searches.
-
-**Decided — `tpm` stays absent on macOS**
-Macs have a **Secure Enclave**, not a TPM. They are not the same thing: the field reports a
-TPM *specification* version (`2.0` / `1.2`), and a Secure Enclave has no such version to
-report. Labelling one as the other would be an approximate-but-wrong answer of exactly the
-kind §6a and the v0.7.0 input classification both reject, and fastfetch reports no TPM on
-macOS either. **This is now a decision rather than an open question** — reopen it only if a
-Secure Enclave field is wanted under its own name, which is a different feature.
-
-**Open**
-- **`Bluetooth` reports `Off` while Bluetooth devices are connected** (NEW, found
-  2026-09-10 while adding the macOS input arm; `macos_ffi.rs::get_bluetooth_state`).
-  `iokit_property_as_bool(service, "BluetoothControllerPowerIsOn")` returns `None` on
-  macOS 26 — **the property does not exist**; `IOBluetoothHCIController` exposes only
-  `IOClass`, `Built-In` and **`BluetoothTransportConnected = Yes`**. The `.unwrap_or(false)`
-  then turns "could not read" into a confident `Off`, which is wrong on a machine with a
-  connected Bluetooth keyboard. The three chipset-name properties it tries
-  (`HardwareTransportCurrentSetting`, `ProductName`, `ChipsetString`) are all absent too,
-  yet the field still prints a name — so that comes from a fallback elsewhere and is worth
-  tracing at the same time.
-  - **Deliberately not fixed blind.** `BluetoothTransportConnected` is the obvious
-    replacement, but whether it tracks the *radio* being switched off could not be
-    confirmed on the development machine: doing so means toggling Bluetooth off, which
-    would disconnect the keyboard in use. **Confirm that property reads `No` with the radio
-    off before relying on it.**
-  - **The safe partial fix is independent of that question**: stop reporting `Off` when the
-    property cannot be read at all. Under-reporting beats asserting something false — the
-    `Users: 0` call (v0.6.1). fastfetch reports the connected device here; retch says `Off`.
-
-**Long tail** (not field parity, tracked in §5): a **Homebrew tap/formula**, which is now a
-stated prerequisite for the next publish round, and macOS code signing / notarization.
+**Decided — `tpm` stays absent on macOS.** Macs have a **Secure Enclave**, not a TPM. The field
+reports a TPM *specification* version (`2.0`/`1.2`) and a Secure Enclave has none; labelling one
+as the other would be an approximate-but-wrong answer. fastfetch reports no TPM on macOS either.
+Reopen only if a Secure Enclave field is wanted under its own name — a different feature.
 
 ---
 
-## 7. Major Achievements
+## 7. Hard-won lessons
 
-### v0.8.0 - Native Media / Player detection (zero subprocesses) (August 16, 2026)
-- **Zero-subprocess native media architecture**: Added `player` (active media player + playback status) and `media` (track artist, title, album) across Windows, Linux, and macOS without forking any child processes (`powershell.exe`, `playerctl`, `osascript`, `busctl`).
-- **Windows WinRT COM FFI**: Dynamically loads `combase.dll` to query `Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager`. Retrieves player AppUserModelID (cleaned to friendly names like Spotify, Media Player, Chrome, Edge), playback status (Playing, Paused, Stopped, Buffering), and track metadata (`Artist - Title`, `Album`) asynchronously in sub-millisecond execution (< 1ms).
-- **Linux Native D-Bus MPRIS Client**: Direct Unix domain socket binary D-Bus connection to `$DBUS_SESSION_BUS_ADDRESS` / `/run/user/<uid>/bus` via `UnixStream`. Implements SASL `AUTH EXTERNAL`, wire message encoding/decoding for `org.freedesktop.DBus.ListNames` and `org.freedesktop.DBus.Properties.GetAll` on `/org/mpris/MediaPlayer2` (`org.mpris.MediaPlayer2.Player`). Sub-2ms execution with zero subprocesses.
-- **macOS Native Objective-C FFI**: Uses `macos_ffi.rs` (`objc_getClass`, `objc_msgSend`) to query `SBApplication` ("com.apple.Music", "com.spotify.client", etc.) directly without invoking `osascript`.
-- **Output Strata & Single Source of Truth**: Added `player` and `media` to `FIELDS` in `src/fields.rs` (`Mode::Long`). Updated strata golden counts (Long: 54, Full: 60).
-- **Hygiene & Docs**: Updated `docs/retch.1.md`, `README.md`, regenerated `docs/retch.1` (man page), and updated `Cargo.toml` (`retch-cli 0.8.0`, `retch-sysinfo 0.1.55`). All 212 tests green.
+Rules distilled from the work, not a history of it. Nearly every one was paid for twice: once
+by the defect, once by a check that failed to catch it.
 
-### v0.6.1 - Fix Windows Camera (scanners) + Users (=0) bugs (July 13, 2026)
-- **Camera listed scanners as cameras** (user-reported, confirmed live: `EPSON ET-3850
-  Series`). Root cause: the Windows path enumerated the `Camera` + `Image` (WIA) *setup*
-  classes; scanners/printers share the Image class with some real webcams (the Logitech BRIO
-  is Image-class on the test box), and `is_real_camera` has no scanner keyword to catch an
-  "EPSON ET-3850 Series". **Fix**: enumerate the `KSCATEGORY_VIDEO_CAMERA` **device-interface**
-  class instead — only real cameras register it, so scanners are excluded while Image-class
-  webcams are kept. Added `win_setupapi::present_interface_device_names` (a
-  `DIGCF_DEVICEINTERFACE` enumeration sharing the existing `enumerate_names` core) and the
-  `KSCATEGORY_VIDEO_CAMERA` GUID; removed the now-unused `GUID_DEVCLASS_CAMERA`/`_IMAGE`.
-  Also drops the synthetic "Windows Virtual Camera Device" via a Windows-only
-  `is_windows_virtual_camera` helper (Linux/macOS untouched). Verified live: `Camera` now
-  lists only `Logitech BRIO` + `ASUS FHD webcam`.
-- **Users showed 0 with a user logged in** (user-reported, confirmed live). Root cause:
-  `sysinfo` keys Windows users by SID, so the Unix `uid >= 1000` filter never matched.
-  **Fix**: new `win_users` module counts active interactive sessions via
-  `WTSEnumerateSessionsW` + `WTSQuerySessionInformationW` (wtsapi32) — `query user` semantics.
-  Verified live: `Users: 1`. Per the "if it doesn't work, don't show it" request,
-  `display.rs` now suppresses `Users` when the count is 0 (mirrors `packages`), hiding an
-  undetermined value instead of printing a misleading `0`.
-- **Tests**: pure `count_active_user_sessions` + `WTS_SESSION_INFOW` `size_of` layout guard
-  (Windows) and `is_windows_virtual_camera` unit test. The camera *interface*-enumeration
-  change is FFI, so it's verified live rather than unit-tested (per AGENTS §4.2). Non-Windows
-  camera/users behavior unchanged; `cargo test --workspace` green (87 sysinfo lib + 40 cli +
-  15 integration), `just check` clean.
-- **Version**: Bumped to `0.6.1` / `retch-sysinfo 0.1.45`. Patch (bugfixes).
+### 7.1 Verification — the oracle that answers a different question
 
-### v0.6.0 - Windows domain + terminal-size (parity quick wins) (July 13, 2026)
-- **New Windows field arms** (both `--long`, previously `None` on Windows):
-  - `domain` — primary DNS suffix via `GetComputerNameExW(ComputerNameDnsDomain)` (kernel32,
-    default-linked). Two-call size-probe pattern; a workgroup host's empty suffix maps to
-    `None` via the pure `clean_domain` helper. Intentionally not the NetBIOS `WORKGROUP`
-    (that isn't a DNS domain) — matches the Linux/macOS `/etc/resolv.conf` semantics.
-  - `terminal-size` — console viewport via `GetStdHandle` + `GetConsoleScreenBufferInfo`.
-    Uses the `srWindow` rect (visible viewport), **not** `dwSize` (scrollback buffer height).
-    The pure `window_rect_to_size` helper does the inclusive-rect→`"COLSxROWS"` math. Piped
-    output has no console → graceful `None` → existing `$COLUMNS`/`$LINES` env fallback.
-- **First of the Windows cross-platform-parity series** — distinct from the completed
-  PowerShell→native-FFI *perf* migration (v0.4.0). These close fields that returned `None`
-  off Linux/macOS, per the "group related fields" cadence agreed for this series.
-- **House style**: hand-written `extern "system"` FFI, no binding crate; `// SAFETY:` on every
-  `unsafe`; `#[allow(clippy::upper_case_acronyms)]` on the `HANDLE` alias. Both non-Windows
-  arms untouched (new `#[cfg(target_os = "windows")]` arms only).
-- **Testability** (the `format_cpu_cores` lesson): pure helpers `clean_domain` /
-  `window_rect_to_size` are host-independently unit-tested, gated
-  `#[cfg(any(target_os = "windows", test))]` so they aren't dead code elsewhere. Added a
-  `CONSOLE_SCREEN_BUFFER_INFO` `size_of` layout guard (Windows, per the #151 convention).
-- **Verified live** on arrakis (AMD Ryzen AI MAX+ 395, Windows 11 Pro): `domain` correctly
-  absent (primary DNS suffix genuinely empty — cross-checked against
-  `IPGlobalProperties.DomainName` and the `Tcpip\Parameters\Domain` registry value);
-  `terminal-size` renders `100x40` via the display path. `cargo test --workspace` green
-  (84 sysinfo lib + 40 cli + 15 integration), `just check` clean.
-- **Deliberately not implemented on Windows**: `load` (no native load-average equivalent;
-  the processor-queue-length counter is a different metric), `editor` (env-only `$VISUAL`/
-  `$EDITOR`, no OS API), and `terminal-font` for conhost (only Windows Terminal has a
-  parseable config). Noted so they aren't mistaken for oversights.
-- **Version**: Bumped to `0.6.0` / `retch-sysinfo 0.1.44`.
+**This is the project's signature failure and it has recurred in every subsystem.** The pattern
+is always the same: a check runs, returns a plausible answer, and is answering a question
+nobody asked.
 
-### v0.5.1 - Fix nested ANSI color reset on the network line (July 12, 2026)
-- **Bug**: the opening `[` of the network `[Up]` status was colored while the closing `]`
-  (and the RX/TX stats after it) were not. Root cause: `owo_colors` closes every foreground
-  color with `\x1b[39m` (reset to the terminal *default*, not the enclosing color). The `Net`
-  value embeds a green `"Up"` / red `"Down"`; `Theme::color_value` wraps the whole value in
-  the theme value color (white), and `display.rs` additionally wraps the **active** interface
-  in bright-blue. The inner `\x1b[39m` from `Up`/`Down` cancelled the enclosing color, so
-  everything after `[Up]` fell back to the terminal default — leaving the active line's `[`
-  blue but `]`/RX/TX default, and every line's RX/TX tail un-valued.
-- **Fix**: new `colorize_nested(text, prefix)` in `src/theme.rs` re-asserts `prefix` after
-  every interior `\x1b[39m`, so a nested colored span restores the surrounding color on exit.
-  It composes at arbitrary nesting depth and, when `text` has no interior reset, is
-  byte-identical to the previous `text.color(Rgb)` wrap — so **only the `Net` field's
-  rendering changes; all other fields are untouched**. `Theme::color_value` now routes through
-  it; the active-interface highlight uses `colorize_nested(net, ACTIVE_IFACE_PREFIX)`
-  (bright-blue) instead of `.bright_blue()`. The now-unused `owo_colors::OwoColorize` import
-  was dropped from `display.rs`.
-- **Library untouched**: `crates/sysinfo/src/network.rs` still emits the green/red
-  `Up`/`Down`; the fix lives entirely in the CLI wrapping layers. `retch-sysinfo` stays at
-  `0.1.43`.
-- **Tests**: four unit tests for the helper — `rgb_prefix` matches `owo_colors`'s output;
-  plain text wraps identically to the old path; the enclosing color is re-asserted after an
-  interior reset; and a "no default-colored tail" invariant (after wrapping, the only bare
-  reset is the final closer). Verified live on corrino: active `Net` line uniformly
-  bright-blue except green `Up`; non-active lines value-colored except `Up`/`Down`.
-- **Version**: Bumped to `0.5.1` (`retch-sysinfo` unchanged at `0.1.43`). CLI-only patch.
+- **A check that cannot fail is not a check.** Before trusting a new guard or test, break the
+  thing it guards and watch it fail *for the right reason*. Every guard and test added here is
+  expected to have been watched failing against a deliberate mutation, with the file restored
+  byte-identical afterwards.
+- **A mutation that "passes" reads exactly like a sound test.** A `MIB_IF_ROW2` layout assertion
+  passed against an `alias` array shortened by one `WCHAR`, because the lost bytes were absorbed
+  by later padding. A macOS HID vendor-page test passed with its page filter deleted, because
+  every fixture entry also failed the *usage* filter. Two filters overlapping on real data hide
+  each other — pin the property with a synthetic case where they cannot.
+- **The negative control is the load-bearing one.** A drift guard must stay *silent* in the
+  repo's normal resting state (e.g. a packaging version legitimately trailing `Cargo.toml` by a
+  release cycle). A guard that fires on correct code is deleted within a week, taking the real
+  rule with it.
+- **A differencing harness cannot see a cost its own baseline shares.** The Windows `--short`
+  investigation put the startup floor at ~314 ms and concluded "the floor itself is the cost".
+  Every number was real; the conclusion was not — the `--fields os` baseline paid the same
+  ~200 ms of PDH setup being hunted, so subtracting it cancelled the constant exactly. The tell
+  was "41 of 56 fields within 20 ms of the floor", which is that cancellation seen from the
+  other side. **Measure absolute elapsed time from process start, not more differences.** The
+  true floor was `retch --version` = 17.9 ms.
+- **`--fields <one field>` does not model `--long`.** Fields collect concurrently, so an
+  isolated sweep finds a slow *field* and cannot find a slow *serial section*. Confirm any
+  predicted win against the real mode. Conversely the removal test can be wrong too: `shell`
+  measured 19 ms when removed from the set and was actually ~570 ms on the critical path,
+  running serially *after* the concurrent scope.
+- **A pipeline under `set -o pipefail` fails when the reader exits early.** `bsdtar -tf x |
+  grep -q y` → `grep` exits on first match, `bsdtar` takes SIGPIPE and exits 141, the pipeline
+  fails — so the step reports "not found" precisely when the thing is present. `head -1` and
+  `grep -m1` are the same hazard. **Materialise to a file, then grep the file.** This also
+  broke Homebrew on a dev machine by truncating a native-gem build mid-install, and the same
+  invocation was both the thing that broke it and the thing that reported it.
+- **`grep -c $'\r'` from an agent shell returns the file's LINE COUNT.** The backslash collapses
+  in transport, `grep` gets an empty pattern and matches every line. Wrong in both directions.
+  The tell is that the answer equals `wc -l`. **Count bytes in a language that has them.**
+- **`grep` for "did the fix land?" counts your own explanatory comments.** Strip comments first —
+  the same reason the vendored guards do.
+- **`gh pr checks --watch` exits 0 on an EMPTY rollup** and prints "no checks reported". Racing
+  a fresh push, that reads as success. It also exits 0 when a check failed. Query
+  `statusCheckRollup`, assert it is **non-empty**, and that nothing is pending or failing.
+  CodeQL can also finish `NEUTRAL` rather than settling to `SUCCESS`; `merge-pr`'s gate refuses
+  only FAILURE/TIMED_OUT/CANCELLED/ACTION_REQUIRED, so check explicitly.
+- **A local command is not an authentication test.** `copr-cli whoami` reads the config file and
+  never contacts the API, so it returns the right name for a deliberately corrupted token.
+- **When a transported value is rejected, re-parse it from its source before theorising about
+  the transport.** `awk -F'= *'` truncated a 30-character COPR login to 6 (the `-F` regex
+  matches at *every* `=`); two of three values were byte-exact, so it looked like a GitHub
+  secrets problem and the credentials were re-issued twice.
+- **Read a verification command's output raw before piping it through a filter.** An empty
+  result and a rejected argument are indistinguishable downstream — `dnf repoquery` refusing
+  `--repofrompath` alongside `--disablerepo` printed a clean, confident nothing.
+- **Confirm the probe really resolved what you think.** When A/B-ing two dependency versions,
+  read the probe's own `Cargo.lock` back at each step, or the check passes by testing one
+  version twice.
+- **Ask git the right question about line endings.** `git status` shows CRLF drift exactly once,
+  as an ` M` with no diff behind it, and the first `git add` erases that signal while leaving
+  every byte on disk. `git ls-files --eol` (`i/lf w/crlf`) is the unambiguous oracle.
 
-### v0.5.0 - Three new Linux fastfetch-gap fields (July 12, 2026)
-- **New fields** (all `--long`+, Linux-only, `None` on macOS/Windows):
-  - `login-manager` — active display/login manager, resolved from the
-    `/etc/systemd/system/display-manager.service` systemd alias symlink and prettified
-    (gdm/gdm3→GDM, sddm→SDDM, lightdm→LightDM, greetd, …; unknown units Title-cased).
-  - `brightness` — backlight brightness as a percentage, from the first (vendor-preferred)
-    `/sys/class/backlight/*` device's `brightness`/`max_brightness`.
-  - `power-adapter` — AC adapter name + connection state, from the `Mains`-type supply under
-    `/sys/class/power_supply`. Wattage omitted (sysfs `Mains` rarely exposes it) rather than
-    emit a misleading value.
-- **Testability**: each detector is a thin `/sys`/systemd-reading wrapper over a **pure
-  helper** (`login_manager_from_unit`, `brightness_percent`, `format_power_adapter`) that is
-  unit-tested without touching host hardware — the direct lesson from the v0.4.2
-  `format_cpu_cores` flaky-test fix. Helpers + their tests are `#[cfg(target_os = "linux")]`
-  so they aren't dead code (clippy `-D warnings`) on other platforms.
-- **Wiring**: one `FieldDef` row each in `src/fields.rs` (golden strata counts updated:
-  Long 46→49, Full 52→55), sequential gated collection + `SystemInfo` fields in
-  `crates/sysinfo/src/fetch.rs`, `print_line` arms in `src/display.rs`; config generation and
-  docs guardrails auto-cover them via the registry.
-- **Verified live** on corrino (i7-1360P, Fedora 44): `--long` shows `Login Manager: greetd`,
-  `Brightness: 51%`, `Power Adapter: AC (connected)`; absent from default/`--short`.
-- **Closes** the Brightness, PowerAdapter, and LM items in NOTES §6 / the fastfetch-comparison
-  wiki page.
-- **Version**: Bumped to `0.5.0` / `retch-sysinfo 0.1.43`.
+### 7.2 Testing conventions
 
-### v0.4.3 - Enforce LF line endings via .gitattributes (July 12, 2026)
-- **Problem**: the working tree is shared across Linux/macOS/Windows machines via Syncthing.
-  With no `.gitattributes` and `core.autocrlf=false`, a Windows checkout (or an editor there)
-  wrote CRLF line endings, Syncthing propagated those CRLF bytes to the Linux clones, and git
-  on Linux then reported *every tracked file* as modified — a phantom whole-tree diff (observed
-  on the corrino box: 13811 insertions / 13811 deletions, exactly equal, all line-ending flips;
-  `git diff --ignore-all-space` empty, i.e. zero content changes). This blocks the `just pr`
-  clean-tree checks and drowns any real diff.
-- **Fix**: added a repo-root `.gitattributes` — `* text=auto eol=lf` forces LF on checkout on
-  every OS (essential for a byte-identical Syncthing-shared tree), and `*.png binary` protects
-  the 17 `assets/logos/*.png` from any normalization. HEAD was already stored as LF, so the
-  normalization commit changes no tracked content — the diff is just `.gitattributes` + the
-  version bump artifacts.
-- **Same class** as the existing `core.filemode false` workaround for Windows/NTFS phantom
-  exec-bit diffs; this is the line-ending analog.
-- **Tooling/repo-hygiene only**: no Rust source or library change. `retch-sysinfo` unchanged
-  at `0.1.42`.
-- **Version**: Bumped to `0.4.3` (`retch-sysinfo` unchanged at `0.1.42`).
+- **Pure helper + thin I/O wrapper.** Every detector splits into a pure function (parsing,
+  formatting, classification) and a wrapper that reads `/proc`, sysfs, the registry or an FFI
+  call. Tests target the pure half with verbatim fixtures captured from a real machine, so no
+  test depends on the hardware of whatever runs it. This exists because tests that read live
+  CPU topology, live EDID or live block devices each failed on one machine and passed on every
+  other.
+- **Inject the resolver.** Where a parser needs a lookup, parameterise it
+  (`parse_xrandr_displays_with(stdout, resolve)`) and pass `|_| None` in tests.
+- **When a function gains a new environment input, every test asserting it *false* must guard
+  that input too** — otherwise the host's own environment leaks in and the test fails on one
+  developer's box and passes on CI.
+- **Under-reporting beats asserting something false.** `Users: 0` is suppressed rather than
+  printed; a keyboard/mouse that cannot be classified is listed in *neither* field; an OpenCL
+  platform with no devices is not reported as working. This is a standing design rule, not a
+  case-by-case call.
+- **FFI structs get `size_of` + targeted `offset_of!` guards**, because value-parse tests cannot
+  catch a field reorder or a padding change.
+- **A test fixture must reproduce the condition the bug needs.** A helper that built its line
+  with a plain `[Up]` would have let a broken `contains("[Up]")` predicate pass — the real code
+  colourises the status, so the literal never appears.
 
-### v0.4.2 - Fix machine-dependent format_cpu_cores tests (July 12, 2026)
-- **Bug**: the four `format_cpu_cores` unit tests were machine-dependent. `format_cpu_cores`
-  first reads the host's real CPU topology (Linux `/sys/.../cpufreq`, macOS `hw.perflevel*`)
-  and, on an Intel P/E or Apple Silicon hybrid, returns a `"NP + ME / KT"` string that ignores
-  the passed-in counts. So calling it with fixed args exercised the fallback only on
-  non-hybrid CPUs. On an i7-1360P (corrino) it returned `"8P + 8E / 16T"` for `(16, Some(8))`
-  where `test_format_cpu_cores_hyperthreaded` expected `"8C / 16T"` — hard-failing `just pr`
-  on that machine. The failure had gone unnoticed because it was only ever run on non-hybrid
-  hosts and CI runners.
-- **Fix**: extracted the pure fallback (`match physical { … }`) into a private
-  `format_cpu_cores_plain(logical, physical)` and pointed all four fallback tests at it, so
-  they test the deterministic formatting without touching host hardware. `format_cpu_cores`'s
-  public behavior is unchanged — it still detects hybrid topology first, then delegates to the
-  helper.
-- **Internal refactor + test-only fix**: no user-visible behavior change. `retch-sysinfo`
-  → `0.1.42`.
-- **Version**: Bumped to `0.4.2` / `retch-sysinfo 0.1.42`.
+### 7.3 Platform gotchas
 
-### v0.4.1 - License SPDX fix + crates.io publish (July 12, 2026)
-- **License metadata**: `license = "GPL-3.0"` → `GPL-3.0-or-later` in both `Cargo.toml`
-  manifests, matching the `SPDX-License-Identifier: GPL-3.0-or-later` headers in the source.
-  `GPL-3.0` is a deprecated SPDX id; corrected before publishing since per-version license
-  metadata on crates.io is permanent.
-- **crates.io publish**: this release **reverses the standing GitHub-only hold** — retch is
-  published to crates.io again for the first time since `retch-cli 0.3.35` / `retch-sysinfo
-  0.1.31`. Published `retch-sysinfo 0.1.41` then `retch-cli 0.4.1` (dependency order).
-- **No functional change** vs v0.4.0 — version bump + license string only.
-- **Version**: Bumped to `0.4.1` / `retch-sysinfo 0.1.41`.
+**Windows**
+- **The first PDH performance-counter touch in a process costs ~180–195 ms**, paid once by
+  whichever call gets there first — which makes several independent costs look like one mystery
+  constant. `CpuRefreshKind::everything()` sets `frequency`, and Windows `init_cpus` calls
+  `get_frequencies()` only when that flag is set: 195.5 ms → 0.5 ms by asking only for what a
+  selected field reads.
+- **sysinfo synthesises the Windows load average from a PDH counter sampled every 5 seconds
+  into a process-local static seeded at zero**, so a fetch tool can never observe anything but
+  that zero.
+- **SMBIOS Speed is at offset 0x15, not 0x14** (0x13–0x14 is Type Detail). Self-consistent unit
+  tests encoded the wrong offset and passed; comparing live output to WMI exposed it.
+- **`SP_DEVICE_INTERFACE_DETAIL_DATA_W`: `cbSize` is 8 on x64, but `DevicePath` starts at offset
+  4.** Using one constant for both chops two characters off every device path, and the only
+  symptom is `CreateFileW` failing on a device that plainly exists — which reads as "this
+  machine has no battery".
+- **`GetIfTable2` returns one row per NDIS filter bound to an adapter**, each carrying the
+  adapter's counters again. Exclude `FilterInterface`; do **not** keep only `HardwareInterface`,
+  which drops tunnel interfaces like WireGuard that carry real traffic.
+- **Use `GetIfTable2`, not `GetIfTable`**: the older `MIB_IFROW` has 32-bit octet counters that
+  wrap every 4 GB.
+- **`GAA_FLAG_SKIP_DNS_SERVER` was set**, so `FirstDnsServerAddress` was declared and guaranteed
+  null. Check the flags before claiming a struct field is populated.
+- **Access rights differ per IOCTL family**: the storage IOCTLs are `FILE_ANY_ACCESS` and answer
+  on a zero-access handle; the battery IOCTLs are `FILE_READ_ACCESS` and need `GENERIC_READ`.
+  Neither needs elevation — but probe it before designing around it.
+- **Stock Windows ships no EGL**, so there is no headless OpenGL path: WGL needs a device
+  context, which needs a window, which needs a registered class. Create it hidden, tear it down
+  behind a drop guard — a leaked window class makes the *next* registration fail, presenting as
+  "no OpenGL".
+- **`-NoProfile` is not a PowerShell speed fix** — measured: bare `powershell -Command exit` is
+  893 ms with a profile and 878 ms without. The ~642 ms profile figure is about pwsh 7, not
+  Windows PowerShell 5.1. Only removing the spawn removes the cost.
+- **Windows Terminal's reported version is the MSIX *package* version**, readable only from the
+  install folder's name. The executable's file-version resource is an internal build number that
+  matches nothing.
 
-### v0.4.0 - Windows native-FFI migration milestone release (July 12, 2026)
-- **Minor version bump** (0.3.52 → 0.4.0) marking the first GitHub Release since v0.3.40 and
-  the completion of the Windows PowerShell-spawn → native-Win32-FFI migration. This release
-  rolls up #141–#152:
-  - **Perf**: `net` (#144), `phys-disk` (#146), `phys-mem` (#147), `bluetooth` (#148),
-    `cpu-usage` (#149), `camera` (#150) all moved off PowerShell spawns to native FFI. On an
-    AMD Ryzen AI MAX+ 395: short 1149→164 ms, **standard 1993→273 ms (now ~4.9× faster than
-    fastfetch)**, long 3462→1554 ms (parity). phys-mem also gained running-vs-rated speed.
-  - **Quality/tooling**: `--workspace` test+lint gate fix (#146), FFI struct-layout assertion
-    tests (#151), WIP updater fixes (#141–#143), bench-recipe (#145) and bench-upload (#152)
-    Windows fixes.
-- **Version-marker only** at this step (no code change); `retch-sysinfo` unchanged at `0.1.40`.
-  crates.io remains intentionally held (`retch-cli 0.3.35` / `retch-sysinfo 0.1.31`) — GitHub
-  Release only, matching the v0.3.36–v0.3.40 pattern.
-- **Version**: Bumped to `0.4.0` (`retch-sysinfo` unchanged at `0.1.40`).
+**macOS**
+- **`getifaddrs`'s `if_data` byte counters are 32-bit and wrap every 4 GiB** — a development
+  machine sat at 77% of that ceiling on one boot, so the wrap would have produced a
+  plausible-looking wrong rate mid-session. Use `sysctl(NET_RT_IFLIST2)` / `if_data64`.
+- **`if_data64` is 4-byte aligned with `u64` fields**, so `&data.ifi_ibytes` is undefined
+  behaviour (rustc rejects it as E0793). **Copy, never borrow.**
+- **System frameworks do not `dlopen` by short name** — the full
+  `/System/Library/Frameworks/X.framework/X` path is required, or the field silently vanishes.
+- **The CGL profile attribute decides the OpenGL version reported**: no attribute or legacy
+  gives `2.1`, a core profile gives `4.1` on the same machine. Writing the obvious thing reports
+  less than half what the machine supports, as a perfectly plausible string.
+- **Brightness lives on `AppleARMBacklight`** on Apple Silicon — the documented
+  `IODisplayConnect`, `AppleBacklightDisplay`, `AppleCLCD2` and `IOMobileFramebufferShim` all
+  return nothing.
 
-### v0.3.52 - Fix upload_local_bench.py cp1252 crash (July 12, 2026)
-- **Bug**: `just bench-upload` and the `post-merge` git hook crashed on Windows with
-  `UnicodeDecodeError: 'charmap' codec can't decode byte 0x9d` — so no local Windows
-  "real hardware" numbers were reaching the gh-pages benchmark dashboard. The gh-pages
-  `data.js` is UTF-8 (commit messages embed `→`/em-dashes) but `open()` used the default
-  cp1252 on Windows.
-- **Fix**: pinned `encoding="utf-8"` on every file operation (the `data.js` read and write,
-  the hyperfine JSON temp read) and on `run_capture`'s subprocess text decoding (git output),
-  plus a `sys.stdout.reconfigure` UTF-8 guard. Same fix class as `update_wip.py` (#142).
-- **Verified**: reproduced the crash on the live `data.js` under the default encoding; the
-  UTF-8 read succeeds (845 KB) and `append_entry`/`git_commit_info` run clean.
-- **Tooling-only**: no Rust source touched; `retch-sysinfo` unchanged at `0.1.40`.
-- **Version**: Bumped to `0.3.52` (`retch-sysinfo` unchanged).
+**Linux**
+- **`/proc/diskstats` counts 512-byte sectors regardless of the device's `hw_sector_size`.**
+  Keying off the hardware value inflates every figure 8× on a 4 KiB-sector drive.
+- **`resolvectl`'s per-link `Default Route:` is a DNS-routing flag, not the routing table** — it
+  was `yes` for both a VPN link and the Wi-Fi link simultaneously. Resolve the default route
+  from `/proc/net/route` instead. A resolvable default link with *no* domain must report
+  nothing rather than falling back to the merged list, which resurrects the VPN's domain.
+- **The kernel prints capability bitmaps most-significant word first**, so the *last* word holds
+  bits 0–63. Getting it backwards inverts every capability test silently.
+- **On a Logitech Unifying/Bolt receiver, no kernel-visible signal distinguishes a keyboard from
+  a mouse.** Handlers, `capabilities/rel`, the alphabet key block, `INPUT_PROP`, udev
+  `ID_INPUT_*`, USB HID `bInterfaceProtocol` and the HID report descriptor itself are all
+  identical — the receiver synthesises one merged descriptor per paired device. fastfetch
+  classifies from those and gets it wrong in both directions. Do **not** "improve" this with a
+  capability heuristic; the data to support one does not exist.
+- **SQLite `Connection::open` is read-write**, so the root-owned `0644` rpmdb fails on **every
+  query** (not on `open()`) with "attempt to write a readonly database" — which is why a guard
+  around the open never fired. `mode=ro` does not help either; `immutable=1` does.
 
-### v0.3.51 - FFI struct-layout assertion tests (July 11, 2026)
-- **Test hardening** following the Windows native-FFI migration (#146–#150). The pure
-  parsers/formatters are well unit-tested, but the `#[repr(C)]` FFI structs the OS reads/
-  writes by offset were only runtime-verified. Added `size_of` + targeted `offset_of!`
-  assertions for each: disk storage descriptors/geometry, `MemoryStatusEx`, the bluetooth
-  `bthprops`/SCM structs, `win_cpu::FileTime`, and `win_setupapi::SpDevinfoData`. These catch
-  accidental field-reorder/padding regressions at test time — the failure mode the parse
-  tests can't (the #147 phys-mem offset bug was found only by runtime comparison).
-- **Test-only**: no runtime behavior change. Runs on Windows CI (the structs are
-  `#[cfg(windows)]`). `retch-sysinfo` → 0.1.40.
-- **Version**: Bumped to `0.3.51` / `retch-sysinfo 0.1.40`.
+**Cross-platform**
+- **A Vulkan instance below 1.2 silently ignores the `pNext` chain** — a call that succeeds
+  while returning empty strings and no error. And `vkEnumerateInstanceVersion` returns the
+  *loader* version, not the device `apiVersion`: the cheap call answers a different question,
+  and both are plausible-looking version numbers.
+- **Mesa enumerates the software rasteriser `llvmpipe` as a CPU device beside the real GPU**, so
+  taking the first enumerated device reports software rendering on a working machine.
+- **ANSI stripping must match the whole `ESC [ … <final byte>` form, not SGR (`m`) only.** Chafa
+  opens a run with `\x1b[?25l`, so an SGR-only strip leaves exactly 6 characters behind — the
+  suspiciously *constant* error across widths is the tell.
+- **Terminal cells are indivisible, so a correctly-rounded `c`×`r` rectangle still stretches an
+  image.** Kitty forces the image into whatever rectangle it is given; emit only the limiting
+  dimension and let it derive the other.
 
-### v0.3.50 - Windows camera: native SetupAPI (completes migration) (July 11, 2026)
-- **Root cause**: `detect_camera` on Windows spawned PowerShell (`Get-PnpDevice -Class
-  Camera,Image -PresentOnly`), ~1.36 s. Last of the per-probe migrations (#146–#150).
-- **Fix**: new shared `crate::win_setupapi` module (`SetupDiGetClassDevsW` +
-  `SetupDiGetDeviceRegistryPropertyW`, links `setupapi`) exposes
-  `present_device_names(class_guid)` — the native equivalent of `Get-PnpDevice -Class X
-  -PresentOnly`. Camera enumerates the Camera + Image classes and reuses the existing
-  `is_real_camera`/`clean_camera_name`/dedup logic. `bluetooth` (which had introduced a
-  private SetupAPI copy in #148) was refactored onto the shared module, removing the
-  duplication — mirroring the shared `win_reg.rs` pattern.
-- **Result** (AMD Ryzen AI MAX+ 395, Windows 11): `--fields camera` ~1359 ms → ~155 ms
-  (~9×). Camera was the last standard-mode PowerShell pole, so **standard mode 1558 ms →
-  273 ms**. Verified vs `Get-PnpDevice` (all real cameras present; IR camera filtered as
-  before). bluetooth output unchanged after the refactor.
-- **Milestone**: retch on Windows now beats fastfetch in standard mode (273 ms vs 1348 ms,
-  ~4.9×) and is at parity in long (1554 ms vs 1340 ms), having started this migration series
-  slower across the board. Cumulative: short 1149→164, standard 1993→273, long 3462→1554 ms.
-- **Version**: Bumped to `0.3.50` / `retch-sysinfo 0.1.39` (library behavior change).
+### 7.4 Release, packaging and publishing
 
-### v0.3.49 - Windows cpu-usage: no serial sleep (July 11, 2026)
-- **Root cause**: CPU usage is a delta between two CPU-time samples; sysinfo enforces a
-  ~200 ms minimum refresh interval, so `collect()` slept 200 ms then called
-  `refresh_cpu_usage()`. That sleep ran **serially after** the concurrent `thread::scope`,
-  so it added ~200 ms to the wall-clock of every standard/long run (not a PowerShell spawn
-  — the odd one out in the migration list, but a real serial cost).
-- **Fix (Windows)**: sample `GetSystemTimes` (kernel32, default-linked) just before the
-  concurrent scope and diff against a fresh sample at the usage-computation point, so the
-  existing collection window *is* the delta — no dedicated sleep. A pure `usage_percent`
-  helper (kernel-includes-idle math) carries unit tests. A ~100 ms floor is topped up only
-  when the collection window is shorter than that (e.g. an isolated `--fields cpu-usage`),
-  so a tiny request still reads a real value rather than `GetSystemTimes` quantization noise.
-  Linux/macOS are unchanged (sysinfo + 200 ms sleep) because sysinfo's minimum interval
-  makes the window-diff approach unreliable there.
-- **Result** (AMD Ryzen AI MAX+ 395, Windows 11): standard mode 1757 ms → 1558 ms; isolated
-  `--fields cpu-usage` ~340 ms → ~253 ms. Verified stable idle readings (~0.5–1.7%) across
-  repeated isolated runs (previously ~50% sampling noise before the floor was added).
-- **Version**: Bumped to `0.3.49` / `retch-sysinfo 0.1.38` (library behavior change).
+- **This repo squash-merges with `squash_merge_commit_message=COMMIT_MESSAGES`**, so the commit
+  that lands on `main` takes its body from the **branch commit**. Editing the PR body changes
+  nothing. On a multi-commit branch the bodies are **concatenated**, so a trailer on every
+  commit becomes a duplicate trailer on `main` — put it on the last commit only, or squash
+  locally first. Read the setting from `gh api repos/l1a/retch` rather than assuming it.
+- **`git tag -a -F <file>` applies `--cleanup=strip`, which DELETES every line beginning with
+  `#`.** A tag message lost three `#NNN —` headings while all surrounding prose survived, and
+  nothing warned. Use `--cleanup=verbatim`, word the headings as `PR #NNN`, and **diff the tag
+  message against the intended text before pushing** — a pushed tag is far more annoying to fix.
+- **An expired crates.io token 403s at *upload*, not at start**, so it reads as a crate
+  permissions problem. The credentials file existing proves nothing about its validity. This
+  blocked two consecutive releases; `cargo owner --list retch-cli` is an authenticated read that
+  proves the token up front.
+- **Check the index against the pin every release.** A two-crate publish and a CLI-only publish
+  are both normal, and assuming either is wrong. `publish-check` skipping the retch-cli dry run
+  before a release is the correct behaviour, not a failure.
+- **The AUR RPC lags a push by minutes to hours.** `git ls-remote` is authoritative; a stale
+  `rpc/v5/info` reading immediately after a push is documented behaviour, not a broken hook.
+- **COPR runs `.copr/Makefile` inside mock, which sets `HOME=/builddir` *and* moves
+  `%{_topdir}`.** Reproducing the environment with only one of those does not reproduce the
+  bug. Verifying "exactly what COPR runs" in a plain container was true of the *command* and
+  false of the *environment* — and the environment was the half that mattered.
+- **Homebrew 6.0+ refuses third-party taps until `brew trust` has been run**, and reports it as
+  `invalid syntax in tap!` for a formula whose syntax is fine. The `brew` CI job cannot catch
+  this: a locally-created `brew tap-new` bypasses the trust gate entirely.
+- **`tar --exclude-vcs-ignores` does not implement `.gitignore` semantics.** Against this repo's
+  ignore file it excluded a bare filename and kept both the directory form and the anchored
+  form — so the first `.copr/Makefile` packed `WIP.md` and the auto-memory directory into the
+  SRPM. Assert on the archive's contents, both what must not ship and what must.
+- **Verify a release from the channel, not from the publish exit code.** Install the published
+  crate into a throwaway root and *run* it; check the GitHub Release's `retch.1` is
+  byte-identical to the committed page; check COPR per chroot rather than the aggregate, and
+  check the published repo rather than the build state. A duplicate-sha256 audit across all
+  release bodies is cheap and is the only thing that ever caught a corrupted nix hash.
 
-### v0.3.48 - Windows bluetooth: native bthprops + SetupAPI (July 11, 2026)
-- **Root cause**: `detect_bluetooth` on Windows spawned PowerShell (`Get-Service bthserv`
-  + two `Get-PnpDevice -Class Bluetooth` queries), ~1.8 s — the single biggest Windows
-  probe. Third of the per-probe migrations (after phys-disk #146, phys-mem #147).
-- **Fix** (three native sources, all hand-written `extern "system"` FFI, no WinRT):
-  - Power state: `bthserv` service state via the Service Control Manager (advapi32,
-    default-linked) — the same signal the old `Get-Service` used.
-  - Adapter name: SetupAPI enumeration of `GUID_DEVCLASS_BLUETOOTH`
-    (`SetupDiGetClassDevsW`/`SetupDiEnumDeviceInfo`/`SetupDiGetDeviceRegistryPropertyW`),
-    filtered by the same name keywords the old PowerShell used. Links `setupapi`.
-  - Connected devices: the classic `bthprops` API (`BluetoothFindFirstDevice`/
-    `BluetoothFindNextDevice` with `BLUETOOTH_DEVICE_SEARCH_PARAMS{fReturnConnected}`).
-    Links `bthprops`. The device-info struct layout was validated at runtime (correctly
-    read a device name + `fConnected` flag) before trusting the count.
-- **Behavior change (improvement)**: "N connected" now counts *actually-connected*
-  devices, not the old count of all paired/present Bluetooth PnP nodes (which the old code
-  mislabeled as "connected"). Matches fastfetch semantics. Adapter display unchanged.
-- **Result** (AMD Ryzen AI MAX+ 395, Windows 11): `--fields bluetooth` ~1765 ms → ~150 ms
-  (~12×); `--long` mode 3462 ms → 2934 ms. Verified adapter name matches the old
-  `Get-PnpDevice` output ("MediaTek Bluetooth Adapter").
-- **Version**: Bumped to `0.3.48` / `retch-sysinfo 0.1.37` (library behavior change).
+### 7.5 Tooling and environment
 
-### v0.3.47 - Windows phys-mem: native SMBIOS table (July 11, 2026)
-- **Root cause**: `detect_physical_memory` on Windows spawned PowerShell twice
-  (`Get-CimInstance Win32_PhysicalMemory` for DIMM rows + a `Win32_ComputerSystem` VM
-  fallback), ~600 ms of interpreter startup. Second of the per-probe PowerShell-spawn
-  migrations (after phys-disk #146).
-- **Fix**: read the raw SMBIOS table via `GetSystemFirmwareTable('RSMB')` (kernel32) and
-  parse type-17 (Memory Device) structures directly; `GlobalMemoryStatusEx` provides the
-  VM total-memory fallback. Hand-written `extern "system"` FFI (matching `win_reg.rs`), no
-  new dependency. A pure `parse_smbios_type17` fn (bounds-checked structure walk over the
-  double-null-terminated string sets) carries the unit tests.
-- **Display enhancement**: the SMBIOS Configured Memory Speed field (offset 0x20) is now
-  read, so Windows surfaces the actual running speed vs the rated speed when they differ
-  (e.g. `8× 16 GB LPDDR5 8000 MT/s (rated 8533 MT/s)`), matching the Linux dmidecode path.
-  The old `Win32_PhysicalMemory` route only reported the rated speed. Verified against
-  `Get-CimInstance Win32_PhysicalMemory` (Speed 8533 / ConfiguredClockSpeed 8000) on the
-  AMD Ryzen AI MAX+ 395.
-- **Offset gotcha (caught by runtime verification)**: SMBIOS Speed is at offset 0x15, not
-  0x14 (0x13–0x14 is the Type Detail WORD). The initial self-consistent unit tests encoded
-  the wrong offset and passed; comparing live output to WMI exposed it.
-- **Result** (AMD Ryzen AI MAX+ 395, Windows 11): `--fields phys-mem` ~597 ms → ~152 ms
-  (~4×). Standard-mode wall-clock is unchanged for now — `camera` (~1359 ms) still masks it
-  until that probe is migrated.
-- **Version**: Bumped to `0.3.47` / `retch-sysinfo 0.1.36` (library behavior change).
-
-### v0.3.46 - Windows phys-disk: native storage IOCTLs (July 11, 2026)
-- **Root cause**: `detect_physical_disks` on Windows spawned PowerShell
-  (`Get-PhysicalDisk | Select-Object … | ConvertTo-Csv`) — ~1.7 s of interpreter startup
-  isolated by the per-field timing sweep, one of the ~7 remaining PowerShell-spawn probes
-  making retch slower than fastfetch on Windows. `phys-disk` is in standard/`--long`, so it
-  slowed the common run.
-- **Fix**: enumerate `\\.\PhysicalDrive0..31` with `CreateFileW` (zero desired access) and
-  query native storage IOCTLs via hand-written `extern "system"` FFI, matching the crate's
-  existing Windows FFI style (`win_reg.rs`) — **no new dependency** (WIP.md had floated
-  `windows-sys`; the raw-extern house convention was used instead). `IOCTL_STORAGE_QUERY_PROPERTY`
-  yields the device descriptor (model, bus type) and seek-penalty descriptor (HDD vs SSD);
-  `IOCTL_DISK_GET_DRIVE_GEOMETRY_EX` yields total size. Both are `FILE_ANY_ACCESS`, so the
-  probe needs no admin rights.
-- **Parity**: classification and label format are unchanged; the model string reproduces
-  `Get-PhysicalDisk`'s `FriendlyName` (generic "ATA" SATA vendor id suppressed). Pure
-  `format_disk_label`/`combine_model` helpers replace the old CSV parser and carry the unit
-  tests.
-- **Result** (AMD Ryzen AI MAX+ 395, Windows 11): `--fields phys-disk` ~1684 ms → ~210 ms
-  (~8×); output verified byte-identical to `Get-PhysicalDisk`.
-- **Gate/CI gap fixed (`--workspace`)**: found while verifying this change — a bare
-  `cargo test`/`cargo clippy` at the root only covers the `retch-cli` package and skips
-  the `retch-sysinfo` workspace member (where this change lives). The `just` recipes
-  (`test`, `lint`, `check`) and both `rust.yml` CI jobs now pass `--workspace` (lib+bins
-  scope unchanged, no `--all-targets`); AGENTS.md §4.0/§4.1 updated. The phys-disk FFI's
-  `HANDLE` acronym lint that this surfaced is fixed in-place.
-- **Version**: Bumped to `0.3.46` / `retch-sysinfo 0.1.35` (library behavior change).
-
-### v0.3.45 - Fix bench-cli/bench-compare on Windows (July 10, 2026)
-- **Bug**: `just bench-cli` and `just bench-compare` failed on Windows. They invoked
-  `hyperfine … './target/release/retch'`; with no `--shell`, hyperfine uses `cmd.exe` on
-  Windows, which can't run that POSIX-style path (forward slashes, no `.exe`), so it exited
-  1 in the first warmup run and hyperfine aborted the recipe. `retch` itself was fine
-  (exits 0) and `just bench` (criterion) was unaffected.
-- **Fix**: new Justfile variable `retch_release_bin := if os_family() == "windows" {
-  'target\release\retch.exe' } else { './target/release/retch' }`, used by all bench
-  hyperfine invocations. Verified on Windows: `just bench-cli` and `just bench-compare`
-  now run all comparisons to completion (exit 0).
-- **Justfile-only**: no Rust source or library change.
-- **Version**: Bumped to `0.3.45` (`retch-sysinfo` unchanged at `0.1.34`).
-
-### v0.3.44 - Windows net-detection perf: drop PowerShell spawn (July 10, 2026)
-- **Root cause**: `detect_active_interface_and_local_ip` shelled out to PowerShell
-  (`Get-NetRoute -DestinationPrefix 0.0.0.0/0 …`) on Windows to name the default-route
-  interface. PowerShell startup is ~977 ms, and since the `net` field is in every mode,
-  this inflated `--short`/standard/`--long` alike. Isolated by per-field timing: every
-  other `--short` field was ~135 ms; `net` was ~1183 ms.
-- **Fix**: identify the active interface as the adapter whose sysinfo-reported IPs contain
-  the outbound `local_ip` (already computed via the UDP-connect trick) — no process spawn,
-  no new dependency, no FFI. Extracted a pure `match_active_interface` helper with a unit
-  test. On Windows sysinfo reports the "Wi-Fi" adapter with its IP, so the resolved active
-  interface matches what the old PowerShell alias produced; display is unchanged.
-- **Result** (AMD Ryzen AI MAX+ 395, Windows 11): `--short` 1149 ms → 163 ms (~7×).
-  retch is still ~2.6× behind fastfetch's 63 ms in short mode on Windows (startup margin,
-  tracked separately), but the pathological ~1 s spawn is gone. Wiki
-  `Compared-to-fastfetch-and-neofetch.md` "Real-hardware benchmarks" section carries the
-  pre-fix numbers and the investigation note.
-- **Version**: Bumped to `0.3.44` / `retch-sysinfo 0.1.34` (library behavior change).
-
-### v0.3.43 - update_wip.py: bound substitutions with count=1 (July 10, 2026)
-- **Follow-up to v0.3.42**: the retargeted `**main HEAD**:` regex had no `count`, so it
-  rewrote every line containing that header string. WIP.md's open-task prose mentions the
-  header verbatim, so the #142 merge clobbered those task lines (repaired by hand). Both
-  `re.sub` calls (Active-Branch and main-HEAD) now pass `count=1`, rewriting only the first
-  top-of-file header occurrence and leaving prose intact. Verified end-to-end against a
-  sample containing the header strings in both a header line and later prose.
-- **Docs/tooling only**: no Rust source touched.
-- **Version**: Bumped to `0.3.43` (`retch-sysinfo` unchanged at `0.1.33`).
-
-### v0.3.42 - Fix update_wip.py post-merge updater (July 10, 2026)
-- **Stale-pointer bug**: `scripts/update_wip.py` matched an obsolete
-  `**Latest commit on main**:` line that no longer exists in WIP.md, so the substitution
-  silently no-op'd and left `**main HEAD**:` stale after every `just merge-pr` (observed
-  live after the #141 merge). Regex retargeted to `**main HEAD**:`, output rewritten to the
-  current format (backtick hash — subject — **v<version>**), with the version read from
-  `Cargo.toml`. A function replacement is used so regex metacharacters in a commit subject
-  are treated literally.
-- **Windows UTF-8 crash averted**: because the fix now writes the commit subject into
-  WIP.md, and this repo's subjects contain `→`/em-dashes, `Path.read_text`/`write_text`,
-  `subprocess` decoding, and stdout are all pinned to UTF-8 — otherwise the default cp1252
-  console/locale on the Windows dev box would crash the script mid-merge. Verified
-  end-to-end against a commit subject containing `→`.
-- **Docs/tooling only**: no Rust source touched.
-- **Version**: Bumped to `0.3.42` (`retch-sysinfo` unchanged at `0.1.33`).
-
-### v0.3.41 - WIP.md handling wording: "reset" → "update" (July 10, 2026)
-- **Consistent "update" wording**: AGENTS.md §5 ("reset `WIP.md`" → "update `WIP.md`",
-  with a clarifying note that WIP.md is a rolling log, not reset per-PR), the
-  `just merge-pr` recipe comment, and the helper script now all say *update*. This
-  aligns the docs/tooling with WIP.md's own protocol header ("never reset per-PR").
-- **Script rename**: `scripts/reset_wip.py` → `scripts/update_wip.py` (via `git mv`);
-  `Justfile` `merge-pr` updated to call the new name. Script behavior is unchanged — it
-  still only rewrites the Active-Branch and latest-commit lines and preserves the
-  notes/open-task sections. (Pre-existing note: the script's `**Latest commit on main**:`
-  regex predates the current WIP header format and is left as-is — out of scope here.)
-- **Backlog**: added the "real hardware" benchmark section item to §5 Future Work.
-- **Docs/tooling only**: no Rust source touched, no runtime behavior change.
-- **Version**: Bumped to `0.3.41` (`retch-sysinfo` unchanged at `0.1.33`).
-
-### v0.3.40 - Single field registry (field-wiring de-duplication) (July 10, 2026)
-- **`src/fields.rs`**: new single source of truth for the displayable-field list.
-  A `FIELDS` table pairs each canonical field key with the least-verbose `Mode`
-  (`Short`/`Standard`/`Long`/`Full`) it appears in; modes are strictly nested so one
-  `min_mode` per field defines all four strata. Exposes `fields_for(mode)` and
-  `config_fields_block()`.
-- **Consumers rewired**: `main.rs` (collection allow-lists + the full-config
-  template) and `display.rs` (display allow-lists) now call `fields_for(mode)`;
-  `config.rs`'s `merge_defaults` and `main.rs`'s `default_config_content` both emit
-  the commented `fields = [...]` block via `config_fields_block()`. Removed ~318
-  lines of hand-duplicated `&str` lists across four in-code sites that had already
-  drifted apart.
-- **Docs corrected + guarded**: fixed pre-existing drift the consolidation exposed —
-  `docs/retch.1.md` was missing `cpu-cache`, `cpu-usage`, `public-ip` and spelled
-  `terminal_font`; `README.md` was missing `gamepad`, `public-ip`. New guardrail
-  tests (`test_docs_cover_all_registry_fields`,
-  `test_generated_config_covers_all_registry_fields`) fail CI if any registry key is
-  undocumented or missing from generated config, so the drift can't silently return.
-- **Behavior preserved**: strata sets are byte-for-byte identical (unit tests pin
-  short=8 / standard=19 / long=46 / full=52, strict nesting, and exact membership);
-  short/standard/full verified at runtime. Pure internal refactor — no user-visible
-  behavior change.
-- **Version**: Bumped to `0.3.40` (`retch-sysinfo` unchanged at `0.1.33`).
-
-### v0.3.39 - Security: bump crossbeam-epoch (RUSTSEC-2026-0204) (July 10, 2026)
-- **cargo audit fix**: `crossbeam-epoch` `0.9.18 → 0.9.20` (Cargo.lock only) clears
-  RUSTSEC-2026-0204 — an invalid pointer dereference in the `fmt::Pointer` impl for
-  `Atomic`/`Shared` when the underlying pointer is invalid. Pulled in transitively
-  through `rayon` (`image`/graphics feature and dev-only `criterion`); no direct
-  dependency or manifest change. The `paste` unmaintained warning (RUSTSEC-2024-0436)
-  remains an allowed, non-blocking warning.
-- **`just pr` gains an audit step**: step 8 now runs `cargo audit` (auto-installing
-  `cargo-audit` if absent), advisory-only so it never blocks the gate. Documented in
-  AGENTS.md §4.0. This closes the gap that let RUSTSEC-2026-0204 reach CI unnoticed —
-  the local gate previously never invoked audit at all.
-- **Version**: Bumped to `0.3.39` (`retch-sysinfo` unchanged at `0.1.33`).
-
-### v0.3.38 - Configured vs. rated memory speed, PR-gate tooling (July 2, 2026)
-- **`phys-mem` configured speed**: on Linux, `DimmSlot` now carries a `configured_speed_mt`
-  parsed from `dmidecode --type 17`'s "Configured Memory Speed" field, separate from the
-  existing "Speed" (rated/max). `format_dimm_slots` shows both when they differ, e.g.
-  `2× 16 GB DDR5 4800 MT/s (rated 6000 MT/s)` — surfaces cases like XMP/EXPO not being
-  enabled, where the module runs below spec. macOS/Windows sources don't distinguish the
-  two, so `configured_speed_mt` is always `None` there; behavior unchanged.
-  `retch-sysinfo` bumped to `0.1.33` for the public `DimmSlot` field addition.
-- **`Memory` → `Memory Usage` display label**: renamed for clarity against `phys-mem`
-  ("Phys Mem"). The `--fields`/config key `memory` still matches via an alias in
-  `should_show()` (same pattern as the existing `dns`/"DNS Server" alias) — config files
-  written against the old docs keep working.
-- **`just open-pr` recipe**: the only sanctioned way to open a PR now — runs `just pr`'s
-  full checklist first, then `gh pr create`, since `gh` has no hook mechanism of its own
-  to gate PR creation. Direct `gh pr create` calls are no longer documented as valid.
-- **Agent-agnostic tooling principle documented**: NOTES.md and AGENTS.md now explicitly
-  call out that `.claude/`-scoped hooks only bind Claude Code and are invisible to any
-  other agent or a human typing commands directly — prefer real git hooks
-  (`scripts/hooks/pre-push`) and Justfile recipes (`just open-pr`) for anything that
-  needs to hold regardless of which tool is driving.
-- **Version**: Bumped to `0.3.38` / `retch-sysinfo 0.1.33`.
-
-### v0.3.37 - Btrfs and Zpool storage fields (July 1, 2026)
-- **`btrfs` field**: reports label + subvolume + used/allocated space per mount point
-  (not deduplicated by device — an earlier draft did that and silently dropped `/home`
-  when `/` and `/home` are separate subvolumes of the same underlying filesystem;
-  fixed after review caught it, see subvol parsing in `parse_mount_line`). Snapshot
-  count is included via `btrfs subvolume list -s` when readable (requires root) and
-  omitted — not shown as zero — otherwise. Shells out to `btrfs filesystem show`/`usage
-  --raw`. Linux only. New module `crates/sysinfo/src/btrfs.rs`.
-- **`zpool` field**: reports name, allocation, and health for each imported ZFS pool
-  via `zpool list -H -p`. Linux and macOS (OpenZFS); returns empty if the `zpool`
-  binary isn't installed rather than erroring. New module `crates/sysinfo/src/zfs.rs`.
-- Both fields are subprocess-based and gated behind `--long` and above, following the
-  same fast-inline-vs-thread-scope split as other subprocess fields (bios, wifi, ...).
-- Closes both Storage & Filesystems feature-gap items from §6.
-- **Version**: Bumped to `0.3.37` / `retch-sysinfo 0.1.32`.
-
-### v0.3.36 - Untap aws/tap in macOS benchmark CI (cosmetic) (July 1, 2026)
-- **CI annotation cleanup**: The macOS benchmark job (`benchmark.yml`) was surfacing
-  "aws/tap is not trusted" Homebrew warnings as GitHub Actions annotations on every
-  run — caused by an `aws/tap` Homebrew tap pre-installed on the GitHub-hosted
-  `macos-latest` runner image, unrelated to `fastfetch`/`hyperfine` installation.
-  Added a `brew untap aws/tap || true` step before the install step to silence it.
-  Purely cosmetic — nothing was failing.
-- **Version**: Bumped to `0.3.36`.
-
-### v0.3.35 - Add Development-Setup.md to wiki checklist, catch up wiki (July 1, 2026)
-- **AGENTS.md §4.8**: Added `Development-Setup.md` to the wiki checklist — it was
-  omitted when the checklist was first written, even though the page documents
-  `just` recipes and was directly affected by the `just pr`/`just merge-pr` additions.
-- **Wiki catch-up**: Documented `just pr`/`just merge-pr` in `Development-Setup.md`
-  and fixed a stale `pandoc` reference (the Justfile/flake use `mandown`) — done
-  directly on the wiki since wiki edits aren't gated by PR review.
-- **Version**: Bumped to `0.3.35`.
-
-### v0.3.34 - Fix claude-code-review failing on Dependabot PRs (July 1, 2026)
-- **Bug**: `.github/workflows/claude-code-review.yml` hard-failed in ~10s on any
-  Dependabot PR (e.g. #132) because `claude-code-action@v1` refuses to run for
-  non-human actors by default.
-- **Fix**: Added `allowed_bots: 'dependabot[bot]'` to the action's `with:` block,
-  scoped narrowly to Dependabot rather than allowing all bots.
-- **Version**: Bumped to `0.3.34`.
-
-### v0.3.33 - Add CLAUDE.md, require reading ~/AGENTS.md (July 1, 2026)
-- **CLAUDE.md added**: New file pointing agents at `AGENTS.md` via a relative link
-  (retch previously had no `CLAUDE.md` at all; etr's had a broken absolute path,
-  fixed alongside this).
-- **Global Mandates item**: `AGENTS.md` Portable Core gained a `0. Global Mandates`
-  item requiring agents to read `~/AGENTS.md` (cross-repo mandates) before starting
-  work.
-- **Version**: Bumped to `0.3.33`.
-
-### v0.3.32 - Merge AGENTS.md with etr (July 1, 2026)
-- **AGENTS.md restructured**: Split into a Portable Core (shared, kept in sync with
-  `etr`'s AGENTS.md) plus a Part 2 project-specific section.
-- **NOTES.md discipline documented**: AGENTS.md now requires reading NOTES.md at
-  session start and updating it before every commit/push, matching what `just pr`
-  already enforced silently.
-- **Core Developer Guidelines added**: unsafe-Rust, idiomatic-Rust, and testing/doc
-  mandates adopted from `etr`, adapted for retch (no client-server architecture note).
-- **Pre-PR Checklist documented**: AGENTS.md now describes exactly what `just pr`
-  automates (branch check, version-bump check, NOTES.md header check, man page
-  build+diff check, Cargo.lock check, fmt/clippy, tests) plus the remaining manual
-  checklist, with man-page-regen and version-bump called out as unconditional.
-- **Version**: Bumped to `0.3.32`.
-
-### v0.3.31 - Output mode strata refactor (June 29, 2026)
-- **`--full` flag**: New output mode that is a strict superset of `--long`. Adds slow and cosmetic fields: `theme`, `icons`, `cursor`, `gamepad`, `weather`, and FUSE mounts in disk detection.
-- **Standard mode cleanup**: Removed `bios` and `gamepad` from the default field set. `bios` moves to `--long`; `gamepad` moves to `--full`.
-- **`--long` is now explicit**: Long mode uses an explicit field list instead of "collect everything". Fields include all standard fields plus `bios`, `font`, `shell`, `editor`, `terminal`, `terminal-font`, `terminal-size`, `desktop`, `wm`, `dns`, `domain`, `wifi`, `bluetooth`, `battery`, `public-ip`, `locale`, `init`, `chassis`, `bootmgr`, `temp`, `cpu-freq`, `procs`, `arch`, `users`, `packages`.
-- **Consolidated temps in `--long`**: Temperature output in `--long` mode shows one reading per physical unit (CPU, GPU, NVMe, WiFi, System — highest sensor in each category). All raw sensor readings appear in `--full`.
-- **FUSE mounts in `--full`**: `detect_logical_disks` now accepts an `include_fuse` flag; `--full` re-enables `statvfs` for `fuse.*` entries (all other modes skip them to avoid 600ms+ hangs).
-- **`domain` field**: Current DNS domain name from `/etc/resolv.conf` `domain` directive (falls back to first `search` entry). Shown in `--long` and above.
-- **`domain-search` field**: Per-interface DNS search domain lists from `resolvectl status`, formatted as `"wlan0: home.local"`. Full mode only.
-- **Display reorder**: Logical grouping of fields — domain/domain-search under Host, uptime near OS identity, users/packages near OS section, Wi-Fi/Bluetooth/Battery in hardware block (after Camera).
-- **DNS label renamed**: "DNS" display label changed to "DNS Server". Config key `dns` is unchanged.
-- **Version**: Bumped to `0.3.31` / `retch-sysinfo 0.1.31`.
-
-### v0.3.30 - Switch weather backend to Open-Meteo (June 29, 2026)
-- **Weather accuracy**: Replaced wttr.in (World Weather Online backend) with Open-Meteo for forecast data and Open-Meteo geocoding API for location resolution. Auto-location now uses ipinfo.io instead of wttr.in IP detection. Results match NWS/ECMWF model data.
-- **weather_unit config**: New `weather_unit` config key and `--weather-unit` flag accepting `"fahrenheit"` (default) or `"celsius"`.
-- **WMO emoji map**: Weather conditions expressed as emojis via WMO weather interpretation codes (clear, cloudy, fog, drizzle, rain, snow, thunderstorm).
-- **Version**: Bumped to `0.3.30` / `retch-sysinfo 0.1.30`.
-
-### v0.3.29 - Terminal size, DNS, WM, shell/desktop fixes, logo improvements (June 29, 2026)
-- **TerminalSize**: Detects terminal dimensions (columns × rows) via `ioctl(TIOCGWINSZ)` on Linux/macOS; falls back to `$COLUMNS`/`$LINES`.
-- **DNS**: Parses configured nameservers from `/etc/resolv.conf` (Linux/macOS); PowerShell `Get-DnsClientServerAddress` on Windows.
-- **WM**: Detects the active window manager by scanning `/proc` for known compositor/WM process names. Suppressed in output when identical to the Desktop field (case-insensitive).
-- **Shell fix**: Shell detection now walks the process tree first to find the *running* shell, falling back to `$SHELL` (login shell) only when the scan yields nothing.
-- **Desktop fix**: Added `XDG_SESSION_DESKTOP` and `GDMSESSION` as env-var fallbacks for Desktop detection; added `normalize_desktop_name()` for canonical casing (e.g. `gnome` → `GNOME`); added `detect_desktop_from_proc()` last-resort scan of `/proc` for known DE processes.
-- **Logo tty suppression**: Logo is now automatically suppressed when stdout is not a terminal (uses `isatty()` — not fooled by pagers like `bat` that allocate a PTY).
-- **Logo cursor placement**: Graphical logos (Kitty/iTerm2/Sixel) now correctly advance the terminal cursor past the logo's bottom edge when the info field list is shorter than the logo height. Cell height is computed via `TIOCGWINSZ` with a 20px fallback.
-- **Version**: Bumped to `0.3.29` / `retch-sysinfo 0.1.29`.
-
-### v0.3.28 - TL;DR page (June 28, 2026)
-- **TL;DR Page**: Added `tldr` command page entry (`docs/retch.md`) detailing the most common CLI parameters, themes, and configuration flags.
-- **Documentation**: Updated manual pages (`just man`) and README to integrate references to the new `tldr` utility documentation.
-- **Version**: Bumped to `0.3.28` / `retch-sysinfo 0.1.28`.
-
-### v0.3.27 - System and Misc fields (June 28, 2026)
-- **InitSystem**: Detects PID 1 init system name from `/proc/1/comm` on Linux; always "launchd" on macOS, "SCM" on Windows.
-- **Chassis**: Maps `/sys/class/dmi/id/chassis_type` number to human label (Laptop, Desktop, Mini PC, etc.) on Linux; infers from `hw.model` sysctl on macOS.
-- **Locale**: Reads `$LC_ALL` → `$LC_MESSAGES` → `$LANG` env vars.
-- **Bootmgr**: Checks `/boot/loader/entries` (systemd-boot), `/boot/grub2` (GRUB 2), `/boot/grub` (GRUB), `/sys/firmware/efi` (UEFI fallback) on Linux; "Apple Boot ROM" on macOS.
-- **Editor**: Reads `$VISUAL` → `$EDITOR` env vars.
-- **Weather**: Long-mode only; calls `curl https://wttr.in/?format=3` (3-second timeout) for one-line city+condition+temperature.
-- All five fast fields are in the default output set; Weather is long-only due to network latency.
-- **Feature gap list** moved from `AGENTS.md` to `NOTES.md` (project state tracking, not standing instructions).
-- **Version**: Bumped to `0.3.27` / `retch-sysinfo 0.1.27`.
-
-### v0.3.26 - Skip FUSE mounts in disk detection (June 27, 2026)
-- **Disk detection (Linux)**: Replaced `sysinfo::Disks::new_with_refreshed_list()` with a custom `/proc/mounts` reader that filters pseudo-filesystems and `fuse.*` mounts before calling `statvfs`. Eliminates 600ms+ hangs caused by cryfs/EncFS vaults and other FUSE mounts.
-- **Version**: Bumped to `0.3.26` / `retch-sysinfo 0.1.26`.
-
-### v0.3.25 - Windows PhysDisk and PhysMem (June 24, 2026)
-- Implemented `detect_windows()` in `crates/sysinfo/src/disk.rs` and `crates/sysinfo/src/memory.rs` using PowerShell scripts.
-- **Version**: Bumped to `0.3.25` / `retch-sysinfo 0.1.25`.
-
-### v0.3.24 - Benchmark Mode Mappings and Metric Fetch Optimizations (June 24, 2026)
-- Restricted metric gathering in `SystemInfo::collect` to only fetch fields specified in configuration or CLI flags.
-- **Version**: Bumped to `0.3.24` / `retch-sysinfo 0.1.24`.
-
-### v0.3.23 - Physical Disk and Physical Memory Fields (June 23, 2026)
-- Added `PhysDisk` and `PhysMem` fields running concurrently in the fetching pipeline.
-- **Version**: Bumped to `0.3.23` / `retch-sysinfo 0.1.23`.
-
-### v0.3.22 - Packaging Configurations (June 23, 2026)
-- Created package configuration files for Arch User Repository (`packaging/aur/PKGBUILD`) and Nixpkgs (`packaging/nixpkgs/package.nix`).
-- **Version**: Bumped to `0.3.22` / `retch-sysinfo 0.1.22`.
-
-### v0.3.21 - CPU Cache and CPU Usage (June 15, 2026)
-- **CPU Cache**: Added `CPUCache` field showing L1d/L1i/L2/L3 sizes parsed from `/sys/devices/system/cpu/cpu0/cache/` on Linux.
-- **CPU Usage**: Added `CPUUsage` field showing current CPU utilization percentage.
-- **Version**: Bumped to `0.3.21` / `retch-sysinfo 0.1.21`.
-
-### v0.3.20 - Fix `auto` theme headless fallback (June 15, 2026)
-- **Bug fix**: `theme = "auto"` now returns `neutral` instead of `dark` when no display server is present.
-- **Version**: Bumped to `0.3.20` / `retch-sysinfo 0.1.20`.
-
-### v0.3.19 - New Distro Logos: MX Linux, Mint, Kali, Zorin, Garuda (June 15, 2026)
-- Sourced and integrated ASCII art, PNG, and color palettes for 5 additional Linux distros.
-- **Version**: Bumped to `0.3.19` / `retch-sysinfo 0.1.19`.
-
-### v0.3.18 - macOS WiFi: CoreWLAN SSID + Link Rate (June 14, 2026)
-- Replaced the SC dynamic store approach with CoreWLAN Objective-C runtime FFI.
-- **Version**: Bumped to `0.3.18` / `retch-sysinfo 0.1.18`.
-
-### v0.3.17 - macOS Native Probes: Process-Spawn Elimination Complete (June 13, 2026)
-- Replaced `ioreg` battery process spawns and interface defaults with CoreFoundation, IOKit, and SC framework FFI.
-- **Version**: Bumped to `0.3.17` / `retch-sysinfo 0.1.17`.
-
-### v0.3.16 - macOS Native Probes: system_profiler Elimination (June 11, 2026)
-- Swapped macOS system_profiler process spawns for CPU ROM, audio FFI, display listing, webcam HID, and Bluetooth IOKit framework wrappers.
-- **Version**: Bumped to `0.3.16` / `retch-sysinfo 0.1.16`.
-
-### v0.3.15 - CLI Refactor: Logo Externalization and Module Cleanup (June 11, 2026)
-- Moved hardcoded distro logos into external `.txt` files under `assets/logos/`.
-- **Version**: Bumped to `0.3.15` / `retch-sysinfo 0.1.15`.
-
-### v0.3.14 - Nix Flake (June 11, 2026)
-- Added `flake.nix` with crane-based builds and Home Manager default modules.
-- **Version**: Bumped to `0.3.14` / `retch-sysinfo 0.1.14`.
-
-### v0.3.13 - SPDX Copyright Headers (June 11, 2026)
-- Added SPDX-FileCopyrightText to all source files.
-- **Version**: Bumped to `0.3.13` / `retch-sysinfo 0.1.13`.
-
-### v0.3.12 - Windows Native Probes: wmic Elimination (June 10, 2026)
-- Swapped out wmic process queries for native Registry/user32 FFI for Windows GPUs, displays, audio, and BIOS.
-- **Version**: Bumped to `0.3.12` / `retch-sysinfo 0.1.12`.
-
-### v0.3.11 - Module Isolation Completion (June 10, 2026)
-- Completed the `retch-sysinfo` module isolation refactor.
-- **Version**: Bumped to `0.3.11` / `retch-sysinfo 0.1.11`.
-
-### v0.3.10+scripts - Local Benchmark Upload (June 10, 2026)
-- Added `scripts/upload_local_bench.py` and `post-merge` git hooks.
-
-### v0.3.10 - Test Coverage and Benchmarks (June 10, 2026)
-- Expanded test coverage and benchmark micro-harness.
-- **Version**: Bumped to `0.3.10` / `retch-sysinfo 0.1.10`.
+- **`just` parses `{{` inside a recipe body before the shell or Python ever sees it** — an
+  incidental `{{` in an embedded heredoc breaks the whole Justfile.
+- **In a `#!` shebang recipe, `just` does NOT strip a leading `@`** — that is plain-recipe
+  syntax. The shell receives a command literally named `@/usr/bin/python3` and exits 127. This
+  shipped twice, the second time in a session where the first write-up had already been read:
+  **a documented trap is not a guard**, which is why `gate_conformance.py` now refuses the
+  shape.
+- **`.git` is synced by Syncthing**, so creating a branch on one host switches every peer's
+  checkout with it. Self-heals while one host is driving; two hosts on different branches would
+  fight. After any multi-host session check for debris:
+  `git for-each-ref | grep sync-conflict` — a `git push --tags` would publish it.
+- **A Syncthing conflict copy may be the *good* file.** Hash HEAD, the working copy and every
+  conflict copy before discarding anything; it has gone both ways.
+- **Never `mktemp` in `/tmp` and `mv` into a Syncthing folder.** `/tmp` is tmpfs, so the `mv` is
+  a cross-filesystem copy and coreutils preserves the SELinux context — landing `user_tmp_t`
+  (and mktemp's 0600) in a `container_file_t` directory. The Syncthing container cannot read
+  that, and the entire synced folder wedges on one file while Unix permissions look perfectly
+  normal. Create the temp file **in the destination directory** and `chmod 0644`.
+- **The session scratchpad is on tmpfs**, so building there consumes RAM — a 475 MB `target/`
+  was enough to trip the OOM guard. Put an A/B worktree on a real filesystem.
+- **A one-shot hyperfine number at the ~5 ms scale is not a measurement.** Re-run before
+  reporting a regression at that magnitude; ratios travel between runs, absolutes do not.
+- **Benchmark A/B needs a control**, and the honest signal is often the direction flipping
+  across repeats. Compare `main` against *itself* in the same session before believing a gap.
 
 ---
 
@@ -4874,40 +644,19 @@ stated prerequisite for the next publish round, and macOS code signing / notariz
 - `sysinfo` — System information gathering
 - `clap` — CLI argument parsing
 - `serde` + `toml` — Configuration
-- `owo-colors` — Truecolor/RGB terminal coloring
-- `icy_sixel` — Pure Rust Sixel encoding
-- `image` + `base64` — Graphical logo processing
-- `rusqlite` — RPM package counting
+- `owo-colors` — Truecolor/RGB terminal coloring. **`src/theme.rs` hardcodes ANSI byte
+  sequences that must equal what this crate emits**, so a bump of it is the change that can
+  break them silently; tests pin `rgb_prefix`, `FG_RESET` and `ACTIVE_IFACE_PREFIX`.
+- `icy_sixel` — Pure Rust Sixel encoding (graphics feature)
+- `image` + `base64` — Graphical logo processing (graphics feature)
+- `rusqlite` — RPM package counting. It bundles SQLite, so a bump changes the engine that has to
+  honour `immutable=1`; the unit tests only assert string construction. Check
+  `retch --fields packages` unprivileged after any bump.
 - `chrono` — Date/time formatting
-- `dirs` — Home and config directory resolution (`home_dir`/`config_dir`; a direct
-  dependency of **both** crates, which is why a major bump widens two manifests)
+- `dirs` — Home and config directory resolution (`home_dir`/`config_dir`; a direct dependency of
+  **both** crates, which is why a major bump widens two manifests)
+- `unicode-width` — Terminal column measurement for layout
 
----
-
-## 9. Historical Session Notes
-
-### Session Notes — June 27, 2026 (v0.3.25)
-**Benchmark Anomaly: cryfs FUSE Mount**
-Local benchmarks on this machine (Linux Fedora 44 x86_64) show ~900ms standard / ~618ms short vs ~333ms / ~10ms from the other machine. Root cause: `/home/ktobias/Vaults/FooCry` is a cryfs FUSE mount that takes **613ms** to `statvfs`. The sysinfo `Disks::new_with_refreshed_list()` calls `statvfs` on every mount entry in `/proc/mounts`, and this one blocks.
-This is an environment issue, not a code regression. Benchmarks run on this machine while the vault is mounted will be skewed. Potential fix: skip `fuse.*` filesystem types in disk detection.
-
-### Session Notes — June 25, 2026 (v0.3.25)
-**Nixpkgs PR #535318**: open resubmission of #534754 with correct single-commit structure, filled PR template, `Assisted-by:` trailer, and AI disclosure.
-Added `l1a` to `maintainers/maintainer-list.nix` in the nixpkgs fork.
-`just nixpkgs-release` automation script added (`scripts/nixpkgs_release.py`).
-
-### Session Notes — June 24, 2026 (v0.3.24)
-Local benchmark uploads have been updated to run sequential pairwise comparisons for standard (`retch` vs `fastfetch`), short (`retch --short` vs `fastfetch -c none`), and long (`retch --long` vs `fastfetch -c all`) modes.
-**Default Output Set**: The new Physical Disk and Physical Memory modules should not be shown in the default set (they should only be shown in long/custom fields) to preserve default CLI runtime speed and avoid unnecessary overhead.
-
-### Session Notes — June 14, 2026
-macOS WiFi SSID + link rate display. Branch: `refactor/macos-wifi-link-rate` (PR #90).
-Three-tier SSID fallback via CoreWLAN ObjC FFI, `/usr/sbin/ipconfig getsummary <iface>`, and "Connected" placeholder.
-Transmit rate via `CWInterface.transmitRate`. Receive rate is not available on any public/private macOS API.
-
-### Commit Attribution guidelines
-All commits use the format:
-```
-Assisted-By: Claude Sonnet 4.6
-```
-(Adjust the model name depending on the assistant version that worked on the task).
+The optional `graphics` feature is **not** compiled by the default `--workspace` clippy, so
+`just check` runs a separate `--features graphics` pass and CI has a dedicated
+`graphics-feature` job.

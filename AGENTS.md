@@ -270,10 +270,20 @@ blocks):
       `just tldr-release`.
 
 ### 4.6 NOTES.md
-- [ ] "Current State" header version updated to match the new version.
-- [ ] Release log entry added under "Major Achievements" describing what shipped.
-- [ ] Feature-gap or known-issue list updated: mark completed items done, add new gaps
+- [ ] "Current State" header version updated to match the new version (`just pr` enforces this).
+- [ ] "Current State" body updated **only if the change leaves something a future reader needs**
+      — a changed default, a new user-visible behaviour, an open follow-up. Routine changes need
+      nothing here: `git log` is the changelog.
+- [ ] Feature-gap or known-issue list (§6/§6a/§6c) updated: remove completed items, add gaps
       discovered during the work.
+- [ ] §5 backlog updated: **delete** finished items rather than striking them through.
+- [ ] §7 "Hard-won lessons" updated **if the work leaves behind a rule** — a trap, a gotcha, a
+      check that turned out to answer the wrong question. This is the part of NOTES.md that
+      earns its keep; a PR that found nothing surprising adds nothing here.
+
+> **NOTES.md is not a changelog.** It held a full per-release log until v0.18.1 — ~4,400 lines,
+> which buried everything load-bearing. Do not reintroduce one. If an entry would only say what
+> changed, write a good commit message instead.
 
 ### 4.7 Version bump & release hygiene
 - [ ] Bump the version in `Cargo.toml` following semver:
