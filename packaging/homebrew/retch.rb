@@ -83,11 +83,13 @@ class Retch < Formula
     # under a missing framework link — while touching nothing but local system calls.
     # (It is also 3.4 ms against `--short`'s 31 ms, and reaches no network at all.)
     #
-    # **THE OUTPUT MUST BE ANSI-STRIPPED BEFORE MATCHING.** retch colourises even when
-    # piped, so the label and its colon are separated by escapes and a literal `/OS:/`
-    # never matches:
+    # **THE OUTPUT IS ANSI-STRIPPED BEFORE MATCHING.** Up to 0.17.x retch colourised even
+    # when piped, so the label and its colon were separated by escapes and a literal
+    # `/OS:/` never matched:
     #   "\e[38;2;0;255;255mOS\e[39m\e[38;2;128;128;128m:\e[39m \e[...mmacOS 26.6.2"
-    # Two earlier versions of this test failed on exactly that.
+    # Two earlier versions of this test failed on exactly that. Since 0.18.0 piped output
+    # is plain by default (`--color auto`), but the strip stays: it costs nothing, and it
+    # keeps this assertion independent of how retch decides whether to colour.
     #
     # The pattern matches the whole `ESC [ ... <final byte>` form rather than SGR (`m`)
     # only: chafa opens a run with `\e[?25l`, and an SGR-only strip leaves six characters

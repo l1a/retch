@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.17.18" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.18.0" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -40,6 +40,10 @@ Force Chafa symbols output, disabling high\-res graphical protocols (Kitty, Sixe
 \fB\-\-no\-logo\fP
 .RS
 Disable the logo entirely\.
+.RE
+\fB\-\-color\fP \fIWHEN\fP
+.RS
+When to use colour: `\f[CR]auto\fP` (the default), `\f[CR]always\fP` or `\f[CR]never\fP`\. `\f[CR]auto\fP` colours only when stdout is a terminal and `\f[CR]NO_COLOR\fP` is unset or empty\. See \fBCOLOR\fP\.
 .RE
 \fB\-\-logo\fP \fILOGO\fP
 .RS
@@ -313,6 +317,20 @@ accent_color = "bright_green"
 .fi
 .RE
 
+.SH "COLOR"
+.PP
+By default (`\f[CR]\-\-color auto\fP`) \fBretch\fP colours its output only when stdout is a terminal, so
+piped or redirected output is plain text\. Setting the `\f[CR]NO_COLOR\fP` environment variable to any
+non\-empty value turns colour off as well, following https://no\-color\.org\.
+.PP
+`\f[CR]\-\-color always\fP` and `\f[CR]\-\-color never\fP` override both\. `\f[CR]always\fP` keeps colour in a pipe, e\.g\.
+`\f[CR]retch \-\-color always | less \-R\fP`\.
+.PP
+With colour off, the ASCII logo is printed without colour, and a Chafa logo (whose symbols
+only make sense in colour) falls back to the ASCII one\. Kitty, iTerm2 and Sixel image logos
+are pictures rather than coloured text, so they are still shown\. `\f[CR]\-\-print\-logos\fP` is a logo
+showcase and always prints in colour\.
+
 .SH "LOGOS"
 .PP
 retch supports both ASCII and graphical logos\.
@@ -325,7 +343,7 @@ Graphical logos are rendered using Chafa when available, or via the Kitty, iTerm
 Logos are automatically suppressed when stdout is not a terminal (e\.g\. when piped to a pager or redirected to a file)\.
 .RE
 .PP
-Use `\f[CR]\-\-ascii\-only\fP` to force text\-only output\. Use `\f[CR]\-\-no\-logo\fP` to suppress the logo unconditionally\.
+Use `\f[CR]\-\-ascii\-logo\fP` to force text\-only output\. Use `\f[CR]\-\-no\-logo\fP` to suppress the logo unconditionally\.
 
 .SH "I/O RATES"
 .PP

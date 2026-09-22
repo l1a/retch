@@ -98,6 +98,24 @@ pub struct Cli {
     /// Generate shell completions
     #[arg(long, value_enum)]
     pub completions: Option<CompletionShell>,
+
+    /// When to use colour: "auto" (a terminal, and NO_COLOR unset), "always" or "never"
+    #[arg(long, value_enum, value_name = "WHEN")]
+    pub color: Option<ColorChoice>,
+}
+
+/// When to emit ANSI colour, from `--color`.
+///
+/// Omitting the flag is the same as `auto`. Only `always` and `never` override the
+/// `NO_COLOR` environment variable, because `auto` means "decide from the environment".
+#[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ColorChoice {
+    /// Colour when stdout is a terminal and `NO_COLOR` is unset or empty.
+    Auto,
+    /// Always colour, even when piped or when `NO_COLOR` is set.
+    Always,
+    /// Never colour.
+    Never,
 }
 
 /// Supported shells for completion generation.

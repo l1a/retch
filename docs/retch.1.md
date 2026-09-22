@@ -33,6 +33,9 @@ retch - a fast, feature-rich system information fetcher
 **--no-logo**
 :   Disable the logo entirely.
 
+**--color** *WHEN*
+:   When to use colour: `auto` (the default), `always` or `never`. `auto` colours only when stdout is a terminal and `NO_COLOR` is unset or empty. See **COLOR**.
+
 **--logo** *LOGO*
 :   Force a specific distribution logo by name/ID (e.g. `pop`, `manjaro`, `endeavouros`, `opensuse`, `ubuntu`, `fedora`, `macos`, `windows`).
 
@@ -190,6 +193,20 @@ Example:
     value_color = "#cdd6f4"
     accent_color = "bright_green"
 
+# COLOR
+
+By default (`--color auto`) **retch** colours its output only when stdout is a terminal, so
+piped or redirected output is plain text. Setting the `NO_COLOR` environment variable to any
+non-empty value turns colour off as well, following <https://no-color.org>.
+
+`--color always` and `--color never` override both. `always` keeps colour in a pipe, e.g.
+`retch --color always | less -R`.
+
+With colour off, the ASCII logo is printed without colour, and a Chafa logo (whose symbols
+only make sense in colour) falls back to the ASCII one. Kitty, iTerm2 and Sixel image logos
+are pictures rather than coloured text, so they are still shown. `--print-logos` is a logo
+showcase and always prints in colour.
+
 # LOGOS
 
 retch supports both ASCII and graphical logos.
@@ -198,7 +215,7 @@ retch supports both ASCII and graphical logos.
 - Graphical logos are rendered using Chafa when available, or via the Kitty, iTerm2, or Sixel inline image protocols.
 - Logos are automatically suppressed when stdout is not a terminal (e.g. when piped to a pager or redirected to a file).
 
-Use `--ascii-only` to force text-only output. Use `--no-logo` to suppress the logo unconditionally.
+Use `--ascii-logo` to force text-only output. Use `--no-logo` to suppress the logo unconditionally.
 
 # I/O RATES
 

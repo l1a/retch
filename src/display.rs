@@ -5,7 +5,7 @@
 //!
 //! Handles text rendering, layout, and image/ASCII logo rendering.
 
-use crate::cli::Cli;
+use crate::cli::{Cli, ColorChoice};
 use crate::config::Config;
 use crate::fetch::SystemInfo;
 use crate::fields::{self, Mode};
@@ -39,6 +39,65 @@ fn should_show_logo(
         return true; // explicit ASCII request forces the logo on, TTY or not, config or not
     }
     config_show_logo.unwrap_or(true) && stdout_is_tty // auto mode: default-on, but TTY-gated
+}
+
+/// Decide whether to emit ANSI colour.
+///
+/// `--color=always` and `--color=never` are final. Otherwise (the flag omitted, or `auto`)
+/// colour needs a terminal on stdout and a `NO_COLOR` that is unset or empty — the
+/// no-color.org rule is "present and not an empty string", so `NO_COLOR=` keeps colour on.
+///
+/// Before this existed retch coloured unconditionally, piped or not, which is why the
+/// Homebrew formula's test had to strip escapes itself before matching `OS:`.
+fn should_use_color(
+    choice: Option<ColorChoice>,
+    no_color: Option<&std::ffi::OsStr>,
+    stdout_is_tty: bool,
+) -> bool {
+    match choice {
+        Some(ColorChoice::Always) => true,
+        Some(ColorChoice::Never) => false,
+        Some(ColorChoice::Auto) | None => {
+            stdout_is_tty && no_color.map(|v| v.is_empty()).unwrap_or(true)
+        }
+    }
+}
+
+/// Remove every SGR (`ESC [ <params> m`) sequence from `s`, and nothing else.
+///
+/// This is how colour is turned off, rather than by teaching each colour source to stay
+/// quiet, because one of those sources is outside this crate: `retch-sysinfo` builds the
+/// green `Up` / red `Down` into the `Net` line itself. Stripping after the lines are
+/// formatted also keeps the layout byte-for-byte: `print_line` right-aligns the *coloured*
+/// label, so formatting plain labels instead would pad them differently.
+///
+/// SGR only, on purpose. Any other escape — a cursor move, or chafa's `\x1b[?25l` — is
+/// copied through untouched, since dropping part of one would leave the terminal in a
+/// state nobody asked for. A sequence whose parameters are not digits and `;` is not SGR
+/// and is kept whole.
+fn strip_sgr(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out = String::with_capacity(s.len());
+    let mut copied_to = 0;
+    let mut i = 0;
+    while i + 1 < bytes.len() {
+        if bytes[i] == 0x1b && bytes[i + 1] == b'[' {
+            let mut j = i + 2;
+            while j < bytes.len() && (bytes[j].is_ascii_digit() || bytes[j] == b';') {
+                j += 1;
+            }
+            if j < bytes.len() && bytes[j] == b'm' {
+                // Every byte of the sequence is ASCII, so these are char boundaries.
+                out.push_str(&s[copied_to..i]);
+                copied_to = j + 1;
+                i = j + 1;
+                continue;
+            }
+        }
+        i += 1;
+    }
+    out.push_str(&s[copied_to..]);
+    out
 }
 
 /// Result of [`plan_layout`]: whether the logo sits beside the text, the width the info
@@ -495,6 +554,11 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     // Use isatty() directly — terminal_size() can return Some() when a pager
     // (e.g. bat) allocates a PTY, giving a false positive.
     let stdout_is_tty = std::io::IsTerminal::is_terminal(&std::io::stdout());
+    let use_color = should_use_color(
+        cli.color,
+        std::env::var_os("NO_COLOR").as_deref(),
+        stdout_is_tty,
+    );
 
     let show_logo = should_show_logo(
         _config.show_logo,
@@ -855,7 +919,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             active_logo = ActiveLogo::Lines(logo::get_distro_logo_lines(distro_hint.as_deref()));
         } else if _config.chafa.unwrap_or(false) || cli.chafa_logo {
             let mut resolved = false;
-            if logo::chafa_available() {
+            // Chafa art is drawn *with* colour; stripped, it is noise. Without colour an
+            // explicit chafa request gets the plain ASCII logo instead.
+            if use_color && logo::chafa_available() {
                 if let Some(path) = &user_logo {
                     if let Some(lines) = logo::get_chafa_logo_lines(path) {
                         active_logo = ActiveLogo::Lines(lines);
@@ -936,8 +1002,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                 }
             }
 
-            // Chafa
-            if !resolved && logo::chafa_available() {
+            // Chafa — skipped without colour, for the reason given at the explicit branch.
+            // The image protocols above are not: a picture is not text colour.
+            if !resolved && use_color && logo::chafa_available() {
                 if let Some(path) = &user_logo {
                     if let Some(lines) = logo::get_chafa_logo_lines(path) {
                         active_logo = ActiveLogo::Lines(lines);
@@ -964,6 +1031,15 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                 active_logo =
                     ActiveLogo::Lines(logo::get_distro_logo_lines(distro_hint.as_deref()));
             }
+        }
+    }
+
+    // Colour off: strip here, after every line is formatted and before anything is measured,
+    // so the layout below sees exactly the widths it would have seen with colour on.
+    if !use_color {
+        info_lines = info_lines.iter().map(|line| strip_sgr(line)).collect();
+        if let ActiveLogo::Lines(logo_lines) = &mut active_logo {
+            *logo_lines = logo_lines.iter().map(|line| strip_sgr(line)).collect();
         }
     }
 
@@ -1851,5 +1927,78 @@ mod tests {
         assert!(wrapped.len() > 1);
         assert!(wrapped[0].starts_with("Audio: Windows Audio"));
         assert!(wrapped[1].starts_with("       "));
+    }
+
+    // ── colour on/off ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_should_use_color_explicit_choice_beats_everything() {
+        let set = Some(std::ffi::OsStr::new("1"));
+        for tty in [true, false] {
+            for env in [None, set] {
+                assert!(should_use_color(Some(ColorChoice::Always), env, tty));
+                assert!(!should_use_color(Some(ColorChoice::Never), env, tty));
+            }
+        }
+    }
+
+    #[test]
+    fn test_should_use_color_auto_needs_tty_and_no_no_color() {
+        for choice in [None, Some(ColorChoice::Auto)] {
+            assert!(should_use_color(choice, None, true));
+            assert!(!should_use_color(choice, None, false), "piped output");
+            assert!(
+                !should_use_color(choice, Some(std::ffi::OsStr::new("1")), true),
+                "NO_COLOR set"
+            );
+            // no-color.org: "present and not an empty string". An empty value is not a
+            // request, so colour stays on.
+            assert!(
+                should_use_color(choice, Some(std::ffi::OsStr::new("")), true),
+                "NO_COLOR empty"
+            );
+        }
+    }
+
+    #[test]
+    fn test_strip_sgr_removes_every_colour_form() {
+        let theme = Theme::neutral();
+        // A real print_line row: truecolor label, separator and value, with the library's
+        // basic-ANSI green "Up" nested inside and the bright-blue active-interface wrap.
+        let net = colorize_nested(
+            &format!("eth0 [{}] RX: 1 GB", "\x1b[32mUp\x1b[39m"),
+            ACTIVE_IFACE_PREFIX,
+        );
+        let row = format!(
+            "{}{} {}",
+            theme.color_label("Net"),
+            theme.color_separator(":"),
+            theme.color_value(&net)
+        );
+        assert_eq!(strip_sgr(&row), "Net: eth0 [Up] RX: 1 GB");
+        // The ASCII logo's forms: 256-colour, and the bare `ESC[m` / `ESC[0m` resets.
+        assert_eq!(strip_sgr("\x1b[38;5;252m/\\\x1b[0m\x1b[m"), "/\\");
+    }
+
+    #[test]
+    fn test_strip_sgr_keeps_everything_that_is_not_sgr() {
+        // Not colour, so not ours to remove: a cursor move, chafa's cursor-hide (the `?`
+        // makes it non-SGR), and a lone ESC at the end of the string.
+        for s in ["\x1b[5Cx", "\x1b[?25lx", "x\x1b", "\x1b[", "plain 宇多田"] {
+            assert_eq!(strip_sgr(s), s);
+        }
+    }
+
+    #[test]
+    fn test_strip_sgr_preserves_visible_width() {
+        // Stripping must not move anything: the layout is computed from visible widths.
+        let theme = Theme::neutral();
+        let row = format!(
+            "{:>10}{} {}",
+            theme.color_label("Media"),
+            theme.color_separator(":"),
+            theme.color_value("宇多田ヒカル - 花束を君に")
+        );
+        assert_eq!(visible_len(&strip_sgr(&row)), visible_len(&row));
     }
 }
