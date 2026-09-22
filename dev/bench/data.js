@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790100477789,
+  "lastUpdate": 1790101833222,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4784,6 +4784,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 598809539.46
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "e1df8b6a74ae4a513df0a0d3c73a567a8fe40d32",
+          "message": "Run the benchmark jobs in parallel (#264)\n\nThe five platform jobs were a strict five-deep `needs:` chain, so a run cost\nthe sum of its jobs rather than the maximum. Measured on run 35745177092\nfrom the Actions API: 39.1 min of wall clock against a 579s longest job,\neach job starting 3-10s after the previous one completed, zero overlap.\n\nThe chain was load-bearing and could not simply be deleted. Every job ended\nin github-action-benchmark with auto-push to the same gh-pages branch and\nthe same benchmark-data-dir-path, and dev/bench/data.js is a single file\nholding all eight suites; five parallel publishes would have raced.\n\nSo the serialisation moves rather than disappearing: the five jobs now end\nat actions/upload-artifact and publish nothing, and one `publish` job\ndownloads all five artifacts and runs the action once per suite as\nsequential STEPS of a single job. That is the action's documented pattern\nfor a workflow with several results -- its README says to give each step a\ndistinct `name`. Each step uses auto-push: false with one explicit git push\nafterwards, so five appends become one commit instead of five races with\nourselves.\n\nA failed platform still costs only its own series. Each job used to publish\nfor itself, so a Windows failure lost Windows alone; making `publish` depend\non all five would have turned one flaky runner into a total loss. `publish`\ntherefore runs on `!cancelled()` and each step is guarded on its own\nartifact existing, not on the job having succeeded.\n\nA `concurrency:` group is added, fixing something the chain never covered:\n`needs:` orders jobs within a run, so two merges in quick succession started\ntwo runs that both published. cancel-in-progress is false, because a\nhalf-finished benchmark run has already spent the runner time.\n\nVERIFICATION LIMIT, and it is the important one: the workflow triggers on\npush to main, so a PR cannot exercise it and the first run after merge is\nthe test. Verified structurally instead -- both versions parsed and\ncompared, asserting every job's steps except the final one are\nbyte-identical, runners and containers unchanged, triggers, permissions and\nenv unchanged, and `concurrency` the only added top-level key. The cargo\nbench, hyperfine and parse_criterion lines are identical to main's, so the\nmeasurement half is untouched. All five suite names were checked against the\nlive dashboard, because renaming one forks a series rather than renaming it.\n\nIf publish misbehaves the fallback is reverting the workflow: data.js is\nappend-only per suite, so a failed publish loses that run's points rather\nthan any history.\n\nNot done, and a reasonable follow-up: the five jobs are near-identical and\ncould collapse into a matrix. That is a refactor rather than this change.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-22T11:29:54-07:00",
+          "tree_id": "2a707e2fc031050c657663d608ef0c95dcf8a87d",
+          "url": "https://github.com/l1a/retch/commit/e1df8b6a74ae4a513df0a0d3c73a567a8fe40d32"
+        },
+        "date": 1790101833222,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 326567123.44
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 592436939.1400001
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 9051137.44
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 24153304.54
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 440772978.21999997
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 597988586.7200003
           }
         ]
       }
