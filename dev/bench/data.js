@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790101833222,
+  "lastUpdate": 1790103515813,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4838,6 +4838,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 597988586.7200003
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "7f698e9f5c04a074cfbf506e07d206604eac0139",
+          "message": "Fetch gh-pages once, not once per publish step (#265)\n\nv0.18.3 parallelised the five benchmark jobs and they worked: run\n35767546659 measured 604s (10.1 min) against the 2424s (40.4 min) serial\nbaseline, with 1814s of overlap and all five jobs green. Then `publish`\nfailed 13 seconds in.\n\ngithub-action-benchmark re-fetches gh-pages at the start of EVERY\ninvocation, with `git fetch origin gh-pages:gh-pages`. Under auto-push:\nfalse the first step leaves the local branch one commit ahead of origin, so\nthe second step's fetch is a non-fast-forward and the job dies:\n\n    ! [rejected] gh-pages -> gh-pages (non-fast-forward)\n\n`Publish Linux x64` succeeded and `Publish Linux arm64` took the rest of the\njob down with it.\n\nThe shape was right and one input was missing. skip-fetch-gh-pages: true now\ngoes on ALL FIVE publish steps -- not \"all but the first\", because each step\nis guarded on its own artifact and which one runs first is not fixed -- with\na single explicit `git fetch` before them. That fetch tolerates gh-pages not\nexisting yet, so a fresh repository still works.\n\nThe failure cost nothing but that run's points, and that is the design\nworking rather than luck. Because every step uses auto-push: false and the\nsingle push comes last, a failure before the push published NOTHING:\norigin/gh-pages was untouched at 2fd7ecf and all five suites still read\nf8659c4. Had each step pushed for itself, the run would have left one suite\none commit ahead of the other four.\n\nVerified structurally, since a PR still cannot run this workflow: the five\nbenchmark jobs are byte-identical to main, concurrency/on/env/permissions\nunchanged, the publish job's needs/if/runs-on unchanged, exactly one step\nadded, and the only changed input on each publish step is\nskip-fetch-gh-pages.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-22T11:57:57-07:00",
+          "tree_id": "8a71f631f1d0d8aa574f51b80c15c590373f864a",
+          "url": "https://github.com/l1a/retch/commit/7f698e9f5c04a074cfbf506e07d206604eac0139"
+        },
+        "date": 1790103515813,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 323679574.42000014
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 591559644.52
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 7428027.0200000005
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 15664911.72
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 456643267.34000003
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 605786645.8399999
           }
         ]
       }
