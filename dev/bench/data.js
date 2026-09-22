@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790103515813,
+  "lastUpdate": 1790104064561,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6429,90 +6429,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "de1d73f365d67017a4c6e6b0ef804e7da46550ca",
-          "message": "packaging: update AUR and COPR to 0.9.7\n\nBoth reference copies track the last RELEASED tag, so they can only be\nbumped after v0.9.7 exists -- and committed direct to main, since just pr\nhard-fails while Cargo.toml's version equals the last tag. Same precedent\nas 9476836, f75989c and d60658c.\n\nsha256 b358688008dce88c53089183048368b56c045e64765334ab9b7b89d7d2833fc7\ncomputed from the real release tarball three independent ways (sha256sum,\npython hashlib, openssl) and matching what aur-bump rendered and what\nspectool fetched for the spec. The tarball's docs/retch.1 is byte-identical\nto the committed page, so the installed footer is correct. Both AUR files\ncarry 0 CR bytes and .SRCINFO came out container_file_t.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-31T15:35:35-07:00",
-          "tree_id": "34e1033ad3807fbe440533584a2675e973160e5f",
-          "url": "https://github.com/l1a/retch/commit/de1d73f365d67017a4c6e6b0ef804e7da46550ca"
-        },
-        "date": 1788216153679,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 684588565.65,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 1738.9575173691878,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 89.74953690054613,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 3.9387430177738905,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 47.17338739559362,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 16307.333184508238,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 163795.89037439524,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 11423.07970839836,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 11582.989403427235,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1179953.1354073412,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 293.77758549922106,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 245.23082458215853,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -10647,6 +10563,120 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 313.987028864989,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7f698e9f5c04a074cfbf506e07d206604eac0139",
+          "message": "Fetch gh-pages once, not once per publish step (#265)\n\nv0.18.3 parallelised the five benchmark jobs and they worked: run\n35767546659 measured 604s (10.1 min) against the 2424s (40.4 min) serial\nbaseline, with 1814s of overlap and all five jobs green. Then `publish`\nfailed 13 seconds in.\n\ngithub-action-benchmark re-fetches gh-pages at the start of EVERY\ninvocation, with `git fetch origin gh-pages:gh-pages`. Under auto-push:\nfalse the first step leaves the local branch one commit ahead of origin, so\nthe second step's fetch is a non-fast-forward and the job dies:\n\n    ! [rejected] gh-pages -> gh-pages (non-fast-forward)\n\n`Publish Linux x64` succeeded and `Publish Linux arm64` took the rest of the\njob down with it.\n\nThe shape was right and one input was missing. skip-fetch-gh-pages: true now\ngoes on ALL FIVE publish steps -- not \"all but the first\", because each step\nis guarded on its own artifact and which one runs first is not fixed -- with\na single explicit `git fetch` before them. That fetch tolerates gh-pages not\nexisting yet, so a fresh repository still works.\n\nThe failure cost nothing but that run's points, and that is the design\nworking rather than luck. Because every step uses auto-push: false and the\nsingle push comes last, a failure before the push published NOTHING:\norigin/gh-pages was untouched at 2fd7ecf and all five suites still read\nf8659c4. Had each step pushed for itself, the run would have left one suite\none commit ahead of the other four.\n\nVerified structurally, since a PR still cannot run this workflow: the five\nbenchmark jobs are byte-identical to main, concurrency/on/env/permissions\nunchanged, the publish job's needs/if/runs-on unchanged, exactly one step\nadded, and the only changed input on each publish step is\nskip-fetch-gh-pages.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-22T11:57:57-07:00",
+          "tree_id": "8a71f631f1d0d8aa574f51b80c15c590373f864a",
+          "url": "https://github.com/l1a/retch/commit/7f698e9f5c04a074cfbf506e07d206604eac0139"
+        },
+        "date": 1790104064501,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 2673126.7,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "value": 518223435.62000006,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "value": 2707717.2,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 207134117.9,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 311102533.62,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 5009571.700000001,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 979636456.6,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2049.041949608015,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 114.8689595601406,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.875943004307759,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 57.86286336310608,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 18011.22498140332,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 189412.62470163076,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12778.90286527346,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 13012.784099816252,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1412334.7981479655,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 373.117017529031,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 283.6941650743041,
             "unit": "ns"
           }
         ]
