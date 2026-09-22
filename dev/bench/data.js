@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790104064908,
+  "lastUpdate": 1790104065234,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14953,80 +14953,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "de1d73f365d67017a4c6e6b0ef804e7da46550ca",
-          "message": "packaging: update AUR and COPR to 0.9.7\n\nBoth reference copies track the last RELEASED tag, so they can only be\nbumped after v0.9.7 exists -- and committed direct to main, since just pr\nhard-fails while Cargo.toml's version equals the last tag. Same precedent\nas 9476836, f75989c and d60658c.\n\nsha256 b358688008dce88c53089183048368b56c045e64765334ab9b7b89d7d2833fc7\ncomputed from the real release tarball three independent ways (sha256sum,\npython hashlib, openssl) and matching what aur-bump rendered and what\nspectool fetched for the spec. The tarball's docs/retch.1 is byte-identical\nto the committed page, so the installed footer is correct. Both AUR files\ncarry 0 CR bytes and .SRCINFO came out container_file_t.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-31T15:35:35-07:00",
-          "tree_id": "34e1033ad3807fbe440533584a2675e973160e5f",
-          "url": "https://github.com/l1a/retch/commit/de1d73f365d67017a4c6e6b0ef804e7da46550ca"
-        },
-        "date": 1788216948017,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1139130060.5,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 522.9294678504461,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 120.97806105661786,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 1.9344913658883738,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 67.06001251697617,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 4846.609705266512,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1270.4290530265532,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 434.3653302702316,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 81904.86392403359,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 391.7518778613499,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -18671,6 +18597,110 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 434.79943756735355,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7f698e9f5c04a074cfbf506e07d206604eac0139",
+          "message": "Fetch gh-pages once, not once per publish step (#265)\n\nv0.18.3 parallelised the five benchmark jobs and they worked: run\n35767546659 measured 604s (10.1 min) against the 2424s (40.4 min) serial\nbaseline, with 1814s of overlap and all five jobs green. Then `publish`\nfailed 13 seconds in.\n\ngithub-action-benchmark re-fetches gh-pages at the start of EVERY\ninvocation, with `git fetch origin gh-pages:gh-pages`. Under auto-push:\nfalse the first step leaves the local branch one commit ahead of origin, so\nthe second step's fetch is a non-fast-forward and the job dies:\n\n    ! [rejected] gh-pages -> gh-pages (non-fast-forward)\n\n`Publish Linux x64` succeeded and `Publish Linux arm64` took the rest of the\njob down with it.\n\nThe shape was right and one input was missing. skip-fetch-gh-pages: true now\ngoes on ALL FIVE publish steps -- not \"all but the first\", because each step\nis guarded on its own artifact and which one runs first is not fixed -- with\na single explicit `git fetch` before them. That fetch tolerates gh-pages not\nexisting yet, so a fresh repository still works.\n\nThe failure cost nothing but that run's points, and that is the design\nworking rather than luck. Because every step uses auto-push: false and the\nsingle push comes last, a failure before the push published NOTHING:\norigin/gh-pages was untouched at 2fd7ecf and all five suites still read\nf8659c4. Had each step pushed for itself, the run would have left one suite\none commit ahead of the other four.\n\nVerified structurally, since a PR still cannot run this workflow: the five\nbenchmark jobs are byte-identical to main, concurrency/on/env/permissions\nunchanged, the publish job's needs/if/runs-on unchanged, exactly one step\nadded, and the only changed input on each publish step is\nskip-fetch-gh-pages.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-22T11:57:57-07:00",
+          "tree_id": "8a71f631f1d0d8aa574f51b80c15c590373f864a",
+          "url": "https://github.com/l1a/retch/commit/7f698e9f5c04a074cfbf506e07d206604eac0139"
+        },
+        "date": 1790104065186,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 35640427.620000005,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "value": 1126893016.54,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "value": 42898351.62,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 954057906.7199999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 1035290016.6399999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 36759389.319999985,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 894999216.6,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 479.53062006419316,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 126.77430108534679,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.0132465137955773,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 71.11397258293229,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4652.9379644446535,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1177.7866181803136,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 466.79056424737684,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 79357.82726141535,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 369.7175488561383,
             "unit": "ns"
           }
         ]
