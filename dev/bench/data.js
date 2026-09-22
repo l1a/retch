@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790058540486,
+  "lastUpdate": 1790059146526,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18324,70 +18324,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "5f5fda4c9f6daefbb8469008f1e5cd2dac686079",
-          "message": "deps: bump icy_sixel to 0.6.0 (#207) (#208)\n\nConsolidates Dependabot #207 onto a gated branch so the release hygiene\nit bypasses -- version bump, NOTES entry, man regen -- is actually done.\n\nNot lockfile-only: a caret range on a 0.x spec will not admit 0.6, so the\nCargo.toml spec widened \"0.5\" -> \"0.6\". icy_sixel is graphics-feature-only,\nso only --features graphics and the CI graphics-feature job compile it.\n\nThe 0.x minor is semver-breaking by convention but does not reach retch:\nsixel_image.rs and encoder.rs, which hold the only two calls retch makes,\nare sha256-identical between 0.5.1 and 0.6.0. The whole change is\ndecoder-side (a new stateful SixelDecoder, additively exported, plus a\nMAX_PIXELS decode guard) and retch only ever emits sixel.\n\ndocs/retch.1 also loses 164 .Bl/.El lines, which is NOT from this bump:\nmandown was upgraded to 1.1.1 after v0.9.4 shipped and no longer emits\nthem. They are mdoc macros, undefined in man(7) -- groff warns twice on\nthe old page and not at all on the new one, and the rendered output is\nbyte-identical. Proved pre-existing by regenerating at the committed\nversion 0.9.4 first.\n\nretch-cli -> 0.9.5; retch-sysinfo unchanged at 0.1.56.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-27T16:59:33-07:00",
-          "tree_id": "d38a83e0752c843b6ec56f75402ea35bf7dea990",
-          "url": "https://github.com/l1a/retch/commit/5f5fda4c9f6daefbb8469008f1e5cd2dac686079"
-        },
-        "date": 1787877180794,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 241.81898609515355,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.39370711998441,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 122.94518102776843,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 97.55368545552888,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 43181.758272744446,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 559.5953790921152,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 884.4769425451086,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2424165940,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "930a7bbd91dcf099d1416e083e6e34190ca36ba1",
           "message": "Watch the Justfile in packaging CI paths (#209)\n\nThe recipes that render packaging/aur (aur-bump, aur-srcinfo, aur-check,\naur-publish) live in the Justfile, which no workflow watched. A change to\nthe AUR tooling that did not also change a committed file under packaging/\ntriggered nothing and reported green having never been looked at -- which\nis exactly what #203 did.\n\nThe coverage this adds is artifact-level, not recipe-level: the aur job\nnever invokes just or aur-srcinfo (no just, no podman in the container).\nIt re-verifies that the committed PKGBUILD/.SRCINFO pair still checksums,\nbuilds and packages correctly at that commit.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-31T12:49:42-07:00",
@@ -21507,6 +21443,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1286706220,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "388c5712609808613dbbe5a14c9d9ca7b6f5dd0c",
+          "message": "Add --color auto|always|never; honour NO_COLOR (#261)\n\nretch coloured its output unconditionally, piped or not. Under the new\ndefault (--color auto) colour needs a terminal on stdout and a NO_COLOR\nthat is unset or empty; --color always/never override both.\n\nColour is removed by stripping SGR sequences after each line is\nformatted, which catches the Up/Down colour retch-sysinfo builds into\nthe Net line and keeps the layout byte-identical. With colour off the\nASCII logo is stripped and Chafa falls back to it; image logos stay.\n\nMinor bump to 0.18.0: piped output is now plain by default.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-21T23:08:31-07:00",
+          "tree_id": "d6485fc35d4d8d1437c5a110d2795ce01de8e44d",
+          "url": "https://github.com/l1a/retch/commit/388c5712609808613dbbe5a14c9d9ca7b6f5dd0c"
+        },
+        "date": 1790059130124,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 234.83512260538433,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.3898374367047115,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 122.9715261050194,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 100.88813740394065,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41590.592845756226,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 638.7913614654237,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 828.8162827465665,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1917685150,
             "unit": "ns"
           }
         ]
