@@ -214,6 +214,14 @@ Force the ASCII logo (even where graphical logos are supported):
 retch --ascii-logo
 ```
 
+Colour is used only when stdout is a terminal and `NO_COLOR` is unset, so piped output is plain.
+Force it either way:
+
+```sh
+retch --color always | less -R
+retch --color never
+```
+
 Override distribution logo:
 
 ```sh

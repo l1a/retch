@@ -121,7 +121,59 @@ The `retch-sysinfo` crate can be used independently as a library for cross-platf
 
 ---
 
-## Current State (v0.17.18)
+## Current State (v0.18.0)
+- **v0.18.0 - `--color auto|always|never`, and `NO_COLOR` is honoured** (`src/cli.rs`,
+  `src/display.rs`, `tests/cli_tests.rs`, `docs/retch.1.md`, `README.md`, the Homebrew
+  formula's comment, wiki). Closes the §5 item recorded while writing the Homebrew test
+  block in v0.17.2. `retch-sysinfo` unchanged at `0.1.76`.
+  - **The user-visible change: piped output is now plain by default.** retch used to colour
+    unconditionally, so `retch | grep OS:` never matched (the label and its colon are
+    separated by escapes), which is why the formula's test strips ANSI itself. `auto` (the
+    default) now colours only when stdout is a terminal **and** `NO_COLOR` is unset or empty;
+    `always` and `never` override both. Anyone piping into `less -R` needs `--color always`
+    now, which is why this is a minor bump rather than a patch.
+  - **`NO_COLOR=` (empty) keeps colour on**, per no-color.org's "present and not an empty
+    string". Only `always`/`never` beat `NO_COLOR`; `auto` means "decide from the
+    environment", the ripgrep convention. Decided with the user, along with the interface.
+  - **Colour is removed by stripping SGR sequences at render time, not by teaching each
+    source to stay quiet**, and both reasons are load-bearing:
+    - One source is in the other crate: `retch-sysinfo`'s `network.rs` builds the green
+      `Up` / red `Down` into the `Net` string. A per-source switch would have needed a
+      library API change, and would have missed the next colour a probe adds.
+    - `print_line` right-aligns the **coloured** label (`{:>10}` over a string that is
+      already longer than 10), so formatting plain labels instead would suddenly pad them and
+      move every row. Stripping after formatting makes the plain output exactly the coloured
+      output minus its escapes. The integration test asserts that equality on real output,
+      and a pty comparison of `--short`/`--long --ascii-logo` with and without `NO_COLOR`
+      differed only in live values (CPU clock, Wi-Fi rate, interface order).
+  - **`strip_sgr` removes `ESC [ <digits;> m` and nothing else.** Chafa's `\x1b[?25l`, cursor
+    moves and the image protocols' escapes pass through whole, since dropping part of a
+    non-colour sequence would leave the terminal in a state nobody asked for. Mutating it to
+    strip any CSI fails `test_strip_sgr_keeps_everything_that_is_not_sgr`.
+  - **Logos, decided with the user:** without colour the ASCII logo is stripped, and Chafa
+    (explicit `--chafa-logo` or auto-selected) falls back to the ASCII logo, because Chafa
+    art is drawn *with* colour and is noise without it. Kitty/iTerm2/Sixel images are kept -
+    a picture is not text colour. Verified in a pty: `--chafa-logo --color=never` prints the
+    20-line ASCII logo with 0 SGR sequences, `--chafa-logo` alone still renders chafa.
+    `--print-logos` is deliberately untouched: it is a logo showcase.
+  - **Tests watched failing three ways**: treating an empty `NO_COLOR` as set, stripping
+    every CSI, and skipping the strip each fail the test aimed at them. The integration test
+    uses `--color=always` as its control, so the plain cases cannot pass merely because the
+    field printed nothing coloured, and it clears `NO_COLOR` itself so the developer's shell
+    cannot decide the result.
+  - **A check of mine that could not fail, recorded as the house style asks:** the first pty
+    run used `script`, which is not installed here; every case "passed" with 0 escapes
+    because all three captured `env: 'script': No such file or directory`. Redone with a
+    Python `pty.fork` harness, which showed 127 SGR sequences under `auto` and 0 under
+    `NO_COLOR=1`.
+  - Also fixed: the man page's LOGOS section still said `--ascii-only`; the flag is
+    `--ascii-logo` (v0.17.9 fixed the same error in the README, v0.17.18 in the wiki).
+  - `docs/retch.md` (tldr) is **not** given a `--color` example: it already has nine
+    examples against tldr's style limit of eight, and upstream submission is on hold.
+  - Not done, and a reasonable follow-up: a `color` key in `config.toml` (no-color.org allows
+    config to override `NO_COLOR`) and `TERM=dumb` handling.
+  - `retch-cli` -> `0.18.0`. Minor bump - a new flag and a changed default for piped output.
+
 - **v0.17.18 - template v6: `just install` no longer needs `mandown`** (`Justfile` COMMON
   block, `templates/justfile-common.just`, `scripts/install_man.py` template v3, `README.md`,
   wiki). Tooling and docs; no runtime change, `retch-sysinfo` unchanged at `0.1.76`.
@@ -3872,7 +3924,8 @@ Adds over long:
   was wrong: it said the dependency "exists for `etr`, whose pages are built into an ignored
   directory" — true until etr's #72 (2026-09-13), stale when written. All three repos commit
   their pages, so no per-repo switch was needed; the dependency could simply go.
-- **retch ignores `NO_COLOR`, and has no `--no-color` flag.** Noticed while writing the
+- ~~**retch ignores `NO_COLOR`, and has no `--no-color` flag.**~~ **Done in v0.18.0** as
+  `--color auto|always|never`, with `NO_COLOR` honoured under `auto`. Noticed while writing the
   Homebrew formula's test block (v0.17.2), which had to strip ANSI itself. `NO_COLOR` is a
   widely honoured convention and retch emits colour even when stdout is not a terminal —
   note that is deliberate for the *logo* (v0.6.6 forces `--ascii-logo` on when piped) but

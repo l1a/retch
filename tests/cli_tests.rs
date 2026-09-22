@@ -256,6 +256,68 @@ fn strip_ansi(s: &str) -> String {
     out
 }
 
+/// Run retch with `NO_COLOR` set to `no_color` (or removed, for `None`), so the test does
+/// not depend on whatever the developer's own shell exports.
+fn run_retch_no_color(args: &[&str], no_color: Option<&str>) -> String {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_retch"));
+    cmd.args(args);
+    match no_color {
+        Some(v) => cmd.env("NO_COLOR", v),
+        None => cmd.env_remove("NO_COLOR"),
+    };
+    let output = cmd.output().expect("Failed to execute retch binary");
+    assert!(output.status.success(), "retch {args:?} failed");
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+/// Colour follows `--color` and `NO_COLOR`. Stdout is a pipe here, so `auto` means off.
+///
+/// Every case asserts on the same `--fields os` line, and the `always` cases are the
+/// controls: they prove the line would carry escapes, so the `never`/`auto` cases cannot
+/// pass merely because the field printed nothing coloured.
+#[test]
+fn test_color_flag_and_no_color() {
+    let args = |color: &'static str| vec!["--fields", "os", "--no-logo", color];
+    let has_esc = |s: &str| s.contains('\x1b');
+
+    let forced = run_retch_no_color(&args("--color=always"), None);
+    assert!(has_esc(&forced), "--color=always must colour a pipe");
+    assert!(
+        forced.contains("OS"),
+        "control produced no OS line: {forced:?}"
+    );
+
+    let piped = run_retch_no_color(&["--fields", "os", "--no-logo"], None);
+    assert!(
+        !has_esc(&piped),
+        "piped output is plain by default: {piped:?}"
+    );
+    assert!(
+        piped.contains("OS:"),
+        "plain output lost its content: {piped:?}"
+    );
+    // Plain output is exactly the coloured output with the colour removed.
+    assert_eq!(piped, strip_ansi(&forced));
+
+    assert!(!has_esc(&run_retch_no_color(&args("--color=never"), None)));
+    assert!(!has_esc(&run_retch_no_color(
+        &args("--color=auto"),
+        Some("1")
+    )));
+    // `always` is an explicit request and outranks the environment.
+    assert!(has_esc(&run_retch_no_color(
+        &args("--color=always"),
+        Some("1")
+    )));
+}
+
+#[test]
+fn test_help_lists_color_flag() {
+    let (stdout, _, success) = run_retch(&["--help"]);
+    assert!(success);
+    assert!(stdout.contains("--color <WHEN>"), "{stdout}");
+}
+
 /// `Host` is the first field printed, in every mode that shows it.
 ///
 /// Display order is the `print_line` call sequence in `display.rs` — the config `fields` array
