@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790104065575,
+  "lastUpdate": 1790104065908,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -21977,70 +21977,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "a00db8aec1f839c1383bb4d2d18130866c442b02",
-          "message": "Add a Fedora COPR spec, proven by building it (#210)\n\n* Add a Fedora COPR spec, proven by building it\n\npackaging/copr/retch.spec is a third packaging target beside aur and\nnixpkgs. It is written for a COPR project with internet access enabled,\nso cargo resolves crates.io at build time and there is no vendor tarball.\nTwo compromises follow and both are commented in the spec: --locked is\nthe only thing pinning resolution, and this will not build in koji.\n\nProven rather than reviewed: a fedora:latest container downloaded the\nreal v0.9.4 tarball as a COPR builder would, rpmbuild -ba produced an\nRPM and SRPM with zero warnings, %check ran all 254 tests, and the\npackage was installed and run. The man page renders with the right\nfooter and no doubled font runs; all three completion files are\nbyte-identical to the installed binary's own output.\n\nrpmlint found two real defects, both fixed: an over-long description\nand an unstripped binary (debug_package %{nil} also disables rpm's\nstrip pass).\n\nAssisted-By: Claude Opus 5\n\n* Use Fedora's rustc flags and completion macros\n\nReplaces `%global debug_package %{nil}` plus a hand-written strip with\nRUSTFLAGS=\"%{build_rustflags}\" -- Fedora's own flags from rust-srpm-macros.\nThis picks up distro hardening the spec previously ignored (frame pointers,\ncodegen-units=1, opt-level=3), and its -Cdebuginfo=2 -Cstrip=none half is\nwhat rpm's debuginfo extraction needs.\n\nIt does not ship a debug build: -Copt-level=3 is in the same flag set, and\nrpm moves symbols into retch-debuginfo/retch-debugsource while stripping\nthe binary in the main package. Verified -- `file` reports the shipped\nbinary as stripped with zero .debug_info sections, and the main package is\n22 KB smaller than the hand-stripped one.\n\nrust-packaging's %cargo_prep/%cargo_build are deliberately not used: they\nassume an offline vendored workflow and would fight the network-enabled\nbuild, and they are not installed on the dev hosts anyway.\n\nCompletion paths now use %{bash_completions_dir}, %{zsh_completions_dir}\nand %{fish_completions_dir} instead of hardcoded %{_datadir} paths.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-31T15:12:34-07:00",
-          "tree_id": "bb28742b66f497b9f37f05f1afad7ffa92fffd99",
-          "url": "https://github.com/l1a/retch/commit/a00db8aec1f839c1383bb4d2d18130866c442b02"
-        },
-        "date": 1788216785329,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 176.07069831791236,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.948278422188081,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 96.8646430154898,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.20679111126393,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 48425.550730421804,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 480.8644124945693,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 720.80822201208,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 1436761755,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -25195,6 +25131,100 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1503170420,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7f698e9f5c04a074cfbf506e07d206604eac0139",
+          "message": "Fetch gh-pages once, not once per publish step (#265)\n\nv0.18.3 parallelised the five benchmark jobs and they worked: run\n35767546659 measured 604s (10.1 min) against the 2424s (40.4 min) serial\nbaseline, with 1814s of overlap and all five jobs green. Then `publish`\nfailed 13 seconds in.\n\ngithub-action-benchmark re-fetches gh-pages at the start of EVERY\ninvocation, with `git fetch origin gh-pages:gh-pages`. Under auto-push:\nfalse the first step leaves the local branch one commit ahead of origin, so\nthe second step's fetch is a non-fast-forward and the job dies:\n\n    ! [rejected] gh-pages -> gh-pages (non-fast-forward)\n\n`Publish Linux x64` succeeded and `Publish Linux arm64` took the rest of the\njob down with it.\n\nThe shape was right and one input was missing. skip-fetch-gh-pages: true now\ngoes on ALL FIVE publish steps -- not \"all but the first\", because each step\nis guarded on its own artifact and which one runs first is not fixed -- with\na single explicit `git fetch` before them. That fetch tolerates gh-pages not\nexisting yet, so a fresh repository still works.\n\nThe failure cost nothing but that run's points, and that is the design\nworking rather than luck. Because every step uses auto-push: false and the\nsingle push comes last, a failure before the push published NOTHING:\norigin/gh-pages was untouched at 2fd7ecf and all five suites still read\nf8659c4. Had each step pushed for itself, the run would have left one suite\none commit ahead of the other four.\n\nVerified structurally, since a PR still cannot run this workflow: the five\nbenchmark jobs are byte-identical to main, concurrency/on/env/permissions\nunchanged, the publish job's needs/if/runs-on unchanged, exactly one step\nadded, and the only changed input on each publish step is\nskip-fetch-gh-pages.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-22T11:57:57-07:00",
+          "tree_id": "8a71f631f1d0d8aa574f51b80c15c590373f864a",
+          "url": "https://github.com/l1a/retch/commit/7f698e9f5c04a074cfbf506e07d206604eac0139"
+        },
+        "date": 1790104065858,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 275722472.00000006,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "value": 1041944755.9999999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "value": 282001122.00000006,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 132093632.00000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 206300205.99999997,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 38348122,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 178.60728617603678,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946729268507909,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 98.86706570253365,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 78.24345751919329,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46332.075690667036,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 485.1293703593834,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 720.5478820413898,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1048408970,
             "unit": "ns"
           }
         ]
