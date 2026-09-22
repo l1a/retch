@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790059669174,
+  "lastUpdate": 1790089714530,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4676,6 +4676,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 1042004298.2800002
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "5691ba1f32f3b52e9255911f32402cfb027544ed",
+          "message": "Make LF the base model; prune NOTES and WIP (#262)\n\nTwo user-directed changes in one round.\n\n1. LF EVERYWHERE\n\nWIP.md had been deliberately CRLF since v0.17.12. A byte-count survey across\nall three sibling repos (never `grep -c` -- ~/AGENTS.md sec.17) found it was\nthe SINGLE CRLF file in any of them: retch 140 text files / 1 with CR, etr\n73 / 0, rusticprofile 82 / 1. The outlier, not the standard. Converted in\nplace; the tracked side was already clean and stays that way.\n\nrusticprofile's TRANSCRIPT.md is deliberately NOT touched: its 25 CRs are\nlone CRs, not CRLF pairs -- download progress bars captured into the\ntranscript, i.e. content.\n\nupdate_wip.py needed no code change: it already reads bytes and re-applies\nthe majority terminator, so it follows the file. Verified end to end on a\ncopy through the real merge-pr path. Preserving rather than hardcoding \\n is\nkept on purpose -- a hardcoded terminator would convert a file as a side\neffect of a merge, which is the v0.17.12 accident pointing the other way.\n\nSo the decision gets a guard instead: new --check-endings, wired into\n`just wip-check`. WIP.md is gitignored, so .gitattributes never applies and\ntext_check.py (walks git ls-files) structurally cannot see it -- and because\nthe updater preserves what it finds, a CRLF copy would be re-entrenched by\nthe next merge rather than corrected. Absent or newline-free passes; a fresh\nclone has no WIP.md. Watched failing three ways plus a positive control on a\nreal CRLF file, script restored byte-identical after each.\n\n2. NOTES.md AND WIP.md PRUNED TO THEIR JOBS\n\nNOTES.md 5017 -> 662 lines, WIP.md 5168 -> 121.\n\nNOTES.md was ~88% per-release changelog, which buried the parts that are\nload-bearing. History is in git log and the GitHub releases, so the\nnarrative is dropped and the durable content distilled into a new section 7,\n\"Hard-won lessons\": the verification traps (the oracle that answers a\ndifferent question, in its many forms), the testing conventions, the\nplatform and FFI gotchas, and the release/packaging rules. Sections 7 (Major\nAchievements) and 9 (Historical Session Notes) are gone; section 5 keeps\nlive backlog items only, and completed ones are deleted rather than struck\nthrough.\n\nWIP.md now carries only work in flight -- active branch, what is verified,\nwhat is blocked and on whom, how to resume -- with its scope stated in its\nown header so it does not regrow.\n\nAGENTS.md 4.6 and the `just pr` manual checklist both still said \"release\nlog entry under Major Achievements\" and are updated to match; per AGENTS,\na checklist change ships in the same PR as the change it describes.\n\nREADME.md is deliberately untouched: overview, install, usage and\nconfiguration is the right role for it, and a guardrail test already pins\nthat it documents every field key.\n\nFound, not fixed here: text_check.py is vendored to both siblings, all three\nbodies differ while all three declare TEMPLATE_VERSION = 1, and etr's copy\nstill carries the v0.17.10 overstatement corrected here in v0.17.12. Each\nneeds its own PR; written up in NOTES section 5.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-22T08:07:56-07:00",
+          "tree_id": "7933b787062847e00bddfccc7f4b972ff643f87e",
+          "url": "https://github.com/l1a/retch/commit/5691ba1f32f3b52e9255911f32402cfb027544ed"
+        },
+        "date": 1790089714530,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 323146611.02000004
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 591063265.22
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 7012261.000000001
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 16674053.200000001
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 415431545.24
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 590210425.0400001
           }
         ]
       }
