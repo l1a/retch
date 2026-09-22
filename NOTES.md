@@ -141,15 +141,39 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.18.3)
+## Current State (v0.18.4)
 
-`main` carries **`retch-cli` 0.18.3** / **`retch-sysinfo` 0.1.76**. Newest released tag is
+`main` carries **`retch-cli` 0.18.4** / **`retch-sysinfo` 0.1.76**. Newest released tag is
 **`v0.18.0`**, live on GitHub, crates.io, the AUR, COPR and the Homebrew tap.
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.18.4 — the parallel publish job could not publish, and the first run said so.**
+  v0.18.3's five benchmark jobs ran perfectly in parallel — **604 s (10.1 min) against the
+  2424 s (40.4 min) serial baseline**, 1814 s of overlap — and then `publish` failed 13 s in.
+  - **`github-action-benchmark` re-fetches `gh-pages` at the start of EVERY invocation**
+    (`git fetch origin gh-pages:gh-pages`). With `auto-push: false`, the first step leaves the
+    local branch one commit ahead of origin, so the second step's fetch is a
+    **non-fast-forward** and the job dies: `! [rejected] gh-pages -> gh-pages`.
+    `Publish Linux x64` succeeded; `Publish Linux arm64` took the rest down with it.
+  - **The shape was right and one input was missing**: `skip-fetch-gh-pages: true`, now set on
+    **all five** steps, with a single explicit `git fetch` before them. All five rather than
+    "all but the first", because each step is guarded on its own artifact, so which one runs
+    first is not fixed.
+  - **The failure cost nothing but that run's points, which is the design working.** Because
+    every step used `auto-push: false` and the single push came last, a failure before the push
+    published *nothing*: `origin/gh-pages` was untouched and all five suites still read the
+    previous commit. Had each step pushed for itself, the run would have left one suite ahead
+    of four.
+  - **The lesson is the one v0.18.3 wrote down and could not act on**: a workflow that triggers
+    only on push to `main` cannot be tested by a PR, so the first post-merge run *is* the test.
+    Structural verification caught everything it could — YAML, job graph, artifact wiring,
+    suite names — and could not catch an action's undocumented-in-context runtime behaviour.
+    **Budget for a follow-up fix when merging a workflow change; do not treat the merge as the
+    end of it.**
 
 - **v0.18.3 — the benchmark workflow runs in parallel.** Its five platform jobs were a
   strict five-deep `needs:` chain, so a run cost the *sum* of its jobs rather than the
