@@ -4,6 +4,18 @@ on:
   push:
     branches: [ "main" ]
 
+# The five benchmark jobs below run in PARALLEL and hand their results to one `publish` job,
+# because every publish writes the same dev/bench/data.js on the same branch. That serialises
+# the writes within a run. It does NOT serialise them across runs: two merges to main in quick
+# succession would start two runs that both publish. `needs:` never covered that -- it orders
+# jobs inside a run and nothing else -- so the concurrency group is what does.
+#
+# cancel-in-progress is deliberately false: a benchmark run that is cancelled half way has
+# already spent the runner time, and its results are still wanted.
+concurrency:
+  group: continuous-benchmarking
+  cancel-in-progress: false
+
 permissions:
   contents: write
   deployments: write
@@ -42,25 +54,17 @@ jobs:
           hyperfine --warmup 3 --runs 10 './target/release/retch --long' 'fastfetch -c all' --export-json hyperfine_long.json
           python3 scripts/parse_criterion.py
 
-      - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1
+      # Publishing is deferred to the `publish` job so these five can run in
+      # parallel; see the comment at the top of this file.
+      - name: Upload benchmark result
+        uses: actions/upload-artifact@v7
         with:
-          name: "Linux x64 Benchmarks"
-          tool: 'customSmallerIsBetter'
-          output-file-path: benchmark_result.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
-          gh-pages-branch: gh-pages
-          benchmark-data-dir-path: dev/bench
-          alert-threshold: '200%'
-          fail-on-alert: false
-          comment-on-alert: true
-          alert-comment-cc-users: '@l1a'
-          max-items-in-chart: 50
+          name: bench-result-linux-x64
+          path: benchmark_result.json
+          if-no-files-found: error
 
   benchmark-linux-arm:
     name: Benchmark Linux arm64
-    needs: benchmark-linux-x64
     runs-on: ubuntu-24.04-arm
     container: fedora:latest
     steps:
@@ -89,25 +93,17 @@ jobs:
           hyperfine --warmup 3 --runs 10 './target/release/retch --long' 'fastfetch -c all' --export-json hyperfine_long.json
           python3 scripts/parse_criterion.py
 
-      - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1
+      # Publishing is deferred to the `publish` job so these five can run in
+      # parallel; see the comment at the top of this file.
+      - name: Upload benchmark result
+        uses: actions/upload-artifact@v7
         with:
-          name: "Linux Arm64 Benchmarks"
-          tool: 'customSmallerIsBetter'
-          output-file-path: benchmark_result.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
-          gh-pages-branch: gh-pages
-          benchmark-data-dir-path: dev/bench
-          alert-threshold: '200%'
-          fail-on-alert: false
-          comment-on-alert: true
-          alert-comment-cc-users: '@l1a'
-          max-items-in-chart: 50
+          name: bench-result-linux-arm
+          path: benchmark_result.json
+          if-no-files-found: error
 
   benchmark-macos-arm:
     name: Benchmark macOS arm64
-    needs: benchmark-linux-arm
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7.0.1
@@ -134,25 +130,17 @@ jobs:
           hyperfine --warmup 3 --runs 10 './target/release/retch --long' 'fastfetch -c all' --export-json hyperfine_long.json
           python3 scripts/parse_criterion.py
 
-      - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1
+      # Publishing is deferred to the `publish` job so these five can run in
+      # parallel; see the comment at the top of this file.
+      - name: Upload benchmark result
+        uses: actions/upload-artifact@v7
         with:
-          name: "macOS Arm64 Benchmarks"
-          tool: 'customSmallerIsBetter'
-          output-file-path: benchmark_result.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
-          gh-pages-branch: gh-pages
-          benchmark-data-dir-path: dev/bench
-          alert-threshold: '200%'
-          fail-on-alert: false
-          comment-on-alert: true
-          alert-comment-cc-users: '@l1a'
-          max-items-in-chart: 50
+          name: bench-result-macos-arm
+          path: benchmark_result.json
+          if-no-files-found: error
 
   benchmark-windows-x64:
     name: Benchmark Windows x64
-    needs: benchmark-macos-arm
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7.0.1
@@ -184,25 +172,17 @@ jobs:
           hyperfine --warmup 3 --runs 10 '.\target\release\retch.exe --long' 'fastfetch -c all' --export-json hyperfine_long.json
           python scripts/parse_criterion.py
 
-      - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1
+      # Publishing is deferred to the `publish` job so these five can run in
+      # parallel; see the comment at the top of this file.
+      - name: Upload benchmark result
+        uses: actions/upload-artifact@v7
         with:
-          name: "Windows x64 Benchmarks"
-          tool: 'customSmallerIsBetter'
-          output-file-path: benchmark_result.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
-          gh-pages-branch: gh-pages
-          benchmark-data-dir-path: dev/bench
-          alert-threshold: '200%'
-          fail-on-alert: false
-          comment-on-alert: true
-          alert-comment-cc-users: '@l1a'
-          max-items-in-chart: 50
+          name: bench-result-windows-x64
+          path: benchmark_result.json
+          if-no-files-found: error
 
   benchmark-windows-arm:
     name: Benchmark Windows arm64
-    needs: benchmark-windows-x64
     runs-on: windows-11-arm
     steps:
       - uses: actions/checkout@v7.0.1
@@ -234,14 +214,64 @@ jobs:
           hyperfine --warmup 3 --runs 10 '.\target\release\retch.exe --long' 'fastfetch -c all' --export-json hyperfine_long.json
           python scripts/parse_criterion.py
 
-      - name: Store benchmark result
+      # Publishing is deferred to the `publish` job so these five can run in
+      # parallel; see the comment at the top of this file.
+      - name: Upload benchmark result
+        uses: actions/upload-artifact@v7
+        with:
+          name: bench-result-windows-arm
+          path: benchmark_result.json
+          if-no-files-found: error
+
+  # ONE publisher for all five platforms.
+  #
+  # Every `Publish ...` step below writes the same dev/bench/data.js on the same branch, so
+  # they must not run concurrently -- which is exactly why the five benchmark jobs used to be
+  # chained. Running them as sequential STEPS of one job keeps that guarantee while letting
+  # the expensive half run in parallel: measured on run 35745177092, the chain cost 39.1 min
+  # of wall clock against a 9.7 min longest job.
+  #
+  # Invoking the action repeatedly in one job is its documented pattern -- its README says to
+  # give each step a distinct `name` when a workflow has several. `auto-push: false` on each,
+  # then a single push at the end, so five appends become one commit-and-push rather than five
+  # races-with-ourselves.
+  publish:
+    name: Publish benchmark results
+    needs:
+      - benchmark-linux-x64
+      - benchmark-linux-arm
+      - benchmark-macos-arm
+      - benchmark-windows-x64
+      - benchmark-windows-arm
+    # Runs unless the whole run was cancelled, so a single failed platform does not discard
+    # the other four results. Each step below is guarded on its own artifact.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Download benchmark results
+        uses: actions/download-artifact@v8
+        with:
+          path: bench-results
+          pattern: bench-result-*
+          # NOT merge-multiple: every artifact holds a file called benchmark_result.json, so
+          # merging them into one directory would have them overwrite each other.
+          merge-multiple: false
+
+      # Guarded on the artifact existing rather than on the job succeeding, so one broken
+      # platform costs only its own series. Before this workflow was parallelised each job
+      # published for itself, and a Windows failure lost Windows alone; keeping that is the
+      # point of `!cancelled()` above plus this condition.
+      - name: Publish Linux x64
+        if: hashFiles('bench-results/bench-result-linux-x64/benchmark_result.json') != ''
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: "Windows Arm64 Benchmarks"
+          name: "Linux x64 Benchmarks"
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark_result.json
+          output-file-path: bench-results/bench-result-linux-x64/benchmark_result.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
+          auto-push: false
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
           alert-threshold: '200%'
@@ -249,3 +279,99 @@ jobs:
           comment-on-alert: true
           alert-comment-cc-users: '@l1a'
           max-items-in-chart: 50
+
+      # Guarded on the artifact existing rather than on the job succeeding, so one broken
+      # platform costs only its own series. Before this workflow was parallelised each job
+      # published for itself, and a Windows failure lost Windows alone; keeping that is the
+      # point of `!cancelled()` above plus this condition.
+      - name: Publish Linux arm64
+        if: hashFiles('bench-results/bench-result-linux-arm/benchmark_result.json') != ''
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: "Linux Arm64 Benchmarks"
+          tool: 'customSmallerIsBetter'
+          output-file-path: bench-results/bench-result-linux-arm/benchmark_result.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          alert-threshold: '200%'
+          fail-on-alert: false
+          comment-on-alert: true
+          alert-comment-cc-users: '@l1a'
+          max-items-in-chart: 50
+
+      # Guarded on the artifact existing rather than on the job succeeding, so one broken
+      # platform costs only its own series. Before this workflow was parallelised each job
+      # published for itself, and a Windows failure lost Windows alone; keeping that is the
+      # point of `!cancelled()` above plus this condition.
+      - name: Publish macOS arm64
+        if: hashFiles('bench-results/bench-result-macos-arm/benchmark_result.json') != ''
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: "macOS Arm64 Benchmarks"
+          tool: 'customSmallerIsBetter'
+          output-file-path: bench-results/bench-result-macos-arm/benchmark_result.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          alert-threshold: '200%'
+          fail-on-alert: false
+          comment-on-alert: true
+          alert-comment-cc-users: '@l1a'
+          max-items-in-chart: 50
+
+      # Guarded on the artifact existing rather than on the job succeeding, so one broken
+      # platform costs only its own series. Before this workflow was parallelised each job
+      # published for itself, and a Windows failure lost Windows alone; keeping that is the
+      # point of `!cancelled()` above plus this condition.
+      - name: Publish Windows x64
+        if: hashFiles('bench-results/bench-result-windows-x64/benchmark_result.json') != ''
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: "Windows x64 Benchmarks"
+          tool: 'customSmallerIsBetter'
+          output-file-path: bench-results/bench-result-windows-x64/benchmark_result.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          alert-threshold: '200%'
+          fail-on-alert: false
+          comment-on-alert: true
+          alert-comment-cc-users: '@l1a'
+          max-items-in-chart: 50
+
+      # Guarded on the artifact existing rather than on the job succeeding, so one broken
+      # platform costs only its own series. Before this workflow was parallelised each job
+      # published for itself, and a Windows failure lost Windows alone; keeping that is the
+      # point of `!cancelled()` above plus this condition.
+      - name: Publish Windows arm64
+        if: hashFiles('bench-results/bench-result-windows-arm/benchmark_result.json') != ''
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: "Windows Arm64 Benchmarks"
+          tool: 'customSmallerIsBetter'
+          output-file-path: bench-results/bench-result-windows-arm/benchmark_result.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          alert-threshold: '200%'
+          fail-on-alert: false
+          comment-on-alert: true
+          alert-comment-cc-users: '@l1a'
+          max-items-in-chart: 50
+
+      - name: Push benchmark results
+        run: |
+          set -euo pipefail
+          # The action committed to the local gh-pages branch without pushing (auto-push:
+          # false). If every Publish step above was skipped there is nothing to push, and
+          # `git push` on an up-to-date ref exits 0, so this needs no special case.
+          if ! git rev-parse --verify --quiet gh-pages >/dev/null; then
+            echo "No local gh-pages branch -- every publish step was skipped. Nothing to push."
+            exit 0
+          fi
+          git push origin gh-pages:gh-pages
