@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790099943577,
+  "lastUpdate": 1790100477789,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -21754,70 +21754,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "930a7bbd91dcf099d1416e083e6e34190ca36ba1",
-          "message": "Watch the Justfile in packaging CI paths (#209)\n\nThe recipes that render packaging/aur (aur-bump, aur-srcinfo, aur-check,\naur-publish) live in the Justfile, which no workflow watched. A change to\nthe AUR tooling that did not also change a committed file under packaging/\ntriggered nothing and reported green having never been looked at -- which\nis exactly what #203 did.\n\nThe coverage this adds is artifact-level, not recipe-level: the aur job\nnever invokes just or aur-srcinfo (no just, no podman in the container).\nIt re-verifies that the committed PKGBUILD/.SRCINFO pair still checksums,\nbuilds and packages correctly at that commit.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-31T12:49:42-07:00",
-          "tree_id": "d4a0eb047736cc91bca70ce1c5ca7f8182a08880",
-          "url": "https://github.com/l1a/retch/commit/930a7bbd91dcf099d1416e083e6e34190ca36ba1"
-        },
-        "date": 1788208273481,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 176.0007857981412,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9477780614490148,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 96.99317542771414,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.28404265464386,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 49512.775302529495,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 484.72222979031375,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 738.1953990000438,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2476260000,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "a00db8aec1f839c1383bb4d2d18130866c442b02",
           "message": "Add a Fedora COPR spec, proven by building it (#210)\n\n* Add a Fedora COPR spec, proven by building it\n\npackaging/copr/retch.spec is a third packaging target beside aur and\nnixpkgs. It is written for a COPR project with internet access enabled,\nso cargo resolves crates.io at build time and there is no vendor tarball.\nTwo compromises follow and both are commented in the spec: --locked is\nthe only thing pinning resolution, and this will not build in koji.\n\nProven rather than reviewed: a fedora:latest container downloaded the\nreal v0.9.4 tarball as a COPR builder would, rpmbuild -ba produced an\nRPM and SRPM with zero warnings, %check ran all 254 tests, and the\npackage was installed and run. The man page renders with the right\nfooter and no doubled font runs; all three completion files are\nbyte-identical to the installed binary's own output.\n\nrpmlint found two real defects, both fixed: an over-long description\nand an unstripped binary (debug_package %{nil} also disables rpm's\nstrip pass).\n\nAssisted-By: Claude Opus 5\n\n* Use Fedora's rustc flags and completion macros\n\nReplaces `%global debug_package %{nil}` plus a hand-written strip with\nRUSTFLAGS=\"%{build_rustflags}\" -- Fedora's own flags from rust-srpm-macros.\nThis picks up distro hardening the spec previously ignored (frame pointers,\ncodegen-units=1, opt-level=3), and its -Cdebuginfo=2 -Cstrip=none half is\nwhat rpm's debuginfo extraction needs.\n\nIt does not ship a debug build: -Copt-level=3 is in the same flag set, and\nrpm moves symbols into retch-debuginfo/retch-debugsource while stripping\nthe binary in the main package. Verified -- `file` reports the shipped\nbinary as stripped with zero .debug_info sections, and the main package is\n22 KB smaller than the hand-stripped one.\n\nrust-packaging's %cargo_prep/%cargo_build are deliberately not used: they\nassume an offline vendored workflow and would fight the network-enabled\nbuild, and they are not installed on the dev hosts anyway.\n\nCompletion paths now use %{bash_completions_dir}, %{zsh_completions_dir}\nand %{fish_completions_dir} instead of hardcoded %{_datadir} paths.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-31T15:12:34-07:00",
@@ -24937,6 +24873,100 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2524192600,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f8659c4c4b8c5f8f72f8060767d16d3b8eeca45a",
+          "message": "Make the CI hyperfine benchmarks work again (#263)\n\nThey had been dead since 2026-06-24. benchmark.yml writes\nhyperfine_{default,short,long}.json; scripts/parse_criterion.py opened a\nhardcoded hyperfine_result.json that nothing produces. So every CI run timed\nsix commands and threw the numbers away.\n\nb45894a split one hyperfine run into three AND taught the parser to label\nthe three modes, but never changed the name it opens. The parser gained the\nability to label results it could no longer receive.\n\nIt stayed green because a missing source was a warning: the script printed\nto stderr and exited 0, and its only hard error needed BOTH sources empty,\nso criterion alone kept the step passing. Measured on the published\nartifact: across 50 runs each, all five CI suites held zero \"CLI execution\"\nseries while the three \"Local - ...\" suites held all six.\n\nFixed three ways, because the filename was the instance and not the class:\n\n- The parser GLOBS hyperfine_*.json, so adding a comparison needs no change\n  here.\n- A source that is expected and absent is an ERROR. --allow-missing is the\n  deliberate escape hatch, not the default; the default is what CI uses, and\n  a warning nobody reads is how this hid for three months.\n- Its self-test READS benchmark.yml and asserts the glob matches every\n  --export-json filename the workflow writes. That coupling is what was\n  missing: nothing connected the two files that drifted. Wired into\n  `just check` as `just bench-check`.\n\nVerified end to end on real data rather than fixtures: the same real cargo\nbench output and the same three real hyperfine runs through both versions --\nthe copy on main produced 12 entries, 0 of them CLI, exit 0; this one\nproduces 18 entries, 6 of them CLI.\n\nWatched failing three ways, each restored byte-identical afterwards:\nrestoring the old hardcoded filename, renaming the workflow's outputs (the\ndefect from the direction it actually happened), and turning a missing\nsource back into a warning.\n\nThe label mapping moves to scripts/bench_labels.py, shared with\nupload_local_bench.py, which carried a byte-identical private copy. It\nreturns (label, ns) pairs rather than finished dicts on purpose: the two\ncallers serialise differently and must keep doing so -- the local suites\nstore name/unit/value in a data.js that script writes itself, the CI entries\nstore name/value/unit, and normalising one would rewrite every key in a\nsuite for nothing. The series names are an API: github-action-benchmark keys\neach chart series by the label, so renaming one forks the series rather than\nrenaming it, orphaning 50-95 runs of history. EXPECTED_LABELS pins all six.\n\nAlso gitignores the artifacts the pipeline writes into the working\ndirectory, since this tree is Syncthing-replicated.\n\nStill open and untouched: the five jobs run in a strict serial chain costing\n39 min per merge against a 9.7 min parallel floor, and the chain is\nload-bearing because all five push the same data.js. NOTES section 5.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-22T10:27:41-07:00",
+          "tree_id": "b835a1b69c420dca7a0788d20bfffc9348a65c22",
+          "url": "https://github.com/l1a/retch/commit/f8659c4c4b8c5f8f72f8060767d16d3b8eeca45a"
+        },
+        "date": 1790100472892,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 317792854,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "value": 1097760168.0000002,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "value": 300954432,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 135085184.00000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 227719727.99999997,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 40004132.000000015,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 178.61523909329088,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947327982534544,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 98.85553986080372,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 78.29477417113613,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46134.24904488539,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 490.4936705921347,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 712.5204347329495,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1503170420,
             "unit": "ns"
           }
         ]
