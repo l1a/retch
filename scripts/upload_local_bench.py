@@ -17,6 +17,9 @@ import sys
 import tempfile
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from bench_labels import labelled_means  # noqa: E402
+
 
 REPO = "l1a/retch"
 GH_PAGES_BRANCH = "gh-pages"
@@ -137,25 +140,12 @@ def run_hyperfine(warmup, runs):
             with open(tmp_path, encoding="utf-8") as f:
                 data = json.load(f)
             
-            for res in data.get("results", []):
-                cmd = res["command"]
-                if "retch" in cmd:
-                    if "--short" in cmd:
-                        label = "CLI execution - retch --short"
-                    elif "--long" in cmd:
-                        label = "CLI execution - retch --long"
-                    else:
-                        label = "CLI execution - retch"
-                elif "fastfetch" in cmd:
-                    if "-c none" in cmd:
-                        label = "CLI execution - fastfetch -c none"
-                    elif "-c all" in cmd:
-                        label = "CLI execution - fastfetch -c all"
-                    else:
-                        label = "CLI execution - fastfetch"
-                else:
-                    label = f"CLI execution - {cmd}"
-                val_ns = res["mean"] * 1_000_000_000
+            # Label mapping is shared with scripts/parse_criterion.py via bench_labels --
+            # the two used to carry byte-identical private copies, and a dashboard series is
+            # keyed by its label, so a drift between them would silently fork a series.
+            # The key ORDER here (name, unit, value) is deliberate and must not change: this
+            # script writes data.js itself, and the existing local suites store it that way.
+            for label, val_ns in labelled_means(data):
                 results.append({"name": label, "unit": "ns", "value": val_ns})
         finally:
             if os.path.exists(tmp_path):
@@ -238,7 +228,14 @@ def append_entry(gh_pages_dir, suite, commit_info, benches):
     return True
 
 
-def push_to_gh_pages(benches, commit_info, suite):
+def push_to_gh_pages(benches, commit_info, suite, dry_run=False):
+    """Clone gh-pages, append this run, push. `dry_run` does everything except the push.
+
+    The dry run exists because until v0.18.2 there was NO way to exercise this script without
+    publishing to gh-pages -- so "does `just bench-upload` still work?" could only be answered
+    by importing its internals, and the post-merge hook calls it automatically after every
+    merge. A path that can only be tested in production does not get tested.
+    """
     origin = run_capture(["git", "remote", "get-url", "origin"])
 
     for attempt in range(1, MAX_RETRIES + 1):
@@ -253,6 +250,15 @@ def push_to_gh_pages(benches, commit_info, suite):
                 return  # duplicate, nothing to push
 
             run(["git", "-C", clone_dir, "add", DATA_PATH])
+            if dry_run:
+                # Show exactly what would land, then discard the clone with the tempdir.
+                diff = run_capture(["git", "-C", clone_dir, "diff", "--cached", "--stat"])
+                print("\n--- DRY RUN: not pushing. Staged change to gh-pages: ---")
+                print(diff)
+                print(f"    suite   : {suite}")
+                print(f"    commit  : {commit_info['id'][:8]}")
+                print(f"    benches : {len(benches)}")
+                return
             run(["git", "-C", clone_dir, "commit", "-m",
                  f"bench: add local results for {commit_info['id'][:8]} [{suite}]"])
 
@@ -281,6 +287,8 @@ def main():
     parser.add_argument("--runs", type=int, default=10, help="hyperfine --runs (default 10)")
     parser.add_argument("--warmup", type=int, default=3, help="hyperfine --warmup (default 3)")
     parser.add_argument("--no-build", action="store_true", help="Skip cargo build --release")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Do everything except push to gh-pages (prints the staged diff)")
     args = parser.parse_args()
 
     if not shutil.which("hyperfine"):
@@ -299,8 +307,8 @@ def main():
 
     commit_info = git_commit_info()
     suite = suite_name()
-    print(f"\nUploading to suite: '{suite}'")
-    push_to_gh_pages(benches, commit_info, suite)
+    print(f"\n{'Would upload' if args.dry_run else 'Uploading'} to suite: '{suite}'")
+    push_to_gh_pages(benches, commit_info, suite, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

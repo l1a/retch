@@ -9,3 +9,9 @@ __pycache__/
 # Created by .copr/Makefile when generating the SRPM locally: the rendered spec and the
 # source tarball it builds from the checkout.
 .copr-build/
+
+# Artifacts the benchmark pipeline writes into the working directory. CI creates these on
+# every run (see .github/workflows/benchmark.yml); a developer reproducing those commands
+# locally gets them too, and this tree is Syncthing-replicated, so untracked junk spreads.
+hyperfine_*.json
+benchmark_result.json
