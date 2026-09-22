@@ -141,15 +141,53 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.18.2)
+## Current State (v0.18.3)
 
-`main` carries **`retch-cli` 0.18.2** / **`retch-sysinfo` 0.1.76**. Newest released tag is
+`main` carries **`retch-cli` 0.18.3** / **`retch-sysinfo` 0.1.76**. Newest released tag is
 **`v0.18.0`**, live on GitHub, crates.io, the AUR, COPR and the Homebrew tap.
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.18.3 — the benchmark workflow runs in parallel.** Its five platform jobs were a
+  strict five-deep `needs:` chain, so a run cost the *sum* of its jobs rather than the
+  *maximum*: measured on run `35745177092`, **39.1 min wall clock** against a **579 s** longest
+  job, with each job starting 3–10 s after the previous one *completed*. Now they run
+  concurrently and hand their results to one `publish` job.
+  - **The chain was load-bearing, which is why it could not simply be deleted.** Every job
+    ended in `github-action-benchmark` with `auto-push: true`, the same `gh-pages-branch` and
+    the same `benchmark-data-dir-path`; `dev/bench/data.js` is a single file holding all eight
+    suites. Five parallel publishes would have raced. Serialising them as **steps of one job**
+    keeps that guarantee while letting the expensive half overlap.
+  - **Invoking the action repeatedly in one job is its documented pattern**, not a trick — its
+    README says to give each step a distinct `name` when a workflow has several. Each step uses
+    `auto-push: false` and one explicit `git push` follows, so five appends become one
+    commit-and-push instead of five races with ourselves.
+  - **A failed platform still costs only its own series.** Before, each job published for
+    itself, so a Windows failure lost Windows alone; making `publish` depend on all five would
+    have turned that into all-or-nothing. So `publish` runs `if: ${{ !cancelled() }}` and each
+    step is guarded on **its own artifact existing** (`hashFiles(...) != ''`), not on the job
+    having succeeded.
+  - **A `concurrency:` group was added, and it fixes something the chain never covered.**
+    `needs:` orders jobs *within* a run; two merges to `main` in quick succession started two
+    runs that both published. `cancel-in-progress: false`, because a half-finished benchmark
+    run has already spent the runner time and its results are still wanted.
+  - **Machine-checked rather than eyeballed**, since a workflow cannot be run from a PR: both
+    versions parsed and compared, asserting every job's steps *except* the final one are
+    byte-identical, runners and containers unchanged, triggers/permissions/env unchanged, and
+    `concurrency` the only added top-level key. The `cargo bench`, `hyperfine` and
+    `parse_criterion` lines are identical to `main`'s — **the measurement half is untouched**.
+  - **The suite names were checked against the live dashboard**, because renaming one forks a
+    series rather than renaming it: all five `name:` values still match entries present in
+    `gh-pages:dev/bench/data.js`.
+  - **Verification limit, and it is the important one:** the workflow triggers on push to
+    `main`, so **a PR cannot exercise it** — the first run after merge is the test. If it
+    misbehaves the fallback is reverting the workflow; `data.js` is append-only per suite, so a
+    failed publish loses that run's points rather than any history.
+  - Not done, and a reasonable follow-up: the five jobs are near-identical and could collapse
+    into a matrix. That is a refactor rather than this change, and a bigger diff to review.
 
 - **v0.18.2 — the CI hyperfine benchmarks were dead for three months, and now work.**
   `.github/workflows/benchmark.yml` writes `hyperfine_{default,short,long}.json` while
@@ -283,82 +321,6 @@ Adds over long:
 
 Live items only. Completed items are removed rather than struck through — `git log` has them.
 
-- **Parallelise the Continuous Benchmarking workflow. Reviewed and measured 2026-09-22; the
-  design change is not yet made.** `.github/workflows/benchmark.yml` runs five benchmark jobs
-  in a **strict five-deep `needs:` chain**, so the run costs the *sum* of its jobs rather than
-  the *maximum*.
-  - **Measured on run `35745177092`** (the merge of #262), from the Actions API rather than
-    inferred from the YAML — each job starts 3–10 s after the previous one *completes*, with
-    **zero overlap**:
-
-    | job | build | benchmark | job total |
-    |---|---|---|---|
-    | Linux x64 | 127 s | 250 s | 424 s |
-    | Linux arm64 | 84 s | 232 s | 364 s |
-    | macOS arm64 | 147 s | 263 s | 434 s |
-    | Windows x64 | 265 s | 248 s | 577 s |
-    | Windows arm64 | 171 s | 253 s | 514 s |
-    | **sum** | **794 s** | **1246 s** | **2324 s** |
-
-    Run wall clock **2349 s (39.1 min)** against a sum of job durations of 2324 s — the 25 s
-    difference is queueing, which is what proves there is no overlap. **The longest single job
-    is 579 s**, so a fully parallel run would be ~9.7 min: a saving of **~1770 s (29.5 min) per
-    merge to `main`**, and every merge triggers one.
-  - **The serial chain is load-bearing, not gratuitous — that is the finding.** All five jobs
-    end in `github-action-benchmark` with `auto-push: true`, the same `gh-pages-branch`, and
-    the same `benchmark-data-dir-path: dev/bench`. Confirmed from the artifact rather than the
-    config: `dev/bench/data.js` on `gh-pages` is a **single 1.29 MB file holding all eight
-    suites** (the five CI ones plus three `Local - …` ones from `upload_local_bench.py`). Five
-    parallel jobs each cloning, appending, committing and pushing that one file would race.
-    **Do not simply delete the `needs:` lines.**
-  - **The shape that works is parallel benchmark jobs feeding ONE publish job**: each platform
-    job uploads its `benchmark_result.json` as an artifact and does *not* push; a final job
-    `needs:` all five, downloads the artifacts, and runs the benchmark action once per suite
-    **sequentially within that single job**, where there is no concurrency to race. Verify
-    before relying on it: that the action can be invoked repeatedly in one job against the same
-    checkout, and that `auto-push` retries or a single explicit push at the end is the more
-    robust of the two.
-  - **There is also an INTER-run race that the chain does not address**, and it should be fixed
-    whatever happens to the parallelisation: there is **no `concurrency:` group**, so two merges
-    to `main` in quick succession start two full chains that both push `gh-pages`. `needs:`
-    orders jobs *within* a run and does nothing across runs. A `concurrency` group with
-    `cancel-in-progress: false` is the cheap fix, and it is independent of everything above.
-  - **On the "redundant compile" question: nothing is redundant across jobs, but nothing is
-    cached either.** The five builds are for five different OS/arch targets and cannot be
-    shared. But **no workflow in this repository caches anything** — zero references to
-    `actions/cache` or `Swatinem/rust-cache` across all seven — so every job recompiles ~247
-    crates from scratch on every merge. Build is **794 s of 2324 s (34%)**. Caching is worth
-    real *compute*, but note it is the *smaller* win on wall clock once the jobs run in
-    parallel, because then only the critical path matters.
-  - **Verification limit, and it was narrowed rather than left as a guess:** "Run benchmarks" is
-    one step, so the API cannot split its ~250 s between `cargo bench` and the three `hyperfine`
-    invocations. Timing those three locally gives **28 s** on this machine, so `cargo bench`
-    (which both compiles the criterion harness and runs criterion's sampling) is the dominant
-    half — but the local figure is a floor, since CI runners are slower. **Split the step**;
-    that also makes the dead-hyperfine item above visible in the timings instead of hidden.
-  - **Not answered, because it is a product decision rather than a technical one:** whether all
-    five platforms are needed. The cost is now known per platform (above), so the trade is
-    explicit; Windows arm64 (514 s) and Linux arm64 (364 s) are the obvious candidates if the
-    answer is no.
-- **Make the benchmark charts' x axis meaningful.** The dashboard (gh-pages `data.js`, linked
-  from the wiki) labels each point by commit hash; show the version where one exists (the tag,
-  or that commit's `Cargo.toml`), falling back to the short hash. Two producers must agree —
-  CI's benchmark action and `scripts/upload_local_bench.py` — so establish how the dashboard is
-  generated before changing either.
-- **`scripts/text_check.py` is vendored to `etr` and `rusticprofile`, all three bodies differ,
-  and all three still declare `TEMPLATE_VERSION = 1`.** Found during the v0.18.1 line-ending
-  survey. sha256: retch `a3e84cd6`, etr `e1e7bd9a`, rusticprofile `e3423b71`.
-  - **The actionable half: `etr`'s copy still carries the v0.17.10 overstatement** —
-    "`git status` CANNOT report it" — which retch corrected in v0.17.12 and rusticprofile
-    already has. Its docstring *and* its failure message tell a reader something false about
-    how to find CRLF drift. One small PR in `etr`.
-  - **The half that needs a decision first**: part of the divergence is *legitimate*, because
-    each copy cites its own repo's defects as the evidence for why the guard exists. A file
-    meant to differ per repo should not carry a shared `TEMPLATE_VERSION` at all — a marker
-    that cannot distinguish two bodies is not a marker. Settle which it is (shared logic with a
-    per-repo evidence block, or genuinely byte-identical with the evidence moved into each
-    NOTES.md) **before** bumping anything, or the bump re-declares an identity that is still
-    untrue. Do not start by reconciling toward the majority; count the property at stake.
 - **CI automation of the publish steps.** A tag still does not, by itself, publish to crates.io
   or push to the AUR and the tap. Since v0.17.5 this is a genuine port rather than a redesign —
   the workflow would run the same recipes a human runs, with nothing to commit afterwards — but
