@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790092023191,
+  "lastUpdate": 1790098101224,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4730,6 +4730,60 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 590210425.0400001
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "f8659c4c4b8c5f8f72f8060767d16d3b8eeca45a",
+          "message": "Make the CI hyperfine benchmarks work again (#263)\n\nThey had been dead since 2026-06-24. benchmark.yml writes\nhyperfine_{default,short,long}.json; scripts/parse_criterion.py opened a\nhardcoded hyperfine_result.json that nothing produces. So every CI run timed\nsix commands and threw the numbers away.\n\nb45894a split one hyperfine run into three AND taught the parser to label\nthe three modes, but never changed the name it opens. The parser gained the\nability to label results it could no longer receive.\n\nIt stayed green because a missing source was a warning: the script printed\nto stderr and exited 0, and its only hard error needed BOTH sources empty,\nso criterion alone kept the step passing. Measured on the published\nartifact: across 50 runs each, all five CI suites held zero \"CLI execution\"\nseries while the three \"Local - ...\" suites held all six.\n\nFixed three ways, because the filename was the instance and not the class:\n\n- The parser GLOBS hyperfine_*.json, so adding a comparison needs no change\n  here.\n- A source that is expected and absent is an ERROR. --allow-missing is the\n  deliberate escape hatch, not the default; the default is what CI uses, and\n  a warning nobody reads is how this hid for three months.\n- Its self-test READS benchmark.yml and asserts the glob matches every\n  --export-json filename the workflow writes. That coupling is what was\n  missing: nothing connected the two files that drifted. Wired into\n  `just check` as `just bench-check`.\n\nVerified end to end on real data rather than fixtures: the same real cargo\nbench output and the same three real hyperfine runs through both versions --\nthe copy on main produced 12 entries, 0 of them CLI, exit 0; this one\nproduces 18 entries, 6 of them CLI.\n\nWatched failing three ways, each restored byte-identical afterwards:\nrestoring the old hardcoded filename, renaming the workflow's outputs (the\ndefect from the direction it actually happened), and turning a missing\nsource back into a warning.\n\nThe label mapping moves to scripts/bench_labels.py, shared with\nupload_local_bench.py, which carried a byte-identical private copy. It\nreturns (label, ns) pairs rather than finished dicts on purpose: the two\ncallers serialise differently and must keep doing so -- the local suites\nstore name/unit/value in a data.js that script writes itself, the CI entries\nstore name/value/unit, and normalising one would rewrite every key in a\nsuite for nothing. The series names are an API: github-action-benchmark keys\neach chart series by the label, so renaming one forks the series rather than\nrenaming it, orphaning 50-95 runs of history. EXPECTED_LABELS pins all six.\n\nAlso gitignores the artifacts the pipeline writes into the working\ndirectory, since this tree is Syncthing-replicated.\n\nStill open and untouched: the five jobs run in a strict serial chain costing\n39 min per merge against a 9.7 min parallel floor, and the chain is\nload-bearing because all five push the same data.js. NOTES section 5.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-22T10:27:41-07:00",
+          "tree_id": "b835a1b69c420dca7a0788d20bfffc9348a65c22",
+          "url": "https://github.com/l1a/retch/commit/f8659c4c4b8c5f8f72f8060767d16d3b8eeca45a"
+        },
+        "date": 1790098101224,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 341525896.86
+          },
+          {
+            "name": "CLI execution - fastfetch",
+            "unit": "ns",
+            "value": 586712498.1600001
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 7763024.44
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "unit": "ns",
+            "value": 17389066.640000004
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 518052673.96
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "unit": "ns",
+            "value": 598809539.46
           }
         ]
       }
