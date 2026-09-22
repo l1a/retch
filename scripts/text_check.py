@@ -34,9 +34,10 @@ are invisible to review because the damage is a byte rather than a word.
    (v0.17.10 shipped this as "`git status` CANNOT report it", which is wrong; the real
    mechanism is narrower and worse. Corrected in v0.17.12.)
 
-   NOTE: retch's own `WIP.md` is uniformly CRLF and that is deliberate and recorded -- it is
-   gitignored, so `git ls-files` never offers it here and this guard cannot reach it. Do not
-   "normalise" that file.
+   NOTE: retch's own `WIP.md` is gitignored, so `git ls-files` never offers it and this guard
+   cannot reach it. It was deliberately CRLF until v0.18.1; it is now LF like the rest of the
+   tree, and `just wip-check` is what asserts that, since nothing here can. An earlier version
+   of this note said not to "normalise" that file -- that instruction is withdrawn.
 
 WHY THIS IS A CHECK AND NOT A CONVENTION: every instance above was found by reading bytes,
 never by reading the file. A guard is the only thing that looks.

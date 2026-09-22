@@ -32,10 +32,18 @@ first line anywhere in the file matching `### Active Branch:` and the first matc
 A block the script owns outright cannot drift from the thing it describes, cannot be
 confused with prose, and cannot be the wrong occurrence.
 
-IT ALSO PRESERVES THE FILE'S LINE ENDINGS, AND THAT IS NOT INCIDENTAL.
-`WIP.md` in this repo is deliberately CRLF - it is the one tracked-adjacent artefact that
-is meant to be, which is why `scripts/text_check.py` forbids carriage returns in *tracked*
-text and `WIP.md` is gitignored and therefore invisible to it. Nothing else protects it.
+IT ALSO PRESERVES THE FILE'S LINE ENDINGS, AND THAT IS NOT INCIDENTAL - BUT THE REASON
+CHANGED IN v0.18.1. `WIP.md` used to be deliberately CRLF, and this function existed to
+defend that. It is now LF, like every other text file in the tree: **LF is the base model,
+Windows is not**, and a survey of the whole three-repo fleet found retch's `WIP.md` was the
+single CRLF file in any of them. So what this code defends now is the opposite decision -
+it is what stops the conversion being undone silently by the next merge.
+
+Preserving rather than hardcoding `\n` is still the right shape, for two reasons. It keeps
+the script honest about what it found instead of imposing a house style on a file it does
+not own; and a hardcoded `\n` would convert the file as a SIDE EFFECT of a merge, which is
+precisely the accident v0.17.12 was about, just pointing the other way. The direction of an
+accident does not make it deliberate. `--check-endings` is what asserts the decision.
 
 An earlier version read with `read_text()` and wrote with `write_text()`. Both use
 universal newlines, so `\r\n` became `\n` in memory and was written back as whatever the
@@ -86,6 +94,49 @@ def read_preserving_newlines(path):
 def write_preserving_newlines(path, text, newline):
     """Write BYTES, re-applying `newline`. Never `write_text`, which re-translates."""
     path.write_bytes(text.replace("\n", newline).encode("utf-8"))
+
+
+def classify_endings(raw):
+    """Return (ok, detail) for a WIP.md's raw bytes. Pure, so the self-test can pin it.
+
+    `WIP.md` is gitignored, so `.gitattributes` never applies to it and
+    `scripts/text_check.py` - which walks `git ls-files` - cannot see it. It is therefore
+    the one text file in the tree with no automatic protection, and since v0.18.1 it is
+    also expected to be LF. This is what supplies the missing guard.
+
+    A file with NO newline at all passes: an empty or single-line WIP.md carries no
+    evidence either way, and a guard that fires on no evidence is a guard that gets
+    deleted. Only an actual carriage return is a failure.
+    """
+    crlf = raw.count(b"\r\n")
+    lone_cr = raw.count(b"\r") - crlf
+    lf = raw.count(b"\n") - crlf
+    if not crlf and not lone_cr:
+        return True, f"LF ({lf} lines)" if lf else "no newlines (nothing to check)"
+    return False, f"{crlf} CRLF pair(s), {lone_cr} lone CR, {lf} lone LF"
+
+
+def check_endings(path):
+    """Assert `path` is LF. Missing is a pass - WIP.md is per-machine and untracked."""
+    if not path.exists():
+        print(f"wip-endings: {path.name} not present (nothing to check)")
+        return 0
+    ok, detail = classify_endings(path.read_bytes())
+    if ok:
+        print(f"wip-endings: {path.name} is {detail}")
+        return 0
+    print(
+        f"wip-endings: {path.name} carries carriage returns - {detail}.\n"
+        "  LF is this tree's base model and WIP.md was converted in v0.18.1; a CRLF copy is\n"
+        "  drift, most likely from an editor on a Windows host. Nothing else can catch it:\n"
+        "  WIP.md is gitignored, so .gitattributes never applies and text_check.py cannot\n"
+        "  see it. Repair it in place - NEVER via a temp file in /tmp, which would carry\n"
+        "  user_tmp_t into this Syncthing folder (~/AGENTS.md sec.12):\n"
+        "      python3 -c \"from pathlib import Path; p=Path('WIP.md'); "
+        "p.write_bytes(p.read_bytes().replace(bytes([13,10]), bytes([10])))\"",
+        file=sys.stderr,
+    )
+    return 1
 
 
 def run(cmd, required=True):
@@ -360,11 +411,31 @@ def _self_test():
               b"### Active Branch: feature/x\r\n" in raw and b"**main HEAD**: `old`\r\n" in raw,
               repr(raw[-80:]))
 
-        # LF in, LF out -- the control. Without it the fix could force CRLF everywhere.
+        # LF in, LF out. This was the control when WIP.md was CRLF; since v0.18.1 it is the
+        # LIVE case, and the CRLF case above is what became the control. Both are kept: the
+        # property is "follow the file", and it has to hold in both directions or the next
+        # merge silently converts whatever it was handed.
         f2 = tmp / "lf.md"
         f2.write_bytes(b"notes\n")
         update_file(f2, state)
         check("LF round-trips", b"\r" not in f2.read_bytes(), "a CR was introduced")
+
+        # A real WIP.md-shaped LF file must survive a full insert+replace cycle with no CR,
+        # which is the end-to-end claim the v0.18.1 conversion rests on.
+        f4 = tmp / "converted.md"
+        f4.write_bytes(b"# WIP\n" + b"a line\n" * 50)
+        update_file(f4, state)
+        update_file(f4, state)
+        raw4 = f4.read_bytes()
+        check("a converted WIP.md stays LF across two merges", b"\r" not in raw4,
+              f"CR reappeared: {raw4.count(bytes([13]))}")
+        check("classify_endings passes the converted file", classify_endings(raw4)[0],
+              classify_endings(raw4)[1])
+
+        # check_endings on an absent file is a PASS: WIP.md is per-machine and untracked, so
+        # a fresh clone has none and a guard that failed there would fail every fresh clone.
+        check("absent WIP.md passes", check_endings(tmp / "definitely-absent.md") == 0,
+              "a missing file was treated as a failure")
 
         # A refusal writes nothing.
         f3 = tmp / "bad.md"
@@ -375,6 +446,18 @@ def _self_test():
             check("malformed file refuses", False, "no ValueError raised")
         except ValueError:
             check("a refusal leaves the file untouched", f3.read_bytes() == before, "file changed")
+
+    # --- classify_endings, the guard behind `just wip-check` ------------------------------
+    check("LF verdict", classify_endings(b"a\nb\n") == (True, "LF (2 lines)"),
+          str(classify_endings(b"a\nb\n")))
+    check("CRLF is refused", not classify_endings(b"a\r\nb\r\n")[0], "a CRLF file passed")
+    check("a lone CR is refused", not classify_endings(b"a\rb\n")[0], "a lone CR passed")
+    check("one stray CRLF in an LF file is still refused",
+          not classify_endings(b"a\n" * 99 + b"b\r\n")[0],
+          "a majority-LF file with one CRLF passed -- drift starts as one line")
+    # No newline at all is not evidence of anything, so it must not fire.
+    check("no newlines passes", classify_endings(b"")[0] and classify_endings(b"x")[0],
+          "an empty or single-line file was flagged")
 
     # The `.*` trap: a dot matches \r, so a substitution on UN-normalised CRLF text eats the
     # carriage return. Kept as a property so nobody "simplifies" the normalisation away.
@@ -394,4 +477,6 @@ def _self_test():
 if __name__ == "__main__":
     if "--self-test" in sys.argv[1:]:
         sys.exit(_self_test())
+    if "--check-endings" in sys.argv[1:]:
+        sys.exit(check_endings(Path(__file__).resolve().parent.parent / "WIP.md"))
     sys.exit(main())
