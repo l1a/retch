@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790031605958,
+  "lastUpdate": 1790057710245,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6218,90 +6218,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "5f5fda4c9f6daefbb8469008f1e5cd2dac686079",
-          "message": "deps: bump icy_sixel to 0.6.0 (#207) (#208)\n\nConsolidates Dependabot #207 onto a gated branch so the release hygiene\nit bypasses -- version bump, NOTES entry, man regen -- is actually done.\n\nNot lockfile-only: a caret range on a 0.x spec will not admit 0.6, so the\nCargo.toml spec widened \"0.5\" -> \"0.6\". icy_sixel is graphics-feature-only,\nso only --features graphics and the CI graphics-feature job compile it.\n\nThe 0.x minor is semver-breaking by convention but does not reach retch:\nsixel_image.rs and encoder.rs, which hold the only two calls retch makes,\nare sha256-identical between 0.5.1 and 0.6.0. The whole change is\ndecoder-side (a new stateful SixelDecoder, additively exported, plus a\nMAX_PIXELS decode guard) and retch only ever emits sixel.\n\ndocs/retch.1 also loses 164 .Bl/.El lines, which is NOT from this bump:\nmandown was upgraded to 1.1.1 after v0.9.4 shipped and no longer emits\nthem. They are mdoc macros, undefined in man(7) -- groff warns twice on\nthe old page and not at all on the new one, and the rendered output is\nbyte-identical. Proved pre-existing by regenerating at the committed\nversion 0.9.4 first.\n\nretch-cli -> 0.9.5; retch-sysinfo unchanged at 0.1.56.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-27T16:59:33-07:00",
-          "tree_id": "d38a83e0752c843b6ec56f75402ea35bf7dea990",
-          "url": "https://github.com/l1a/retch/commit/5f5fda4c9f6daefbb8469008f1e5cd2dac686079"
-        },
-        "date": 1787875617196,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1011375152.8,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2035.7541408303507,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 116.34594047564306,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.8205377081230365,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 58.592893277313706,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 18105.711037016797,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 189887.28835457916,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 12796.730047172223,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 12957.325712533919,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1413692.2284240585,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 398.096484626382,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 270.4632664260124,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "930a7bbd91dcf099d1416e083e6e34190ca36ba1",
           "message": "Watch the Justfile in packaging CI paths (#209)\n\nThe recipes that render packaging/aur (aur-bump, aur-srcinfo, aur-check,\naur-publish) live in the Justfile, which no workflow watched. A change to\nthe AUR tooling that did not also change a committed file under packaging/\ntriggered nothing and reported green having never been looked at -- which\nis exactly what #203 did.\n\nThe coverage this adds is artifact-level, not recipe-level: the aur job\nnever invokes just or aur-srcinfo (no just, no podman in the container).\nIt re-verifies that the committed PKGBUILD/.SRCINFO pair still checksums,\nbuilds and packages correctly at that commit.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-31T12:49:42-07:00",
@@ -10401,6 +10317,90 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 210.48959863928212,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "388c5712609808613dbbe5a14c9d9ca7b6f5dd0c",
+          "message": "Add --color auto|always|never; honour NO_COLOR (#261)\n\nretch coloured its output unconditionally, piped or not. Under the new\ndefault (--color auto) colour needs a terminal on stdout and a NO_COLOR\nthat is unset or empty; --color always/never override both.\n\nColour is removed by stripping SGR sequences after each line is\nformatted, which catches the Up/Down colour retch-sysinfo builds into\nthe Net line and keeps the layout byte-identical. With colour off the\nASCII logo is stripped and Chafa falls back to it; image logos stay.\n\nMinor bump to 0.18.0: piped output is now plain by default.\n\nAssisted-By: Claude Opus 5",
+          "timestamp": "2026-09-21T23:08:31-07:00",
+          "tree_id": "d6485fc35d4d8d1437c5a110d2795ce01de8e44d",
+          "url": "https://github.com/l1a/retch/commit/388c5712609808613dbbe5a14c9d9ca7b6f5dd0c"
+        },
+        "date": 1790057708284,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "SystemInfo__collect",
+            "value": 1075310079.5,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 712.4991084662904,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 74.7306685134312,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.282641121926125,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 37.918113256605835,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 6309.076832659067,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 59995.86443977735,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 40916.39107756412,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 39963.48153418013,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 1149807.7469304441,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 232.45753726337693,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 186.96801577022313,
             "unit": "ns"
           }
         ]
