@@ -141,9 +141,9 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.18.1)
+## Current State (v0.18.2)
 
-`main` carries **`retch-cli` 0.18.1** / **`retch-sysinfo` 0.1.76**. Newest released tag is
+`main` carries **`retch-cli` 0.18.2** / **`retch-sysinfo` 0.1.76**. Newest released tag is
 **`v0.18.0`**, live on GitHub, crates.io, the AUR, COPR and the Homebrew tap.
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
@@ -151,6 +151,45 @@ listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
 
+- **v0.18.2 — the CI hyperfine benchmarks were dead for three months, and now work.**
+  `.github/workflows/benchmark.yml` writes `hyperfine_{default,short,long}.json` while
+  `scripts/parse_criterion.py` opened a hardcoded `hyperfine_result.json` that nothing
+  produces, so every CI run timed six commands and discarded them. `b45894a` (2026-06-24) had
+  split one hyperfine run into three and taught the parser to *label* the three modes without
+  changing the name it opens.
+  - **It stayed green because a missing source was a warning.** The script printed to stderr
+    and exited 0, and its only hard error needed *both* sources empty — so criterion alone kept
+    the step passing. Measured on the published artifact: across 50 runs each, all five CI
+    suites held **zero** `CLI execution` series while the `Local - …` suites held all six.
+  - **Fixed three ways, because the filename was the instance and not the class**: the parser
+    now **globs** `hyperfine_*.json` so adding a comparison needs no change here; a source that
+    is expected and absent is an **error** (`--allow-missing` is the deliberate escape hatch,
+    not the default); and its self-test **reads `benchmark.yml` and asserts the glob matches
+    every `--export-json` filename the workflow writes**, which is the coupling whose absence
+    let the two drift. `just bench-check` runs it from `just check`.
+  - **Verified end to end on real data, not fixtures**: same real `cargo bench` output and the
+    same three real hyperfine runs through both versions — the `main` copy produced **12
+    entries, 0 of them CLI, exit 0**; this one produces **18 entries, 6 of them CLI**.
+  - **The label mapping moved to `scripts/bench_labels.py`**, shared with
+    `upload_local_bench.py`, which carried a byte-identical private copy. It returns
+    `(label, ns)` **pairs rather than finished dicts**, deliberately: the two callers serialise
+    differently and must keep doing so — the local suites store `name, unit, value` in a
+    `data.js` that script writes itself, the CI entries store `name, value, unit`, and
+    normalising one would rewrite every key in a suite for nothing (v0.9.11's churn lesson).
+  - **The series names are an API.** github-action-benchmark keys each chart series by the
+    label, so renaming one **forks** the series rather than renaming it, orphaning 50–95 runs
+    of history. `bench_labels.EXPECTED_LABELS` pins all six.
+  - **`just bench-upload` gained `--dry-run`**, because until now there was no way to exercise
+    it without publishing: `main()` ran hyperfine and then pushed, unconditionally, and the
+    `post-merge` hook calls it after every merge. **A path that can only be tested in
+    production does not get tested** — verifying the change above initially meant importing the
+    script's internals. The dry run clones, appends and stages, prints the diff that would
+    land, and returns before the commit. Used to confirm the change end to end: 6 benches, the
+    right suite, **55 insertions / 1 deletion** (v0.9.11's small diff, not the whole-file
+    churn), and `origin/gh-pages` unmoved.
+  - Still open, and unchanged by this: the five jobs run in a strict serial chain costing
+    **39 min per merge** against a **9.7 min** parallel floor, where the chain is
+    **load-bearing** because all five push the same `data.js`. See §5.
 - **v0.18.1 — LF is the base model for every non-binary file.** `WIP.md` had been deliberately
   CRLF; a byte-count survey of retch, `etr` and `rusticprofile` found it was the only CRLF file
   in any of them, so it was converted. `just wip-check --check-endings` now guards it, because
@@ -244,13 +283,63 @@ Adds over long:
 
 Live items only. Completed items are removed rather than struck through — `git log` has them.
 
-- **Review the Continuous Benchmarking CI workflow** (`.github/workflows/benchmark.yml`).
-  Two questions, both raised 2026-09-21 and neither investigated: is each runner rebuilding
-  retch from scratch when a build could be shared or cached, and are all the per-OS builds
-  needed? And can the per-machine jobs run in **parallel** rather than serially — check for
-  `needs:` chains, `max-parallel` or a `concurrency` group. Parallel jobs pushing to the
-  gh-pages branch would race, so the shape may be parallel benchmark jobs feeding one publish
-  job.
+- **Parallelise the Continuous Benchmarking workflow. Reviewed and measured 2026-09-22; the
+  design change is not yet made.** `.github/workflows/benchmark.yml` runs five benchmark jobs
+  in a **strict five-deep `needs:` chain**, so the run costs the *sum* of its jobs rather than
+  the *maximum*.
+  - **Measured on run `35745177092`** (the merge of #262), from the Actions API rather than
+    inferred from the YAML — each job starts 3–10 s after the previous one *completes*, with
+    **zero overlap**:
+
+    | job | build | benchmark | job total |
+    |---|---|---|---|
+    | Linux x64 | 127 s | 250 s | 424 s |
+    | Linux arm64 | 84 s | 232 s | 364 s |
+    | macOS arm64 | 147 s | 263 s | 434 s |
+    | Windows x64 | 265 s | 248 s | 577 s |
+    | Windows arm64 | 171 s | 253 s | 514 s |
+    | **sum** | **794 s** | **1246 s** | **2324 s** |
+
+    Run wall clock **2349 s (39.1 min)** against a sum of job durations of 2324 s — the 25 s
+    difference is queueing, which is what proves there is no overlap. **The longest single job
+    is 579 s**, so a fully parallel run would be ~9.7 min: a saving of **~1770 s (29.5 min) per
+    merge to `main`**, and every merge triggers one.
+  - **The serial chain is load-bearing, not gratuitous — that is the finding.** All five jobs
+    end in `github-action-benchmark` with `auto-push: true`, the same `gh-pages-branch`, and
+    the same `benchmark-data-dir-path: dev/bench`. Confirmed from the artifact rather than the
+    config: `dev/bench/data.js` on `gh-pages` is a **single 1.29 MB file holding all eight
+    suites** (the five CI ones plus three `Local - …` ones from `upload_local_bench.py`). Five
+    parallel jobs each cloning, appending, committing and pushing that one file would race.
+    **Do not simply delete the `needs:` lines.**
+  - **The shape that works is parallel benchmark jobs feeding ONE publish job**: each platform
+    job uploads its `benchmark_result.json` as an artifact and does *not* push; a final job
+    `needs:` all five, downloads the artifacts, and runs the benchmark action once per suite
+    **sequentially within that single job**, where there is no concurrency to race. Verify
+    before relying on it: that the action can be invoked repeatedly in one job against the same
+    checkout, and that `auto-push` retries or a single explicit push at the end is the more
+    robust of the two.
+  - **There is also an INTER-run race that the chain does not address**, and it should be fixed
+    whatever happens to the parallelisation: there is **no `concurrency:` group**, so two merges
+    to `main` in quick succession start two full chains that both push `gh-pages`. `needs:`
+    orders jobs *within* a run and does nothing across runs. A `concurrency` group with
+    `cancel-in-progress: false` is the cheap fix, and it is independent of everything above.
+  - **On the "redundant compile" question: nothing is redundant across jobs, but nothing is
+    cached either.** The five builds are for five different OS/arch targets and cannot be
+    shared. But **no workflow in this repository caches anything** — zero references to
+    `actions/cache` or `Swatinem/rust-cache` across all seven — so every job recompiles ~247
+    crates from scratch on every merge. Build is **794 s of 2324 s (34%)**. Caching is worth
+    real *compute*, but note it is the *smaller* win on wall clock once the jobs run in
+    parallel, because then only the critical path matters.
+  - **Verification limit, and it was narrowed rather than left as a guess:** "Run benchmarks" is
+    one step, so the API cannot split its ~250 s between `cargo bench` and the three `hyperfine`
+    invocations. Timing those three locally gives **28 s** on this machine, so `cargo bench`
+    (which both compiles the criterion harness and runs criterion's sampling) is the dominant
+    half — but the local figure is a floor, since CI runners are slower. **Split the step**;
+    that also makes the dead-hyperfine item above visible in the timings instead of hidden.
+  - **Not answered, because it is a product decision rather than a technical one:** whether all
+    five platforms are needed. The cost is now known per platform (above), so the trade is
+    explicit; Windows arm64 (514 s) and Linux arm64 (364 s) are the obvious candidates if the
+    answer is no.
 - **Make the benchmark charts' x axis meaningful.** The dashboard (gh-pages `data.js`, linked
   from the wiki) labels each point by commit hash; show the version where one exists (the tag,
   or that commit's `Cargo.toml`), falling back to the short hash. Two producers must agree —
@@ -412,6 +501,20 @@ nobody asked.
   thing it guards and watch it fail *for the right reason*. Every guard and test added here is
   expected to have been watched failing against a deliberate mutation, with the file restored
   byte-identical afterwards.
+- **A step that warns and then exits 0 reports success over work it did not do**, and it can do
+  so for years. `parse_criterion.py` opened a filename nothing produced, printed
+  `Warning: … not found.` to stderr, and still exited 0 because its `if not results` guard
+  needed *both* of its sources to be empty — so the CI benchmark job stayed green for three
+  months while publishing half the data it appeared to. `install_completions.py` did the same
+  shape earlier, catching an exception and then printing "Installed completions for …"
+  unconditionally. **If a script is told to read something, its absence is an error, not a
+  warning** — and a partial success must not be indistinguishable from a complete one.
+- **Check that a produced artifact is actually CONSUMED, not just that it was produced.** Both
+  halves of the above ran and succeeded on their own terms; the break was between them, in a
+  filename. The question that found it was not "does this step pass?" but "do we use both of
+  these outputs?" — and the answer came from the *published data*, where one entire class of
+  measurement was simply absent. Diff what a pipeline claims to emit against what its consumer
+  actually contains.
 - **A mutation that "passes" reads exactly like a sound test.** A `MIB_IF_ROW2` layout assertion
   passed against an `alias` array shortened by one `WCHAR`, because the lost bytes were absorbed
   by later padding. A macOS HID vendor-page test passed with its page filter deleted, because
@@ -464,6 +567,21 @@ nobody asked.
 - **Ask git the right question about line endings.** `git status` shows CRLF drift exactly once,
   as an ` M` with no diff behind it, and the first `git add` erases that signal while leaving
   every byte on disk. `git ls-files --eol` (`i/lf w/crlf`) is the unambiguous oracle.
+- **`jq`'s `//` is not a null-coalesce for the GitHub API.** It falls back only on `null` and
+  `false`, and a check or run that has not finished carries `conclusion: ""` — an *empty
+  string*, which `//` passes straight through. So `.conclusion // .status` renders blank for
+  exactly the entries that are still running, and `.conclusion // "pending"` reports them as
+  nothing at all. This produced two confident, wrong readings of CI state in one session, the
+  second of which reported a still-running workflow as finished. **Test for emptiness
+  explicitly:** `if (.conclusion // "") == "" then .status else .conclusion end`.
+- **`gh run list --branch main` answers about the branch, not about your commit.** Straight
+  after a merge it returns the *previous* commit's runs, which are green, while the merge's own
+  runs are still queuing. Filter on the sha you actually care about:
+  `select(.headSha == "<sha>")`.
+- **A pipeline's exit status is the LAST command's**, so `grep pattern file | head || echo
+  none` can never print `none` — `head` succeeds whether or not `grep` matched. Either drop the
+  pipe, or capture with `grep -c` and test the number. Same family as the `$pipestatus` entry:
+  the guard is attached to the wrong command.
 
 ### 7.2 Testing conventions
 
@@ -637,6 +755,18 @@ nobody asked.
   reporting a regression at that magnitude; ratios travel between runs, absolutes do not.
 - **Benchmark A/B needs a control**, and the honest signal is often the direction flipping
   across repeats. Compare `main` against *itself* in the same session before believing a gap.
+- **Before removing a constraint, find out what it protects.** The five-deep `needs:` chain in
+  `benchmark.yml` looks like an obvious mistake — five independent platform jobs, run one after
+  another, for no stated reason. It is not: every job pushes the *same* `data.js` on the *same*
+  branch, so the chain is the only thing preventing five concurrent pushes from racing. The
+  giveaway was in the artifact, not the config — one file holding all eight suites. A `needs:`
+  with no comment explaining it is a question, not an answer; go and find the coupling before
+  deleting it, and leave a comment behind so the next reader does not have to.
+- **Serial-versus-parallel is measurable from the Actions API, so measure it.** Compare the sum
+  of job durations against the run's wall clock: if they agree, nothing overlapped. Per-job
+  `started_at`/`completed_at` then shows the shape directly, and per-step timings say whether
+  the cost is build or work — which decides whether caching or parallelism is the bigger win.
+  Reading the YAML tells you the intent; the API tells you what happened.
 
 ---
 

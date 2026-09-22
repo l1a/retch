@@ -136,7 +136,7 @@ render-check:
     @{{PY}} scripts/render_packaging.py --self-test
 
 # Run strict checks (formatting and linting) as done in CI
-check: standard-check render-check aur-check copr-check brew-check metadata-check text-check wip-check
+check: standard-check render-check aur-check copr-check brew-check metadata-check text-check wip-check bench-check
     cargo fmt -- --check
     cargo clippy --workspace -- -D warnings
     # Also lint the optional `graphics` feature (base64/image/icy_sixel in src/logo.rs),
@@ -636,6 +636,26 @@ wip-check:
 # WIP.md is gitignored and so is out of scope here by construction -- `git ls-files` never
 # offers it. That is a gap rather than a decision: since v0.18.1 it is LF like everything
 # else, so it wants the same guarantee. `wip-check` is what supplies it instead.
+
+# The CI benchmark pipeline publishes two independent sources -- criterion (`cargo bench`)
+# and three hyperfine exports -- into one benchmark_result.json, and a dashboard series is
+# keyed by its label string.
+#
+# It is guarded because it failed silently for three months: the workflow was changed to write
+# hyperfine_{default,short,long}.json while scripts/parse_criterion.py went on opening a
+# hardcoded hyperfine_result.json that nothing produced. The script warned to stderr and exited
+# 0, criterion alone kept the step green, and every CI CLI timing was discarded -- visible only
+# by counting series in the published data.js, where all five CI suites held none.
+#
+# Two self-tests, because there are two failure modes. bench_labels pins the six series names
+# (renaming one silently FORKS a series rather than renaming it, orphaning its history), and
+# parse_criterion pins that the glob reads every file the workflow writes and that a missing
+# source is an error rather than a warning.
+
+# Prove the benchmark result parser reads every source and refuses a partial result (offline)
+bench-check:
+    @"{{PY}}" scripts/bench_labels.py
+    @"{{PY}}" scripts/parse_criterion.py --self-test
 
 # Refuse control characters and carriage returns in tracked text (offline, no network)
 text-check:
