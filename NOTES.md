@@ -141,9 +141,9 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.18.4)
+## Current State (v0.18.5)
 
-`main` carries **`retch-cli` 0.18.4** / **`retch-sysinfo` 0.1.76**. Newest released tag is
+`main` carries **`retch-cli` 0.18.5** / **`retch-sysinfo` 0.1.76**. Newest released tag is
 **`v0.18.0`**, live on GitHub, crates.io, the AUR, COPR and the Homebrew tap.
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
