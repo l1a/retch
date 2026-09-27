@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790483406972,
+  "lastUpdate": 1790483407298,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18810,70 +18810,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "a606bbe53ac5ed3fac05a92ffa1addfde21970fc",
-          "message": "Rebuild COPR from the packaging commit, not the release (#211)\n\n* Rebuild COPR from the packaging commit, not the release\n\nAdds .github/workflows/copr.yml and .copr/Makefile.\n\n\"Rebuild COPR on a GitHub release\" is the obvious trigger and the wrong\none. The spec pins Version: and a Source0 checksum to the last RELEASED\ntag, so it can only be bumped after the tag exists: at tag-push and at\nrelease-publish time the spec still names the previous version, and only\nthe packaging commit that follows makes it current. A release-triggered\nrebuild therefore rebuilds what COPR already has. The workflow keys on a\npush to main filtered to packaging/copr/**.\n\n.copr/** is in the filter too: the Makefile there generates the SRPM, so a\nchange to it alters the build without touching the spec -- the same hole\nv0.9.6 closed by adding Justfile to packaging.yml's filter.\n\nUses COPR's make_srpm method rather than rpkg, because Source0 is a remote\ntag tarball and make_srpm makes the fetch explicit. Verified by running\nwhat COPR runs: make -f .copr/Makefile srpm outdir=... in fedora:latest\nproduced retch-0.9.7-1.fc44.src.rpm.\n\nAssisted-By: Claude Opus 5\n\n* Flag the release/publish sequencing for a rework\n\nNOTES.md section 5 backlog item, recorded at the user's request after the\nv0.9.7 release. The goal stated: tagging a GitHub release should make\neverything else happen.\n\nThe root cause is structural rather than missing automation -- two\npackaging targets pin a sha256 of an artifact that does not exist until\nthe tag is pushed, which forces every post-tag step, which forces the\npackaging bumps direct to main because just pr hard-fails once Cargo.toml\nequals the last tag. Three options are weighed in the entry.\n\nExplicitly notes that this should NOT be started by adding more automation\nto the current shape: each trigger is correct given the pinning. Changing\nthe pinning is the work.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-31T18:31:46-07:00",
-          "tree_id": "7c2cb480fad57dc408853a9cb08fa96cb04217bc",
-          "url": "https://github.com/l1a/retch/commit/a606bbe53ac5ed3fac05a92ffa1addfde21970fc"
-        },
-        "date": 1788228182740,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 220.81961574160727,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.461850029870265,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 122.42037320056139,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 104.90573569799258,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 43075.1203747,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 553.043273819618,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 862.256114259019,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2893410985,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "7fc56ef6232dd6bec8ff5e4b6126b8ed5893dd93",
           "message": "Fix the COPR SRPM step: mock moves %{_topdir} (#212)\n\n.copr/Makefile ran rpmdev-setuptree and copied the spec into\n$(HOME)/rpmbuild/SPECS. rpmdev-setuptree builds its tree at rpm's\n%{_topdir}, and mock redefines that to /builddir/build -- so on COPR the\ndirectory never existed and build 10927005 died in 60 seconds with\n\"cp: cannot create regular file '/builddir/rpmbuild/SPECS/'\".\n\nv0.9.8 claimed the Makefile was verified by running exactly what COPR\nruns. It was not: it ran in a plain fedora container, where %{_topdir}\nkeeps its default. COPR runs it inside mock. The claim was true of the\ncommand and false of the environment.\n\nFixed by removing the dependency rather than chasing the path: no\nrpmdev-setuptree, no %{_topdir}, no $(HOME) -- _sourcedir and _srcrpmdir\nare passed explicitly with --define. Tested twice, once normally and once\nwith %_topdir forced to /builddir/build as mock sets it.\n\nAlso corrects the edit-package-scm flags in NOTES: --method, not --type,\nand no --subdir.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-31T21:23:37-07:00",
@@ -22053,6 +21989,100 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1065342970,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c8c571209639ab27bb9c9b225120b8cdd9a43974",
+          "message": "Bump clap to 4.6.7 (consolidate #266) (#267)\n\nRolls Dependabot #266 onto a gated branch so the version bump, NOTES\nheader and man-page regeneration it skips are done. Lockfile-only: the\n\"4.6\" caret specs already admit clap 4.6.7 (with clap_builder and\nclap_derive) and clap_complete 4.6.11, and nothing else moves.\n\nclap 4.6.7 adds an opt-in #[command(defer = ...)] attribute, unused here.\nclap_complete 4.6.11 fixes value escaping in zsh completions and detects\npwsh as PowerShell. Completions for all six shells retch generates\n(bash, elvish, fish, power-shell, zsh, nushell) were captured before and\nafter the update and are byte-identical, so no output changes.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-26T21:19:14-07:00",
+          "tree_id": "75df178d5c8c91d0fab0f9c6225255c0aefefdb6",
+          "url": "https://github.com/l1a/retch/commit/c8c571209639ab27bb9c9b225120b8cdd9a43974"
+        },
+        "date": 1790483407246,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 29904486,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "value": 2313771156.0000005,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "value": 29811182.000000004,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 121781126.00000004,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 133666786.00000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 27190152.000000004,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 226.8879033755451,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.366322608138977,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 129.00812574925607,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 101.24366162496325,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42284.16420267723,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 616.1433143352172,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 838.9325244812364,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 2222796935,
             "unit": "ns"
           }
         ]
