@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790483407298,
+  "lastUpdate": 1790483408237,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -22097,70 +22097,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "de1d73f365d67017a4c6e6b0ef804e7da46550ca",
-          "message": "packaging: update AUR and COPR to 0.9.7\n\nBoth reference copies track the last RELEASED tag, so they can only be\nbumped after v0.9.7 exists -- and committed direct to main, since just pr\nhard-fails while Cargo.toml's version equals the last tag. Same precedent\nas 9476836, f75989c and d60658c.\n\nsha256 b358688008dce88c53089183048368b56c045e64765334ab9b7b89d7d2833fc7\ncomputed from the real release tarball three independent ways (sha256sum,\npython hashlib, openssl) and matching what aur-bump rendered and what\nspectool fetched for the spec. The tarball's docs/retch.1 is byte-identical\nto the committed page, so the installed footer is correct. Both AUR files\ncarry 0 CR bytes and .SRCINFO came out container_file_t.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-31T15:35:35-07:00",
-          "tree_id": "34e1033ad3807fbe440533584a2675e973160e5f",
-          "url": "https://github.com/l1a/retch/commit/de1d73f365d67017a4c6e6b0ef804e7da46550ca"
-        },
-        "date": 1788218003664,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 176.10422489976068,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.952204558130472,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 96.83535296596871,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.11631059528808,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 49014.44886813445,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 477.86040628088557,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 720.6657775634555,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2928792090,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -25345,6 +25281,100 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1048408970,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c8c571209639ab27bb9c9b225120b8cdd9a43974",
+          "message": "Bump clap to 4.6.7 (consolidate #266) (#267)\n\nRolls Dependabot #266 onto a gated branch so the version bump, NOTES\nheader and man-page regeneration it skips are done. Lockfile-only: the\n\"4.6\" caret specs already admit clap 4.6.7 (with clap_builder and\nclap_derive) and clap_complete 4.6.11, and nothing else moves.\n\nclap 4.6.7 adds an opt-in #[command(defer = ...)] attribute, unused here.\nclap_complete 4.6.11 fixes value escaping in zsh completions and detects\npwsh as PowerShell. Completions for all six shells retch generates\n(bash, elvish, fish, power-shell, zsh, nushell) were captured before and\nafter the update and are byte-identical, so no output changes.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-26T21:19:14-07:00",
+          "tree_id": "75df178d5c8c91d0fab0f9c6225255c0aefefdb6",
+          "url": "https://github.com/l1a/retch/commit/c8c571209639ab27bb9c9b225120b8cdd9a43974"
+        },
+        "date": 1790483408185,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch",
+            "value": 287631561.99999994,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch -c all",
+            "value": 1035364725.9999999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch -c none",
+            "value": 294260752,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 132802391.99999999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 148765556.00000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 38428231.99999999,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 179.07479600519324,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9479231255031766,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 100.44893920707804,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 78.27145646158728,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 49042.33222907741,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 480.8893617273708,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 716.8487451691436,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1003045985,
             "unit": "ns"
           }
         ]
