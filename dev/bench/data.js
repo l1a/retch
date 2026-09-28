@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790575429286,
+  "lastUpdate": 1790575430092,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -23310,70 +23310,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "22ca787cdfda1484b3606919bf901ef432a5f8e2",
-          "message": "Make the post-tag packaging bump a normal PR (#215)\n\nFive releases committed packaging/aur and packaging/copr straight to main\n(9476836, f75989c, d60658c, de1d73f, 468efc7), each commit message explaining\nthat a PR was impossible because just pr hard-fails once Cargo.toml equals the\nlast tag. NOTES section 5 recorded it as structural and proposed moving the\nversion bump out of the gate.\n\nThe premise was wrong. Step 2 is [ \"$LAST_TAG\" = \"v$CARGO_VER\" ] && fail -- an\nequality test against the last tag, not \"did this PR bump anything\". A\npackaging bump that also opens the next version passes untouched. The\nconstraint was a misreading that propagated through five commit messages and a\nbacklog entry, and it cost the gate on the one commit class nobody reviews.\n\njust post-release VERSION branches, pins both packaging targets to the version\njust released, opens Cargo.toml on the next patch, regenerates the man page and\nwrites the NOTES entry -- then stops before open-pr, because the manual\nchecklist needs a human and a release is the worst moment to rubber-stamp one.\n\nProven against real history: a clone rewound to 8fed7c2 (the actual post-tag\nstate where Cargo.toml equalled v0.9.10 and packaging still read 0.9.7) runs\nthe recipe and passes all eight automated gate steps on the result, which\nmatches what 468efc7 did by hand plus the version bump. Five guards each\nwatched refusing.\n\nThis closes the gating half of NOTES section 5. The automation half -- a tag\npublishing to crates.io and the AUR by itself -- is untouched, but the steps\nthis recipe performs are the ones a release workflow would run, so lifting them\ninto CI becomes a port rather than a redesign.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-09-01T15:36:29-07:00",
-          "tree_id": "bde08b98640fbf92adcc5a654341840b216f7f84",
-          "url": "https://github.com/l1a/retch/commit/22ca787cdfda1484b3606919bf901ef432a5f8e2"
-        },
-        "date": 1788304607480,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 175.82277932019707,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.947915983103791,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 99.2600033248157,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.20593264447757,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47882.45329044235,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 479.659271933973,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 731.5130889395841,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3143226160,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "32c2bb0543a0daf67af877903bf893fea1627c09",
           "message": "deps: bump owo-colors and action-gh-release (#218)\n\nConsolidates Dependabot #216 and #217 onto a gated branch so the release\nhygiene they bypass -- version bump, NOTES entry, man regen -- is done.\n\nowo-colors 4.3.0 -> 4.4.0 is lockfile-only: the spec is \"4.0\" and a caret\nrange already admits 4.4, so unlike v0.9.5's icy_sixel there is nothing to\nwiden. The whole release is an MSRV raise, 1.81 -> 1.83, which makes &mut in\nconst fn unconditional -- so the crate deletes its build.rs (58 lines of\nrustc-version sniffing for a const_mut_refs cfg) and Style's private bit-flag\nsetters become &mut self in place. No public API change, and retch never\nconstructs a Style. Nothing here declares rust-version, there is no\nrust-toolchain.toml, CI is @stable, and both packaging targets require\nunversioned cargo/rust, so the floor binds nothing -- checked rather than\nassumed, because a lockfile-only bump reads as consequence-free.\n\nsrc/theme.rs hardcodes ANSI sequences that must equal what owo-colors emits,\nso a bump of the crate that produces them is what breaks them silently. A\nprobe over the whole production surface (.color(Rgb), .green(), .red(),\n.bright_blue(); five call sites is all of it) emitted byte-identical output\nunder both versions, with each probe's own Cargo.lock read back to confirm it\nreally resolved that version -- without which the check passes by testing one\nversion twice.\n\nACTIVE_IFACE_PREFIX and FG_RESET claimed that coupling in a doc comment with\nno test behind it; rgb_prefix had one, those two did not. Two tests now pin\nthem, both watched failing against a mutated constant (94->96, 39->0) before\nbeing kept. The FG_RESET one covers the basic-ANSI forms, since the nested\nspans in practice are .green()/.red() from crates/sysinfo/src/network.rs.\n\naction-gh-release 3.0.2 -> 3.0.3: v3.0.3 is an annotated tag, so the ref\nresolves to a tag object; dereferenced it gives efb35369, which is what the\npin says -- verified against the tag, not trusted from the PR title. Of 16\ncommits, 13 are npm bumps; the one functional change is src/github.ts\n\"safely classify GitHub API errors\". The YAML was parsed and compared rather\nthan eyeballed: exactly one semantic diff, .jobs.release.steps[4].uses. The\nrelease job runs only on a v* tag, so no CI run on this PR exercises it.\n\nretch-cli -> 0.9.13. Patch bump.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-09-02T10:49:29-07:00",
@@ -26783,6 +26719,110 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 470770505,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b2f2fa735900e82504308f448c1f36d3aa57fdf0",
+          "message": "Get the public IP from ipinfo.io and validate it (#273)\n\npublic-ip now asks ipinfo.io/ip instead of api.ipify.org. Timed the\nsame way (bare curl, 30 runs) it answers in 96 ms (sd 5) against 123 ms\n(sd 14). The public-ip probe is the slowest in --long's concurrent\nscope, but that mode now sits at its ~200 ms cpu-usage floor, so the\nmean barely moves (222 -> 218 ms); what changes is the spread, sd 18.3\n-> 1.3 ms, because ipify's slow moments (one probe took 236 ms) no\nlonger reach the critical path. Both services are IPv4-only.\n\nAlso fixes the probe accepting anything: curl ran without -f and the\nbody was never checked, so an error page, a rate-limit notice or a\ncaptive portal's HTML would have been printed as the IP. Now curl -f,\nand parse_public_ip accepts exactly one IPv4 or IPv6 address.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T22:52:36-07:00",
+          "tree_id": "5ef0e81268a64d923eecf8a705a07e64fb7ce136",
+          "url": "https://github.com/l1a/retch/commit/b2f2fa735900e82504308f448c1f36d3aa57fdf0"
+        },
+        "date": 1790575430040,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 55369079.99999999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2400944028,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1328917290,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 38336689.99999999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 44659130.00000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 1635185538,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 180845040,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 38430919.99999999,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 180.58362017542072,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948057099169289,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 99.78877208874408,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 77.56046872223956,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 49440.4671896503,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 473.0412412011269,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 710.9959517764121,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 423170495,
             "unit": "ns"
           }
         ]
