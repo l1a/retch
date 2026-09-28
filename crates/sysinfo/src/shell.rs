@@ -5,6 +5,9 @@
 
 use sysinfo::System;
 
+/// How far up the process tree the shell lookup goes before giving up.
+const MAX_SHELL_ANCESTORS: usize = 64;
+
 pub(crate) fn detect_shell(sys: &System) -> Option<String> {
     let known_shells = [
         "bash",
@@ -22,23 +25,17 @@ pub(crate) fn detect_shell(sys: &System) -> Option<String> {
         "cmd",
     ];
 
-    // Walk the process tree to find the actual running shell.
-    let mut current_pid = sysinfo::get_current_pid().ok();
+    // Walk the process tree to find the actual running shell. The cap is a loop guard,
+    // not a policy: real shells sit a few levels up, and the walk used to be unbounded.
     let mut detected: Option<(String, String)> = None;
-    while let Some(pid) = current_pid {
-        if let Some(process) = sys.process(pid) {
-            let proc_name = process.name().to_string_lossy().to_string();
-            let proc_name_lower = proc_name.to_lowercase();
-            let clean_name = proc_name_lower
-                .strip_suffix(".exe")
-                .unwrap_or(&proc_name_lower)
-                .to_string();
-            if known_shells.contains(&clean_name.as_str()) {
-                detected = Some((proc_name.clone(), clean_name));
-                break;
-            }
-            current_pid = process.parent();
-        } else {
+    for (_, proc_name) in crate::proc_tree::ancestors(sys, MAX_SHELL_ANCESTORS) {
+        let proc_name_lower = proc_name.to_lowercase();
+        let clean_name = proc_name_lower
+            .strip_suffix(".exe")
+            .unwrap_or(&proc_name_lower)
+            .to_string();
+        if known_shells.contains(&clean_name.as_str()) {
+            detected = Some((proc_name, clean_name));
             break;
         }
     }

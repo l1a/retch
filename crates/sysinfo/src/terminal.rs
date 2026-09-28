@@ -361,18 +361,7 @@ fn windows_terminal_version(sys: &System, chain: &[(u32, String)]) -> Option<Str
 /// See [`resolve_terminal`] for the order of precedence. On Windows, Windows Terminal's
 /// package version is appended when [`windows_terminal_version`] can establish it.
 pub(crate) fn detect_terminal(sys: &System) -> Option<String> {
-    let mut chain: Vec<(u32, String)> = Vec::with_capacity(MAX_ANCESTORS);
-    let mut current = sys.process(sysinfo::Pid::from_u32(std::process::id()));
-    while let Some(proc) = current {
-        if chain.len() == MAX_ANCESTORS {
-            break;
-        }
-        chain.push((
-            proc.pid().as_u32(),
-            proc.name().to_string_lossy().into_owned(),
-        ));
-        current = proc.parent().and_then(|pid| sys.process(pid));
-    }
+    let chain = crate::proc_tree::ancestors(sys, MAX_ANCESTORS);
     let names: Vec<String> = chain.iter().map(|(_, name)| name.clone()).collect();
     let terminal = resolve_terminal(|key| std::env::var(key).ok(), &names)?;
 

@@ -255,8 +255,12 @@ fn should_probe_load(want_load: bool) -> bool {
 /// happened to be selected as well, so `--fields shell` on its own fell through to
 /// guessing from the environment — on Windows under PowerShell 7 it reported
 /// `powershell 5.1`, the shell `PSModulePath` implies, instead of the `pwsh` running it.
+///
+/// **Never on Linux**: there all four read `/proc` directly through `crate::proc_tree`,
+/// because loading the table walks every process *and thread* (~48 ms on a desktop,
+/// most of the default mode) when none of them needs more than a few entries.
 fn needs_process_list(procs: bool, audio: bool, shell: bool, terminal: bool) -> bool {
-    procs || audio || shell || terminal
+    !cfg!(target_os = "linux") && (procs || audio || shell || terminal)
 }
 
 impl SystemInfo {
@@ -265,6 +269,7 @@ impl SystemInfo {
     /// This method aggregates data from the operating system, hardware,
     /// and current user environment into a `SystemInfo` struct.
     pub fn collect(opts: CollectOptions) -> anyhow::Result<Self> {
+        crate::timing::start();
         let should_collect = |field_name: &str| -> bool {
             match &opts.fields {
                 Some(fields) => {
@@ -308,7 +313,7 @@ impl SystemInfo {
         // `mut` is only needed off-Windows (refresh_cpu_usage below); on Windows CPU usage
         // comes from GetSystemTimes, so `sys` is never mutated there.
         #[cfg_attr(target_os = "windows", allow(unused_mut))]
-        let mut sys = System::new_with_specifics(refresh_kind);
+        let mut sys = crate::timing::timed("sys-init", || System::new_with_specifics(refresh_kind));
 
         let os = System::long_os_version()
             .or_else(System::name)
@@ -360,7 +365,8 @@ impl SystemInfo {
         let uptime = format!("{}s", System::uptime());
 
         let disks: Vec<String> = if should_collect("disk") {
-            let disks_list = crate::disk::detect_logical_disks(opts.full);
+            let disks_list =
+                crate::timing::timed("disk", || crate::disk::detect_logical_disks(opts.full));
             let format_disk = |(mount, total, avail, fs): &(String, u64, u64, String)| {
                 let total_gb = *total as f64 / 1024.0 / 1024.0 / 1024.0;
                 let avail_gb = *avail as f64 / 1024.0 / 1024.0 / 1024.0;
@@ -389,7 +395,7 @@ impl SystemInfo {
         };
 
         let battery = if should_collect("battery") {
-            crate::battery::get_battery_info().map(|bat| {
+            crate::timing::timed("battery", crate::battery::get_battery_info).map(|bat| {
                 let pct = bat.percentage;
                 let state = match bat.state {
                     crate::battery::BatteryState::Charging => "charging",
@@ -458,7 +464,14 @@ impl SystemInfo {
         let arch = System::cpu_arch();
 
         let processes = if should_collect("procs") || should_collect("audio") {
-            sys.processes().len()
+            #[cfg(target_os = "linux")]
+            {
+                crate::timing::timed("procs", crate::proc_tree::task_count)
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                sys.processes().len()
+            }
         } else {
             0
         };
@@ -527,185 +540,225 @@ impl SystemInfo {
             (media, player),
             gpu_apis,
             shell,
-        ) = std::thread::scope(|s| {
-            let gpu_handle = if should_collect("gpu") {
-                Some(s.spawn(|| {
-                    gpu::detect_gpus()
-                        .into_iter()
-                        .map(|g| g.format())
-                        .collect::<Vec<String>>()
-                }))
-            } else {
-                None
-            };
-            let packages_handle = if should_collect("packages") {
-                Some(s.spawn(crate::packages::detect_packages))
-            } else {
-                None
-            };
-            let public_ip_handle = if should_collect("public ip") {
-                Some(s.spawn(crate::network::detect_public_ip))
-            } else {
-                None
-            };
-            let network_ips_handle = if should_collect("net") {
-                Some(s.spawn(crate::network::detect_active_interface_and_local_ip))
-            } else {
-                None
-            };
-            let motherboard_handle = if should_collect("motherboard") {
-                Some(s.spawn(crate::motherboard::detect_motherboard))
-            } else {
-                None
-            };
-            let bios_handle = if should_collect("bios") {
-                Some(s.spawn(crate::bios::detect_bios))
-            } else {
-                None
-            };
-            let displays_handle = if should_collect("display") {
-                Some(s.spawn(crate::display::detect_displays))
-            } else {
-                None
-            };
-            let audio_handle = if should_collect("audio") {
-                Some(s.spawn(|| crate::audio::detect_audio(&sys)))
-            } else {
-                None
-            };
-            let wifi_handle = if should_collect("wifi") {
-                Some(s.spawn(crate::network::detect_wifi))
-            } else {
-                None
-            };
-            let bluetooth_handle = if should_collect("bluetooth") {
-                Some(s.spawn(crate::bluetooth::detect_bluetooth))
-            } else {
-                None
-            };
-            let ui_theme_and_fonts_handle = if should_collect("theme")
-                || should_collect("icons")
-                || should_collect("cursor")
-                || should_collect("font")
-            {
-                Some(s.spawn(crate::theme::detect_ui_theme_and_fonts))
-            } else {
-                None
-            };
-            let camera_handle = if should_collect("camera") {
-                Some(s.spawn(crate::camera::detect_camera))
-            } else {
-                None
-            };
-            let gamepad_handle = if should_collect("gamepad") {
-                Some(s.spawn(crate::gamepad::detect_gamepad))
-            } else {
-                None
-            };
-            let physical_disks_handle = if should_collect("phys disk") {
-                Some(s.spawn(crate::disk::detect_physical_disks))
-            } else {
-                None
-            };
-            let physical_memory_handle = if should_collect("phys mem") {
-                Some(s.spawn(crate::memory::detect_physical_memory))
-            } else {
-                None
-            };
-            let weather_location = opts.weather_location.clone();
-            let weather_unit = opts.weather_unit;
-            let weather_handle = if should_collect("weather") {
-                Some(s.spawn(move || {
-                    crate::weather::detect_weather(weather_location.as_deref(), weather_unit)
-                }))
-            } else {
-                None
-            };
-            let btrfs_handle = if should_collect("btrfs") {
-                Some(s.spawn(crate::btrfs::detect_btrfs))
-            } else {
-                None
-            };
-            let zpool_handle = if should_collect("zpool") {
-                Some(s.spawn(crate::zfs::detect_zpool))
-            } else {
-                None
-            };
-            let media_handle = if should_collect("media") || should_collect("player") {
-                Some(s.spawn(crate::media::detect_media))
-            } else {
-                None
-            };
-            // Vulkan/OpenGL/OpenCL are collected together: all three dlopen a loader and
-            // talk to the same driver stack, so splitting them across threads would buy
-            // contention rather than overlap.
-            let gpu_apis_handle =
-                if should_collect("vulkan") || should_collect("opengl") || should_collect("opencl")
-                {
-                    Some(s.spawn(crate::gpu_api::detect_gpu_apis))
+        ) = crate::timing::timed("scope", || {
+            std::thread::scope(|s| {
+                let gpu_handle = if should_collect("gpu") {
+                    Some(s.spawn(|| {
+                        crate::timing::timed("gpu", || {
+                            gpu::detect_gpus()
+                                .into_iter()
+                                .map(|g| g.format())
+                                .collect::<Vec<String>>()
+                        })
+                    }))
                 } else {
                     None
                 };
-            // `shell` reports the running shell's version by spawning the shell to ask it,
-            // which on Windows means starting PowerShell — measured at ~570 ms on arrakis.
-            // Until v0.17.6 that ran serially after this scope and was the largest single
-            // cost in `--long` and `--full`; here it overlaps the other probes instead. It
-            // only reads `sys`, as `audio` does.
-            let shell_handle = if should_collect("shell") {
-                Some(s.spawn(|| crate::shell::detect_shell(&sys)))
-            } else {
-                None
-            };
+                let packages_handle = if should_collect("packages") {
+                    Some(s.spawn(|| {
+                        crate::timing::timed("packages", crate::packages::detect_packages)
+                    }))
+                } else {
+                    None
+                };
+                let public_ip_handle = if should_collect("public ip") {
+                    Some(s.spawn(|| {
+                        crate::timing::timed("public-ip", crate::network::detect_public_ip)
+                    }))
+                } else {
+                    None
+                };
+                let network_ips_handle = if should_collect("net") {
+                    Some(s.spawn(|| {
+                        crate::timing::timed(
+                            "net",
+                            crate::network::detect_active_interface_and_local_ip,
+                        )
+                    }))
+                } else {
+                    None
+                };
+                let motherboard_handle = if should_collect("motherboard") {
+                    Some(s.spawn(|| {
+                        crate::timing::timed("motherboard", crate::motherboard::detect_motherboard)
+                    }))
+                } else {
+                    None
+                };
+                let bios_handle = if should_collect("bios") {
+                    Some(s.spawn(|| crate::timing::timed("bios", crate::bios::detect_bios)))
+                } else {
+                    None
+                };
+                let displays_handle =
+                    if should_collect("display") {
+                        Some(s.spawn(|| {
+                            crate::timing::timed("display", crate::display::detect_displays)
+                        }))
+                    } else {
+                        None
+                    };
+                let audio_handle = if should_collect("audio") {
+                    Some(s.spawn(|| {
+                        crate::timing::timed("audio", || crate::audio::detect_audio(&sys))
+                    }))
+                } else {
+                    None
+                };
+                let wifi_handle = if should_collect("wifi") {
+                    Some(s.spawn(|| crate::timing::timed("wifi", crate::network::detect_wifi)))
+                } else {
+                    None
+                };
+                let bluetooth_handle = if should_collect("bluetooth") {
+                    Some(s.spawn(|| {
+                        crate::timing::timed("bluetooth", crate::bluetooth::detect_bluetooth)
+                    }))
+                } else {
+                    None
+                };
+                let ui_theme_and_fonts_handle = if should_collect("theme")
+                    || should_collect("icons")
+                    || should_collect("cursor")
+                    || should_collect("font")
+                {
+                    Some(s.spawn(|| {
+                        crate::timing::timed("theme+fonts", crate::theme::detect_ui_theme_and_fonts)
+                    }))
+                } else {
+                    None
+                };
+                let camera_handle = if should_collect("camera") {
+                    Some(s.spawn(|| crate::timing::timed("camera", crate::camera::detect_camera)))
+                } else {
+                    None
+                };
+                let gamepad_handle = if should_collect("gamepad") {
+                    Some(
+                        s.spawn(|| crate::timing::timed("gamepad", crate::gamepad::detect_gamepad)),
+                    )
+                } else {
+                    None
+                };
+                let physical_disks_handle = if should_collect("phys disk") {
+                    Some(s.spawn(|| {
+                        crate::timing::timed("phys-disk", crate::disk::detect_physical_disks)
+                    }))
+                } else {
+                    None
+                };
+                let physical_memory_handle = if should_collect("phys mem") {
+                    Some(s.spawn(|| {
+                        crate::timing::timed("phys-mem", crate::memory::detect_physical_memory)
+                    }))
+                } else {
+                    None
+                };
+                let weather_location = opts.weather_location.clone();
+                let weather_unit = opts.weather_unit;
+                let weather_handle = if should_collect("weather") {
+                    Some(s.spawn(move || {
+                        crate::timing::timed("weather", || {
+                            crate::weather::detect_weather(
+                                weather_location.as_deref(),
+                                weather_unit,
+                            )
+                        })
+                    }))
+                } else {
+                    None
+                };
+                let btrfs_handle = if should_collect("btrfs") {
+                    Some(s.spawn(|| crate::timing::timed("btrfs", crate::btrfs::detect_btrfs)))
+                } else {
+                    None
+                };
+                let zpool_handle = if should_collect("zpool") {
+                    Some(s.spawn(|| crate::timing::timed("zpool", crate::zfs::detect_zpool)))
+                } else {
+                    None
+                };
+                let media_handle = if should_collect("media") || should_collect("player") {
+                    Some(s.spawn(|| crate::timing::timed("media", crate::media::detect_media)))
+                } else {
+                    None
+                };
+                // Vulkan/OpenGL/OpenCL are collected together: all three dlopen a loader and
+                // talk to the same driver stack, so splitting them across threads would buy
+                // contention rather than overlap.
+                let gpu_apis_handle = if should_collect("vulkan")
+                    || should_collect("opengl")
+                    || should_collect("opencl")
+                {
+                    Some(s.spawn(|| {
+                        crate::timing::timed("gpu-apis", crate::gpu_api::detect_gpu_apis)
+                    }))
+                } else {
+                    None
+                };
+                // `shell` reports the running shell's version by spawning the shell to ask it,
+                // which on Windows means starting PowerShell — measured at ~570 ms on arrakis.
+                // Until v0.17.6 that ran serially after this scope and was the largest single
+                // cost in `--long` and `--full`; here it overlaps the other probes instead. It
+                // only reads `sys`, as `audio` does.
+                let shell_handle = if should_collect("shell") {
+                    Some(s.spawn(|| {
+                        crate::timing::timed("shell", || crate::shell::detect_shell(&sys))
+                    }))
+                } else {
+                    None
+                };
 
-            (
-                gpu_handle
-                    .map(|h| h.join().unwrap_or_default())
-                    .unwrap_or_default(),
-                packages_handle.and_then(|h| h.join().ok().flatten()),
-                public_ip_handle.and_then(|h| h.join().ok().flatten()),
-                network_ips_handle
-                    .map(|h| h.join().unwrap_or((None, None)))
-                    .unwrap_or((None, None)),
-                motherboard_handle.and_then(|h| h.join().ok().flatten()),
-                bios_handle.and_then(|h| h.join().ok().flatten()),
-                displays_handle
-                    .map(|h| h.join().unwrap_or_default())
-                    .unwrap_or_default(),
-                audio_handle.and_then(|h| h.join().ok().flatten()),
-                wifi_handle.and_then(|h| h.join().ok().flatten()),
-                bluetooth_handle.and_then(|h| h.join().ok().flatten()),
-                ui_theme_and_fonts_handle
-                    .map(|h| h.join().unwrap_or((None, None, None, None)))
-                    .unwrap_or((None, None, None, None)),
-                camera_handle
-                    .map(|h| h.join().unwrap_or_default())
-                    .unwrap_or_default(),
-                gamepad_handle
-                    .map(|h| h.join().unwrap_or_default())
-                    .unwrap_or_default(),
-                physical_disks_handle
-                    .map(|h| h.join().unwrap_or_default())
-                    .unwrap_or_default(),
-                physical_memory_handle.and_then(|h| h.join().ok().flatten()),
-                weather_handle.and_then(|h| h.join().ok().flatten()),
-                btrfs_handle
-                    .map(|h| h.join().unwrap_or_default())
-                    .unwrap_or_default(),
-                zpool_handle
-                    .map(|h| h.join().unwrap_or_default())
-                    .unwrap_or_default(),
-                media_handle
-                    .map(|h| h.join().unwrap_or((None, None)))
-                    .unwrap_or((None, None)),
-                gpu_apis_handle
-                    .map(|h| h.join().unwrap_or_default())
-                    .unwrap_or_default(),
-                shell_handle.and_then(|h| h.join().ok().flatten()),
-            )
+                (
+                    gpu_handle
+                        .map(|h| h.join().unwrap_or_default())
+                        .unwrap_or_default(),
+                    packages_handle.and_then(|h| h.join().ok().flatten()),
+                    public_ip_handle.and_then(|h| h.join().ok().flatten()),
+                    network_ips_handle
+                        .map(|h| h.join().unwrap_or((None, None)))
+                        .unwrap_or((None, None)),
+                    motherboard_handle.and_then(|h| h.join().ok().flatten()),
+                    bios_handle.and_then(|h| h.join().ok().flatten()),
+                    displays_handle
+                        .map(|h| h.join().unwrap_or_default())
+                        .unwrap_or_default(),
+                    audio_handle.and_then(|h| h.join().ok().flatten()),
+                    wifi_handle.and_then(|h| h.join().ok().flatten()),
+                    bluetooth_handle.and_then(|h| h.join().ok().flatten()),
+                    ui_theme_and_fonts_handle
+                        .map(|h| h.join().unwrap_or((None, None, None, None)))
+                        .unwrap_or((None, None, None, None)),
+                    camera_handle
+                        .map(|h| h.join().unwrap_or_default())
+                        .unwrap_or_default(),
+                    gamepad_handle
+                        .map(|h| h.join().unwrap_or_default())
+                        .unwrap_or_default(),
+                    physical_disks_handle
+                        .map(|h| h.join().unwrap_or_default())
+                        .unwrap_or_default(),
+                    physical_memory_handle.and_then(|h| h.join().ok().flatten()),
+                    weather_handle.and_then(|h| h.join().ok().flatten()),
+                    btrfs_handle
+                        .map(|h| h.join().unwrap_or_default())
+                        .unwrap_or_default(),
+                    zpool_handle
+                        .map(|h| h.join().unwrap_or_default())
+                        .unwrap_or_default(),
+                    media_handle
+                        .map(|h| h.join().unwrap_or((None, None)))
+                        .unwrap_or((None, None)),
+                    gpu_apis_handle
+                        .map(|h| h.join().unwrap_or_default())
+                        .unwrap_or_default(),
+                    shell_handle.and_then(|h| h.join().ok().flatten()),
+                )
+            })
         });
 
         let mut temps: Vec<String> = if should_collect("temp") {
-            Components::new_with_refreshed_list()
+            crate::timing::timed("temp", Components::new_with_refreshed_list)
                 .iter()
                 .filter_map(|c| {
                     c.temperature().and_then(|t| {
@@ -729,7 +782,9 @@ impl SystemInfo {
         });
 
         let networks = if should_collect("net") {
-            crate::network::detect_networks(active_interface.as_deref(), local_ip.as_deref())
+            crate::timing::timed("net-detail", || {
+                crate::network::detect_networks(active_interface.as_deref(), local_ip.as_deref())
+            })
         } else {
             Vec::new()
         };
@@ -744,7 +799,7 @@ impl SystemInfo {
 
         // Environment-based info. (`shell` is collected inside the concurrent scope above.)
         let terminal = if should_collect("terminal") {
-            crate::terminal::detect_terminal(&sys)
+            crate::timing::timed("terminal", || crate::terminal::detect_terminal(&sys))
         } else {
             None
         };
@@ -752,7 +807,9 @@ impl SystemInfo {
             || should_collect("terminal-font")
             || should_collect("terminal_font")
         {
-            crate::terminal::detect_terminal_font(terminal.as_deref())
+            crate::timing::timed("terminal-font", || {
+                crate::terminal::detect_terminal_font(terminal.as_deref())
+            })
         } else {
             None
         };
@@ -764,7 +821,7 @@ impl SystemInfo {
                 .ok()
                 .map(|s| normalize_desktop_name(&s))
                 .filter(|s| !s.is_empty())
-                .or_else(detect_desktop_from_proc)
+                .or_else(|| crate::timing::timed("desktop-proc", detect_desktop_from_proc))
         } else {
             None
         };
@@ -776,7 +833,9 @@ impl SystemInfo {
         {
             sys.cpus().first().map(|c| {
                 let current = format!("{:.2} GHz", c.frequency() as f64 / 1000.0);
-                if let Some((min_khz, max_khz)) = detect_cpu_freq_range() {
+                if let Some((min_khz, max_khz)) =
+                    crate::timing::timed("cpu-freq", detect_cpu_freq_range)
+                {
                     let min_ghz = min_khz as f64 / 1_000_000.0;
                     let max_ghz = max_khz as f64 / 1_000_000.0;
                     format!("{} ({:.2} \u{2013} {:.2} GHz)", current, min_ghz, max_ghz)
@@ -793,7 +852,7 @@ impl SystemInfo {
             || should_collect("cpu cache")
             || should_collect("cpu_cache")
         {
-            detect_cpu_cache()
+            crate::timing::timed("cpu-cache", detect_cpu_cache)
         } else {
             None
         };
@@ -808,7 +867,9 @@ impl SystemInfo {
         {
             #[cfg(not(target_os = "windows"))]
             {
-                std::thread::sleep(std::time::Duration::from_millis(200));
+                crate::timing::timed("cpu-usage-wait", || {
+                    std::thread::sleep(std::time::Duration::from_millis(200))
+                });
                 sys.refresh_cpu_usage();
                 let usage: f32 =
                     sys.cpus().iter().map(|c| c.cpu_usage()).sum::<f32>() / sys.cpus().len() as f32;
@@ -891,13 +952,13 @@ impl SystemInfo {
         };
 
         let init_system = if should_collect("init") || should_collect("init system") {
-            detect_init_system()
+            crate::timing::timed("init", detect_init_system)
         } else {
             None
         };
 
         let chassis = if should_collect("chassis") {
-            detect_chassis()
+            crate::timing::timed("chassis", detect_chassis)
         } else {
             None
         };
@@ -913,25 +974,25 @@ impl SystemInfo {
         };
 
         let bootmgr = if should_collect("bootmgr") || should_collect("boot") {
-            detect_bootmgr()
+            crate::timing::timed("bootmgr", detect_bootmgr)
         } else {
             None
         };
 
         let login_manager = if should_collect("login-manager") || should_collect("lm") {
-            detect_login_manager()
+            crate::timing::timed("login-manager", detect_login_manager)
         } else {
             None
         };
 
         let brightness = if should_collect("brightness") {
-            detect_brightness()
+            crate::timing::timed("brightness", detect_brightness)
         } else {
             None
         };
 
         let power_adapter = if should_collect("power-adapter") {
-            detect_power_adapter()
+            crate::timing::timed("power-adapter", detect_power_adapter)
         } else {
             None
         };
@@ -939,7 +1000,7 @@ impl SystemInfo {
         // Keyboards and mice come from one file read, so they are collected together and then
         // split rather than parsing `/proc/bus/input/devices` twice.
         let (keyboard, mouse) = if should_collect("keyboard") || should_collect("mouse") {
-            let (kbds, mice) = crate::input::detect_input_devices();
+            let (kbds, mice) = crate::timing::timed("input", crate::input::detect_input_devices);
             (
                 if should_collect("keyboard") {
                     kbds
@@ -957,7 +1018,7 @@ impl SystemInfo {
         };
 
         let tpm = if should_collect("tpm") {
-            detect_tpm()
+            crate::timing::timed("tpm", detect_tpm)
         } else {
             None
         };
@@ -972,25 +1033,25 @@ impl SystemInfo {
         };
 
         let wm = if should_collect("wm") || should_collect("window manager") {
-            crate::wm::detect_wm()
+            crate::timing::timed("wm", crate::wm::detect_wm)
         } else {
             None
         };
 
         let dns = if should_collect("dns") {
-            crate::network::detect_dns()
+            crate::timing::timed("dns", crate::network::detect_dns)
         } else {
             Vec::new()
         };
 
         let domain = if should_collect("domain") {
-            crate::network::detect_domain()
+            crate::timing::timed("domain", crate::network::detect_domain)
         } else {
             None
         };
 
         let domain_search = if should_collect("domain-search") || should_collect("domain search") {
-            crate::network::detect_domain_search()
+            crate::timing::timed("domain-search", crate::network::detect_domain_search)
         } else {
             Vec::new()
         };
@@ -999,7 +1060,7 @@ impl SystemInfo {
             || should_collect("terminal-size")
             || should_collect("terminal_size")
         {
-            crate::terminal::detect_terminal_size()
+            crate::timing::timed("terminal-size", crate::terminal::detect_terminal_size)
         } else {
             None
         };
@@ -1018,7 +1079,7 @@ impl SystemInfo {
             }
             #[cfg(not(target_os = "windows"))]
             {
-                Users::new_with_refreshed_list()
+                crate::timing::timed("users", Users::new_with_refreshed_list)
                     .iter()
                     .filter(|user| {
                         // UID is exposed via Display
@@ -1038,13 +1099,17 @@ impl SystemInfo {
             || should_collect("wm theme")
             || should_collect("wm_theme")
         {
-            crate::theme::detect_wm_theme(wm.as_deref(), desktop.as_deref())
+            crate::timing::timed("wm-theme", || {
+                crate::theme::detect_wm_theme(wm.as_deref(), desktop.as_deref())
+            })
         } else {
             None
         };
 
         let wallpaper = if should_collect("wallpaper") {
-            crate::theme::detect_wallpaper(desktop.as_deref(), wm.as_deref())
+            crate::timing::timed("wallpaper", || {
+                crate::theme::detect_wallpaper(desktop.as_deref(), wm.as_deref())
+            })
         } else {
             None
         };
@@ -1053,10 +1118,14 @@ impl SystemInfo {
             || should_collect("terminal theme")
             || should_collect("terminal_theme")
         {
-            crate::terminal::detect_terminal_theme(terminal.as_deref())
+            crate::timing::timed("terminal-theme", || {
+                crate::terminal::detect_terminal_theme(terminal.as_deref())
+            })
         } else {
             None
         };
+
+        crate::timing::mark("collect-done");
 
         Ok(Self {
             os,
@@ -2128,13 +2197,30 @@ mod tests {
         // Both walk the process tree from retch's own pid. Before v0.17.6 only `procs` and
         // `audio` loaded the list, so `--fields shell` alone found no tree to walk and
         // reported the shell the environment implied rather than the one running retch.
-        assert!(needs_process_list(false, false, true, false), "shell alone");
-        assert!(
+        // On Linux none of the four uses the list any more (they read /proc through
+        // `proc_tree`, whose live test proves the walk works with no list at all), so
+        // there the rule inverts: the list must never be loaded.
+        let expected = !cfg!(target_os = "linux");
+        assert_eq!(
+            needs_process_list(false, false, true, false),
+            expected,
+            "shell alone"
+        );
+        assert_eq!(
             needs_process_list(false, false, false, true),
+            expected,
             "terminal alone"
         );
-        assert!(needs_process_list(true, false, false, false), "procs alone");
-        assert!(needs_process_list(false, true, false, false), "audio alone");
+        assert_eq!(
+            needs_process_list(true, false, false, false),
+            expected,
+            "procs alone"
+        );
+        assert_eq!(
+            needs_process_list(false, true, false, false),
+            expected,
+            "audio alone"
+        );
         assert!(
             !needs_process_list(false, false, false, false),
             "no consumer selected: the list must not be loaded"

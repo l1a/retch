@@ -7,17 +7,10 @@
 pub fn detect_audio(sys: &sysinfo::System) -> Option<String> {
     #[cfg(target_os = "linux")]
     {
-        let mut server = None;
-        for process in sys.processes().values() {
-            let name = process.name().to_string_lossy().to_lowercase();
-            if name.contains("pipewire") {
-                server = Some("PipeWire");
-                break;
-            } else if name.contains("pulseaudio") {
-                server = Some("PulseAudio");
-            }
-        }
-        let server_str = server.unwrap_or("ALSA");
+        // Read from /proc directly rather than sysinfo's process table, which `sys` no
+        // longer carries on Linux (loading it cost ~48 ms; see `crate::proc_tree`).
+        let _ = sys;
+        let server_str = crate::proc_tree::audio_server();
 
         let mut devices = Vec::new();
         if let Ok(content) = std::fs::read_to_string("/proc/asound/cards") {

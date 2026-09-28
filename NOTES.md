@@ -146,15 +146,28 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.19.0)
+## Current State (v0.19.1)
 
-`main` carries **`retch-cli` 0.19.0** / **`retch-sysinfo` 0.1.76**. Newest released tag is
+`main` carries **`retch-cli` 0.19.1** / **`retch-sysinfo` 0.1.77**. Newest released tag is
 **`v0.18.4`** (GitHub, crates.io and the AUR verified 2026-09-26; COPR and the tap not checked).
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.19.1 — `RETCH_TIMING`, and Linux no longer loads the process table.**
+  - **`RETCH_TIMING=1 retch [...]`** prints each probe's start offset and duration to stderr
+    (`crates/sysinfo/src/timing.rs`; every probe in `fetch.rs` is wrapped). Run it *when retch is
+    slow*. First trace (`--long`, arrakis): the concurrent scope took 237 ms (all `public-ip`),
+    then `cpu-usage` waited a further 200 ms serially — see §5.
+  - **`procs`, `audio`, `shell` and `terminal` read `/proc` directly on Linux**
+    (`crates/sysinfo/src/proc_tree.rs`), so sysinfo never walks every process and thread.
+    Output is identical by construction: sysinfo's Linux process name *is* `/proc/<pid>/stat`'s
+    `comm`, and `procs` (which has always counted threads too) now reads the kernel's own task
+    total from `/proc/loadavg`, which matched the old value exactly. macOS and Windows unchanged.
+  - **It measured no speed-up when merged**, and that is recorded rather than hidden: see §7.5
+    on the intermittent ~50 ms process-table cost it was written against.
 
 - **v0.19.0 — `cpu-usage` moved to `--long`, and the fastfetch comparison is like for like.**
   **Read this before quoting any retch-vs-fastfetch number from before it.**
@@ -382,14 +395,21 @@ Live items only. Completed items are removed rather than struck through — `git
 
 - **BLOCKING per §3: retch is slower than fastfetch in every mode** once the comparison is like
   for like (numbers in Current State v0.19.0). Leads, none investigated yet:
-  - **default, real hardware only** — 35 vs 12 ms on arrakis, but level in a container, so the
-    cost is in probes that find real devices there (display/EDID, audio, camera, GPU are the
-    first suspects). Measure absolute time per probe, not `--fields` differences (§7.1).
-  - **`--long`** — `cpu-usage`'s 200 ms sleep runs *after* the concurrent scope. Taking the first
-    sample before the scope and sleeping only the remainder (what Windows already does) would
-    overlap it with the other probes.
-  - **`--full`** — weather makes two sequential `curl` processes (ipinfo, then Open-Meteo)
-    where fastfetch makes one request; public IP is another `curl` spawn.
+  - **default, real hardware only** — 35–57 ms on arrakis at times, ~9 ms at others (ahead of
+    fastfetch's 14.8), on the same binary; level in a container. The slow state made
+    `procs`/`audio`/`shell`/`terminal` ~50 ms each. Cause unknown; v0.19.1 removed the process
+    table on Linux anyway. **Capture it with `RETCH_TIMING=1` when it recurs** (§7.5).
+  - **`--long`** — `cpu-usage` waits a fixed 200 ms *after* the concurrent scope, although its
+    first sample is taken before it. `RETCH_TIMING` showed the scope already takes 237 ms, so
+    the wait is pure waste: sleep only `200 ms - elapsed` (what Windows already does). Then
+    `public-ip` (ipify, ~235 ms here) is the limit; `ipinfo.io` answers in ~95 ms.
+  - **`--full`** — weather is ~870 ms: `ipinfo.io` (~95 ms) then Open-Meteo over HTTPS
+    (~750 ms; ~180 ms RTT to Germany, TLS ~370 ms). fastfetch makes ONE plain-HTTP request to
+    `wttr.in` (~360 ms), which geolocates by IP itself. **Decided: switch to `wttr.in`**
+    (HTTPS ~560 ms, or HTTP ~365 ms to match fastfetch — not yet chosen).
+  - **macOS default (848 vs 414 ms on CI)** — prime suspect `phys-mem`, which spawns
+    `system_profiler`; also `phys-disk` runs `diskutil` once per disk. `RETCH_TIMING=1` on a
+    Mac settles it.
   - **`--short`** — 3.6 vs 2.3–2.5 ms: startup or the concurrent scope's fixed cost.
   - macOS and Windows have not been looked at under the matched configs at all.
 
@@ -807,6 +827,18 @@ nobody asked.
   reporting a regression at that magnitude; ratios travel between runs, absolutes do not.
 - **Benchmark A/B needs a control**, and the honest signal is often the direction flipping
   across repeats. Compare `main` against *itself* in the same session before believing a gap.
+- **A cost that was measured is not a cost that is there.** On 2026-09-28 a per-field sweep
+  put `procs`, `audio`, `shell` and `terminal` at ~50 ms each (default mode 57.5 ms), agreeing
+  with the merge hook (42.5 ms) and an earlier session (35 ms). A rewrite built on that
+  diagnosis then showed no win, because ~90 minutes later the *same binary* did `--fields
+  procs` in 1.5 ms — same process count, no reboot. The tell had been in view: the
+  integration tests took 61 s that session and 10.6 s later. **Re-measure `main` immediately
+  before and after a fix, in the same sitting, and treat a whole-suite slowdown as a warning
+  that the machine, not the code, is being measured.** `RETCH_TIMING` exists so the slow state
+  can be captured while it is happening.
+- **`cargo test -q` prints dots, not `<name> ... FAILED`.** A mutation harness that greps for
+  the FAILED line under `-q` reports every mutation as missed. Drop `-q`, and assert the run
+  executed exactly one test (`running 1 test`) so a filter typo cannot pass either.
 - **Before removing a constraint, find out what it protects.** The five-deep `needs:` chain in
   `benchmark.yml` looks like an obvious mistake — five independent platform jobs, run one after
   another, for no stated reason. It is not: every job pushes the *same* `data.js` on the *same*

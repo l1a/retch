@@ -258,6 +258,14 @@ Available only as the logged-in user:
 
 All other fields are identical either way.
 
+# ENVIRONMENT
+
+**NO_COLOR**
+:   When set to a non-empty value, `--color auto` produces no colour. See **COLOR**.
+
+**RETCH_TIMING**
+:   When set to a non-empty value other than `0`, print one line per probe to standard error: the probe's name, when it started (milliseconds from the start of collection) and how long it took. Standard output is unchanged. Meant for finding where a slow run spends its time: fields are collected concurrently, so the start offsets show which probes overlapped and which ran one after another. Example: `RETCH_TIMING=1 retch --long >/dev/null`.
+
 # EXIT STATUS
 
 **retch** exits with status 0 on success, and non-zero on error.
