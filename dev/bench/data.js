@@ -1,42 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790606327645,
+  "lastUpdate": 1790608248184,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "c4633dd7ab0a57810eef8b0f53a397a0286b9452",
-          "message": "refactor(macos): replace all system_profiler spawns with native FFI (v0.3.16) (#87)\n\n* refactor(macos): replace all system_profiler spawns with native FFI (v0.3.16)\n\nAdd macos_ffi.rs with safe wrappers for CoreFoundation, IOKit, CoreAudio,\nand CoreGraphics. Zero system_profiler spawns on macOS:\n\n- bios: IODeviceTree:/rom firmware version via IOKit\n- audio: CoreAudio AudioObjectGetPropertyData device enumeration\n- display: CoreGraphics CGGetActiveDisplayList + IODisplayConnect names\n- gpu: IOKit AGXAccelerator (Apple Silicon) + IOPCIDevice class 0x03\n- camera: IOKit USB bInterfaceClass=0x0E (UVC) enumeration\n- gamepad: IOKit HID usage page 0x01 / usages 0x04+0x05\n- bluetooth: IOBluetoothHCIController power state + chipset\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* style: cargo fmt\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix: wrap enumerate_hid_usage call in unsafe block\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix: remove unused CFArray and kCFBooleanTrue declarations\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix(macos): add build.rs to propagate framework link directives\n\n#[link(kind = \"framework\")] in lib crates does not reliably propagate\nto the final binary link step. Emit cargo:rustc-link-lib directives\nfrom build.rs instead.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix(macos): replace IOMainPortDefault extern static with literal 0\n\nIOMainPortDefault was introduced as an exported symbol in macOS 12.0.\nThe CI SDK targets macOS 11.0 where it does not exist, causing a link\nerror. Both kIOMasterPortDefault and IOMainPortDefault are always 0, so\nuse a Rust constant instead of the extern static.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
-          "timestamp": "2026-06-12T10:10:04-07:00",
-          "tree_id": "303651b63023cd37e41aceaa61bc2ce4c9861863",
-          "url": "https://github.com/l1a/retch/commit/c4633dd7ab0a57810eef8b0f53a397a0286b9452"
-        },
-        "date": 1781284289848,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - retch",
-            "unit": "ns",
-            "value": 308723856.52
-          },
-          {
-            "name": "CLI execution - fastfetch",
-            "unit": "ns",
-            "value": 1016648180.3199998
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -5170,6 +5136,70 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch (full)",
             "unit": "ns",
             "value": 524920806.31999993
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "ca342dfa819432d34d2399844a6bf9f30f2f5f46",
+          "message": "Read the CPU name concurrently, not before probes (#275)\n\n--short on arrakis: 3.41 -> 3.14 ms (fastfetch matched: 2.78 ms);\ndefault 8.00 -> 7.17 ms. Output identical in every mode.\n\nsys loaded the CPU list, a ~0.4 ms /proc/cpuinfo read on Linux, for\nthe plain cpu field too, serially before the concurrent scope. It now\nloads it only when cpu-freq or cpu-usage needs it there; sys-init\n0.96 -> 0.23 ms. Otherwise the concurrent cpu probe builds its own\nminimal System for the name and logical count (never frequency, which\ncosts ~195 ms of counter setup on Windows).\n\nA first version moved the name, the physical-core count and the\nhybrid check onto one thread, which then took 1.46 ms and became the\nscope's longest probe: --short only improved by 0.16 ms. The physical\ncount, the second /proc/cpuinfo read, now has its own thread, and the\ncore string is assembled after the join. format_cpu_cores keeps its\npublic behaviour through hybrid_cores + format_cpu_cores_plain; a test\npins that the split produces exactly what it does, and another that\nthe two paths filling `cpu` agree.\n\nThat second test failed on the windows-arm runner and exposed a\npre-existing bug: sysinfo reads the CPU brand only through x86 CPUID,\nso on Windows on ARM it is always empty and the field rendered as\n\"CPU:  (12 cores)\". cpu_brand now falls back to the registry's\nProcessorNameString on Windows when the brand is empty; other\nplatforms are unchanged. A Windows-only test checks that source.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-28T08:10:05-07:00",
+          "tree_id": "cefe71f525513eef0e82c3c6d97997dafe271ef0",
+          "url": "https://github.com/l1a/retch/commit/ca342dfa819432d34d2399844a6bf9f30f2f5f46"
+        },
+        "date": 1790608248184,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 2416143.2399999998
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2353157.4400000004
+          },
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 6149339.78
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 12659418.38
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 218168669.08000004
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 511495106.47999996
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 601553099.5999999
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 518733057.7
           }
         ]
       }
