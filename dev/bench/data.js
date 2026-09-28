@@ -1,42 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790612038813,
+  "lastUpdate": 1790623195561,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "16a3378de076d47006baa9d37ffc4cd0f376183d",
-          "message": "refactor(macos): replace ioreg/defaults/airport spawns with native FFI (v0.3.17) (#89)\n\n* refactor(macos): replace ioreg/defaults/airport spawns with native FFI (v0.3.17)\n\n- Battery: IOServiceMatching(AppleSmartBattery) + IORegistryEntryCreateCFProperty\n  replaces 'ioreg -r -c AppleSmartBattery' process spawn\n- Theme: CFPreferencesCopyValue(kCFPreferencesAnyApplication, ...) replaces\n  'defaults read -g AppleInterfaceStyle' process spawn\n- WiFi: SCDynamicStoreCopyValue(State:/Network/Interface/*/AirPort) replaces\n  private airport binary; new SystemConfiguration framework dependency\n- Zero process spawns remaining on macOS\n\nAssisted-By: Claude Sonnet 4.6\n\n* fix: remove bench referencing deleted parse_airport_output\n\nAssisted-By: Claude Sonnet 4.6\n\n* style: cargo fmt",
-          "timestamp": "2026-06-13T14:23:35-07:00",
-          "tree_id": "fbe3595a4642fd2ae2c898d0ebbb247fbc013b13",
-          "url": "https://github.com/l1a/retch/commit/16a3378de076d47006baa9d37ffc4cd0f376183d"
-        },
-        "date": 1781385845418,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - retch",
-            "unit": "ns",
-            "value": 297584156.38
-          },
-          {
-            "name": "CLI execution - fastfetch",
-            "unit": "ns",
-            "value": 1016286813.7799999
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -5230,6 +5196,70 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch (full)",
             "unit": "ns",
             "value": 526085924.42
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "e30d175cc012c9fb948fe2227a6ee8ac605b626d",
+          "message": "Make the audio probe cheap on Linux (#277)\n\naudio was the default mode's slowest probe, 5-22 ms on arrakis. Measured\nseparately, two costs:\n\n- Finding the sound server read /proc/<pid>/comm for ~430 of ~700\n  processes before reaching PipeWire. It now checks the session's\n  sockets first ($XDG_RUNTIME_DIR/pipewire-0, then pulse/native, as\n  real sockets), ~2 us. With neither, e.g. under sudo, it scans every\n  process as before.\n- Reading /proc/asound/card*/codec#* queries the codec hardware (~1.7\n  ms, spikes to ~17 ms). The kernel prints its Codec: line from the\n  same vendor_name/chip_name the HDA bus exposes in sysfs, so names now\n  come from /sys/bus/hdaudio/devices/*. When the bus has no codecs, the\n  old codec-file path runs unchanged.\n\nOn arrakis, same sitting: audio alone 5.75 -> 1.39 ms (the startup\nfloor), default mode 6.08 -> 3.47 ms against fastfetch's 14.0 ms. On\ncorrino's SOF DSP (Intel Raptor Lake) the codec files cost far more:\nthe audio probe went 114-120 ms -> 0.12-0.20 ms. Output is identical on\nboth, including without XDG_RUNTIME_DIR.\n\nNOTES also records why a local build SIGILLs on other fleet machines\n(~/.cargo/config.toml sets target-cpu=native) and how to build one that\ncan be copied.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-28T12:19:17-07:00",
+          "tree_id": "85a6ac7b312e00e6eda59d270ebe34f78e6cd211",
+          "url": "https://github.com/l1a/retch/commit/e30d175cc012c9fb948fe2227a6ee8ac605b626d"
+        },
+        "date": 1790623195561,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 2419809.400000001
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2333393.5999999996
+          },
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 3388565.3600000003
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 13119285.96
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 222598315.48
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 512718923.68000007
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 623476834.88
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 516972366.1800002
           }
         ]
       }
