@@ -146,15 +146,22 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.0)
+## Current State (v0.20.1)
 
-`main` carries **`retch-cli` 0.20.0** / **`retch-sysinfo` 0.1.79**. Newest released tag is
+`main` carries **`retch-cli` 0.20.1** / **`retch-sysinfo` 0.1.80**. Newest released tag is
 **`v0.18.4`** (GitHub, crates.io and the AUR verified 2026-09-26; COPR and the tap not checked).
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.1 — `RETCH_TIMING` no longer loses lines.** `timing::start()` duplicates stderr
+  before any probe runs and every line is written to that copy, so `gpu_api.rs` pointing
+  fd 2 at `/dev/null` while GPU drivers load can no longer swallow other probes' lines. It
+  was a race: `RETCH_TIMING=1 retch --fields public-ip,vulkan,opengl,opencl` kept the
+  `public-ip` line in 9/15 runs on v0.20.0 and 15/15 after. No `unsafe` in the fix
+  (`as_fd().try_clone_to_owned()`).
 
 - **v0.20.0 — weather comes from wttr.in in ONE HTTPS request** (was ipinfo.io, then
   Open-Meteo, in sequence). Weather alone 845 → 564 ms on arrakis; fastfetch uses the same
@@ -436,9 +443,6 @@ Live items only. Completed items are removed rather than struck through — `git
   - **`--full`** — weather is now one HTTPS request to wttr.in (~565 ms; v0.20.0). fastfetch's
     ~365 ms is the same service over plain HTTP, which was declined; the remaining gap is the
     TLS handshake to a server ~180 ms away. Next lead: `public-ip` → `ipinfo.io`.
-  - **`RETCH_TIMING` drops lines in `--full`**: `gpu_api.rs`'s `SuppressStderr` `dup2`s
-    `/dev/null` over fd 2 process-wide while GPU drivers load, swallowing any other probe's
-    timing line printed meanwhile. Fix: dup fd 2 at `timing::start()`, write to that. §7.5.
   - **macOS default (848 vs 414 ms on CI)** — prime suspect `phys-mem`, which spawns
     `system_profiler`; also `phys-disk` runs `diskutil` once per disk. `RETCH_TIMING=1` on a
     Mac settles it.
@@ -884,8 +888,10 @@ nobody asked.
 - **Redirecting fd 2 silences every thread, not just yours.** `gpu_api.rs` points stderr at
   `/dev/null` while GPU drivers load; `RETCH_TIMING` lines from other threads printed in that
   window vanished, so `--full` traces were quietly incomplete (found 2026-09-28: `public-ip`
-  missing while `Public IP:` printed). A trace that is missing a line looks exactly like a
-  probe that did not run — count the lines against the probes you expect.
+  missing while `Public IP:` printed; fixed in v0.20.1 by writing to a copy of stderr taken
+  before any probe runs). A trace that is missing a line looks exactly like a probe that did
+  not run — count the lines against the probes you expect, and repeat a racy repro: one run
+  kept the line, the next did not.
 - **`cargo test -q` prints dots, not `<name> ... FAILED`.** A mutation harness that greps for
   the FAILED line under `-q` reports every mutation as missed. Drop `-q`, and assert the run
   executed exactly one test (`running 1 test`) so a filter typo cannot pass either.
