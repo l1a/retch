@@ -146,15 +146,27 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.1)
+## Current State (v0.20.2)
 
-`main` carries **`retch-cli` 0.20.1** / **`retch-sysinfo` 0.1.80**. Newest released tag is
+`main` carries **`retch-cli` 0.20.2** / **`retch-sysinfo` 0.1.81**. Newest released tag is
 **`v0.18.4`** (GitHub, crates.io and the AUR verified 2026-09-26; COPR and the tap not checked).
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.2 — `public-ip` from `ipinfo.io/ip`, and its reply is validated.** Like for like
+  (bare `curl`, 30 runs): ipify 123 ms (sd 14) vs ipinfo 96 ms (sd 5). The earlier "235 vs
+  95 ms" compared a whole retch probe against a bare `curl` and overstated the gain ~5x.
+  `--long` mean barely moved (222 → 218 ms) but its **sd fell 18 → 1.3 ms**: public IP no
+  longer sets the critical path except when ipify spiked (one run 236 ms).
+  - **`--long` now has a floor of ~200 ms on Linux/macOS**: `cpu-usage` must span sysinfo's
+    `MINIMUM_CPU_UPDATE_INTERVAL` from `sys-init`, so no other probe speed-up can take it lower.
+  - **Fixed**: `curl` ran without `-f` and the body was never checked, so an error page, a
+    rate-limit notice or a captive portal's HTML would have been printed as the IP. Now
+    `-f` plus `parse_public_ip` (one `IpAddr` or nothing). Both services are IPv4-only, so
+    the field still reports IPv4. ipinfo's free tier is ~50k lookups/month per IP.
 
 - **v0.20.1 — `RETCH_TIMING` no longer loses lines.** `timing::start()` duplicates stderr
   before any probe runs and every line is written to that copy, so `gpu_api.rs` pointing
@@ -436,13 +448,12 @@ Live items only. Completed items are removed rather than struck through — `git
     fastfetch's 14.8), on the same binary; level in a container. The slow state made
     `procs`/`audio`/`shell`/`terminal` ~50 ms each. Cause unknown; v0.19.1 removed the process
     table on Linux anyway. **Capture it with `RETCH_TIMING=1` when it recurs** (§7.5).
-  - **`--long`** — now ahead. `public-ip` (ipify, ~235 ms here) is the limit on the scope;
-    `ipinfo.io` answers in ~95 ms.
+  - **`--long`** — now ahead (~218 vs 512 ms), at its ~200 ms `cpu-usage` floor (v0.20.2).
   - **Windows `cpu-usage` still includes retch's own CPU**: it diffs `GetSystemTimes` across the
     run without the v0.19.2 correction. Same fix via `GetProcessTimes`, and child processes.
   - **`--full`** — weather is now one HTTPS request to wttr.in (~565 ms; v0.20.0). fastfetch's
     ~365 ms is the same service over plain HTTP, which was declined; the remaining gap is the
-    TLS handshake to a server ~180 ms away. Next lead: `public-ip` → `ipinfo.io`.
+    TLS handshake to a server ~180 ms away.
   - **macOS default (848 vs 414 ms on CI)** — prime suspect `phys-mem`, which spawns
     `system_profiler`; also `phys-disk` runs `diskutil` once per disk. `RETCH_TIMING=1` on a
     Mac settles it.
@@ -687,6 +698,10 @@ nobody asked.
   first real install caught it. Constrain the location (`bin/`) and check the output says what
   it should, not just the exit code. And make the decoy in a test sort *before* the real file,
   or the test passes whether or not the constraint exists — the first version of this one did.
+- **Compare like with like before quoting a speed-up.** "ipify 235 ms vs ipinfo 95 ms"
+  set a PR in motion; the 235 was a whole retch probe at a slow moment, the 95 a bare `curl`.
+  Timed the same way the gap was ~25 ms. Benchmark both candidates with the same command,
+  many runs, before choosing — and report the spread, which was the real win here.
 - **Count invocations, not mentions.** A guard that counted `scripts/cli_bench.py` in the
   workflow also counted the new `pull_request` path filter naming it, so the totals matched by
   coincidence and a job could have dropped the call unnoticed. Match the command shape.
