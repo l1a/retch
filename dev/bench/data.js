@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790623812018,
+  "lastUpdate": 1790623812332,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -24070,70 +24070,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "570913ca271decc4f08f3247f11ab82b47988ced",
-          "message": "Fix Windows Bluetooth missing LE devices (#221)\n\nThe Windows path counted connected devices with bthprops\n(BluetoothFindFirstDevice with fReturnConnected), which is a BR/EDR-only\nAPI: a Bluetooth Low Energy peripheral is not returned by it at all, so\nevery LE mouse, keyboard and headset was missing from the count. Reported\nas \"shows only 1 of 2 connected devices\"; the enumeration loop it appears\nto blame is correct.\n\nEnumerate Bluetooth device nodes via SetupAPI instead and read\nSystem.Devices.Connected on each, which covers classic and LE alike.\nDual-mode devices enumerate once per transport and are de-duplicated by\nthe address in the instance id, not by name, since two distinct devices\ncan share a name. Only a definite true counts: a node not exposing the\nproperty is unknown and skipped rather than reported.\n\nWinRT (Windows.Devices.Enumeration) is the documented route to LE state\nand was tried first. Its AssociationEndpoint enumeration never completed\n(status=Started, no error, after 8s) and the query that did work cost\n~1s; SetupAPI reads the same device nodes in 11ms.\n\nDeletes the bthprops FFI entirely, so one fewer linked library. Adapter\nname and power state are unchanged.\n\nVerified on hardware with two devices connected, against controls: 2\nconnected where bthprops reported 1. No measurable cost, measured against\na binary built from main, interleaved and repeated.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-09-08T14:22:37-07:00",
-          "tree_id": "3d202f5455f7b7b7aee8b5b2a7089f09c58490ee",
-          "url": "https://github.com/l1a/retch/commit/570913ca271decc4f08f3247f11ab82b47988ced"
-        },
-        "date": 1788904921157,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 176.80190786564802,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9478906264072386,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 96.1474865057582,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.35948938261126,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46044.060432328544,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 493.1129292666863,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 751.816401728375,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2793083740,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "ade8b05d02ecbc8e19755a7d7caf4503523edc9a",
           "message": "Add Windows disk-io and net-io throughput (#223)\n\nBoth fields shipped Linux-only in v0.10.0 and returned nothing on Windows.\nThey now read native counters there: IOCTL_DISK_PERFORMANCE per\n\\.\\PhysicalDriveN, and GetIfTable2 per interface. No subprocess, and no\nelevation - both were confirmed to answer from an unelevated shell, on a\nzero-access handle, before the code was designed around them.\n\nNothing outside the two sample_* functions changed. The rate maths, the\n100 ms floor, the sampling window in fetch.rs, fields.rs and display.rs\nwere already platform-independent, so this is an arm, not a redesign.\n\nThe finding: GetIfTable2 returns one row per NDIS lightweight filter bound\nto an adapter, each repeating that adapter's counters. Wi-Fi appeared five\ntimes here, every row reading in=219996461 out=32914969. Reporting them all\nstates the machine's throughput five times - the Windows form of the\npartition double-counting the Linux arm already excludes. The rule is to\nexclude FilterInterface rows, NOT to keep HardwareInterface ones: the wt0\nWireGuard tunnel is neither, and carries real traffic, so the obvious\nfilter drops exactly the interface class the Linux side reports.\n\nGetIfTable2 rather than GetIfTable, whose MIB_IFROW counters are 32-bit and\nwrap every 4 GB; this adapter had already moved 216 GB.\n\nCross-checked against independent oracles under time-bounded load, since\nagreement on an idle machine proves nothing: disk against Get-Counter\n(229.5/236.3/199.9 vs 221.7/191.0/215.7 MB/s), net against\nGet-NetAdapterStatistics (68.1/66.3 vs 57.3/53.8 MB/s), both 0 B/s idle.\nPerf A/B against a binary built from main moves in both directions across\nrepeats, i.e. inside the noise.\n\nThe drive-scan range is now shared with phys-disk so the two cannot drift\ninto disagreeing about which disks exist.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-09-08T21:11:18-07:00",
@@ -27703,6 +27639,110 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 487671600,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e30d175cc012c9fb948fe2227a6ee8ac605b626d",
+          "message": "Make the audio probe cheap on Linux (#277)\n\naudio was the default mode's slowest probe, 5-22 ms on arrakis. Measured\nseparately, two costs:\n\n- Finding the sound server read /proc/<pid>/comm for ~430 of ~700\n  processes before reaching PipeWire. It now checks the session's\n  sockets first ($XDG_RUNTIME_DIR/pipewire-0, then pulse/native, as\n  real sockets), ~2 us. With neither, e.g. under sudo, it scans every\n  process as before.\n- Reading /proc/asound/card*/codec#* queries the codec hardware (~1.7\n  ms, spikes to ~17 ms). The kernel prints its Codec: line from the\n  same vendor_name/chip_name the HDA bus exposes in sysfs, so names now\n  come from /sys/bus/hdaudio/devices/*. When the bus has no codecs, the\n  old codec-file path runs unchanged.\n\nOn arrakis, same sitting: audio alone 5.75 -> 1.39 ms (the startup\nfloor), default mode 6.08 -> 3.47 ms against fastfetch's 14.0 ms. On\ncorrino's SOF DSP (Intel Raptor Lake) the codec files cost far more:\nthe audio probe went 114-120 ms -> 0.12-0.20 ms. Output is identical on\nboth, including without XDG_RUNTIME_DIR.\n\nNOTES also records why a local build SIGILLs on other fleet machines\n(~/.cargo/config.toml sets target-cpu=native) and how to build one that\ncan be copied.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-28T12:19:17-07:00",
+          "tree_id": "85a6ac7b312e00e6eda59d270ebe34f78e6cd211",
+          "url": "https://github.com/l1a/retch/commit/e30d175cc012c9fb948fe2227a6ee8ac605b626d"
+        },
+        "date": 1790623812284,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 56201874.00000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2394832202,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1323710012,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 37994614,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 39762054,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 556882252.0000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 169802631.99999997,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 38743894.00000001,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 187.10770169990502,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9488989082249533,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 100.64064190861896,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 80.89432645156806,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47527.850733549836,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 481.53973681596517,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 715.2742228059413,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 511678615,
             "unit": "ns"
           }
         ]
