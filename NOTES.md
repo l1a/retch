@@ -124,6 +124,10 @@ information gathering without any dependency on `clap` or the CLI.
   `scripts/fastfetch_configs.py`, so **after moving a field between modes run
   `just fastfetch-configs`** (`just check` fails until you do). A PR touching any of that, or
   `src/fields.rs`, runs the five CI benchmark jobs without publishing.
+  The dashboard page is `benches/dashboard/` (plots by version, retch/fastfetch ratio per
+  mode); publish changes to it with `just bench-page` (asks first). Points are stamped with
+  the version, and local ones with AC/battery, by `scripts/bench_meta.py`. The pre-v0.20.7
+  history is frozen at gh-pages `dev/bench/archive/`.
 - **Performance Regression Vigilance**: After every merge, check the post-merge benchmark
   output. A primary goal of retch is to be faster than fastfetch — **if retch is slower than
   fastfetch in any mode, treat it as a blocking issue.** Local benchmarks can be skewed by slow
@@ -146,15 +150,32 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.6)
+## Current State (v0.20.7)
 
-`main` carries **`retch-cli` 0.20.6** / **`retch-sysinfo` 0.1.85**. Newest released tag is
+`main` carries **`retch-cli` 0.20.7** / **`retch-sysinfo` 0.1.85**. Newest released tag is
 **`v0.18.4`** (GitHub, crates.io and the AUR verified 2026-09-26; COPR and the tap not checked).
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.7 — the benchmark dashboard restarted, by version, with the old history archived.**
+  - **Why**: until v0.19.0 the fastfetch series measured the wrong workload (fastfetch's
+    built-in default, no config, every module, or a personal config), the retch series
+    span a mode redefinition (`cpu-usage` left the default mode), local points carry no
+    power state, and CI kept only 50 runs anyway (12 CLI points per CI suite). That history
+    is frozen at gh-pages `dev/bench/archive/` behind a banner saying what is and is not
+    comparable; `dev/bench/data.js` started empty.
+  - **Every CLI point is stamped** in its `extra` field by `scripts/bench_meta.py`: the
+    version (`v0.20.7`), plus `AC`/`battery` for local runs (the only per-point field
+    github-action-benchmark keeps). Power matters: on arrakis it moved `--short` by ~0.3 ms.
+  - **The chart page is ours**: `benches/dashboard/` (`model.js` tested by
+    `model.test.js` under Node in `just bench-check`), published with `just bench-page`.
+    It plots by version and shows **retch ÷ fastfetch per mode**, which cancels runner speed
+    (macOS CI's retch default alone ranged 334–2596 ms); battery runs are triangles.
+  - History caps are 200 runs per suite (CI `max-items-in-chart`, local `MAX_ENTRIES`); the
+    cap deletes older entries from `data.js`, it does not just hide them.
 
 - **v0.20.6 — `audio` 5–22 ms → ~0.06 ms; default mode 6.08 → 3.47 ms** (arrakis, on AC;
   fastfetch default 14.0 ms, so ~4x). Output identical. Two costs, measured separately:
@@ -787,6 +808,12 @@ nobody asked.
   `RUSTFLAGS="-C target-cpu=x86-64-v2"` and a separate `CARGO_TARGET_DIR`. Releases are
   unaffected: crates.io/AUR/COPR build from source elsewhere and CI has no such config. Use
   `ssh corrino`, not `corrino.netbird.cloud`: only the short name is in `known_hosts`.
+- **When a history's meaning changes, archive it; do not splice or silently prune it.** The
+  pre-v0.19.0 fastfetch series measured a different workload from the one after, and the
+  retch default series spans a mode redefinition. Leaving them on the running chart invites
+  reading a redefinition as a speed-up; deleting them loses the record. Freeze the old data
+  with a note on what is comparable, and restart with points that carry what a reader needs
+  (version, power state). And chart what a noisy environment cannot move: a same-run ratio.
 - **Count invocations, not mentions.** A guard that counted `scripts/cli_bench.py` in the
   workflow also counted the new `pull_request` path filter naming it, so the totals matched by
   coincidence and a job could have dropped the call unnoticed. Match the command shape.

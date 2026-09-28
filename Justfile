@@ -651,6 +651,14 @@ bench-check:
     @"{{PY}}" scripts/fastfetch_configs.py --self-test
     @"{{PY}}" scripts/cli_bench.py --self-test
     @"{{PY}}" scripts/install_fastfetch.py --self-test
+    @"{{PY}}" scripts/bench_meta.py
+    @command -v node >/dev/null || { echo "bench-check: node is required for the dashboard model test (benches/dashboard/model.test.js); install nodejs" >&2; exit 1; }
+    @node --test benches/dashboard/model.test.js > /dev/null
+
+# Publish the benchmark dashboard page (benches/dashboard/) to gh-pages. Asks first;
+# BENCH_PAGE_CONFIRM=y answers without a terminal. `just bench-page --dry-run` shows the diff only.
+bench-page *ARGS:
+    @"{{PY}}" scripts/publish_bench_page.py {{ARGS}}
 
 # Refuse control characters and carriage returns in tracked text (offline, no network)
 text-check:

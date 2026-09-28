@@ -41,6 +41,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from bench_labels import labelled_means  # noqa: E402
+import bench_meta  # noqa: E402
 
 CRITERION_DIR = "target/criterion"
 HYPERFINE_GLOB = "hyperfine_*.json"
@@ -73,8 +74,13 @@ def collect_criterion(criterion_dir):
     return entries, problems
 
 
-def collect_hyperfine(pattern):
-    """Read every hyperfine export matching `pattern`. Returns (entries, problems)."""
+def collect_hyperfine(pattern, extra=None):
+    """Read every hyperfine export matching `pattern`. Returns (entries, problems).
+
+    Each CLI entry carries `extra` (the retch version, see scripts/bench_meta.py) when given:
+    it is the only per-point field github-action-benchmark keeps, and the dashboard plots
+    CLI series by it. Criterion entries do not need it; the chart page reads it from any
+    entry of a run."""
     entries, problems = [], []
     paths = sorted(glob.glob(pattern))
     if not paths:
@@ -86,7 +92,8 @@ def collect_hyperfine(pattern):
         except (OSError, ValueError) as exc:
             problems.append(f"{path}: {exc}")
             continue
-        found = [{"name": n, "value": v, "unit": "ns"} for n, v in labelled_means(data)]
+        found = [{"name": n, "value": v, "unit": "ns", **({"extra": extra} if extra else {})}
+                 for n, v in labelled_means(data)]
         if not found:
             problems.append(f"{path}: parsed but contained no usable results")
         entries.extend(found)
@@ -119,7 +126,8 @@ def main(argv):
     args = ap.parse_args(argv)
 
     crit, crit_problems = collect_criterion(args.criterion_dir)
-    hyper, hyper_problems = collect_hyperfine(args.hyperfine_glob)
+    hyper, hyper_problems = collect_hyperfine(
+        args.hyperfine_glob, bench_meta.extra_for(bench_meta.repo_version()))
     entries, dupes = merge(crit, hyper)
 
     problems = crit_problems + hyper_problems
@@ -220,6 +228,11 @@ def _self_test():
                 check("every CLI entry survives", len(got) == n_expected, str(len(got)))
                 check("entries are sorted",
                       [e["name"] for e in got] == sorted(e["name"] for e in got), str(got))
+                # The dashboard plots CLI series by version; a point without one would sit
+                # on the chart with no label, so every CLI entry must carry this repo's.
+                want = bench_meta.extra_for(bench_meta.repo_version())
+                check("every CLI entry carries the version",
+                      all(e.get("extra") == want for e in got), str([e.get("extra") for e in got]))
 
             # --- criterion side, and the two sources merging ------------------------------
             os.makedirs("crit/parse_thing/new", exist_ok=True)

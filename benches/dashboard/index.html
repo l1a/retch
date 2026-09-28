@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<!--
+  retch benchmark dashboard, published to gh-pages as dev/bench/index.html by `just bench-page`.
+  Source of truth: benches/dashboard/ in the retch repository (reviewed in PRs); the logic is in
+  model.js and tested by model.test.js. Data: dev/bench/data.js, written by CI
+  (github-action-benchmark) and by scripts/upload_local_bench.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>retch benchmarks</title>
+  <style>
+    :root {
+      --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --card: #f6f8fa;
+      --retch: #0969da; --fastfetch: #bc4c00; --even: #cf222e;
+      --m-short: #8250df; --m-default: #1a7f37; --m-long: #9a6700; --m-full: #57606a;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --card: #151b23;
+        --retch: #4493f8; --fastfetch: #f0883e; --even: #f85149;
+        --m-short: #a371f7; --m-default: #3fb950; --m-long: #d29922; --m-full: #9198a1;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg);
+      font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    h1 { font-size: 1.5rem; margin: 0.5rem 0; }
+    h2 { font-size: 1.15rem; margin: 2rem 0 0.5rem; border-bottom: 1px solid var(--line);
+      padding-bottom: 0.25rem; }
+    h3 { font-size: 0.95rem; margin: 0 0 0.25rem; }
+    p, li { color: var(--muted); }
+    a { color: var(--retch); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+    .card.wide { grid-column: 1 / -1; }
+    .chart { position: relative; height: 220px; }
+    .card.wide .chart { height: 260px; }
+    details { margin-top: 12px; }
+    summary { cursor: pointer; color: var(--muted); }
+    .empty { font-style: italic; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>retch benchmarks</h1>
+  <p>
+    retch against <a href="https://github.com/fastfetch-cli/fastfetch">fastfetch</a>, with
+    fastfetch showing the same fields in each mode (generated per-mode configs, see
+    <a href="https://github.com/l1a/retch/wiki/Compared-to-fastfetch-and-neofetch">the comparison page</a>).
+    Points are labelled by retch version. The <strong>ratio</strong> charts divide retch's time by
+    fastfetch's from the same run, which cancels most of a CI runner's speed variation:
+    <strong>below 1.0, retch is faster</strong>. On the local (real hardware) charts a
+    <strong>triangle</strong> marks a run on battery power, which on a laptop can move the short
+    mode by as much as the gap between the two tools; circles are on AC.
+  </p>
+  <p>Earlier history, including the pre-v0.19.0 comparisons that did not match fields, is in
+    <a href="archive/">the archive</a>.</p>
+  <div id="suites"><p class="empty">Loading…</p></div>
+</main>
+
+<script src="data.js"></script>
+<script src="model.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"
+        integrity="sha384-NrKB+u6Ts6AtkIhwPixiKTzgSKNblyhlk0Sohlgar9UHUBzai/sgnNNWWd291xqt"
+        crossorigin="anonymous"></script>
+<script>
+(function () {
+  "use strict";
+  var M = window.RetchBench;
+  var root = document.getElementById("suites");
+  var css = getComputedStyle(document.documentElement);
+  function color(name) { return css.getPropertyValue(name).trim(); }
+
+  if (!window.BENCHMARK_DATA || !window.Chart) {
+    root.innerHTML = '<p class="empty">Could not load the data or the chart library.</p>';
+    return;
+  }
+  Chart.defaults.color = color("--muted");
+  Chart.defaults.borderColor = color("--line");
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text) e.textContent = text;
+    return e;
+  }
+
+  function tooltipTitle(points) {
+    return function (items) {
+      var p = points[items[0].dataIndex];
+      return p.label + (p.power ? " (" + p.power + ")" : "");
+    };
+  }
+
+  function chart(parent, title, points, datasets, yTitle, extraOptions) {
+    var card = el("div", "card" + (extraOptions && extraOptions.wide ? " wide" : ""));
+    card.appendChild(el("h3", null, title));
+    if (!points.length) {
+      card.appendChild(el("p", "empty", "No points yet."));
+      parent.appendChild(card);
+      return;
+    }
+    var box = el("div", "chart");
+    var canvas = document.createElement("canvas");
+    box.appendChild(canvas);
+    card.appendChild(box);
+    parent.appendChild(card);
+    new Chart(canvas, {
+      type: "line",
+      data: { labels: points.map(function (p) { return p.label; }), datasets: datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { tooltip: { callbacks: { title: tooltipTitle(points) } } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: yTitle } } },
+      },
+    });
+  }
+
+  // `points` gives each point's power state: a battery run is drawn as a triangle.
+  function line(label, data, colorVar, points, reference) {
+    return { label: label, data: data, borderColor: color(colorVar), backgroundColor: color(colorVar),
+      borderWidth: 2, tension: 0, borderDash: reference ? [6, 4] : [],
+      pointRadius: reference ? 0 : 3,
+      pointStyle: points ? points.map(function (p) { return p.power === "battery" ? "triangle" : "circle"; })
+                         : "circle" };
+  }
+
+  var data = window.BENCHMARK_DATA;
+  root.innerHTML = "";
+  var suites = M.suiteNames(data);
+  if (!suites.length) {
+    root.appendChild(el("p", "empty", "No benchmark runs recorded yet."));
+    return;
+  }
+
+  suites.forEach(function (suite) {
+    var entries = data.entries[suite];
+    root.appendChild(el("h2", null, suite + " — " + entries.length + " runs"));
+
+    // One wide ratio chart: all four modes, with the 1.0 line.
+    var byMode = M.PAIRS.map(function (pair) { return { pair: pair, s: M.ratioSeries(entries, pair) }; });
+    var longest = byMode.reduce(function (a, b) { return b.s.length > a.s.length ? b : a; }, byMode[0]);
+    var ratioGrid = el("div", "grid");
+    root.appendChild(ratioGrid);
+    var palette = ["--m-short", "--m-default", "--m-long", "--m-full"];
+    var ratioSets = byMode.map(function (m, i) {
+      var index = {};
+      m.s.forEach(function (p) { index[p.label] = p.ratio; });
+      return line(m.pair.mode, longest.s.map(function (p) {
+        return index[p.label] === undefined ? null : index[p.label];
+      }), palette[i], longest.s);
+    });
+    ratioSets.push(line("even (1.0)", longest.s.map(function () { return 1; }), "--even", null, true));
+    chart(ratioGrid, "retch time ÷ fastfetch time, per mode (below 1.0 = retch faster)",
+      longest.s, ratioSets, "ratio", { wide: true });
+
+    // Absolute times, one chart per mode.
+    var grid = el("div", "grid");
+    root.appendChild(grid);
+    byMode.forEach(function (m) {
+      var s = m.s;
+      chart(grid, m.pair.mode + " mode (ms)", s, [
+        line("retch", s.map(function (p) { return p.retch; }), "--retch", s),
+        line("fastfetch", s.map(function (p) { return p.fastfetch; }), "--fastfetch", s),
+      ], "ms");
+    });
+
+    // Everything else (criterion micro-benchmarks), collapsed.
+    var others = M.otherSeriesNames(entries);
+    if (others.length) {
+      var details = el("details");
+      details.appendChild(el("summary", null, others.length + " micro-benchmarks (criterion)"));
+      var og = el("div", "grid");
+      details.appendChild(og);
+      root.appendChild(details);
+      details.addEventListener("toggle", function once() {
+        details.removeEventListener("toggle", once);
+        others.forEach(function (name) {
+          var s = M.absoluteSeries(entries, name);
+          chart(og, name, s, [line(name, s.map(function (p) { return p.ms; }), "--retch", s)], "ms");
+        });
+      });
+    }
+  });
+})();
+</script>
+</body>
+</html>
