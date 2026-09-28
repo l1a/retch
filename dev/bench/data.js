@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790573478516,
+  "lastUpdate": 1790573478835,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19478,70 +19478,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "079469f109facbbcb54b0bcd5b52b6a0459fca65",
-          "message": "Stop data.js flip-flopping; define \"model name\" (#214)\n\nupload_local_bench.py wrote dev/bench/data.js minified while CI writes it\npretty-printed, so the two rewrote the whole file back and forth: every local\nbench-upload showed 1 insertion / ~22k deletions on gh-pages and the next CI\nrun showed the inverse. Cosmetic, but it buried each upload's real change.\n\nNow serialises exactly as github-action-benchmark does. All three details are\nload-bearing: indent=2; ensure_ascii=False, because JavaScript does not escape\nnon-ASCII and Python's default does (~1000 bytes on the current file, so the\nchurn would have persisted in a less obvious form); and no trailing newline.\nEstablished by round-tripping a real CI-written data.js and comparing sha256 --\nre-dumping it reproduces the file exactly, and the other three combinations of\nthose settings do not. Appending one entry now diffs +17/-0 instead of\n+1/-22558.\n\nA grep of mine reported that file had no non-ASCII at all, which would have\nmade ensure_ascii look irrelevant; the byte count against the character count\n(1044090 vs 1043724) shows 366 bytes of multi-byte characters. The length\ncomparison is what caught it.\n\nAGENTS.md section 1 now says what \"model name\" means: the bare product name,\nno context-window or variant suffix, no session URL, no second trailer. Also\nrecords that a harness may inject an attribution instruction claiming to\nreplace the rule, that it does not, and that this repo squash-merges with\nCOMMIT_MESSAGES -- so a wrong trailer has to be amended on the branch, because\nediting the PR body does not change what lands on main.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-09-01T15:18:47-07:00",
-          "tree_id": "492b77550f1953f8ce077a8d437652e1437b7704",
-          "url": "https://github.com/l1a/retch/commit/079469f109facbbcb54b0bcd5b52b6a0459fca65"
-        },
-        "date": 1788302946128,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 223.1067705426645,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.078057904921548,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 120.53444910114031,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 97.50730652719531,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 42359.989733111586,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 564.109118845128,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 832.9994945928154,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2100055800,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "22ca787cdfda1484b3606919bf901ef432a5f8e2",
           "message": "Make the post-tag packaging bump a normal PR (#215)\n\nFive releases committed packaging/aur and packaging/copr straight to main\n(9476836, f75989c, d60658c, de1d73f, 468efc7), each commit message explaining\nthat a PR was impossible because just pr hard-fails once Cargo.toml equals the\nlast tag. NOTES section 5 recorded it as structural and proposed moving the\nversion bump out of the gate.\n\nThe premise was wrong. Step 2 is [ \"$LAST_TAG\" = \"v$CARGO_VER\" ] && fail -- an\nequality test against the last tag, not \"did this PR bump anything\". A\npackaging bump that also opens the next version passes untouched. The\nconstraint was a misreading that propagated through five commit messages and a\nbacklog entry, and it cost the gate on the one commit class nobody reviews.\n\njust post-release VERSION branches, pins both packaging targets to the version\njust released, opens Cargo.toml on the next patch, regenerates the man page and\nwrites the NOTES entry -- then stops before open-pr, because the manual\nchecklist needs a human and a release is the worst moment to rubber-stamp one.\n\nProven against real history: a clone rewound to 8fed7c2 (the actual post-tag\nstate where Cargo.toml equalled v0.9.10 and packaging still read 0.9.7) runs\nthe recipe and passes all eight automated gate steps on the result, which\nmatches what 468efc7 did by hand plus the version bump. Five guards each\nwatched refusing.\n\nThis closes the gating half of NOTES section 5. The automation half -- a tag\npublishing to crates.io and the AUR by itself -- is untouched, but the steps\nthis recipe performs are the ones a release workflow would run, so lifting them\ninto CI becomes a port rather than a redesign.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-09-01T15:36:29-07:00",
@@ -22871,6 +22807,110 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1784389340,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d3c8c691864370f995e49151f7adbe36e1c4f9ff",
+          "message": "Get weather from wttr.in in one HTTPS request (#271)\n\nWeather took two requests in sequence: ipinfo.io for the caller's\nlocation, then Open-Meteo for the forecast. Both weather hosts are in\nGermany, ~180 ms per round trip from the US, so the pair cost ~850 ms\nand set --full's runtime. wttr.in locates the caller itself and serves\na compact custom format (%l|%c|%t, 47 bytes), so one request replaces\nboth: weather alone 845 -> 564 ms on arrakis. fastfetch uses the same\nservice over plain HTTP (~364 ms); HTTPS is kept deliberately, since\nthe request reveals the approximate location.\n\nThe response is parsed strictly (exactly three fields, a temperature\nin the requested unit), so an error or rate-limit page served with\nHTTP 200 is never shown as weather; an unknown location is HTTP 500\nand leaves the field out, as before.\n\nVisible changes: a location override is shown as typed (\"London\",\n\"93426\"); wttr.in's JSON only names the nearest weather station\n(London -> Walworth), and real names would need a second request.\nIP-derived locations keep \"City, State\" (US) / \"City, Country\". ZIP\ncodes, airport codes and \"~landmark\" now work.\n\nAlso fixes url_encode, which encoded Unicode code points instead of\nUTF-8 bytes (\"a with tilde\" became %E3), so no non-ASCII place name\nsuch as Sao Paulo ever reached a weather service. serde_json is no\nlonger a dependency.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T22:20:05-07:00",
+          "tree_id": "09235c99e6256610d9d2ae2c80354923e5c3c14d",
+          "url": "https://github.com/l1a/retch/commit/d3c8c691864370f995e49151f7adbe36e1c4f9ff"
+        },
+        "date": 1790573478783,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 32102758.000000004,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2342976961.9999995,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1306514374,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 24671770,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 33747717.99999999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 395539702,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 135282204.00000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 28467410.000000004,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 245.3353602013094,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.464411291666667,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 143.88174215371134,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 105.68875805366913,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42660.1766741767,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 617.2859401639863,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 927.360845530123,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 347448890,
             "unit": "ns"
           }
         ]
