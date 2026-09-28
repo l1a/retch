@@ -146,15 +146,33 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.5)
+## Current State (v0.20.6)
 
-`main` carries **`retch-cli` 0.20.5** / **`retch-sysinfo` 0.1.84**. Newest released tag is
+`main` carries **`retch-cli` 0.20.6** / **`retch-sysinfo` 0.1.85**. Newest released tag is
 **`v0.18.4`** (GitHub, crates.io and the AUR verified 2026-09-26; COPR and the tap not checked).
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.6 — `audio` 5–22 ms → ~0.06 ms; default mode 6.08 → 3.47 ms** (arrakis, on AC;
+  fastfetch default 14.0 ms, so ~4x). Output identical. Two costs, measured separately:
+  - **The sound-server check read `comm` for ~430 of ~700 processes** before reaching
+    PipeWire. It now checks the session sockets first (`$XDG_RUNTIME_DIR/pipewire-0`, then
+    `pulse/native`, as real sockets — a regular file of that name does not count), ~2 µs.
+    With neither (no session in the environment, e.g. `sudo`) it scans every process as
+    before; verified with `env -u XDG_RUNTIME_DIR`.
+  - **Reading `/proc/asound/card*/codec#*` queries the codec hardware** (~1.7 ms, spikes to
+    ~17 ms). The `Codec:` line is printed from the same `vendor_name`/`chip_name` the HDA
+    bus exposes in sysfs, so names now come from `/sys/bus/hdaudio/devices/*` (legacy
+    `hdaudioCxDy` and SOF `ehdaudioXDy`). If the bus yields nothing, the old codec-file path
+    runs unchanged.
+  - **On SOF hardware the codec files were ~115 ms per run.** corrino (Intel Raptor Lake,
+    `sof-hda-dsp`): the audio probe took 114–120 ms on v0.20.5 and 0.12–0.20 ms on v0.20.6,
+    with an identical `Audio:` line (`Realtek ALC3254, Intel Raptor Lake P HDMI`), also with
+    `XDG_RUNTIME_DIR` unset. Its bus devices are `ehdaudio0D0`/`ehdaudio0D2`, same names and
+    order as the `Codec:` lines.
 
 - **v0.20.5 — probes that borrow nothing start before the serial setup.** On battery
   (powersave governor) `--short` 3.09/3.22 → 2.76/2.80 ms, **level with fastfetch**
@@ -507,10 +525,9 @@ Live items only. Completed items are removed rather than struck through — `git
     `system_profiler`; also `phys-disk` runs `diskutil` once per disk. `RETCH_TIMING=1` on a
     Mac settles it.
   - **`--short`** — level with fastfetch since v0.20.5, on battery and on AC.
-  - **default: `audio` is the long pole, 5–22 ms** (still ~2x ahead of fastfetch overall).
-    On Linux it scans `/proc/*/comm` and reads `/proc/asound/card*/codec#*`, which queries
-    the codec hardware — the likely cost; measure which half first. It also starts late (in
-    the scope) only because `detect_audio` takes `&sys`, which Linux never reads.
+  - **default: `phys-mem` is the long pole, ~1.4–2.2 ms** since v0.20.6 (retch ~4x ahead of
+    fastfetch there anyway). On Linux it needs `dmidecode`, which is root-only, so an
+    unprivileged run probably pays for a process spawn that then fails — check first.
   - macOS and Windows have not been looked at under the matched configs at all.
 
 - **CI automation of the publish steps.** A tag still does not, by itself, publish to crates.io
@@ -758,6 +775,18 @@ nobody asked.
 - **A symmetric fixture cannot pin an ordering.** A hybrid-CPU test with 4 P-cores and 4
   E-cores passed with P and E swapped, because both orders print `4P + 4E`. Make fixture
   values differ in exactly the property the test is about (here 2 + 6).
+- **A procfs file can be a hardware query.** `/proc/asound/card*/codec#*` is regenerated
+  on every read by talking to the codec: 1.7 ms typical, 17 ms spikes on arrakis — and
+  ~115 ms every run on corrino's SOF DSP — for a name the kernel already stores. Before
+  reading a procfs file on a hot path, look for the sysfs attribute holding the same value,
+  and measure on more than one audio stack: the cost differed ~60x between two laptops.
+- **A local build does not run on the other fleet machines.** `~/.cargo/config.toml`
+  (chezmoi-managed) sets `rustflags = ["-C", "target-cpu=native"]` for every target, so an
+  arrakis (Zen 5) binary dies with SIGILL, exit 132, on corrino (Raptor Lake) — and an exit
+  code filtered through `grep` shows only empty output. To copy a build to another host, use
+  `RUSTFLAGS="-C target-cpu=x86-64-v2"` and a separate `CARGO_TARGET_DIR`. Releases are
+  unaffected: crates.io/AUR/COPR build from source elsewhere and CI has no such config. Use
+  `ssh corrino`, not `corrino.netbird.cloud`: only the short name is in `known_hosts`.
 - **Count invocations, not mentions.** A guard that counted `scripts/cli_bench.py` in the
   workflow also counted the new `pull_request` path filter naming it, so the totals matched by
   coincidence and a job could have dropped the call unnoticed. Match the command shape.
