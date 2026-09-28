@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790612037742,
+  "lastUpdate": 1790612038813,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -23880,70 +23880,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "c662f957d27202066528996c62eb426cd83e38a2",
-          "message": "packaging: pin to 0.10.0, open 0.10.1 (#220)\n\npackaging/aur and packaging/copr track the last RELEASED tag, so they can\nonly be bumped once v0.10.0 exists. Bundling that with the next version bump\nis what makes this a normal gated PR: just pr's step 2 compares Cargo.toml\nagainst the last tag, not against this PR's parent, so opening 0.10.1\nsatisfies it. Previous releases sent this commit straight to main on the\nbelief that a PR was impossible.\n\nPrepared by `just post-release 0.10.0` -- its first live outing, having only\never been exercised against a clone rewound to the v0.9.10 post-tag state.\n\nVerified rather than trusted: the declared sha256 was computed from the real\n1319408-byte release tarball three independent ways (sha256sum, python\nhashlib, openssl) and matches both the PKGBUILD and the generated .SRCINFO.\nThe tarball's docs/retch.1 is byte-identical to the committed page, so the\ninstalled man page footer is right. Both AUR files hold 0 CR bytes, and the\ngenerated .SRCINFO came out container_file_t -- the #203 SELinux fix still\nholding. The spec parses to `retch 0.10.0 1.fc44` under rpmspec, and its\n%changelog date is a real Monday.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-09-07T15:19:11-07:00",
-          "tree_id": "3259327cf2429feb4894e8bd26f7f531d6c4168c",
-          "url": "https://github.com/l1a/retch/commit/c662f957d27202066528996c62eb426cd83e38a2"
-        },
-        "date": 1788822001178,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 180.544785717225,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9584444799605705,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 99.58064699120538,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 83.59894097469785,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47170.4801372159,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 508.2534167188943,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 759.4188228646213,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3595009595,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "570913ca271decc4f08f3247f11ab82b47988ced",
           "message": "Fix Windows Bluetooth missing LE devices (#221)\n\nThe Windows path counted connected devices with bthprops\n(BluetoothFindFirstDevice with fReturnConnected), which is a BR/EDR-only\nAPI: a Bluetooth Low Energy peripheral is not returned by it at all, so\nevery LE mouse, keyboard and headset was missing from the count. Reported\nas \"shows only 1 of 2 connected devices\"; the enumeration loop it appears\nto blame is correct.\n\nEnumerate Bluetooth device nodes via SetupAPI instead and read\nSystem.Devices.Connected on each, which covers classic and LE alike.\nDual-mode devices enumerate once per transport and are de-duplicated by\nthe address in the instance id, not by name, since two distinct devices\ncan share a name. Only a definite true counts: a node not exposing the\nproperty is unknown and skipped rather than reported.\n\nWinRT (Windows.Devices.Enumeration) is the documented route to LE state\nand was tried first. Its AssociationEndpoint enumeration never completed\n(status=Started, no error, after 8s) and the query that did work cost\n~1s; SetupAPI reads the same device nodes in 11ms.\n\nDeletes the bthprops FFI entirely, so one fewer linked library. Adapter\nname and power state are unchanged.\n\nVerified on hardware with two devices connected, against controls: 2\nconnected where bthprops reported 1. No measurable cost, measured against\na binary built from main, interleaved and repeated.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-09-08T14:22:37-07:00",
@@ -27473,6 +27409,110 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 442245615,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c5eb33094d403dd51eac5168c7d9aaf2bb2a8909",
+          "message": "Start independent probes before the serial setup (#276)\n\nA new thread waits ~0.1-0.35 ms for an idle core to wake before it\nruns (measured standalone; this CPU's deepest C-state has a 350 us exit\nlatency). collect() started every probe only after the serial setup\n(sys-init, os, kernel, disk, ...), so that wait came on top of it.\n\nEvery probe that borrows nothing now starts with plain\nstd::thread::spawn at the top of collect(); the scope keeps only the\nthree that borrow sys (audio, shell, and the cpu probe when cpu-freq\nor cpu-usage made sys load the CPU list). The Windows CPU-time sample\nand the disk/net I/O first samples moved up with them, so their\nwindows still span every probe. collect() has no ? or return, so\nevery early thread is joined.\n\nOn battery (powersave governor), in one sitting, --short went from\n3.09/3.22 to 2.76/2.80 ms: level with fastfetch (2.85/2.75). Plugged in\nit was already within noise. The default mode is unchanged (five\nrounds, the direction flipped): it is bound by the audio probe, 5-22\nms, recorded in NOTES as the next lead. Output is identical in all\nfour modes.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-28T09:02:12-07:00",
+          "tree_id": "44afa5973138d4e6baeb4588d1c81c29ab4d8f25",
+          "url": "https://github.com/l1a/retch/commit/c5eb33094d403dd51eac5168c7d9aaf2bb2a8909"
+        },
+        "date": 1790612038763,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 56776468,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2394250525.9999995,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1329645496,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 39848188.00000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 45254998.00000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 526009976.0000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 210090166,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 42834448.00000001,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 181.96439789388282,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.951544697151068,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 100.56007616352528,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 80.49290719611938,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 48594.05256369665,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 481.0764092750108,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 731.2991139685356,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 487671600,
             "unit": "ns"
           }
         ]
