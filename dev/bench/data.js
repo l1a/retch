@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790483408237,
+  "lastUpdate": 1790565716069,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4892,6 +4892,70 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch -c all",
             "unit": "ns",
             "value": 605786645.8399999
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "58a66026936bd99d4e61cf153d817794cbece137",
+          "message": "Match fastfetch benchmarks; move cpu-usage to long (#268)\n\nThe retch-vs-fastfetch comparison measured different workloads. Plain\n`fastfetch` loads the user's config and `-c none` loads none, so on CI\nboth ran fastfetch's built-in 20-module default, and locally the\ndeveloper's ~75-module config. Every \"retch is faster\" came from that.\n\nEach mode is now matched field for field: `retch [--<mode>]` against\n`fastfetch -c benches/fastfetch/<mode>.jsonc`, generated from\nsrc/fields.rs by scripts/fastfetch_configs.py, with fastfetch's network\ntimeouts set to retch's. The pairs live once, in scripts/cli_bench.py,\nshared by CI, `just bench-compare` and `just bench-upload`. CI installs\nthe same newest fastfetch release on every runner.\n\ncpu-usage moves from the default mode to --long. Its fixed 200 ms\nsampling sleep on Linux/macOS was ~80% of the default mode's runtime\n(271 -> 35 ms on arrakis).\n\nDashboard: `retch --full` is new, and the fastfetch series are now\n`fastfetch (short|default|long|full)`; the old ones stop rather than\nsplice two workloads into one line. bench-check guards the configs\nagainst drift from src/fields.rs.\n\nMatched numbers still show retch slower in every mode; NOTES.md §5\ntracks it as blocking.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T20:21:07-07:00",
+          "tree_id": "6dba41ec633bb9db8f95634ecf59a01408d6d2c8",
+          "url": "https://github.com/l1a/retch/commit/58a66026936bd99d4e61cf153d817794cbece137"
+        },
+        "date": 1790565716069,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 3905180.84
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2833562.1399999997
+          },
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 42489540.239999995
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 16655229.140000002
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 447169702.41999996
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 512566306.6199999
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 1129470411.7
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 534951892.20000005
           }
         ]
       }
