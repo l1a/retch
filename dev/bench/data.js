@@ -1,42 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790571985075,
+  "lastUpdate": 1790572843509,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "7096c791e27e3c07822458502dc753c7db6d6afa",
-          "message": "fix: clone gh-pages from remote URL, not local repo path\n\nCloning from the local path gave a stale gh-pages snapshot, causing\nevery push to be rejected as non-fast-forward. Clone from the remote\nURL directly so the working copy is always current.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-          "timestamp": "2026-06-10T11:23:38-07:00",
-          "tree_id": "fbb86c9f324063e5cfce81f132600b8a3c288fad",
-          "url": "https://github.com/l1a/retch/commit/7096c791e27e3c07822458502dc753c7db6d6afa"
-        },
-        "date": 1781116108319,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - retch",
-            "unit": "ns",
-            "value": 425039143.3866667
-          },
-          {
-            "name": "CLI execution - fastfetch",
-            "unit": "ns",
-            "value": 1013387340.053333
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -5050,6 +5016,70 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch (full)",
             "unit": "ns",
             "value": 521328630.38
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "d3c8c691864370f995e49151f7adbe36e1c4f9ff",
+          "message": "Get weather from wttr.in in one HTTPS request (#271)\n\nWeather took two requests in sequence: ipinfo.io for the caller's\nlocation, then Open-Meteo for the forecast. Both weather hosts are in\nGermany, ~180 ms per round trip from the US, so the pair cost ~850 ms\nand set --full's runtime. wttr.in locates the caller itself and serves\na compact custom format (%l|%c|%t, 47 bytes), so one request replaces\nboth: weather alone 845 -> 564 ms on arrakis. fastfetch uses the same\nservice over plain HTTP (~364 ms); HTTPS is kept deliberately, since\nthe request reveals the approximate location.\n\nThe response is parsed strictly (exactly three fields, a temperature\nin the requested unit), so an error or rate-limit page served with\nHTTP 200 is never shown as weather; an unknown location is HTTP 500\nand leaves the field out, as before.\n\nVisible changes: a location override is shown as typed (\"London\",\n\"93426\"); wttr.in's JSON only names the nearest weather station\n(London -> Walworth), and real names would need a second request.\nIP-derived locations keep \"City, State\" (US) / \"City, Country\". ZIP\ncodes, airport codes and \"~landmark\" now work.\n\nAlso fixes url_encode, which encoded Unicode code points instead of\nUTF-8 bytes (\"a with tilde\" became %E3), so no non-ASCII place name\nsuch as Sao Paulo ever reached a weather service. serde_json is no\nlonger a dependency.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T22:20:05-07:00",
+          "tree_id": "09235c99e6256610d9d2ae2c80354923e5c3c14d",
+          "url": "https://github.com/l1a/retch/commit/d3c8c691864370f995e49151f7adbe36e1c4f9ff"
+        },
+        "date": 1790572843509,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 3673444.7800000007
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2468589.98
+          },
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 7730321.020000001
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 12228206.019999998
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 217762493.38000003
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 511094843.0800001
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 617369971.0200001
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 519925929.1200001
           }
         ]
       }
