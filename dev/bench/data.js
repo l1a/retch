@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790570010779,
+  "lastUpdate": 1790570011111,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15301,80 +15301,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "8fed7c2a0957a824e4ef1e3e9a8b6ade917895af",
-          "message": "Guard the COPR spec against drift (#213)\n\npackaging/copr/retch.spec's Version: tracks the last released tag and is\nbumped by hand at release time, with nothing checking the result. That is\nthe construct, and the missing guard, that let packaging/aur/PKGBUILD sit\neleven releases stale while CI stayed green. v0.7.1 fixed that for the AUR\nafter the drift; this does it for COPR before.\n\nscripts/copr_check.py (offline, wired into just check) asserts five things:\nVersion: equals the PKGBUILD's pkgver, Version: is not ahead of Cargo.toml,\nthe newest %changelog entry matches Version-Release, Source0 still uses\n%{version}, and cargo build still passes --locked. All five were watched\nfailing against the real files, including the negative case that matters\nmost: a Version: trailing Cargo.toml must stay silent.\n\nThe copr CI job builds the SRPM twice - plain, and under mock's environment.\nThe second run is the v0.9.9 regression test, and reproducing it correctly\ntook two attempts: forcing %_topdir alone does NOT fail on the pre-fix\nMakefile, because rpmdev-setuptree builds its tree wherever _topdir points.\nHOME=/builddir is the other half, in a fresh container. Verified against the\npre-fix Makefile from a606bbe, which dies with the exact production message.\n\nAlso adds .copr/** to packaging.yml's pull_request filter. copr.yml watched\nit only on push to main, so a PR touching only .copr/Makefile was verified\nby nothing - which is how the v0.9.9 bug reached main.\n\nCorrects NOTES section 3's .cargo/config.toml claim: no such file exists or\nis tracked, only .cargo/audit.toml.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-09-01T13:17:46-07:00",
-          "tree_id": "fdb6783d108e157db1d7f917ad16b4f253b7bb55",
-          "url": "https://github.com/l1a/retch/commit/8fed7c2a0957a824e4ef1e3e9a8b6ade917895af"
-        },
-        "date": 1788295131139,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1043485604.2,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 547.5592883178291,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 156.33884312942058,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.826695783822606,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 90.54280298449706,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 6061.783774159263,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1488.1532090377536,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 504.8476632042904,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 164769.1691088557,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 537.4984983377714,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -19119,6 +19045,120 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 560.7757341622294,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c088ad074ab243ecd114909450a0974bf1d8c458",
+          "message": "Add RETCH_TIMING; read /proc directly on Linux (#269)\n\nRETCH_TIMING=1 prints one line per probe to stderr: its start offset\nfrom the beginning of collection and how long it took. Every probe in\nfetch.rs is wrapped in timing::timed. Offsets rather than differences,\nso one real run shows its critical path; disabled, it is one cached\nflag check. The first trace (--long, arrakis) showed the concurrent\nscope at 237 ms (all public-ip) followed by cpu-usage's 200 ms wait\nrun serially after it.\n\nOn Linux, procs, audio, shell and terminal no longer make sysinfo load\nthe process table, which walks every process and thread. proc_tree.rs\nanswers each from /proc: the task total in /proc/loadavg, a scan of\n/proc/<pid>/comm, and the ancestor chain from /proc/<pid>/stat.\nOutput is identical by construction (sysinfo's Linux name is that comm,\nand its table counted threads too). macOS and Windows are unchanged.\n\nThe rewrite targeted a ~50 ms process-table cost that later measured\n~1.5 ms on the same binary, so it shows no speed-up today; NOTES §7.5\nrecords that, and RETCH_TIMING exists to catch the slow state.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T21:22:12-07:00",
+          "tree_id": "862b18ceba393bb90a4fe5103f962f985e5ab84b",
+          "url": "https://github.com/l1a/retch/commit/c088ad074ab243ecd114909450a0974bf1d8c458"
+        },
+        "date": 1790570011061,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 363269879.38,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 983199407.3600001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1014168078.2200003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 27869508.84,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 686102708.28,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 888699774.1600002,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 1144758445.22,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 50120330.239999995,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 808564135.2,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 669.2371943968882,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 162.6378604774256,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.4247457506316845,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 86.21144766335125,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5979.147321581748,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1512.0756710780229,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 685.5337464874555,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 114570.9161924674,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 421.6202582200116,
             "unit": "ns"
           }
         ]
