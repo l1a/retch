@@ -146,15 +146,31 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.2)
+## Current State (v0.20.3)
 
-`main` carries **`retch-cli` 0.20.2** / **`retch-sysinfo` 0.1.81**. Newest released tag is
+`main` carries **`retch-cli` 0.20.3** / **`retch-sysinfo` 0.1.82**. Newest released tag is
 **`v0.18.4`** (GitHub, crates.io and the AUR verified 2026-09-26; COPR and the tap not checked).
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.3 — `--short` 4.05 → 3.39 ms on arrakis (fastfetch 2.71), output unchanged.**
+  `RETCH_TIMING` now also covers `os`, `kernel`, `host`, `uptime`, `arch`, `boot-time`, which
+  exposed where `--short` went:
+  - **The `CPU` core string (`16C / 32T`) was ~0.8 ms of serial work before the scope**:
+    sysinfo's physical-core count (a second `/proc/cpuinfo` read, ~0.4 ms) plus the Linux
+    hybrid-CPU check. It is now a concurrent probe, `cpu-cores`.
+  - **The hybrid check read two sysfs files per cpufreq policy** — 64 reads on a 32-thread
+    CPU just to conclude "not hybrid". Policies partition the CPUs, so with as many
+    policies as CPUs `affected_cpus` is skipped (half the reads), and the scan stops at a
+    third frequency tier. `hybrid_cores_in` takes the cpufreq directory so it is tested
+    against fixture trees.
+  - **`net-detail` ran serially after the whole scope** although it needs only `net`'s
+    answer; it now runs on the `net` thread.
+  - With one field, retch and fastfetch are level (1.4 vs 1.2 ms), so the fixed costs
+    (startup, config, rendering) are not the gap; `--version` is 1.3 ms for both.
 
 - **v0.20.2 — `public-ip` from `ipinfo.io/ip`, and its reply is validated.** Like for like
   (bare `curl`, 30 runs): ipify 123 ms (sd 14) vs ipinfo 96 ms (sd 5). The earlier "235 vs
@@ -457,7 +473,12 @@ Live items only. Completed items are removed rather than struck through — `git
   - **macOS default (848 vs 414 ms on CI)** — prime suspect `phys-mem`, which spawns
     `system_profiler`; also `phys-disk` runs `diskutil` once per disk. `RETCH_TIMING=1` on a
     Mac settles it.
-  - **`--short`** — 3.6 vs 2.3–2.5 ms: startup or the concurrent scope's fixed cost.
+  - **`--short`** — 3.39 vs 2.71 ms after v0.20.3. Not startup (level with one field). What
+    is left is `/proc/cpuinfo`, read **twice** at ~0.4 ms each: by `sys-init` for the CPU
+    brand (serial, before the scope) and by sysinfo's `physical_core_count` (in
+    `cpu-cores`). Options: move the brand read off the serial path, or parse
+    `/proc/cpuinfo` once for brand + physical cores on Linux (brand parsing then has to
+    match sysinfo's per-architecture quirks).
   - macOS and Windows have not been looked at under the matched configs at all.
 
 - **CI automation of the publish steps.** A tag still does not, by itself, publish to crates.io
@@ -702,6 +723,9 @@ nobody asked.
   set a PR in motion; the 235 was a whole retch probe at a slow moment, the 95 a bare `curl`.
   Timed the same way the gap was ~25 ms. Benchmark both candidates with the same command,
   many runs, before choosing — and report the spread, which was the real win here.
+- **A symmetric fixture cannot pin an ordering.** A hybrid-CPU test with 4 P-cores and 4
+  E-cores passed with P and E swapped, because both orders print `4P + 4E`. Make fixture
+  values differ in exactly the property the test is about (here 2 + 6).
 - **Count invocations, not mentions.** A guard that counted `scripts/cli_bench.py` in the
   workflow also counted the new `pull_request` path filter naming it, so the totals matched by
   coincidence and a job could have dropped the call unnoticed. Match the command shape.
