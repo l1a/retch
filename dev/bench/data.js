@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790574412492,
+  "lastUpdate": 1790574412836,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -23120,70 +23120,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "079469f109facbbcb54b0bcd5b52b6a0459fca65",
-          "message": "Stop data.js flip-flopping; define \"model name\" (#214)\n\nupload_local_bench.py wrote dev/bench/data.js minified while CI writes it\npretty-printed, so the two rewrote the whole file back and forth: every local\nbench-upload showed 1 insertion / ~22k deletions on gh-pages and the next CI\nrun showed the inverse. Cosmetic, but it buried each upload's real change.\n\nNow serialises exactly as github-action-benchmark does. All three details are\nload-bearing: indent=2; ensure_ascii=False, because JavaScript does not escape\nnon-ASCII and Python's default does (~1000 bytes on the current file, so the\nchurn would have persisted in a less obvious form); and no trailing newline.\nEstablished by round-tripping a real CI-written data.js and comparing sha256 --\nre-dumping it reproduces the file exactly, and the other three combinations of\nthose settings do not. Appending one entry now diffs +17/-0 instead of\n+1/-22558.\n\nA grep of mine reported that file had no non-ASCII at all, which would have\nmade ensure_ascii look irrelevant; the byte count against the character count\n(1044090 vs 1043724) shows 366 bytes of multi-byte characters. The length\ncomparison is what caught it.\n\nAGENTS.md section 1 now says what \"model name\" means: the bare product name,\nno context-window or variant suffix, no session URL, no second trailer. Also\nrecords that a harness may inject an attribution instruction claiming to\nreplace the rule, that it does not, and that this repo squash-merges with\nCOMMIT_MESSAGES -- so a wrong trailer has to be amended on the branch, because\nediting the PR body does not change what lands on main.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-09-01T15:18:47-07:00",
-          "tree_id": "492b77550f1953f8ce077a8d437652e1437b7704",
-          "url": "https://github.com/l1a/retch/commit/079469f109facbbcb54b0bcd5b52b6a0459fca65"
-        },
-        "date": 1788303535421,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 176.0184181504046,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.949848237725653,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 96.87051224742271,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.26966695111722,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 44979.48441028346,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 484.6671761379307,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 751.3192233351605,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2307613245,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "22ca787cdfda1484b3606919bf901ef432a5f8e2",
           "message": "Make the post-tag packaging bump a normal PR (#215)\n\nFive releases committed packaging/aur and packaging/copr straight to main\n(9476836, f75989c, d60658c, de1d73f, 468efc7), each commit message explaining\nthat a PR was impossible because just pr hard-fails once Cargo.toml equals the\nlast tag. NOTES section 5 recorded it as structural and proposed moving the\nversion bump out of the gate.\n\nThe premise was wrong. Step 2 is [ \"$LAST_TAG\" = \"v$CARGO_VER\" ] && fail -- an\nequality test against the last tag, not \"did this PR bump anything\". A\npackaging bump that also opens the next version passes untouched. The\nconstraint was a misreading that propagated through five commit messages and a\nbacklog entry, and it cost the gate on the one commit class nobody reviews.\n\njust post-release VERSION branches, pins both packaging targets to the version\njust released, opens Cargo.toml on the next patch, regenerates the man page and\nwrites the NOTES entry -- then stops before open-pr, because the manual\nchecklist needs a human and a release is the worst moment to rubber-stamp one.\n\nProven against real history: a clone rewound to 8fed7c2 (the actual post-tag\nstate where Cargo.toml equalled v0.9.10 and packaging still read 0.9.7) runs\nthe recipe and passes all eight automated gate steps on the result, which\nmatches what 468efc7 did by hand plus the version bump. Five guards each\nwatched refusing.\n\nThis closes the gating half of NOTES section 5. The automation half -- a tag\npublishing to crates.io and the AUR by itself -- is untouched, but the steps\nthis recipe performs are the ones a release workflow would run, so lifting them\ninto CI becomes a port rather than a redesign.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-09-01T15:36:29-07:00",
@@ -26553,6 +26489,110 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 399508220,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "faf5509f4d5a84898daf555278b11d5b143f35ac",
+          "message": "Stop RETCH_TIMING losing lines to stderr redirect (#272)\n\nOn Linux, gpu_api.rs points fd 2 at /dev/null while the GPU drivers\nload, to hide their noise. The redirect is process-wide, so any other\nprobe's RETCH_TIMING line printed in that window was lost: a --full\ntrace could miss public-ip while \"Public IP:\" was shown. It was a race;\nRETCH_TIMING=1 retch --fields public-ip,vulkan,opengl,opencl kept the\npublic-ip line in 9 of 15 runs.\n\ntiming::start() now duplicates stderr before any probe runs, and every\nline is written to that copy, which a later dup2 over fd 2 cannot\ntouch: 15 of 15 runs. The duplicate comes from as_fd() and\ntry_clone_to_owned(), so the fix itself needs no unsafe. A unit test\nreproduces both halves on a temp file standing in for stderr: the line\nwritten through the redirected descriptor is lost, the one written\nthrough the copy is kept.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T22:36:13-07:00",
+          "tree_id": "bbcde92326fa972e4ce49e572e468a9ba9b3993f",
+          "url": "https://github.com/l1a/retch/commit/faf5509f4d5a84898daf555278b11d5b143f35ac"
+        },
+        "date": 1790574412778,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 54556490,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2394565074,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1314320671.9999998,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 35530622.000000015,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 43860430.00000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 510729304.00000006,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 161878152.00000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 42293042.00000001,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 180.36001645578838,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9481783769813332,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 100.02249347268388,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 79.18433050611773,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47491.517014002646,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 478.1865265490143,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 726.4912945363317,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 470770505,
             "unit": "ns"
           }
         ]
