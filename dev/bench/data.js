@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790605791637,
+  "lastUpdate": 1790606324722,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6712,90 +6712,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "58c0d3b14acd2f18daf565c23e3a729d01d24e92",
-          "message": "Add disk-io and net-io throughput fields (#219)\n\nCloses two of the three remaining NOTES §6 fastfetch gaps. Both are\n--long and above, Linux only, in the v0.5.0 shape: pure helpers in a new\ncrates/sysinfo/src/io.rs under thin /proc and sysfs readers.\n\nThe design problem is the interval, not the counters. The kernel exposes\nonly cumulative bytes, so a rate needs two samples and a known window.\nfastfetch sleeps ~1 s for it -- measured, not assumed: `fastfetch -s\nNetIO` takes 1.00 s against 0.00 s for a counter-only module. That would\nput --long (~500 ms) behind fastfetch, which NOTES §3 treats as blocking.\nSo this uses the v0.3.49 cpu-usage pattern instead: sample before the\nconcurrent probe scope, diff after it, making the run's own collection\nwindow the sampling window. The second sample is taken after the\ncpu_usage block so the 200 ms sleep that block already performs on Unix\nwidens the window rather than being paid for twice.\n\nMeasured with a control run, which is what makes it evidence: --long is\n521.1 +- 40.3 ms here against 513.4 +- 33.2 ms on main, while main\nbenchmarked against itself read 533.4 +- 69.6 ms -- the branch/main gap\nis smaller than main's spread against itself. Standard mode at 40 runs:\n382.3 +- 9.7 vs 381.2 +- 10.9. Against fastfetch: retch --long 526 ms vs\n`fastfetch -c all` 1.097 s, now reporting the same two fields. An\nisolated `--fields disk-io` hits the ~100 ms floor at 0.10 s, the only\ncase where either field costs anything.\n\nDISKSTATS_SECTOR_BYTES = 512 is load-bearing and was checked: a known\n64 MiB write moved the counter 146808 sectors, i.e. 71 MiB at 512\nB/sector (the excess is btrfs metadata and CoW) against an impossible\n573 MiB at 4096. Recorded limit: the test host's own hw_sector_size is\n512, so this confirms the value without discriminating \"always 512\" from\n\"the hardware sector size\".\n\nTwo tests were watched failing against mutated code -- 512 to 4096 fails\nthe column test, and saturating_sub to wrapping_sub fails the reset test\nwith 1.8e19 B/s, exactly the reading its comment predicts. Rates were\ncross-checked against fastfetch under a sustained load (249.5/264.1 MB/s\nvs 192.95/192.98 MiB/s over its own window; both 0 idle) after a first\nattempt that agreed only because both tools had sampled an idle disk.\n\ndisk.rs's virtual-device name filter is now shared rather than copied, so\nphys-disk and disk-io cannot drift apart on what counts as a disk.\n\nStrata golden counts Long 54->56, Full 63->65. 12 new unit tests, keyed\non a verbatim /proc/diskstats fixture with an injected device filter so\nno test depends on the block devices of the machine running it.\n\nretch-sysinfo -> 0.1.57 (new public io module); retch-cli -> 0.10.0.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-09-07T14:04:54-07:00",
-          "tree_id": "115878a30bd428a34da012243a2e20b1d154f8c4",
-          "url": "https://github.com/l1a/retch/commit/58c0d3b14acd2f18daf565c23e3a729d01d24e92"
-        },
-        "date": 1788815545024,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1061571335.55,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 2078.855695790593,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 116.15774590709944,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.848468844042675,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 60.359062793971646,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 18161.73689561426,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 191746.52394381884,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 12823.22250581311,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 12953.411829852945,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1486879.8579849496,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 412.90903225600067,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 348.65907246140813,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "c662f957d27202066528996c62eb426cd83e38a2",
           "message": "packaging: pin to 0.10.0, open 0.10.1 (#220)\n\npackaging/aur and packaging/copr track the last RELEASED tag, so they can\nonly be bumped once v0.10.0 exists. Bundling that with the next version bump\nis what makes this a normal gated PR: just pr's step 2 compares Cargo.toml\nagainst the last tag, not against this PR's parent, so opening 0.10.1\nsatisfies it. Previous releases sent this commit straight to main on the\nbelief that a PR was impossible.\n\nPrepared by `just post-release 0.10.0` -- its first live outing, having only\never been exercised against a clone rewound to the v0.9.10 post-tag state.\n\nVerified rather than trusted: the declared sha256 was computed from the real\n1319408-byte release tarball three independent ways (sha256sum, python\nhashlib, openssl) and matches both the PKGBUILD and the generated .SRCINFO.\nThe tarball's docs/retch.1 is byte-identical to the committed page, so the\ninstalled man page footer is right. Both AUR files hold 0 CR bytes, and the\ngenerated .SRCINFO came out container_file_t -- the #203 SELinux fix still\nholding. The spec parses to `retch 0.10.0 1.fc44` under rpmspec, and its\n%changelog date is a real Monday.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-09-07T15:19:11-07:00",
@@ -11225,6 +11141,130 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 243.71544244239544,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "45cc196a781a7102604b983f41dd370af721ffcf",
+          "message": "Take CPU cores and net detail off the serial path (#274)\n\n--short on arrakis: 4.05 -> 3.39 ms (fastfetch matched: 2.71 ms), with\nidentical output. With RETCH_TIMING now also covering os, kernel,\nhost, uptime, arch and boot-time, the trace showed:\n\n- The CPU core string (\"16C / 32T\") was ~0.8 ms of serial work before\n  the concurrent scope: sysinfo's physical-core count, which reads\n  /proc/cpuinfo a second time, plus the Linux hybrid-CPU check. It is\n  now a concurrent probe, cpu-cores.\n- The hybrid check read two sysfs files per cpufreq policy, 64 reads\n  on a 32-thread CPU to conclude \"not hybrid\". Policies partition the\n  CPUs, so with one policy per CPU affected_cpus is no longer read,\n  and the scan stops at a third frequency tier. hybrid_cores_in takes\n  the cpufreq directory, so it is tested against fixture trees.\n- The interface list (net-detail) ran serially after the whole scope\n  though it needs only the net probe's answer; it now runs on that\n  probe's thread.\n\nWith a single field retch and fastfetch are level (1.4 vs 1.2 ms), so\nstartup, config and rendering are not the remaining gap; reading\n/proc/cpuinfo twice is.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-28T07:29:12-07:00",
+          "tree_id": "854c9411c2a2d511bb82858174e379b283e71f26",
+          "url": "https://github.com/l1a/retch/commit/45cc196a781a7102604b983f41dd370af721ffcf"
+        },
+        "date": 1790606324657,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 3547716.4199999995,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 318531256.56,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252955640.84000006,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1764285.82,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3010652.42,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 587037788.1600001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 204344954.54000008,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2054097.1199999999,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 540051903.7,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2070.142335890177,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 115.45416757892808,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.867024808239288,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 59.56458420418513,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 18126.128758055554,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 188814.249101538,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12822.813480501361,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 8640.139781748974,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 162162.18646409435,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 363.9995028533015,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 289.20814220843306,
             "unit": "ns"
           }
         ]
