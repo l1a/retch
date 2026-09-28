@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790566283318,
+  "lastUpdate": 1790569378951,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4956,6 +4956,70 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch (full)",
             "unit": "ns",
             "value": 534951892.20000005
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "c088ad074ab243ecd114909450a0974bf1d8c458",
+          "message": "Add RETCH_TIMING; read /proc directly on Linux (#269)\n\nRETCH_TIMING=1 prints one line per probe to stderr: its start offset\nfrom the beginning of collection and how long it took. Every probe in\nfetch.rs is wrapped in timing::timed. Offsets rather than differences,\nso one real run shows its critical path; disabled, it is one cached\nflag check. The first trace (--long, arrakis) showed the concurrent\nscope at 237 ms (all public-ip) followed by cpu-usage's 200 ms wait\nrun serially after it.\n\nOn Linux, procs, audio, shell and terminal no longer make sysinfo load\nthe process table, which walks every process and thread. proc_tree.rs\nanswers each from /proc: the task total in /proc/loadavg, a scan of\n/proc/<pid>/comm, and the ancestor chain from /proc/<pid>/stat.\nOutput is identical by construction (sysinfo's Linux name is that comm,\nand its table counted threads too). macOS and Windows are unchanged.\n\nThe rewrite targeted a ~50 ms process-table cost that later measured\n~1.5 ms on the same binary, so it shows no speed-up today; NOTES §7.5\nrecords that, and RETCH_TIMING exists to catch the slow state.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T21:22:12-07:00",
+          "tree_id": "862b18ceba393bb90a4fe5103f962f985e5ab84b",
+          "url": "https://github.com/l1a/retch/commit/c088ad074ab243ecd114909450a0974bf1d8c458"
+        },
+        "date": 1790569378951,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 3675510.0800000005
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2158206.8800000004
+          },
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 7954736.58
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 12236462.38
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 380926642.14000005
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 511592083.4400002
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 1211046399.58
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 520592657.4800001
           }
         ]
       }
