@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790608790850,
+  "lastUpdate": 1790608791190,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15966,80 +15966,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "c662f957d27202066528996c62eb426cd83e38a2",
-          "message": "packaging: pin to 0.10.0, open 0.10.1 (#220)\n\npackaging/aur and packaging/copr track the last RELEASED tag, so they can\nonly be bumped once v0.10.0 exists. Bundling that with the next version bump\nis what makes this a normal gated PR: just pr's step 2 compares Cargo.toml\nagainst the last tag, not against this PR's parent, so opening 0.10.1\nsatisfies it. Previous releases sent this commit straight to main on the\nbelief that a PR was impossible.\n\nPrepared by `just post-release 0.10.0` -- its first live outing, having only\never been exercised against a clone rewound to the v0.9.10 post-tag state.\n\nVerified rather than trusted: the declared sha256 was computed from the real\n1319408-byte release tarball three independent ways (sha256sum, python\nhashlib, openssl) and matches both the PKGBUILD and the generated .SRCINFO.\nThe tarball's docs/retch.1 is byte-identical to the committed page, so the\ninstalled man page footer is right. Both AUR files hold 0 CR bytes, and the\ngenerated .SRCINFO came out container_file_t -- the #203 SELinux fix still\nholding. The spec parses to `retch 0.10.0 1.fc44` under rpmspec, and its\n%changelog date is a real Monday.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-09-07T15:19:11-07:00",
-          "tree_id": "3259327cf2429feb4894e8bd26f7f531d6c4168c",
-          "url": "https://github.com/l1a/retch/commit/c662f957d27202066528996c62eb426cd83e38a2"
-        },
-        "date": 1788820814492,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1255874241.75,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 509.9747227344093,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 144.2217896938219,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.1984341914818857,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 73.39276864020346,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 6737.45602081871,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1495.5112002395006,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 476.5914919830034,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 156341.8324173634,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 473.5363509929912,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "570913ca271decc4f08f3247f11ab82b47988ced",
           "message": "Fix Windows Bluetooth missing LE devices (#221)\n\nThe Windows path counted connected devices with bthprops\n(BluetoothFindFirstDevice with fReturnConnected), which is a BR/EDR-only\nAPI: a Bluetooth Low Energy peripheral is not returned by it at all, so\nevery LE mouse, keyboard and headset was missing from the count. Reported\nas \"shows only 1 of 2 connected devices\"; the enumeration loop it appears\nto blame is correct.\n\nEnumerate Bluetooth device nodes via SetupAPI instead and read\nSystem.Devices.Connected on each, which covers classic and LE alike.\nDual-mode devices enumerate once per transport and are de-duplicated by\nthe address in the instance id, not by name, since two distinct devices\ncan share a name. Only a definite true counts: a node not exposing the\nproperty is unknown and skipped rather than reported.\n\nWinRT (Windows.Devices.Enumeration) is the documented route to LE state\nand was tried first. Its AssociationEndpoint enumeration never completed\n(status=Started, no error, after 8s) and the query that did work cost\n~1s; SetupAPI reads the same device nodes in 11ms.\n\nDeletes the bthprops FFI entirely, so one fewer linked library. Adapter\nname and power state are unchanged.\n\nVerified on hardware with two devices connected, against controls: 2\nconnected where bthprops reported 1. No measurable cost, measured against\na binary built from main, interleaved and repeated.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-09-08T14:22:37-07:00",
@@ -20019,6 +19945,120 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 506.40929056912427,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ca342dfa819432d34d2399844a6bf9f30f2f5f46",
+          "message": "Read the CPU name concurrently, not before probes (#275)\n\n--short on arrakis: 3.41 -> 3.14 ms (fastfetch matched: 2.78 ms);\ndefault 8.00 -> 7.17 ms. Output identical in every mode.\n\nsys loaded the CPU list, a ~0.4 ms /proc/cpuinfo read on Linux, for\nthe plain cpu field too, serially before the concurrent scope. It now\nloads it only when cpu-freq or cpu-usage needs it there; sys-init\n0.96 -> 0.23 ms. Otherwise the concurrent cpu probe builds its own\nminimal System for the name and logical count (never frequency, which\ncosts ~195 ms of counter setup on Windows).\n\nA first version moved the name, the physical-core count and the\nhybrid check onto one thread, which then took 1.46 ms and became the\nscope's longest probe: --short only improved by 0.16 ms. The physical\ncount, the second /proc/cpuinfo read, now has its own thread, and the\ncore string is assembled after the join. format_cpu_cores keeps its\npublic behaviour through hybrid_cores + format_cpu_cores_plain; a test\npins that the split produces exactly what it does, and another that\nthe two paths filling `cpu` agree.\n\nThat second test failed on the windows-arm runner and exposed a\npre-existing bug: sysinfo reads the CPU brand only through x86 CPUID,\nso on Windows on ARM it is always empty and the field rendered as\n\"CPU:  (12 cores)\". cpu_brand now falls back to the registry's\nProcessorNameString on Windows when the brand is empty; other\nplatforms are unchanged. A Windows-only test checks that source.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-28T08:10:05-07:00",
+          "tree_id": "cefe71f525513eef0e82c3c6d97997dafe271ef0",
+          "url": "https://github.com/l1a/retch/commit/ca342dfa819432d34d2399844a6bf9f30f2f5f46"
+        },
+        "date": 1790608791137,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 443597463.22,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1091193595.1,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1066444454.1399997,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 42767841.78,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 746614159.12,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 753506369.9000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 715885912.4400002,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 52636620.68,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 1053970441.8,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 664.4211240374191,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 165.44618606875125,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.319924299058968,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 96.71451644876791,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 7408.808760231895,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1617.7615724695406,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 606.269388477644,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 143856.98876356203,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 613.6783096775082,
             "unit": "ns"
           }
         ]
