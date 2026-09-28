@@ -1,42 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790574412836,
+  "lastUpdate": 1790574795078,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "a9fd67a7413c6895871674c4a722439caa865a2b",
-          "message": "refactor(sysinfo): isolate remaining detect_* functions into dedicated modules (v0.3.11) (#79)\n\n* refactor(sysinfo): isolate remaining detect_* functions into dedicated modules\n\nExtracts all remaining detection logic from fetch.rs into single-purpose\nmodules: bios, camera, gamepad, motherboard, packages, shell, terminal,\nand theme. Adds win_reg as a shared Windows registry helper. fetch.rs\nshrinks from 2275 lines to 443 lines. Bumps retch-sysinfo to v0.1.11 and\nretch-cli to v0.3.11.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix(bench): gate camera and gamepad imports with cfg(target_os = \"macos\")\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* style: rustfmt theme.rs test assert_eq line wrap\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* chore: add pre-push hook to catch fmt/clippy failures before push\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* chore: pre-push hook delegates to just check instead of duplicating logic\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* chore: document PR test plan verification in AGENTS.md\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix(theme): gate parse_ini_key and its tests to linux only\n\nparse_ini_key is only called from linux cfg blocks; clippy correctly\nflags it as dead code on macOS and Windows.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix(win_reg): allow upper_case_acronyms for HKEY Windows API type name\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n* fix: gate parse_macos_camera and parse_macos_gamepad to macos only\n\nBoth functions are only called from macos cfg blocks and macos benchmarks;\nungated pub triggers dead_code warnings on Linux and Windows.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
-          "timestamp": "2026-06-10T13:06:20-07:00",
-          "tree_id": "ced1181ff4572a57c0debfab135605cb0de50947",
-          "url": "https://github.com/l1a/retch/commit/a9fd67a7413c6895871674c4a722439caa865a2b"
-        },
-        "date": 1781122010627,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - retch",
-            "unit": "ns",
-            "value": 385452230.08000004
-          },
-          {
-            "name": "CLI execution - fastfetch",
-            "unit": "ns",
-            "value": 1022137868.18
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -5110,6 +5076,70 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch (full)",
             "unit": "ns",
             "value": 521033091.66
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "b2f2fa735900e82504308f448c1f36d3aa57fdf0",
+          "message": "Get the public IP from ipinfo.io and validate it (#273)\n\npublic-ip now asks ipinfo.io/ip instead of api.ipify.org. Timed the\nsame way (bare curl, 30 runs) it answers in 96 ms (sd 5) against 123 ms\n(sd 14). The public-ip probe is the slowest in --long's concurrent\nscope, but that mode now sits at its ~200 ms cpu-usage floor, so the\nmean barely moves (222 -> 218 ms); what changes is the spread, sd 18.3\n-> 1.3 ms, because ipify's slow moments (one probe took 236 ms) no\nlonger reach the critical path. Both services are IPv4-only.\n\nAlso fixes the probe accepting anything: curl ran without -f and the\nbody was never checked, so an error page, a rate-limit notice or a\ncaptive portal's HTML would have been printed as the IP. Now curl -f,\nand parse_public_ip accepts exactly one IPv4 or IPv6 address.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T22:52:36-07:00",
+          "tree_id": "5ef0e81268a64d923eecf8a705a07e64fb7ce136",
+          "url": "https://github.com/l1a/retch/commit/b2f2fa735900e82504308f448c1f36d3aa57fdf0"
+        },
+        "date": 1790574795078,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 3842874.0400000005
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2702965.4400000004
+          },
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 7276925.82
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 12683060.120000001
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 230782823.96
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 511695807.56
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 611620368.98
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 521595495.88
           }
         ]
       }
