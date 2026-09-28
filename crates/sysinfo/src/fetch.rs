@@ -378,6 +378,228 @@ impl SystemInfo {
             }
         };
 
+        // Windows: sample cumulative CPU times before the concurrent probes run, so CPU
+        // usage can be computed over the real collection window below. In a normal run the
+        // window is already long enough; a floor is enforced later only for tiny requests.
+        #[cfg(target_os = "windows")]
+        let cpu_sample0 = win_cpu::sample();
+        #[cfg(target_os = "windows")]
+        let cpu_t0 = std::time::Instant::now();
+
+        // Disk/network I/O are rates, and the kernel only exposes cumulative counters, so
+        // they need two samples and an interval. Take the first here — before the
+        // concurrent probes — and diff it after them, making the collection window the
+        // sampling window. That is the v0.3.49 `cpu-usage` approach, and it is why these
+        // fields cost no wall-clock in a normal run where fastfetch spends a full second.
+        let want_disk_io = should_collect("disk-io") || should_collect("disk io");
+        let want_net_io = should_collect("net-io") || should_collect("net io");
+        let disk_io_sample0 = if want_disk_io {
+            crate::io::sample_disk_io()
+        } else {
+            Vec::new()
+        };
+        let net_io_sample0 = if want_net_io {
+            crate::io::sample_net_io()
+        } else {
+            Vec::new()
+        };
+        let io_t0 = std::time::Instant::now();
+
+        // Probes that borrow nothing start here, before the serial setup below, so the
+        // ~0.1-0.35 ms a new thread waits for an idle core to wake (measured on arrakis;
+        // C3 exit latency is 350 us) overlaps `sys-init`, `os`, `disk` and the rest instead
+        // of following them (v0.20.5). Only the probes that borrow `sys` wait for the
+        // scope further down. All are joined there.
+        let sys_needs_cpus =
+            cpu_refresh_kind(should_collect("cpu-freq"), should_collect("cpu-usage")).is_some();
+        // The `cpu` name probe, when `sys` will not load the CPU list anyway: it builds
+        // its own minimal `System`, so it borrows nothing and can start now.
+        let cpu_early_handle = (should_collect("cpu") && !sys_needs_cpus).then(|| {
+            std::thread::spawn(move || {
+                crate::timing::timed("cpu", || {
+                    let own = System::new_with_specifics(
+                        sysinfo::RefreshKind::nothing().with_cpu(own_cpu_refresh_kind()),
+                    );
+                    let (brand, logical) = (cpu_brand(own.cpus()), own.cpus().len());
+                    (brand, logical, hybrid_cores(logical))
+                })
+            })
+        });
+        // `NC / NT` needs sysinfo's physical-core count and, on Linux, the hybrid-CPU
+        // check that reads two sysfs files per cpufreq policy: ~0.8 ms together on a
+        // 32-thread machine, all of it serial before the scope until v0.20.3.
+        // The physical-core count is a second `/proc/cpuinfo` read on Linux and
+        // needs nothing else, so it runs beside the name probe, not after it.
+        let cpu_physical_handle = if should_collect("cpu") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("cpu-physical", System::physical_core_count)
+            }))
+        } else {
+            None
+        };
+        let gpu_handle = if should_collect("gpu") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("gpu", || {
+                    gpu::detect_gpus()
+                        .into_iter()
+                        .map(|g| g.format())
+                        .collect::<Vec<String>>()
+                })
+            }))
+        } else {
+            None
+        };
+        let packages_handle = if should_collect("packages") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("packages", crate::packages::detect_packages)
+            }))
+        } else {
+            None
+        };
+        let public_ip_handle = if should_collect("public ip") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("public-ip", crate::network::detect_public_ip)
+            }))
+        } else {
+            None
+        };
+        // The interface list needs only this probe's answer, so it is built on the
+        // same thread. Until v0.20.3 it ran serially after the whole scope.
+        let network_ips_handle = if should_collect("net") {
+            Some(std::thread::spawn(move || {
+                let (local_ip, active_interface) = crate::timing::timed(
+                    "net",
+                    crate::network::detect_active_interface_and_local_ip,
+                );
+                let networks = crate::timing::timed("net-detail", || {
+                    crate::network::detect_networks(
+                        active_interface.as_deref(),
+                        local_ip.as_deref(),
+                    )
+                });
+                ((local_ip, active_interface), networks)
+            }))
+        } else {
+            None
+        };
+        let motherboard_handle = if should_collect("motherboard") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("motherboard", crate::motherboard::detect_motherboard)
+            }))
+        } else {
+            None
+        };
+        let bios_handle = if should_collect("bios") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("bios", crate::bios::detect_bios)
+            }))
+        } else {
+            None
+        };
+        let displays_handle = if should_collect("display") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("display", crate::display::detect_displays)
+            }))
+        } else {
+            None
+        };
+        let wifi_handle = if should_collect("wifi") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("wifi", crate::network::detect_wifi)
+            }))
+        } else {
+            None
+        };
+        let bluetooth_handle = if should_collect("bluetooth") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("bluetooth", crate::bluetooth::detect_bluetooth)
+            }))
+        } else {
+            None
+        };
+        let ui_theme_and_fonts_handle = if should_collect("theme")
+            || should_collect("icons")
+            || should_collect("cursor")
+            || should_collect("font")
+        {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("theme+fonts", crate::theme::detect_ui_theme_and_fonts)
+            }))
+        } else {
+            None
+        };
+        let camera_handle = if should_collect("camera") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("camera", crate::camera::detect_camera)
+            }))
+        } else {
+            None
+        };
+        let gamepad_handle = if should_collect("gamepad") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("gamepad", crate::gamepad::detect_gamepad)
+            }))
+        } else {
+            None
+        };
+        let physical_disks_handle = if should_collect("phys disk") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("phys-disk", crate::disk::detect_physical_disks)
+            }))
+        } else {
+            None
+        };
+        let physical_memory_handle = if should_collect("phys mem") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("phys-mem", crate::memory::detect_physical_memory)
+            }))
+        } else {
+            None
+        };
+        let weather_location = opts.weather_location.clone();
+        let weather_unit = opts.weather_unit;
+        let weather_handle = if should_collect("weather") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("weather", || {
+                    crate::weather::detect_weather(weather_location.as_deref(), weather_unit)
+                })
+            }))
+        } else {
+            None
+        };
+        let btrfs_handle = if should_collect("btrfs") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("btrfs", crate::btrfs::detect_btrfs)
+            }))
+        } else {
+            None
+        };
+        let zpool_handle = if should_collect("zpool") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("zpool", crate::zfs::detect_zpool)
+            }))
+        } else {
+            None
+        };
+        let media_handle = if should_collect("media") || should_collect("player") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("media", crate::media::detect_media)
+            }))
+        } else {
+            None
+        };
+        // Vulkan/OpenGL/OpenCL are collected together: all three dlopen a loader and
+        // talk to the same driver stack, so splitting them across threads would buy
+        // contention rather than overlap.
+        let gpu_apis_handle =
+            if should_collect("vulkan") || should_collect("opengl") || should_collect("opencl") {
+                Some(std::thread::spawn(move || {
+                    crate::timing::timed("gpu-apis", crate::gpu_api::detect_gpu_apis)
+                }))
+            } else {
+                None
+            };
+
         let mut refresh_kind = sysinfo::RefreshKind::nothing();
         // `cpu-cache` is deliberately absent: `detect_cpu_cache()` reads its own source
         // and never touches `sys`, so it never needed the CPU list.
@@ -581,33 +803,6 @@ impl SystemInfo {
             None
         };
 
-        // Windows: sample cumulative CPU times before the concurrent probes run, so CPU
-        // usage can be computed over the real collection window below. In a normal run the
-        // window is already long enough; a floor is enforced later only for tiny requests.
-        #[cfg(target_os = "windows")]
-        let cpu_sample0 = win_cpu::sample();
-        #[cfg(target_os = "windows")]
-        let cpu_t0 = std::time::Instant::now();
-
-        // Disk/network I/O are rates, and the kernel only exposes cumulative counters, so
-        // they need two samples and an interval. Take the first here — before the
-        // concurrent probes — and diff it after them, making the collection window the
-        // sampling window. That is the v0.3.49 `cpu-usage` approach, and it is why these
-        // fields cost no wall-clock in a normal run where fastfetch spends a full second.
-        let want_disk_io = should_collect("disk-io") || should_collect("disk io");
-        let want_net_io = should_collect("net-io") || should_collect("net io");
-        let disk_io_sample0 = if want_disk_io {
-            crate::io::sample_disk_io()
-        } else {
-            Vec::new()
-        };
-        let net_io_sample0 = if want_net_io {
-            crate::io::sample_net_io()
-        } else {
-            Vec::new()
-        };
-        let io_t0 = std::time::Instant::now();
-
         // Compute slow system queries concurrently in parallel threads
         let (
             gpu,
@@ -635,19 +830,9 @@ impl SystemInfo {
             cpu_physical,
         ) = crate::timing::timed("scope", || {
             std::thread::scope(|s| {
-                // `NC / NT` needs sysinfo's physical-core count and, on Linux, the hybrid-CPU
-                // check that reads two sysfs files per cpufreq policy: ~0.8 ms together on a
-                // 32-thread machine, all of it serial before the scope until v0.20.3.
-                // The physical-core count is a second `/proc/cpuinfo` read on Linux and
-                // needs nothing else, so it runs beside the name probe, not after it.
-                let cpu_physical_handle = if should_collect("cpu") {
-                    Some(s.spawn(|| {
-                        crate::timing::timed("cpu-physical", System::physical_core_count)
-                    }))
-                } else {
-                    None
-                };
-                let cpu_cores_handle = if should_collect("cpu") {
+                // With `cpu-freq`/`cpu-usage`, `sys` already holds the CPU list, so the
+                // name comes from it and only the hybrid check runs here.
+                let cpu_cores_handle = if should_collect("cpu") && sys_has_cpus {
                     let known = cpu_from_sys.clone();
                     Some(s.spawn(move || {
                         crate::timing::timed("cpu", || {
@@ -664,165 +849,9 @@ impl SystemInfo {
                 } else {
                     None
                 };
-                let gpu_handle = if should_collect("gpu") {
-                    Some(s.spawn(|| {
-                        crate::timing::timed("gpu", || {
-                            gpu::detect_gpus()
-                                .into_iter()
-                                .map(|g| g.format())
-                                .collect::<Vec<String>>()
-                        })
-                    }))
-                } else {
-                    None
-                };
-                let packages_handle = if should_collect("packages") {
-                    Some(s.spawn(|| {
-                        crate::timing::timed("packages", crate::packages::detect_packages)
-                    }))
-                } else {
-                    None
-                };
-                let public_ip_handle = if should_collect("public ip") {
-                    Some(s.spawn(|| {
-                        crate::timing::timed("public-ip", crate::network::detect_public_ip)
-                    }))
-                } else {
-                    None
-                };
-                // The interface list needs only this probe's answer, so it is built on the
-                // same thread. Until v0.20.3 it ran serially after the whole scope.
-                let network_ips_handle = if should_collect("net") {
-                    Some(s.spawn(|| {
-                        let (local_ip, active_interface) = crate::timing::timed(
-                            "net",
-                            crate::network::detect_active_interface_and_local_ip,
-                        );
-                        let networks = crate::timing::timed("net-detail", || {
-                            crate::network::detect_networks(
-                                active_interface.as_deref(),
-                                local_ip.as_deref(),
-                            )
-                        });
-                        ((local_ip, active_interface), networks)
-                    }))
-                } else {
-                    None
-                };
-                let motherboard_handle = if should_collect("motherboard") {
-                    Some(s.spawn(|| {
-                        crate::timing::timed("motherboard", crate::motherboard::detect_motherboard)
-                    }))
-                } else {
-                    None
-                };
-                let bios_handle = if should_collect("bios") {
-                    Some(s.spawn(|| crate::timing::timed("bios", crate::bios::detect_bios)))
-                } else {
-                    None
-                };
-                let displays_handle =
-                    if should_collect("display") {
-                        Some(s.spawn(|| {
-                            crate::timing::timed("display", crate::display::detect_displays)
-                        }))
-                    } else {
-                        None
-                    };
                 let audio_handle = if should_collect("audio") {
                     Some(s.spawn(|| {
                         crate::timing::timed("audio", || crate::audio::detect_audio(&sys))
-                    }))
-                } else {
-                    None
-                };
-                let wifi_handle = if should_collect("wifi") {
-                    Some(s.spawn(|| crate::timing::timed("wifi", crate::network::detect_wifi)))
-                } else {
-                    None
-                };
-                let bluetooth_handle = if should_collect("bluetooth") {
-                    Some(s.spawn(|| {
-                        crate::timing::timed("bluetooth", crate::bluetooth::detect_bluetooth)
-                    }))
-                } else {
-                    None
-                };
-                let ui_theme_and_fonts_handle = if should_collect("theme")
-                    || should_collect("icons")
-                    || should_collect("cursor")
-                    || should_collect("font")
-                {
-                    Some(s.spawn(|| {
-                        crate::timing::timed("theme+fonts", crate::theme::detect_ui_theme_and_fonts)
-                    }))
-                } else {
-                    None
-                };
-                let camera_handle = if should_collect("camera") {
-                    Some(s.spawn(|| crate::timing::timed("camera", crate::camera::detect_camera)))
-                } else {
-                    None
-                };
-                let gamepad_handle = if should_collect("gamepad") {
-                    Some(
-                        s.spawn(|| crate::timing::timed("gamepad", crate::gamepad::detect_gamepad)),
-                    )
-                } else {
-                    None
-                };
-                let physical_disks_handle = if should_collect("phys disk") {
-                    Some(s.spawn(|| {
-                        crate::timing::timed("phys-disk", crate::disk::detect_physical_disks)
-                    }))
-                } else {
-                    None
-                };
-                let physical_memory_handle = if should_collect("phys mem") {
-                    Some(s.spawn(|| {
-                        crate::timing::timed("phys-mem", crate::memory::detect_physical_memory)
-                    }))
-                } else {
-                    None
-                };
-                let weather_location = opts.weather_location.clone();
-                let weather_unit = opts.weather_unit;
-                let weather_handle = if should_collect("weather") {
-                    Some(s.spawn(move || {
-                        crate::timing::timed("weather", || {
-                            crate::weather::detect_weather(
-                                weather_location.as_deref(),
-                                weather_unit,
-                            )
-                        })
-                    }))
-                } else {
-                    None
-                };
-                let btrfs_handle = if should_collect("btrfs") {
-                    Some(s.spawn(|| crate::timing::timed("btrfs", crate::btrfs::detect_btrfs)))
-                } else {
-                    None
-                };
-                let zpool_handle = if should_collect("zpool") {
-                    Some(s.spawn(|| crate::timing::timed("zpool", crate::zfs::detect_zpool)))
-                } else {
-                    None
-                };
-                let media_handle = if should_collect("media") || should_collect("player") {
-                    Some(s.spawn(|| crate::timing::timed("media", crate::media::detect_media)))
-                } else {
-                    None
-                };
-                // Vulkan/OpenGL/OpenCL are collected together: all three dlopen a loader and
-                // talk to the same driver stack, so splitting them across threads would buy
-                // contention rather than overlap.
-                let gpu_apis_handle = if should_collect("vulkan")
-                    || should_collect("opengl")
-                    || should_collect("opencl")
-                {
-                    Some(s.spawn(|| {
-                        crate::timing::timed("gpu-apis", crate::gpu_api::detect_gpu_apis)
                     }))
                 } else {
                     None
@@ -839,7 +868,6 @@ impl SystemInfo {
                 } else {
                     None
                 };
-
                 (
                     gpu_handle
                         .map(|h| h.join().unwrap_or_default())
@@ -884,8 +912,9 @@ impl SystemInfo {
                         .map(|h| h.join().unwrap_or_default())
                         .unwrap_or_default(),
                     shell_handle.and_then(|h| h.join().ok().flatten()),
-                    cpu_cores_handle
+                    cpu_early_handle
                         .map(|h| h.join().unwrap_or_default())
+                        .or_else(|| cpu_cores_handle.map(|h| h.join().unwrap_or_default()))
                         .unwrap_or_default(),
                     cpu_physical_handle.and_then(|h| h.join().ok().flatten()),
                 )

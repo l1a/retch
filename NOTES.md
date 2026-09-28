@@ -146,15 +146,30 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.4)
+## Current State (v0.20.5)
 
-`main` carries **`retch-cli` 0.20.4** / **`retch-sysinfo` 0.1.83**. Newest released tag is
+`main` carries **`retch-cli` 0.20.5** / **`retch-sysinfo` 0.1.84**. Newest released tag is
 **`v0.18.4`** (GitHub, crates.io and the AUR verified 2026-09-26; COPR and the tap not checked).
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.5 — probes that borrow nothing start before the serial setup.** On battery
+  (powersave governor) `--short` 3.09/3.22 → 2.76/2.80 ms, **level with fastfetch**
+  (2.85/2.75); output identical in all four modes.
+  - **Why it helped**: a new thread waits ~0.1–0.35 ms for an idle core to wake (standalone
+    measurement; this CPU's C3 exit latency is 350 µs). Started after `sys-init`/`os`/`disk`,
+    that wait was added on top; started first, it overlaps them. Gathering: all probes except
+    `audio`, `shell` (borrow `sys`) and the `sys`-backed `cpu` probe now use plain
+    `std::thread::spawn` at the top of `collect()`; the scope keeps only those three. The
+    Windows CPU-time sample and the I/O first samples moved up with them, so their windows
+    still span every probe. `collect()` has no `?`/`return`, so every early thread is joined.
+  - **The gap is power-state dependent**: plugged in, `--short` was already within noise of
+    fastfetch (2.60 vs ~2.5 ms) before this change. Compare like with like — note AC/battery.
+  - **Default mode: no effect** (five rounds, the direction flipped) — it is bound by `audio`,
+    5–22 ms, not by thread wake-up. See §5.
 
 - **v0.20.4 — the CPU name and both `/proc/cpuinfo` reads are off the serial path.**
   `--short` 3.41 → 3.14 ms (fastfetch 2.78), default 8.00 → 7.17 ms, output identical.
@@ -491,11 +506,11 @@ Live items only. Completed items are removed rather than struck through — `git
   - **macOS default (848 vs 414 ms on CI)** — prime suspect `phys-mem`, which spawns
     `system_profiler`; also `phys-disk` runs `diskutil` once per disk. `RETCH_TIMING=1` on a
     Mac settles it.
-  - **`--short`** — 3.14 vs 2.78 ms after v0.20.4 (~0.36 ms). Leads: (1) ~0.3 ms passes
-    between the scope starting and its first probe starting (thread spawn? the ~25
-    `should_collect` calls, each allocating?) — measure before guessing; (2) `/proc/cpuinfo`
-    is still read twice, now concurrently; parsing it once would mean owning sysinfo's
-    per-architecture brand quirks.
+  - **`--short`** — level with fastfetch since v0.20.5, on battery and on AC.
+  - **default: `audio` is the long pole, 5–22 ms** (still ~2x ahead of fastfetch overall).
+    On Linux it scans `/proc/*/comm` and reads `/proc/asound/card*/codec#*`, which queries
+    the codec hardware — the likely cost; measure which half first. It also starts late (in
+    the scope) only because `detect_audio` takes `&sys`, which Linux never reads.
   - macOS and Windows have not been looked at under the matched configs at all.
 
 - **CI automation of the publish steps.** A tag still does not, by itself, publish to crates.io
