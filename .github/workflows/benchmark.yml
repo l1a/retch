@@ -315,7 +315,7 @@ jobs:
           fail-on-alert: false
           comment-on-alert: true
           alert-comment-cc-users: '@l1a'
-          max-items-in-chart: 50
+          max-items-in-chart: 200
           # See the 'Fetch gh-pages' step above: the action's own fetch is a
           # non-fast-forward once an earlier step has committed locally.
           skip-fetch-gh-pages: true
@@ -339,7 +339,7 @@ jobs:
           fail-on-alert: false
           comment-on-alert: true
           alert-comment-cc-users: '@l1a'
-          max-items-in-chart: 50
+          max-items-in-chart: 200
           # See the 'Fetch gh-pages' step above: the action's own fetch is a
           # non-fast-forward once an earlier step has committed locally.
           skip-fetch-gh-pages: true
@@ -363,7 +363,7 @@ jobs:
           fail-on-alert: false
           comment-on-alert: true
           alert-comment-cc-users: '@l1a'
-          max-items-in-chart: 50
+          max-items-in-chart: 200
           # See the 'Fetch gh-pages' step above: the action's own fetch is a
           # non-fast-forward once an earlier step has committed locally.
           skip-fetch-gh-pages: true
@@ -387,7 +387,7 @@ jobs:
           fail-on-alert: false
           comment-on-alert: true
           alert-comment-cc-users: '@l1a'
-          max-items-in-chart: 50
+          max-items-in-chart: 200
           # See the 'Fetch gh-pages' step above: the action's own fetch is a
           # non-fast-forward once an earlier step has committed locally.
           skip-fetch-gh-pages: true
@@ -411,7 +411,7 @@ jobs:
           fail-on-alert: false
           comment-on-alert: true
           alert-comment-cc-users: '@l1a'
-          max-items-in-chart: 50
+          max-items-in-chart: 200
           # See the 'Fetch gh-pages' step above: the action's own fetch is a
           # non-fast-forward once an earlier step has committed locally.
           skip-fetch-gh-pages: true

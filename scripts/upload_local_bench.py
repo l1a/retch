@@ -19,6 +19,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from bench_labels import labelled_means  # noqa: E402
+import bench_meta  # noqa: E402
 import cli_bench  # noqa: E402
 
 
@@ -27,6 +28,7 @@ GH_PAGES_BRANCH = "gh-pages"
 DATA_PATH = "dev/bench/data.js"
 SUITE_NAME_TEMPLATE = "Local - {platform} (real hardware)"
 MAX_RETRIES = 3
+MAX_ENTRIES = 200
 
 
 def run(cmd, **kwargs):
@@ -103,7 +105,7 @@ def build_release():
         run(["cargo", "build", "--release"])
 
 
-def run_hyperfine(warmup, runs):
+def run_hyperfine(warmup, runs, extra):
     """Run the shared CLI pairs (scripts/cli_bench.py) and return dashboard entries.
 
     The pairs used to be written out here as a private copy, and it had drifted in meaning:
@@ -125,8 +127,11 @@ def run_hyperfine(warmup, runs):
             # silently fork a series. The key ORDER here (name, unit, value) is deliberate and
             # must not change: this script writes data.js itself, and the existing local
             # suites store it that way.
+            # `extra` is the version plus AC/battery (scripts/bench_meta.py): the chart plots
+            # by version, and on a laptop the power state moves --short by as much as the gap
+            # to fastfetch, so a point without it cannot be read against its neighbours.
             for label, val_ns in labelled_means(data):
-                results.append({"name": label, "unit": "ns", "value": val_ns})
+                results.append({"name": label, "unit": "ns", "value": val_ns, "extra": extra})
     return results
 
 
@@ -188,8 +193,10 @@ def append_entry(gh_pages_dir, suite, commit_info, benches):
     }
     data["entries"][suite].append(entry)
 
-    # Keep at most 100 entries per suite (same as CI max-items-in-chart: 50 + headroom)
-    data["entries"][suite] = data["entries"][suite][-100:]
+    # Keep at most MAX_ENTRIES per suite, the same cap as CI's max-items-in-chart. It is a
+    # history by version now (every merge bumps the version), so it is kept long; the page
+    # loads data.js whole, which is what bounds it.
+    data["entries"][suite] = data["entries"][suite][-MAX_ENTRIES:]
 
     # Reorder so Local suites render first on the dashboard (Object.keys insertion order)
     local = {k: v for k, v in data["entries"].items() if k.startswith("Local")}
@@ -274,8 +281,9 @@ def main():
     if not args.no_build:
         build_release()
 
-    print("Running benchmarks...", flush=True)
-    benches = run_hyperfine(args.warmup, args.runs)
+    extra = bench_meta.extra_for(bench_meta.repo_version(), bench_meta.power_state())
+    print(f"Running benchmarks... (points tagged {extra!r})", flush=True)
+    benches = run_hyperfine(args.warmup, args.runs, extra)
 
     print("\nResults:")
     for b in benches:
