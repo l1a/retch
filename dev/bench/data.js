@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790566281411,
+  "lastUpdate": 1790566281770,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10830,90 +10830,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "7fc56ef6232dd6bec8ff5e4b6126b8ed5893dd93",
-          "message": "Fix the COPR SRPM step: mock moves %{_topdir} (#212)\n\n.copr/Makefile ran rpmdev-setuptree and copied the spec into\n$(HOME)/rpmbuild/SPECS. rpmdev-setuptree builds its tree at rpm's\n%{_topdir}, and mock redefines that to /builddir/build -- so on COPR the\ndirectory never existed and build 10927005 died in 60 seconds with\n\"cp: cannot create regular file '/builddir/rpmbuild/SPECS/'\".\n\nv0.9.8 claimed the Makefile was verified by running exactly what COPR\nruns. It was not: it ran in a plain fedora container, where %{_topdir}\nkeeps its default. COPR runs it inside mock. The claim was true of the\ncommand and false of the environment.\n\nFixed by removing the dependency rather than chasing the path: no\nrpmdev-setuptree, no %{_topdir}, no $(HOME) -- _sourcedir and _srcrpmdir\nare passed explicitly with --define. Tested twice, once normally and once\nwith %_topdir forced to /builddir/build as mock sets it.\n\nAlso corrects the edit-package-scm flags in NOTES: --method, not --type,\nand no --subdir.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-31T21:23:37-07:00",
-          "tree_id": "770bab44f250aae33c771ebb99637fa1b520ef52",
-          "url": "https://github.com/l1a/retch/commit/7fc56ef6232dd6bec8ff5e4b6126b8ed5893dd93"
-        },
-        "date": 1788237402903,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 436569917.775,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 962.678650219747,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 111.14040687466903,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946781595930949,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 53.580268239132316,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7801.530823816836,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 71016.23308141294,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4797.088851616709,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4891.849392889959,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1060370.9688623021,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 345.6366819648626,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 256.990441119558,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "8fed7c2a0957a824e4ef1e3e9a8b6ade917895af",
           "message": "Guard the COPR spec against drift (#213)\n\npackaging/copr/retch.spec's Version: tracks the last released tag and is\nbumped by hand at release time, with nothing checking the result. That is\nthe construct, and the missing guard, that let packaging/aur/PKGBUILD sit\neleven releases stale while CI stayed green. v0.7.1 fixed that for the AUR\nafter the drift; this does it for COPR before.\n\nscripts/copr_check.py (offline, wired into just check) asserts five things:\nVersion: equals the PKGBUILD's pkgver, Version: is not ahead of Cargo.toml,\nthe newest %changelog entry matches Version-Release, Source0 still uses\n%{version}, and cargo build still passes --locked. All five were watched\nfailing against the real files, including the negative case that matters\nmost: a Version: trailing Cargo.toml must stay silent.\n\nThe copr CI job builds the SRPM twice - plain, and under mock's environment.\nThe second run is the v0.9.9 regression test, and reproducing it correctly\ntook two attempts: forcing %_topdir alone does NOT fail on the pre-fix\nMakefile, because rpmdev-setuptree builds its tree wherever _topdir points.\nHOME=/builddir is the other half, in a fresh container. Verified against the\npre-fix Makefile from a606bbe, which dies with the exact production message.\n\nAlso adds .copr/** to packaging.yml's pull_request filter. copr.yml watched\nit only on push to main, so a PR touching only .copr/Makefile was verified\nby nothing - which is how the v0.9.9 bug reached main.\n\nCorrects NOTES section 3's .cargo/config.toml claim: no such file exists or\nis tracked, only .cargo/audit.toml.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-09-01T13:17:46-07:00",
@@ -15103,6 +15019,130 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 268.9755886026697,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "58a66026936bd99d4e61cf153d817794cbece137",
+          "message": "Match fastfetch benchmarks; move cpu-usage to long (#268)\n\nThe retch-vs-fastfetch comparison measured different workloads. Plain\n`fastfetch` loads the user's config and `-c none` loads none, so on CI\nboth ran fastfetch's built-in 20-module default, and locally the\ndeveloper's ~75-module config. Every \"retch is faster\" came from that.\n\nEach mode is now matched field for field: `retch [--<mode>]` against\n`fastfetch -c benches/fastfetch/<mode>.jsonc`, generated from\nsrc/fields.rs by scripts/fastfetch_configs.py, with fastfetch's network\ntimeouts set to retch's. The pairs live once, in scripts/cli_bench.py,\nshared by CI, `just bench-compare` and `just bench-upload`. CI installs\nthe same newest fastfetch release on every runner.\n\ncpu-usage moves from the default mode to --long. Its fixed 200 ms\nsampling sleep on Linux/macOS was ~80% of the default mode's runtime\n(271 -> 35 ms on arrakis).\n\nDashboard: `retch --full` is new, and the fastfetch series are now\n`fastfetch (short|default|long|full)`; the old ones stop rather than\nsplice two workloads into one line. bench-check guards the configs\nagainst drift from src/fields.rs.\n\nMatched numbers still show retch slower in every mode; NOTES.md §5\ntracks it as blocking.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T20:21:07-07:00",
+          "tree_id": "6dba41ec633bb9db8f95634ecf59a01408d6d2c8",
+          "url": "https://github.com/l1a/retch/commit/58a66026936bd99d4e61cf153d817794cbece137"
+        },
+        "date": 1790566281711,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2091678.2799999998,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 253065514.19999996,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252464940.60000002,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1302911.8000000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2992055.5799999996,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 769630912.2,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 258678481.49999994,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1824799.6,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 1153155920.75,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 967.2773806817286,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 110.41988977453175,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946591132383729,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 54.56983161591088,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7786.2808724184415,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70400.60036845483,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4740.225121673897,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4856.093311850113,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 57214.26985451338,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 348.7280103141018,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 264.7369654371805,
             "unit": "ns"
           }
         ]
