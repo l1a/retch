@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790571983122,
+  "lastUpdate": 1790571983448,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10999,90 +10999,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "468efc7ac572afa0db33fb4f7b685e295a0275bb",
-          "message": "packaging: update AUR and COPR to 0.9.10\n\nBoth reference copies track the last RELEASED tag, so they can only be bumped\nafter v0.9.10 exists -- at which point Cargo.toml equals the last tag and\njust pr hard-fails step 2. Same precedent as 9476836, f75989c, d60658c and\nde1d73f.\n\nThe copr-check guard added in 0.9.10 caught this drift for real: with the AUR\nat 0.9.10 and the spec still at 0.9.7, just check refused until copr-bump ran.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-09-01T14:22:33-07:00",
-          "tree_id": "3044137204377d24ccfdcc8482867b0763e4617f",
-          "url": "https://github.com/l1a/retch/commit/468efc7ac572afa0db33fb4f7b685e295a0275bb"
-        },
-        "date": 1788298536965,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 795787241.5,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 961.5858938343714,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 111.49283291984966,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9468598191614617,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 53.83266539422019,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7780.277258370923,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 70558.60587083893,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4783.458687724894,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4849.453299997287,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1054007.066236748,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 344.55465672415437,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 257.98699034844645,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -15357,6 +15273,130 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 278.9783991254138,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "592cac4dac5b04a47d10a1cef3bb1d3906fcfa4c",
+          "message": "Overlap the cpu-usage wait with the probes (#270)\n\nOn Linux and macOS the CPU-usage delta needs two samples at least\nMINIMUM_CPU_UPDATE_INTERVAL (200 ms) apart. The first is taken at\nsys-init, before the concurrent scope, yet the code slept a further\nfixed 200 ms after it. RETCH_TIMING showed the scope alone already\ntook 237 ms, so that sleep was pure serial waste. Now only the part of\nthe interval not already spent is waited out: usually 0-18 ms.\n--long 404 -> 218 ms on arrakis (fastfetch matched: 512 ms); --full\n1111 -> 919 ms.\n\nThat moved the sampling window onto retch's own probes, so their CPU\ntime read as system load (+1.3 points on 32 threads; ~+13 on 4 cores\nby arithmetic). retch now subtracts its own CPU time (getrusage SELF\nand CHILDREN) over the window. Against /proc/stat sampled with retch\nnot running (15 interleaved runs, medians): outside 1.01%, new build\n1.20%, old build 2.10%, so the old figure was already ~1 point high.\n\nWindows is unchanged and still carries that bias; NOTES §5 tracks it.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T21:53:51-07:00",
+          "tree_id": "4ae4819ae8543cb93b11b6867f100c8cd1a843f4",
+          "url": "https://github.com/l1a/retch/commit/592cac4dac5b04a47d10a1cef3bb1d3906fcfa4c"
+        },
+        "date": 1790571983407,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2458644.8600000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 252952461.42000005,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252435341.83999994,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1567008.1199999999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3236635.86,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 213821661.02,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 203308310.44000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2060639.9200000002,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 213407047.55,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 973.8605750097544,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 110.52965873217894,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9469268152607966,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 56.57279482861279,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7851.933014623952,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70927.86984027227,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4803.189231867645,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4920.627369136762,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 56984.36210948471,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 348.29733929331536,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 254.0263883142381,
             "unit": "ns"
           }
         ]
