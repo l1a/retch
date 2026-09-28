@@ -1,42 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790608792612,
+  "lastUpdate": 1790611370926,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "4fa327fd4f6705f13d6e8b1bdffccf00ba4c6e0d",
-          "message": "ci: drop macOS x64 benchmark job (#88)\n\nIntel Mac no longer a supported release target; macOS arm64 remains.\n\nAssisted-By: Claude Sonnet 4.6",
-          "timestamp": "2026-06-12T21:14:13-07:00",
-          "tree_id": "abdceb7d9a12eb5dc49922168f04d50797eca50b",
-          "url": "https://github.com/l1a/retch/commit/4fa327fd4f6705f13d6e8b1bdffccf00ba4c6e0d"
-        },
-        "date": 1781324074383,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - retch",
-            "unit": "ns",
-            "value": 317674163.97999996
-          },
-          {
-            "name": "CLI execution - fastfetch",
-            "unit": "ns",
-            "value": 1021361801.1800001
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -5200,6 +5166,70 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch (full)",
             "unit": "ns",
             "value": 518733057.7
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "c5eb33094d403dd51eac5168c7d9aaf2bb2a8909",
+          "message": "Start independent probes before the serial setup (#276)\n\nA new thread waits ~0.1-0.35 ms for an idle core to wake before it\nruns (measured standalone; this CPU's deepest C-state has a 350 us exit\nlatency). collect() started every probe only after the serial setup\n(sys-init, os, kernel, disk, ...), so that wait came on top of it.\n\nEvery probe that borrows nothing now starts with plain\nstd::thread::spawn at the top of collect(); the scope keeps only the\nthree that borrow sys (audio, shell, and the cpu probe when cpu-freq\nor cpu-usage made sys load the CPU list). The Windows CPU-time sample\nand the disk/net I/O first samples moved up with them, so their\nwindows still span every probe. collect() has no ? or return, so\nevery early thread is joined.\n\nOn battery (powersave governor), in one sitting, --short went from\n3.09/3.22 to 2.76/2.80 ms: level with fastfetch (2.85/2.75). Plugged in\nit was already within noise. The default mode is unchanged (five\nrounds, the direction flipped): it is bound by the audio probe, 5-22\nms, recorded in NOTES as the next lead. Output is identical in all\nfour modes.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-28T09:02:12-07:00",
+          "tree_id": "44afa5973138d4e6baeb4588d1c81c29ab4d8f25",
+          "url": "https://github.com/l1a/retch/commit/c5eb33094d403dd51eac5168c7d9aaf2bb2a8909"
+        },
+        "date": 1790611370926,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 2899369.72
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2621206.2200000007
+          },
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 7957092.72
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 14226103.120000003
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 230230651.96
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 516675492.15999997
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 621797042.5200001
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 526085924.42
           }
         ]
       }
