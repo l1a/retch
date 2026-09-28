@@ -121,17 +121,61 @@ fn parse_loadavg_tasks(loadavg: &str) -> Option<usize> {
     field.split_once('/')?.1.parse().ok()
 }
 
-/// The sound server to report on Linux: PipeWire if any process is one, else PulseAudio
-/// if any process is one, else ALSA.
+/// The sound server to report on Linux: PipeWire, else PulseAudio, else ALSA.
 ///
-/// Every user's processes count, as they always have, so a run under `sudo` — whose
-/// stripped environment would hide the invoking user's session sockets — still reports
-/// the server that is actually running.
+/// **Fast path (v0.20.6): the session's own sockets.** `$XDG_RUNTIME_DIR/pipewire-0` means
+/// PipeWire (whose `pipewire-pulse` also creates `pulse/native`), else `pulse/native` means
+/// PulseAudio — two existence checks, ~2 µs. The process scan it replaces had to read
+/// `comm` for ~430 of ~700 processes before reaching PipeWire, and was most of the default
+/// mode's longest probe.
+///
+/// **Fallback: every process, as before**, when neither socket exists — no session in this
+/// environment, as under `sudo`, whose stripped environment has no `XDG_RUNTIME_DIR`. Such a
+/// run still reports the server that is actually running.
 #[cfg(target_os = "linux")]
 pub(crate) fn audio_server() -> &'static str {
-    audio_server_from_names(
-        pids().filter_map(|pid| std::fs::read_to_string(format!("/proc/{pid}/comm")).ok()),
-    )
+    let runtime = std::env::var_os("XDG_RUNTIME_DIR").map(std::path::PathBuf::from);
+    audio_server_with(runtime.as_deref(), || {
+        audio_server_from_names(
+            pids().filter_map(|pid| std::fs::read_to_string(format!("/proc/{pid}/comm")).ok()),
+        )
+    })
+}
+
+/// [`audio_server`] with the runtime directory and the fallback scan injected, so tests use
+/// a temporary directory of real sockets and can prove the scan is skipped.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn audio_server_with(
+    runtime_dir: Option<&std::path::Path>,
+    scan: impl FnOnce() -> &'static str,
+) -> &'static str {
+    let socket = |rel: &str| runtime_dir.is_some_and(|d| is_unix_socket(&d.join(rel)));
+    server_from_sockets(socket("pipewire-0"), socket("pulse/native")).unwrap_or_else(scan)
+}
+
+/// Which server the session sockets name, or `None` when neither exists.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn server_from_sockets(pipewire: bool, pulse: bool) -> Option<&'static str> {
+    if pipewire {
+        Some("PipeWire")
+    } else if pulse {
+        Some("PulseAudio")
+    } else {
+        None
+    }
+}
+
+/// True only for an actual Unix socket: a stray regular file of the same name is not a
+/// running server.
+#[cfg(unix)]
+fn is_unix_socket(path: &std::path::Path) -> bool {
+    use std::os::unix::fs::FileTypeExt;
+    std::fs::metadata(path).is_ok_and(|m| m.file_type().is_socket())
+}
+
+#[cfg(not(unix))]
+fn is_unix_socket(_path: &std::path::Path) -> bool {
+    false
 }
 
 /// Classifies process names; stops at the first PipeWire process, since nothing can
@@ -288,6 +332,53 @@ mod tests {
         );
         assert_eq!(audio_server_from_names(names(&["bash", "sshd"])), "ALSA");
         assert_eq!(audio_server_from_names(Vec::new()), "ALSA");
+    }
+
+    #[test]
+    fn server_from_sockets_prefers_pipewire() {
+        assert_eq!(server_from_sockets(true, true), Some("PipeWire"));
+        assert_eq!(server_from_sockets(true, false), Some("PipeWire"));
+        assert_eq!(server_from_sockets(false, true), Some("PulseAudio"));
+        assert_eq!(server_from_sockets(false, false), None);
+    }
+
+    /// A temporary runtime directory holding real listening sockets.
+    #[cfg(unix)]
+    fn runtime_with(name: &str, sockets: &[&str]) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("retch-rt-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("pulse")).unwrap();
+        for s in sockets {
+            // Leaked on purpose: the socket file must outlive this helper.
+            std::mem::forget(std::os::unix::net::UnixListener::bind(dir.join(s)).unwrap());
+        }
+        dir
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn session_sockets_answer_without_scanning() {
+        let never = || -> &'static str { panic!("the process scan must not run") };
+        let both = runtime_with("both", &["pipewire-0", "pulse/native"]);
+        assert_eq!(audio_server_with(Some(&both), never), "PipeWire");
+        let pulse = runtime_with("pulse", &["pulse/native"]);
+        assert_eq!(audio_server_with(Some(&pulse), never), "PulseAudio");
+        let _ = std::fs::remove_dir_all(&both);
+        let _ = std::fs::remove_dir_all(&pulse);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn no_session_sockets_falls_back_to_the_scan() {
+        // No XDG_RUNTIME_DIR at all, as under sudo.
+        assert_eq!(audio_server_with(None, || "PipeWire"), "PipeWire");
+        // A runtime dir without the sockets.
+        let empty = runtime_with("empty", &[]);
+        assert_eq!(audio_server_with(Some(&empty), || "ALSA"), "ALSA");
+        // A regular FILE named like the socket is not a running server.
+        std::fs::write(empty.join("pipewire-0"), b"").unwrap();
+        assert_eq!(audio_server_with(Some(&empty), || "ALSA"), "ALSA");
+        let _ = std::fs::remove_dir_all(&empty);
     }
 
     #[test]
