@@ -206,12 +206,13 @@ pub struct SystemInfo {
 /// machinery measured ~195 ms on arrakis — paid by every run, including `--short`,
 /// which does not display a frequency. Asking only for what a selected field reads
 /// drops `System::new_with_specifics` to ~0.5 ms there.
-fn cpu_refresh_kind(
-    want_cpu: bool,
-    want_freq: bool,
-    want_usage: bool,
-) -> Option<sysinfo::CpuRefreshKind> {
-    if !(want_cpu || want_freq || want_usage) {
+///
+/// The plain `cpu` field no longer counts (v0.20.4): its name and core count are read
+/// by the concurrent `cpu` probe with [`own_cpu_refresh_kind`] instead, so `sys` loads
+/// the CPU list — a ~0.4 ms `/proc/cpuinfo` read on Linux, serial before the scope —
+/// only when `cpu-freq` or `cpu-usage` needs it there.
+fn cpu_refresh_kind(want_freq: bool, want_usage: bool) -> Option<sysinfo::CpuRefreshKind> {
+    if !(want_freq || want_usage) {
         return None;
     }
     let mut kind = sysinfo::CpuRefreshKind::nothing();
@@ -225,6 +226,45 @@ fn cpu_refresh_kind(
         kind = kind.with_cpu_usage();
     }
     Some(kind)
+}
+
+/// What the concurrent `cpu` probe asks sysinfo for when `sys` has no CPU list: the list
+/// alone. Never frequency — on Windows that first touches performance counters, ~195 ms
+/// for a field `cpu` does not display — and never usage, which nothing there reads.
+fn own_cpu_refresh_kind() -> sysinfo::CpuRefreshKind {
+    sysinfo::CpuRefreshKind::nothing()
+}
+
+/// The CPU name as `cpu` reports it: the first CPU's brand, or `Unknown CPU`.
+///
+/// On Windows an empty brand falls back to the registry's `ProcessorNameString`: sysinfo
+/// reads the brand only through the x86 `CPUID` instruction, so on Windows on ARM it is
+/// always empty, and until v0.20.4 the field rendered as `CPU:  (12 cores)`.
+fn cpu_brand(cpus: &[sysinfo::Cpu]) -> String {
+    let brand = cpus
+        .first()
+        .map(|c| c.brand().to_string())
+        .unwrap_or_else(|| "Unknown CPU".to_string());
+    #[cfg(target_os = "windows")]
+    if brand.trim().is_empty() {
+        if let Some(name) = windows_cpu_name() {
+            return name;
+        }
+    }
+    brand
+}
+
+/// `HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0\ProcessorNameString`, trimmed —
+/// the name Windows itself shows, present on x86 and ARM alike.
+#[cfg(target_os = "windows")]
+fn windows_cpu_name() -> Option<String> {
+    crate::win_reg::get_reg_string(
+        crate::win_reg::HKEY_LOCAL_MACHINE,
+        r"HARDWARE\DESCRIPTION\System\CentralProcessor\0",
+        "ProcessorNameString",
+    )
+    .map(|s| s.trim().to_string())
+    .filter(|s| !s.is_empty())
 }
 
 /// How much longer to wait before a second sample, given the `interval` the two samples
@@ -341,13 +381,14 @@ impl SystemInfo {
         let mut refresh_kind = sysinfo::RefreshKind::nothing();
         // `cpu-cache` is deliberately absent: `detect_cpu_cache()` reads its own source
         // and never touches `sys`, so it never needed the CPU list.
-        if let Some(cpu_kind) = cpu_refresh_kind(
-            should_collect("cpu"),
-            should_collect("cpu-freq"),
-            should_collect("cpu-usage"),
-        ) {
-            refresh_kind = refresh_kind.with_cpu(cpu_kind);
-        }
+        let sys_has_cpus =
+            match cpu_refresh_kind(should_collect("cpu-freq"), should_collect("cpu-usage")) {
+                Some(cpu_kind) => {
+                    refresh_kind = refresh_kind.with_cpu(cpu_kind);
+                    true
+                }
+                None => false,
+            };
         if should_collect("memory")
             || should_collect("swap")
             || should_collect("phys mem")
@@ -387,20 +428,11 @@ impl SystemInfo {
         let kernel = crate::timing::timed("kernel", System::kernel_version);
         let hostname = crate::timing::timed("host", System::host_name);
 
-        let cpu = if should_collect("cpu") {
-            sys.cpus()
-                .first()
-                .map(|c| c.brand().to_string())
-                .unwrap_or_else(|| "Unknown CPU".to_string())
-        } else {
-            String::new()
-        };
-
-        let cpu_cores = if should_collect("cpu") {
-            sys.cpus().len()
-        } else {
-            0
-        };
+        // `cpu`'s name and logical count: from `sys` when it already loaded the CPU list
+        // for `cpu-freq`/`cpu-usage` (free here), otherwise read by the concurrent `cpu`
+        // probe below, off the serial path.
+        let cpu_from_sys: Option<(String, usize)> = (should_collect("cpu") && sys_has_cpus)
+            .then(|| (cpu_brand(sys.cpus()), sys.cpus().len()));
         let memory = if should_collect("memory") {
             let total_mem = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
             let used_mem = sys.used_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
@@ -599,16 +631,34 @@ impl SystemInfo {
             (media, player),
             gpu_apis,
             shell,
-            cpu_core_info,
+            (cpu, cpu_cores, cpu_hybrid),
+            cpu_physical,
         ) = crate::timing::timed("scope", || {
             std::thread::scope(|s| {
                 // `NC / NT` needs sysinfo's physical-core count and, on Linux, the hybrid-CPU
                 // check that reads two sysfs files per cpufreq policy: ~0.8 ms together on a
                 // 32-thread machine, all of it serial before the scope until v0.20.3.
+                // The physical-core count is a second `/proc/cpuinfo` read on Linux and
+                // needs nothing else, so it runs beside the name probe, not after it.
+                let cpu_physical_handle = if should_collect("cpu") {
+                    Some(s.spawn(|| {
+                        crate::timing::timed("cpu-physical", System::physical_core_count)
+                    }))
+                } else {
+                    None
+                };
                 let cpu_cores_handle = if should_collect("cpu") {
+                    let known = cpu_from_sys.clone();
                     Some(s.spawn(move || {
-                        crate::timing::timed("cpu-cores", || {
-                            format_cpu_cores(cpu_cores, System::physical_core_count())
+                        crate::timing::timed("cpu", || {
+                            let (brand, logical) = known.unwrap_or_else(|| {
+                                let own = System::new_with_specifics(
+                                    sysinfo::RefreshKind::nothing()
+                                        .with_cpu(own_cpu_refresh_kind()),
+                                );
+                                (cpu_brand(own.cpus()), own.cpus().len())
+                            });
+                            (brand, logical, hybrid_cores(logical))
                         })
                     }))
                 } else {
@@ -837,9 +887,16 @@ impl SystemInfo {
                     cpu_cores_handle
                         .map(|h| h.join().unwrap_or_default())
                         .unwrap_or_default(),
+                    cpu_physical_handle.and_then(|h| h.join().ok().flatten()),
                 )
             })
         });
+
+        let cpu_core_info = if should_collect("cpu") {
+            cpu_hybrid.unwrap_or_else(|| format_cpu_cores_plain(cpu_cores, cpu_physical))
+        } else {
+            String::new()
+        };
 
         let mut temps: Vec<String> = if should_collect("temp") {
             crate::timing::timed("temp", Components::new_with_refreshed_list)
@@ -1482,19 +1539,27 @@ pub fn detect_cpu_cache() -> Option<String> {
 /// Returns `"NP + NE / NT"` on Intel hybrid CPUs (different max frequencies per cluster),
 /// `"NC / NT"` when physical < logical (hyperthreading), or `"N cores"` otherwise.
 pub fn format_cpu_cores(logical: usize, physical: Option<usize>) -> String {
-    // Linux: detect Intel hybrid via cpufreq policy max-frequency grouping
+    hybrid_cores(logical).unwrap_or_else(|| format_cpu_cores_plain(logical, physical))
+}
+
+/// The host's hybrid P/E string, if it is a hybrid CPU: cpufreq max-frequency tiers on
+/// Linux, `hw.perflevel*` sysctls on macOS, `None` elsewhere. Split out of
+/// [`format_cpu_cores`] so `collect` can run it on a different thread from the
+/// physical-core count (v0.20.4); the two together are exactly `format_cpu_cores`.
+fn hybrid_cores(logical: usize) -> Option<String> {
     #[cfg(target_os = "linux")]
-    if let Some(hybrid) = detect_hybrid_cores(logical) {
-        return hybrid;
+    {
+        detect_hybrid_cores(logical)
     }
-
-    // macOS: detect Apple Silicon P/E cores via hw.perflevel* sysctls
     #[cfg(target_os = "macos")]
-    if let Some(hybrid) = detect_macos_hybrid_cores(logical) {
-        return hybrid;
+    {
+        detect_macos_hybrid_cores(logical)
     }
-
-    format_cpu_cores_plain(logical, physical)
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    {
+        let _ = logical;
+        None
+    }
 }
 
 /// Pure fallback formatter used when no hybrid (P/E) topology is detected.
@@ -2404,8 +2469,9 @@ mod tests {
     }
 
     #[test]
-    fn cpu_refresh_kind_is_none_when_no_cpu_field_is_selected() {
-        assert!(cpu_refresh_kind(false, false, false).is_none());
+    fn cpu_refresh_kind_is_none_unless_freq_or_usage_needs_sys() {
+        // Plain `cpu` no longer loads the list into `sys`; its probe reads its own.
+        assert!(cpu_refresh_kind(false, false).is_none());
     }
 
     #[test]
@@ -2413,14 +2479,14 @@ mod tests {
         // Brand and core count come from the static CPU list. Asking for frequency here
         // is what made every `--short` run pay ~195 ms of performance-counter setup on
         // Windows for a field it does not display.
-        let kind = cpu_refresh_kind(true, false, false).expect("cpu selected");
+        let kind = own_cpu_refresh_kind();
         assert!(!kind.frequency(), "plain `cpu` must not request frequency");
         assert!(!kind.cpu_usage(), "plain `cpu` must not request cpu usage");
     }
 
     #[test]
     fn cpu_refresh_kind_asks_for_frequency_only_for_cpu_freq() {
-        let kind = cpu_refresh_kind(false, true, false).expect("cpu-freq selected");
+        let kind = cpu_refresh_kind(true, false).expect("cpu-freq selected");
         assert!(
             kind.frequency(),
             "`cpu-freq` reads Cpu::frequency() and must request it"
@@ -2429,7 +2495,7 @@ mod tests {
 
     #[test]
     fn cpu_refresh_kind_asks_for_usage_only_off_windows() {
-        let kind = cpu_refresh_kind(false, false, true).expect("cpu-usage selected");
+        let kind = cpu_refresh_kind(false, true).expect("cpu-usage selected");
         if cfg!(target_os = "windows") {
             // The Windows arm diffs its own GetSystemTimes samples and never reads
             // sysinfo's counters, so priming them would be unread cost.
@@ -2439,6 +2505,64 @@ mod tests {
             assert!(kind.cpu_usage());
         }
         assert!(!kind.frequency(), "cpu-usage must not drag in frequency");
+    }
+
+    fn collect_fields(fields: &[&str]) -> SystemInfo {
+        SystemInfo::collect(CollectOptions {
+            fields: Some(fields.iter().map(|f| f.to_string()).collect()),
+            ..Default::default()
+        })
+        .expect("collect")
+    }
+
+    /// `cpu` is filled by two different paths since v0.20.4 — its own probe when `sys` has
+    /// no CPU list, `sys` when `cpu-freq` loaded one — and both must give the same name
+    /// and a real core string. A path that forgot to fill a value would show here as an
+    /// empty name or zero cores.
+    #[test]
+    fn cpu_fields_are_the_same_whichever_path_fills_them() {
+        let alone = collect_fields(&["cpu"]);
+        let with_freq = collect_fields(&["cpu", "cpu-freq"]);
+        assert!(!alone.cpu.is_empty(), "name read by the probe itself");
+        assert!(
+            alone.cpu_cores > 0,
+            "logical count read by the probe itself"
+        );
+        assert!(!alone.cpu_core_info.is_empty());
+        assert_eq!(alone.cpu, with_freq.cpu, "same name from either path");
+        assert_eq!(alone.cpu_cores, with_freq.cpu_cores);
+        assert_eq!(alone.cpu_core_info, with_freq.cpu_core_info);
+    }
+
+    /// The concurrent split (hybrid on one thread, physical count on another, joined
+    /// afterwards) must produce exactly what the public `format_cpu_cores` does.
+    #[test]
+    fn cpu_core_string_matches_format_cpu_cores() {
+        let info = collect_fields(&["cpu"]);
+        assert_eq!(
+            info.cpu_core_info,
+            format_cpu_cores(info.cpu_cores, System::physical_core_count())
+        );
+    }
+
+    /// The Windows fallback source must exist and hold a name on real Windows machines —
+    /// including the ARM64 runner, where sysinfo's own brand is always empty.
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_registry_has_a_cpu_name() {
+        let name = windows_cpu_name();
+        assert!(
+            name.as_deref().is_some_and(|n| !n.is_empty()),
+            "ProcessorNameString missing: {name:?}"
+        );
+    }
+
+    #[test]
+    fn cpu_fields_stay_empty_when_cpu_is_not_requested() {
+        let info = collect_fields(&["os"]);
+        assert!(info.cpu.is_empty());
+        assert_eq!(info.cpu_cores, 0);
+        assert!(info.cpu_core_info.is_empty());
     }
 
     #[test]

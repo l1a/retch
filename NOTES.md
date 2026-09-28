@@ -146,15 +146,33 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.3)
+## Current State (v0.20.4)
 
-`main` carries **`retch-cli` 0.20.3** / **`retch-sysinfo` 0.1.82**. Newest released tag is
+`main` carries **`retch-cli` 0.20.4** / **`retch-sysinfo` 0.1.83**. Newest released tag is
 **`v0.18.4`** (GitHub, crates.io and the AUR verified 2026-09-26; COPR and the tap not checked).
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.4 — the CPU name and both `/proc/cpuinfo` reads are off the serial path.**
+  `--short` 3.41 → 3.14 ms (fastfetch 2.78), default 8.00 → 7.17 ms, output identical.
+  - `sys` loads the CPU list only for `cpu-freq`/`cpu-usage` (`cpu_refresh_kind` no longer
+    takes plain `cpu`); `sys-init` 0.96 → 0.23 ms. Otherwise the concurrent `cpu` probe
+    builds its own minimal `System` (never frequency: Windows' ~195 ms counter setup).
+  - **Moving work is not parallelising it**: the first version put name, physical count
+    and hybrid check on one thread, which then took 1.46 ms and became the scope's long pole
+    (`--short` only −0.16 ms). Splitting the physical count onto its own thread is what
+    delivered the gain. `format_cpu_cores` (public) = `hybrid_cores` + `format_cpu_cores_plain`,
+    and a test pins that the split probes produce exactly what it does.
+  - Two paths now fill `cpu` (own probe vs `sys` when `cpu-freq` loaded one); a test
+    asserts both give the same name and core string.
+  - **That test found a pre-existing bug: Windows on ARM had no CPU name.** sysinfo reads
+    the brand only via x86 `CPUID`, so on non-x86 Windows it is always empty and the field
+    rendered `CPU:  (12 cores)`. `cpu_brand` now falls back to the registry's
+    `ProcessorNameString` on Windows when the brand is empty; other platforms unchanged.
+    Caught only by the windows-arm CI runner — no local build can reach that path.
 
 - **v0.20.3 — `--short` 4.05 → 3.39 ms on arrakis (fastfetch 2.71), output unchanged.**
   `RETCH_TIMING` now also covers `os`, `kernel`, `host`, `uptime`, `arch`, `boot-time`, which
@@ -473,12 +491,11 @@ Live items only. Completed items are removed rather than struck through — `git
   - **macOS default (848 vs 414 ms on CI)** — prime suspect `phys-mem`, which spawns
     `system_profiler`; also `phys-disk` runs `diskutil` once per disk. `RETCH_TIMING=1` on a
     Mac settles it.
-  - **`--short`** — 3.39 vs 2.71 ms after v0.20.3. Not startup (level with one field). What
-    is left is `/proc/cpuinfo`, read **twice** at ~0.4 ms each: by `sys-init` for the CPU
-    brand (serial, before the scope) and by sysinfo's `physical_core_count` (in
-    `cpu-cores`). Options: move the brand read off the serial path, or parse
-    `/proc/cpuinfo` once for brand + physical cores on Linux (brand parsing then has to
-    match sysinfo's per-architecture quirks).
+  - **`--short`** — 3.14 vs 2.78 ms after v0.20.4 (~0.36 ms). Leads: (1) ~0.3 ms passes
+    between the scope starting and its first probe starting (thread spawn? the ~25
+    `should_collect` calls, each allocating?) — measure before guessing; (2) `/proc/cpuinfo`
+    is still read twice, now concurrently; parsing it once would mean owning sysinfo's
+    per-architecture brand quirks.
   - macOS and Windows have not been looked at under the matched configs at all.
 
 - **CI automation of the publish steps.** A tag still does not, by itself, publish to crates.io
