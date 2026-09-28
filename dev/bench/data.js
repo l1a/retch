@@ -1,42 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790575430092,
+  "lastUpdate": 1790605791637,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "37b53d4101d641b5411b9c5a485fbc0bac2c22bd",
-          "message": "docs: document full release, pre-release, and crates.io publish process in AGENTS.md\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-          "timestamp": "2026-06-11T20:04:45-07:00",
-          "tree_id": "7d57d78ea5d92f96e8a6838ccd3e2dbeffd11bc7",
-          "url": "https://github.com/l1a/retch/commit/37b53d4101d641b5411b9c5a485fbc0bac2c22bd"
-        },
-        "date": 1781235363546,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - retch",
-            "unit": "ns",
-            "value": 326617426.64000005
-          },
-          {
-            "name": "CLI execution - fastfetch",
-            "unit": "ns",
-            "value": 1019421836.0399998
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -5140,6 +5106,70 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch (full)",
             "unit": "ns",
             "value": 521595495.88
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "45cc196a781a7102604b983f41dd370af721ffcf",
+          "message": "Take CPU cores and net detail off the serial path (#274)\n\n--short on arrakis: 4.05 -> 3.39 ms (fastfetch matched: 2.71 ms), with\nidentical output. With RETCH_TIMING now also covering os, kernel,\nhost, uptime, arch and boot-time, the trace showed:\n\n- The CPU core string (\"16C / 32T\") was ~0.8 ms of serial work before\n  the concurrent scope: sysinfo's physical-core count, which reads\n  /proc/cpuinfo a second time, plus the Linux hybrid-CPU check. It is\n  now a concurrent probe, cpu-cores.\n- The hybrid check read two sysfs files per cpufreq policy, 64 reads\n  on a 32-thread CPU to conclude \"not hybrid\". Policies partition the\n  CPUs, so with one policy per CPU affected_cpus is no longer read,\n  and the scan stops at a third frequency tier. hybrid_cores_in takes\n  the cpufreq directory, so it is tested against fixture trees.\n- The interface list (net-detail) ran serially after the whole scope\n  though it needs only the net probe's answer; it now runs on that\n  probe's thread.\n\nWith a single field retch and fastfetch are level (1.4 vs 1.2 ms), so\nstartup, config and rendering are not the remaining gap; reading\n/proc/cpuinfo twice is.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-28T07:29:12-07:00",
+          "tree_id": "854c9411c2a2d511bb82858174e379b283e71f26",
+          "url": "https://github.com/l1a/retch/commit/45cc196a781a7102604b983f41dd370af721ffcf"
+        },
+        "date": 1790605791637,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 3290950.3600000003
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2589046.06
+          },
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 8129360.760000001
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 14501993.46
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 218906596.42000002
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 517766059.1199998
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 616395040.42
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 524920806.31999993
           }
         ]
       }
