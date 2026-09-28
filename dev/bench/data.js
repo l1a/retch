@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790573478835,
+  "lastUpdate": 1790573479147,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -22925,70 +22925,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "468efc7ac572afa0db33fb4f7b685e295a0275bb",
-          "message": "packaging: update AUR and COPR to 0.9.10\n\nBoth reference copies track the last RELEASED tag, so they can only be bumped\nafter v0.9.10 exists -- at which point Cargo.toml equals the last tag and\njust pr hard-fails step 2. Same precedent as 9476836, f75989c, d60658c and\nde1d73f.\n\nThe copr-check guard added in 0.9.10 caught this drift for real: with the AUR\nat 0.9.10 and the spec still at 0.9.7, just check refused until copr-bump ran.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-09-01T14:22:33-07:00",
-          "tree_id": "3044137204377d24ccfdcc8482867b0763e4617f",
-          "url": "https://github.com/l1a/retch/commit/468efc7ac572afa0db33fb4f7b685e295a0275bb"
-        },
-        "date": 1788300090133,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 176.0422765374382,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9505589338970983,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 97.43342348169921,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.3122408839542,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 57208.25446725943,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 478.3313985320575,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 732.3844130775464,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2613575410,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -26323,6 +26259,110 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 998985440,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d3c8c691864370f995e49151f7adbe36e1c4f9ff",
+          "message": "Get weather from wttr.in in one HTTPS request (#271)\n\nWeather took two requests in sequence: ipinfo.io for the caller's\nlocation, then Open-Meteo for the forecast. Both weather hosts are in\nGermany, ~180 ms per round trip from the US, so the pair cost ~850 ms\nand set --full's runtime. wttr.in locates the caller itself and serves\na compact custom format (%l|%c|%t, 47 bytes), so one request replaces\nboth: weather alone 845 -> 564 ms on arrakis. fastfetch uses the same\nservice over plain HTTP (~364 ms); HTTPS is kept deliberately, since\nthe request reveals the approximate location.\n\nThe response is parsed strictly (exactly three fields, a temperature\nin the requested unit), so an error or rate-limit page served with\nHTTP 200 is never shown as weather; an unknown location is HTTP 500\nand leaves the field out, as before.\n\nVisible changes: a location override is shown as typed (\"London\",\n\"93426\"); wttr.in's JSON only names the nearest weather station\n(London -> Walworth), and real names would need a second request.\nIP-derived locations keep \"City, State\" (US) / \"City, Country\". ZIP\ncodes, airport codes and \"~landmark\" now work.\n\nAlso fixes url_encode, which encoded Unicode code points instead of\nUTF-8 bytes (\"a with tilde\" became %E3), so no non-ASCII place name\nsuch as Sao Paulo ever reached a weather service. serde_json is no\nlonger a dependency.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T22:20:05-07:00",
+          "tree_id": "09235c99e6256610d9d2ae2c80354923e5c3c14d",
+          "url": "https://github.com/l1a/retch/commit/d3c8c691864370f995e49151f7adbe36e1c4f9ff"
+        },
+        "date": 1790573479093,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 54547262,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2405202183.9999995,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1325790470,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 37428408.00000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 46791041.99999999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 423988534.00000006,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 150682190,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 40232318,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 177.50835363459902,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.955926711855209,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 98.08481143042185,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 80.40040578377568,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 49729.579480063534,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 485.23696672686583,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 747.9753226424684,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 399508220,
             "unit": "ns"
           }
         ]
