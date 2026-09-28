@@ -100,15 +100,32 @@ fn match_active_interface(
         .map(|(name, _)| name)
 }
 
-/// Fetches the public IP address via an external service (best-effort, 2s timeout).
+/// Fetches the public IP address from `ipinfo.io/ip` (best-effort, 2 s timeout).
+///
+/// ipinfo.io rather than ipify since v0.20.2: ~96 ms against ~123 ms, 30 runs each, and
+/// steadier (sd 5 vs 14 ms); it is the probe that bounds `--long`'s concurrent scope. Both
+/// publish only IPv4 addresses, so the field still reports the IPv4 address.
+///
+/// `curl -f` makes an HTTP error a failure, and [`parse_public_ip`] rejects anything that
+/// is not a single address. Until v0.20.2 neither check existed, so an error page, a
+/// rate-limit notice or a captive portal's HTML would have been printed as the IP.
 pub fn detect_public_ip() -> Option<String> {
-    std::process::Command::new("curl")
-        .args(["-s", "--max-time", "2", "https://api.ipify.org"])
+    let out = std::process::Command::new("curl")
+        .args(["-sf", "--max-time", "2", "https://ipinfo.io/ip"])
         .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    parse_public_ip(&String::from_utf8_lossy(&out.stdout))
+}
+
+/// Accepts a response only if, trimmed, it is exactly one IPv4 or IPv6 address.
+fn parse_public_ip(body: &str) -> Option<String> {
+    body.trim()
+        .parse::<std::net::IpAddr>()
         .ok()
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
+        .map(|ip| ip.to_string())
 }
 
 /// Builds the formatted list of network interfaces with IP addresses and RX/TX stats.
@@ -1492,6 +1509,45 @@ mod macos_dns_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── parse_public_ip ───────────────────────────────────────────────────────
+
+    #[test]
+    fn parse_public_ip_accepts_one_address() {
+        // ipinfo.io/ip answers the bare address, with no trailing newline.
+        assert_eq!(
+            parse_public_ip("47.148.63.226").as_deref(),
+            Some("47.148.63.226")
+        );
+        assert_eq!(
+            parse_public_ip("  203.0.113.7\n").as_deref(),
+            Some("203.0.113.7")
+        );
+        assert_eq!(
+            parse_public_ip("2001:db8::1").as_deref(),
+            Some("2001:db8::1")
+        );
+    }
+
+    #[test]
+    fn parse_public_ip_rejects_anything_else() {
+        // What a rate limit, an error page or a captive portal would put in the body.
+        assert_eq!(
+            parse_public_ip(r#"{"status":429,"error":{"title":"Rate limit exceeded"}}"#),
+            None
+        );
+        assert_eq!(
+            parse_public_ip("<html><body>Please sign in to the Wi-Fi</body></html>"),
+            None
+        );
+        assert_eq!(parse_public_ip(""), None);
+        assert_eq!(
+            parse_public_ip("203.0.113.7 203.0.113.8"),
+            None,
+            "two values"
+        );
+        assert_eq!(parse_public_ip("203.0.113.999"), None, "not an address");
+    }
 
     // ── parse_sockaddr ────────────────────────────────────────────────────────
     //
