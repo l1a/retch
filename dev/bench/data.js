@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790571983995,
+  "lastUpdate": 1790571985075,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -22735,70 +22735,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "8fed7c2a0957a824e4ef1e3e9a8b6ade917895af",
-          "message": "Guard the COPR spec against drift (#213)\n\npackaging/copr/retch.spec's Version: tracks the last released tag and is\nbumped by hand at release time, with nothing checking the result. That is\nthe construct, and the missing guard, that let packaging/aur/PKGBUILD sit\neleven releases stale while CI stayed green. v0.7.1 fixed that for the AUR\nafter the drift; this does it for COPR before.\n\nscripts/copr_check.py (offline, wired into just check) asserts five things:\nVersion: equals the PKGBUILD's pkgver, Version: is not ahead of Cargo.toml,\nthe newest %changelog entry matches Version-Release, Source0 still uses\n%{version}, and cargo build still passes --locked. All five were watched\nfailing against the real files, including the negative case that matters\nmost: a Version: trailing Cargo.toml must stay silent.\n\nThe copr CI job builds the SRPM twice - plain, and under mock's environment.\nThe second run is the v0.9.9 regression test, and reproducing it correctly\ntook two attempts: forcing %_topdir alone does NOT fail on the pre-fix\nMakefile, because rpmdev-setuptree builds its tree wherever _topdir points.\nHOME=/builddir is the other half, in a fresh container. Verified against the\npre-fix Makefile from a606bbe, which dies with the exact production message.\n\nAlso adds .copr/** to packaging.yml's pull_request filter. copr.yml watched\nit only on push to main, so a PR touching only .copr/Makefile was verified\nby nothing - which is how the v0.9.9 bug reached main.\n\nCorrects NOTES section 3's .cargo/config.toml claim: no such file exists or\nis tracked, only .cargo/audit.toml.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-09-01T13:17:46-07:00",
-          "tree_id": "fdb6783d108e157db1d7f917ad16b4f253b7bb55",
-          "url": "https://github.com/l1a/retch/commit/8fed7c2a0957a824e4ef1e3e9a8b6ade917895af"
-        },
-        "date": 1788296329566,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 175.53357599036073,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9491147017561987,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 97.10334562444024,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.30446236766204,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 46876.12929385326,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 481.15270914650927,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 721.430523192352,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 3278962580,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "634380+l1a@users.noreply.github.com",
             "name": "Ken Tobias",
             "username": "l1a"
@@ -26093,6 +26029,110 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1201478665,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "592cac4dac5b04a47d10a1cef3bb1d3906fcfa4c",
+          "message": "Overlap the cpu-usage wait with the probes (#270)\n\nOn Linux and macOS the CPU-usage delta needs two samples at least\nMINIMUM_CPU_UPDATE_INTERVAL (200 ms) apart. The first is taken at\nsys-init, before the concurrent scope, yet the code slept a further\nfixed 200 ms after it. RETCH_TIMING showed the scope alone already\ntook 237 ms, so that sleep was pure serial waste. Now only the part of\nthe interval not already spent is waited out: usually 0-18 ms.\n--long 404 -> 218 ms on arrakis (fastfetch matched: 512 ms); --full\n1111 -> 919 ms.\n\nThat moved the sampling window onto retch's own probes, so their CPU\ntime read as system load (+1.3 points on 32 threads; ~+13 on 4 cores\nby arithmetic). retch now subtracts its own CPU time (getrusage SELF\nand CHILDREN) over the window. Against /proc/stat sampled with retch\nnot running (15 interleaved runs, medians): outside 1.01%, new build\n1.20%, old build 2.10%, so the old figure was already ~1 point high.\n\nWindows is unchanged and still carries that bias; NOTES §5 tracks it.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T21:53:51-07:00",
+          "tree_id": "4ae4819ae8543cb93b11b6867f100c8cd1a843f4",
+          "url": "https://github.com/l1a/retch/commit/592cac4dac5b04a47d10a1cef3bb1d3906fcfa4c"
+        },
+        "date": 1790571984942,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 54219730,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2405927975.9999995,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1336607742,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 38823722.00000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 46551150,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 1424267316,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 149623612.00000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 39719612.00000001,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 180.93604752858144,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9484973350725245,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 99.81172153103935,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 79.58648064146173,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 50828.70324594374,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 481.3543811568379,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 732.1950021237246,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 998985440,
             "unit": "ns"
           }
         ]
