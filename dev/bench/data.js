@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790623810004,
+  "lastUpdate": 1790623810369,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -11494,90 +11494,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "ade8b05d02ecbc8e19755a7d7caf4503523edc9a",
-          "message": "Add Windows disk-io and net-io throughput (#223)\n\nBoth fields shipped Linux-only in v0.10.0 and returned nothing on Windows.\nThey now read native counters there: IOCTL_DISK_PERFORMANCE per\n\\.\\PhysicalDriveN, and GetIfTable2 per interface. No subprocess, and no\nelevation - both were confirmed to answer from an unelevated shell, on a\nzero-access handle, before the code was designed around them.\n\nNothing outside the two sample_* functions changed. The rate maths, the\n100 ms floor, the sampling window in fetch.rs, fields.rs and display.rs\nwere already platform-independent, so this is an arm, not a redesign.\n\nThe finding: GetIfTable2 returns one row per NDIS lightweight filter bound\nto an adapter, each repeating that adapter's counters. Wi-Fi appeared five\ntimes here, every row reading in=219996461 out=32914969. Reporting them all\nstates the machine's throughput five times - the Windows form of the\npartition double-counting the Linux arm already excludes. The rule is to\nexclude FilterInterface rows, NOT to keep HardwareInterface ones: the wt0\nWireGuard tunnel is neither, and carries real traffic, so the obvious\nfilter drops exactly the interface class the Linux side reports.\n\nGetIfTable2 rather than GetIfTable, whose MIB_IFROW counters are 32-bit and\nwrap every 4 GB; this adapter had already moved 216 GB.\n\nCross-checked against independent oracles under time-bounded load, since\nagreement on an idle machine proves nothing: disk against Get-Counter\n(229.5/236.3/199.9 vs 221.7/191.0/215.7 MB/s), net against\nGet-NetAdapterStatistics (68.1/66.3 vs 57.3/53.8 MB/s), both 0 B/s idle.\nPerf A/B against a binary built from main moves in both directions across\nrepeats, i.e. inside the noise.\n\nThe drive-scan range is now shared with phys-disk so the two cannot drift\ninto disagreeing about which disks exist.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-09-08T21:11:18-07:00",
-          "tree_id": "03ac4514727051efabf6fd5801fd68948b70b4d0",
-          "url": "https://github.com/l1a/retch/commit/ade8b05d02ecbc8e19755a7d7caf4503523edc9a"
-        },
-        "date": 1788927956961,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 521535047.575,
-            "unit": "ns"
-          },
-          {
-            "name": "audio__parse_asound_cards",
-            "value": 970.5565522478133,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 111.93743719093595,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.946798297759273,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 57.916983140474656,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_xrandr_displays",
-            "value": 7863.337350042864,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 70785.04711749205,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_freq_range",
-            "value": 4843.483747345741,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 4906.733555939933,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 1068975.7476953645,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 344.44197493640246,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_proc_net_route",
-            "value": 263.31913309653044,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "9ce47daffaf03f7caa0f45dfe3cbe6c1fa0bfadf",
           "message": "Fix three Net field defects from string matching (#224)\n\ndetect_networks returned pre-formatted, ANSI-colourised strings, so\ndisplay.rs recovered semantics from presentation by substring-matching\nthem. All three defects below are that one pattern.\n\n1. The active interface was matched with line.contains(active), against\n   the whole rendered line. \"Wi-Fi\" also matches the Windows pseudo-\n   interface \"Wi-Fi-Native WiFi Filter Driver-0000\", so both printed as\n   the active interface, both bright blue. This half is cross-platform:\n   on Linux \"eth0\" matches an \"eth0.100\" VLAN and any \"veth0...\" pair.\n\n2. Windows listed NDIS lightweight-filter instances as interfaces, each\n   carrying a copy of its adapter's counters - the duplicate Net line\n   with identical RX/TX. Excluded now on the same FilterInterface rule\n   net-io already used.\n\n3. The standard-mode fallback was dead code. It tested the line for a\n   literal \"[Up]\", but the status is colourised before the line is\n   built, so the bytes are [ ESC[32m Up ESC[39m ] and \"[Up]\" never\n   appears: measured 0 occurrences raw, 2 after stripping ANSI. With no\n   resolvable active interface, standard mode printed no Net line at all.\n\nFixed structurally rather than patched: detect_networks returns\nNetworkInterface { name, is_up, line }, so identity and status are facts\ninstead of inferences, and display.rs compares names exactly. Two pure\nhelpers carry the logic and are unit-tested without a terminal.\n\nGetIfTable2 moves into a shared win_iftable module used by both io.rs and\nnetwork.rs, so the 1352-byte MIB_IF_ROW2 and its layout guards exist once\nrather than twice - the win_setupapi precedent. Gated on test as well as\nwindows, so the classification rule runs on the Linux and macOS CI legs.\n\nAll three watched failing against the code that shipped. A fixture defect\nwas caught on the way: the first test helper wrote a plain \"[Up]\" into\nits line, which would have let the broken predicate pass.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-09-08T21:43:31-07:00",
@@ -16127,6 +16043,130 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 271.2652771828342,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e30d175cc012c9fb948fe2227a6ee8ac605b626d",
+          "message": "Make the audio probe cheap on Linux (#277)\n\naudio was the default mode's slowest probe, 5-22 ms on arrakis. Measured\nseparately, two costs:\n\n- Finding the sound server read /proc/<pid>/comm for ~430 of ~700\n  processes before reaching PipeWire. It now checks the session's\n  sockets first ($XDG_RUNTIME_DIR/pipewire-0, then pulse/native, as\n  real sockets), ~2 us. With neither, e.g. under sudo, it scans every\n  process as before.\n- Reading /proc/asound/card*/codec#* queries the codec hardware (~1.7\n  ms, spikes to ~17 ms). The kernel prints its Codec: line from the\n  same vendor_name/chip_name the HDA bus exposes in sysfs, so names now\n  come from /sys/bus/hdaudio/devices/*. When the bus has no codecs, the\n  old codec-file path runs unchanged.\n\nOn arrakis, same sitting: audio alone 5.75 -> 1.39 ms (the startup\nfloor), default mode 6.08 -> 3.47 ms against fastfetch's 14.0 ms. On\ncorrino's SOF DSP (Intel Raptor Lake) the codec files cost far more:\nthe audio probe went 114-120 ms -> 0.12-0.20 ms. Output is identical on\nboth, including without XDG_RUNTIME_DIR.\n\nNOTES also records why a local build SIGILLs on other fleet machines\n(~/.cargo/config.toml sets target-cpu=native) and how to build one that\ncan be copied.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-28T12:19:17-07:00",
+          "tree_id": "85a6ac7b312e00e6eda59d270ebe34f78e6cd211",
+          "url": "https://github.com/l1a/retch/commit/e30d175cc012c9fb948fe2227a6ee8ac605b626d"
+        },
+        "date": 1790623810312,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2223629.4200000004,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 254852109.14000002,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252471816.10000002,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1424062.2199999997,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3079030.7200000007,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 369246528.84,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205459091.00000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2056573.5199999996,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 460857118.5,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 989.6653384007371,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 109.69913834277777,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946755861636708,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 55.97352707986221,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7778.490756260884,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70781.38579617415,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4737.064840370339,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 3399.51078107042,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 57173.5431485946,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 344.87372760885023,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 265.87112021077957,
             "unit": "ns"
           }
         ]
