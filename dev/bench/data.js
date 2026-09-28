@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790571983448,
+  "lastUpdate": 1790571983724,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15411,80 +15411,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "468efc7ac572afa0db33fb4f7b685e295a0275bb",
-          "message": "packaging: update AUR and COPR to 0.9.10\n\nBoth reference copies track the last RELEASED tag, so they can only be bumped\nafter v0.9.10 exists -- at which point Cargo.toml equals the last tag and\njust pr hard-fails step 2. Same precedent as 9476836, f75989c, d60658c and\nde1d73f.\n\nThe copr-check guard added in 0.9.10 caught this drift for real: with the AUR\nat 0.9.10 and the spec still at 0.9.7, just check refused until copr-bump ran.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-09-01T14:22:33-07:00",
-          "tree_id": "3044137204377d24ccfdcc8482867b0763e4617f",
-          "url": "https://github.com/l1a/retch/commit/468efc7ac572afa0db33fb4f7b685e295a0275bb"
-        },
-        "date": 1788298908581,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "SystemInfo__collect",
-            "value": 1018414881.35,
-            "unit": "ns"
-          },
-          {
-            "name": "camera__parse_macos_camera",
-            "value": 458.25658925442815,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 125.89967643684831,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.21662387405853,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 74.68167470239963,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__detect_cpu_cache",
-            "value": 4709.9308501062305,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 1122.1713962617985,
-            "unit": "ns"
-          },
-          {
-            "name": "gamepad__parse_macos_gamepad",
-            "value": 429.3321936068839,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 78755.05922320767,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 386.55717296178057,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -19269,6 +19195,120 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 421.6202582200116,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "592cac4dac5b04a47d10a1cef3bb1d3906fcfa4c",
+          "message": "Overlap the cpu-usage wait with the probes (#270)\n\nOn Linux and macOS the CPU-usage delta needs two samples at least\nMINIMUM_CPU_UPDATE_INTERVAL (200 ms) apart. The first is taken at\nsys-init, before the concurrent scope, yet the code slept a further\nfixed 200 ms after it. RETCH_TIMING showed the scope alone already\ntook 237 ms, so that sleep was pure serial waste. Now only the part of\nthe interval not already spent is waited out: usually 0-18 ms.\n--long 404 -> 218 ms on arrakis (fastfetch matched: 512 ms); --full\n1111 -> 919 ms.\n\nThat moved the sampling window onto retch's own probes, so their CPU\ntime read as system load (+1.3 points on 32 threads; ~+13 on 4 cores\nby arithmetic). retch now subtracts its own CPU time (getrusage SELF\nand CHILDREN) over the window. Against /proc/stat sampled with retch\nnot running (15 interleaved runs, medians): outside 1.01%, new build\n1.20%, old build 2.10%, so the old figure was already ~1 point high.\n\nWindows is unchanged and still carries that bias; NOTES §5 tracks it.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T21:53:51-07:00",
+          "tree_id": "4ae4819ae8543cb93b11b6867f100c8cd1a843f4",
+          "url": "https://github.com/l1a/retch/commit/592cac4dac5b04a47d10a1cef3bb1d3906fcfa4c"
+        },
+        "date": 1790571983680,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 350124362.6,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1072673363.34,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 995566080.8600001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 20340061.700000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 503083487.5000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 771191121.84,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 578375356.16,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 27227020.2,
+            "unit": "ns"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 736137933.35,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 482.5353981292611,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 139.06417320590842,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.303868442010145,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 82.14526641862722,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5195.881935777308,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1493.0753515806484,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 422.31421745598755,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 118149.62093081095,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 399.75416838365106,
             "unit": "ns"
           }
         ]
