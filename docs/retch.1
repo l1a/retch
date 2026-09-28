@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.19.0" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.19.1" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -394,6 +394,16 @@ Available only as the logged\-in user:
 .RE
 .PP
 All other fields are identical either way\.
+
+.SH "ENVIRONMENT"
+\fBNO_COLOR\fP
+.RS
+When set to a non\-empty value, `\f[CR]\-\-color auto\fP` produces no colour\. See \fBCOLOR\fP\.
+.RE
+\fBRETCH_TIMING\fP
+.RS
+When set to a non\-empty value other than `\f[CR]0\fP`, print one line per probe to standard error: the probe's name, when it started (milliseconds from the start of collection) and how long it took\. Standard output is unchanged\. Meant for finding where a slow run spends its time: fields are collected concurrently, so the start offsets show which probes overlapped and which ran one after another\. Example: `\f[CR]RETCH_TIMING=1 retch \-\-long >/dev/null\fP`\.
+.RE
 
 .SH "EXIT STATUS"
 .PP

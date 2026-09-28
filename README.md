@@ -246,6 +246,12 @@ Show help:
 retch --help
 ```
 
+See where a slow run spends its time (one line per probe on stderr: start offset and duration):
+
+```sh
+RETCH_TIMING=1 retch --long >/dev/null
+```
+
 ### Running under `sudo`
 
 `sudo retch` is not simply "retch with more fields" — it trades one set for another, because
