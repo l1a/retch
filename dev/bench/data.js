@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790571983724,
+  "lastUpdate": 1790571983995,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19323,70 +19323,6 @@ window.BENCHMARK_DATA = {
             "username": "l1a"
           },
           "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "468efc7ac572afa0db33fb4f7b685e295a0275bb",
-          "message": "packaging: update AUR and COPR to 0.9.10\n\nBoth reference copies track the last RELEASED tag, so they can only be bumped\nafter v0.9.10 exists -- at which point Cargo.toml equals the last tag and\njust pr hard-fails step 2. Same precedent as 9476836, f75989c, d60658c and\nde1d73f.\n\nThe copr-check guard added in 0.9.10 caught this drift for real: with the AUR\nat 0.9.10 and the spec still at 0.9.7, just check refused until copr-bump ran.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-09-01T14:22:33-07:00",
-          "tree_id": "3044137204377d24ccfdcc8482867b0763e4617f",
-          "url": "https://github.com/l1a/retch/commit/468efc7ac572afa0db33fb4f7b685e295a0275bb"
-        },
-        "date": 1788299520017,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 222.78824743291594,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.444821085548693,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 121.73516887024854,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 99.5762757003817,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 42440.755944865654,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 572.8890137521249,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 819.2960793403015,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2172279180,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
             "email": "noreply@github.com",
             "name": "GitHub",
             "username": "web-flow"
@@ -22681,6 +22617,110 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 236298000,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "592cac4dac5b04a47d10a1cef3bb1d3906fcfa4c",
+          "message": "Overlap the cpu-usage wait with the probes (#270)\n\nOn Linux and macOS the CPU-usage delta needs two samples at least\nMINIMUM_CPU_UPDATE_INTERVAL (200 ms) apart. The first is taken at\nsys-init, before the concurrent scope, yet the code slept a further\nfixed 200 ms after it. RETCH_TIMING showed the scope alone already\ntook 237 ms, so that sleep was pure serial waste. Now only the part of\nthe interval not already spent is waited out: usually 0-18 ms.\n--long 404 -> 218 ms on arrakis (fastfetch matched: 512 ms); --full\n1111 -> 919 ms.\n\nThat moved the sampling window onto retch's own probes, so their CPU\ntime read as system load (+1.3 points on 32 threads; ~+13 on 4 cores\nby arithmetic). retch now subtracts its own CPU time (getrusage SELF\nand CHILDREN) over the window. Against /proc/stat sampled with retch\nnot running (15 interleaved runs, medians): outside 1.01%, new build\n1.20%, old build 2.10%, so the old figure was already ~1 point high.\n\nWindows is unchanged and still carries that bias; NOTES §5 tracks it.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T21:53:51-07:00",
+          "tree_id": "4ae4819ae8543cb93b11b6867f100c8cd1a843f4",
+          "url": "https://github.com/l1a/retch/commit/592cac4dac5b04a47d10a1cef3bb1d3906fcfa4c"
+        },
+        "date": 1790571983955,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 36284154,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2350027438,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1306666212,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 28743300,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 37458484,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 543609528.0000001,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 139822542,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 31406369.999999996,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 230.87865237823615,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.370389678714029,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 130.22722143650552,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 95.89681436957845,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 44161.236128328055,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 597.0295002025526,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 813.7139501763615,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 1784389340,
             "unit": "ns"
           }
         ]
