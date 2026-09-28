@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.18.5" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.19.0" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -95,7 +95,7 @@ Short output mode\. Equivalent to `\f[CR]\-\-mode short\fP`\. Shows: OS, Kernel,
 .RE
 \fB\-l, \-\-long\fP
 .RS
-Long output mode\. Shows diagnostics fields \-\- firmware, thermals (consolidated: one reading per physical unit), shell, desktop, network, Bluetooth, battery, packages, and more\. Does not include cosmetic or slow\-running fields (use `\f[CR]\-\-full\fP` for those)\.
+Long output mode\. Shows diagnostics fields \-\- CPU usage, firmware, thermals (consolidated: one reading per physical unit), shell, desktop, network, Bluetooth, battery, packages, and more\. Does not include cosmetic or slow\-running fields (use `\f[CR]\-\-full\fP` for those)\.
 .RE
 \fB\-f, \-\-full\fP
 .RS
@@ -168,7 +168,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]cpu\-cache\fP`: CPU L1/L2/L3 cache sizes\.
 .IP \(bu 4
-`\f[CR]cpu\-usage\fP`: Current CPU utilization percentage\.
+`\f[CR]cpu\-usage\fP`: Current CPU utilization percentage\. Long mode and above: on Linux and macOS a usage figure needs two samples at least 200 ms apart, which would dominate the default mode's runtime (Windows measures across the run instead)\. To show it without `\f[CR]\-\-long\fP`, name it in the config's `\f[CR]fields\fP` list or in `\f[CR]\-\-fields\fP`\.
 .IP \(bu 4
 `\f[CR]gpu\fP`: GPU model(s) and VRAM\.
 .IP \(bu 4

@@ -19,6 +19,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from bench_labels import labelled_means  # noqa: E402
+import cli_bench  # noqa: E402
 
 
 REPO = "l1a/retch"
@@ -103,54 +104,29 @@ def build_release():
 
 
 def run_hyperfine(warmup, runs):
+    """Run the shared CLI pairs (scripts/cli_bench.py) and return dashboard entries.
+
+    The pairs used to be written out here as a private copy, and it had drifted in meaning:
+    plain `fastfetch` loaded the developer's OWN fastfetch config, so this suite's fastfetch
+    series measured that config (on arrakis ~75 modules, 529 ms) rather than the fields retch
+    shows. cli_bench.py runs fastfetch with the generated per-mode configs instead.
+    """
     has_fastfetch = shutil.which("fastfetch") is not None
     if not has_fastfetch:
         print("fastfetch not found on PATH — skipping comparison, benchmarking retch only.")
 
-    system = platform.system()
-    if system == "Windows":
-        retch_cmd = r".\target\release\retch.exe"
-    else:
-        retch_cmd = "./target/release/retch"
-    # Define pairs to run sequentially: (retch, fastfetch)
-    pairs = [
-        (retch_cmd, "fastfetch"),
-        (f"{retch_cmd} --short", "fastfetch -c none"),
-        (f"{retch_cmd} --long", "fastfetch -c all")
-    ]
-
     results = []
-    for r_cmd, ff_cmd in pairs:
-        cmds = [r_cmd]
-        if has_fastfetch and ff_cmd:
-            cmds.append(ff_cmd)
-
-        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
-            tmp_path = f.name
-
-        try:
-            print(f"\nComparing: {' vs '.join(cmds)}", flush=True)
-            run([
-                "hyperfine",
-                "--warmup", str(warmup),
-                "--runs", str(runs),
-                "--export-json", tmp_path,
-            ] + cmds)
-
-            with open(tmp_path, encoding="utf-8") as f:
+    with tempfile.TemporaryDirectory() as tmp:
+        for path in cli_bench.run(warmup, runs, tmp, with_fastfetch=has_fastfetch):
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
-            
             # Label mapping is shared with scripts/parse_criterion.py via bench_labels --
-            # the two used to carry byte-identical private copies, and a dashboard series is
-            # keyed by its label, so a drift between them would silently fork a series.
-            # The key ORDER here (name, unit, value) is deliberate and must not change: this
-            # script writes data.js itself, and the existing local suites store it that way.
+            # a dashboard series is keyed by its label, so a drift between them would
+            # silently fork a series. The key ORDER here (name, unit, value) is deliberate and
+            # must not change: this script writes data.js itself, and the existing local
+            # suites store it that way.
             for label, val_ns in labelled_means(data):
                 results.append({"name": label, "unit": "ns", "value": val_ns})
-        finally:
-            if os.path.exists(tmp_path):
-                os.unlink(tmp_path)
-
     return results
 
 

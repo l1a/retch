@@ -204,7 +204,7 @@ Output modes:
 ```sh
 retch --short   # hardware snapshot: host, OS, kernel, CPU, GPU, memory, disk, network
 retch           # standard: daily-use system overview
-retch --long    # diagnostics: firmware, thermals, shell, network, battery, …
+retch --long    # diagnostics: CPU usage, firmware, thermals, shell, network, battery, …
 retch --full    # everything: theme, gamepad, weather, FUSE mounts, all sensors
 ```
 
