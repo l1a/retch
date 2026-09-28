@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790566282985,
+  "lastUpdate": 1790566283318,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -22326,70 +22326,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "a606bbe53ac5ed3fac05a92ffa1addfde21970fc",
-          "message": "Rebuild COPR from the packaging commit, not the release (#211)\n\n* Rebuild COPR from the packaging commit, not the release\n\nAdds .github/workflows/copr.yml and .copr/Makefile.\n\n\"Rebuild COPR on a GitHub release\" is the obvious trigger and the wrong\none. The spec pins Version: and a Source0 checksum to the last RELEASED\ntag, so it can only be bumped after the tag exists: at tag-push and at\nrelease-publish time the spec still names the previous version, and only\nthe packaging commit that follows makes it current. A release-triggered\nrebuild therefore rebuilds what COPR already has. The workflow keys on a\npush to main filtered to packaging/copr/**.\n\n.copr/** is in the filter too: the Makefile there generates the SRPM, so a\nchange to it alters the build without touching the spec -- the same hole\nv0.9.6 closed by adding Justfile to packaging.yml's filter.\n\nUses COPR's make_srpm method rather than rpkg, because Source0 is a remote\ntag tarball and make_srpm makes the fetch explicit. Verified by running\nwhat COPR runs: make -f .copr/Makefile srpm outdir=... in fedora:latest\nproduced retch-0.9.7-1.fc44.src.rpm.\n\nAssisted-By: Claude Opus 5\n\n* Flag the release/publish sequencing for a rework\n\nNOTES.md section 5 backlog item, recorded at the user's request after the\nv0.9.7 release. The goal stated: tagging a GitHub release should make\neverything else happen.\n\nThe root cause is structural rather than missing automation -- two\npackaging targets pin a sha256 of an artifact that does not exist until\nthe tag is pushed, which forces every post-tag step, which forces the\npackaging bumps direct to main because just pr hard-fails once Cargo.toml\nequals the last tag. Three options are weighed in the entry.\n\nExplicitly notes that this should NOT be started by adding more automation\nto the current shape: each trigger is correct given the pinning. Changing\nthe pinning is the work.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-31T18:31:46-07:00",
-          "tree_id": "7c2cb480fad57dc408853a9cb08fa96cb04217bc",
-          "url": "https://github.com/l1a/retch/commit/a606bbe53ac5ed3fac05a92ffa1addfde21970fc"
-        },
-        "date": 1788228742667,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 175.93640347805214,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9486762990560336,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 96.94950353319553,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 81.36475381319204,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 47142.56162666178,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 481.3752473658402,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 719.8038919416632,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2127065530,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "7fc56ef6232dd6bec8ff5e4b6126b8ed5893dd93",
           "message": "Fix the COPR SRPM step: mock moves %{_topdir} (#212)\n\n.copr/Makefile ran rpmdev-setuptree and copied the spec into\n$(HOME)/rpmbuild/SPECS. rpmdev-setuptree builds its tree at rpm's\n%{_topdir}, and mock redefines that to /builddir/build -- so on COPR the\ndirectory never existed and build 10927005 died in 60 seconds with\n\"cp: cannot create regular file '/builddir/rpmbuild/SPECS/'\".\n\nv0.9.8 claimed the Makefile was verified by running exactly what COPR\nruns. It was not: it ran in a plain fedora container, where %{_topdir}\nkeeps its default. COPR runs it inside mock. The claim was true of the\ncommand and false of the environment.\n\nFixed by removing the dependency rather than chasing the path: no\nrpmdev-setuptree, no %{_topdir}, no $(HOME) -- _sourcedir and _srcrpmdir\nare passed explicitly with --define. Tested twice, once normally and once\nwith %_topdir forced to /builddir/build as mock sets it.\n\nAlso corrects the edit-package-scm flags in NOTES: --method, not --type,\nand no --subdir.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-08-31T21:23:37-07:00",
@@ -25599,6 +25535,110 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 1003045985,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "58a66026936bd99d4e61cf153d817794cbece137",
+          "message": "Match fastfetch benchmarks; move cpu-usage to long (#268)\n\nThe retch-vs-fastfetch comparison measured different workloads. Plain\n`fastfetch` loads the user's config and `-c none` loads none, so on CI\nboth ran fastfetch's built-in 20-module default, and locally the\ndeveloper's ~75-module config. Every \"retch is faster\" came from that.\n\nEach mode is now matched field for field: `retch [--<mode>]` against\n`fastfetch -c benches/fastfetch/<mode>.jsonc`, generated from\nsrc/fields.rs by scripts/fastfetch_configs.py, with fastfetch's network\ntimeouts set to retch's. The pairs live once, in scripts/cli_bench.py,\nshared by CI, `just bench-compare` and `just bench-upload`. CI installs\nthe same newest fastfetch release on every runner.\n\ncpu-usage moves from the default mode to --long. Its fixed 200 ms\nsampling sleep on Linux/macOS was ~80% of the default mode's runtime\n(271 -> 35 ms on arrakis).\n\nDashboard: `retch --full` is new, and the fastfetch series are now\n`fastfetch (short|default|long|full)`; the old ones stop rather than\nsplice two workloads into one line. bench-check guards the configs\nagainst drift from src/fields.rs.\n\nMatched numbers still show retch slower in every mode; NOTES.md §5\ntracks it as blocking.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T20:21:07-07:00",
+          "tree_id": "6dba41ec633bb9db8f95634ecf59a01408d6d2c8",
+          "url": "https://github.com/l1a/retch/commit/58a66026936bd99d4e61cf153d817794cbece137"
+        },
+        "date": 1790566283266,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 55961171.99999999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2398920657.9999995,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1328180516.0000002,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 29573547.999999996,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 40448701.99999999,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 399104728.00000006,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 170307745.99999997,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 33710488,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 180.74515016668005,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.965204623381505,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 100.6247878094382,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 78.16871224308645,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46094.95466979526,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 479.08407945620763,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 717.5689138478051,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 359043980,
             "unit": "ns"
           }
         ]
