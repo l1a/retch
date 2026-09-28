@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.19.1" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.19.2" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -168,7 +168,7 @@ retch \-\-generate\-config > ~/\.config/retch/config\.toml
 .IP \(bu 4
 `\f[CR]cpu\-cache\fP`: CPU L1/L2/L3 cache sizes\.
 .IP \(bu 4
-`\f[CR]cpu\-usage\fP`: Current CPU utilization percentage\. Long mode and above: on Linux and macOS a usage figure needs two samples at least 200 ms apart, which would dominate the default mode's runtime (Windows measures across the run instead)\. To show it without `\f[CR]\-\-long\fP`, name it in the config's `\f[CR]fields\fP` list or in `\f[CR]\-\-fields\fP`\.
+`\f[CR]cpu\-usage\fP`: Current CPU utilization percentage\. Long mode and above: on Linux and macOS a usage figure needs two samples at least 200 ms apart, which would dominate the default mode's runtime (Windows measures across the run instead)\. The two samples bracket retch's own probes, so retch's own CPU time (and that of the helper processes it runs) is subtracted: the figure describes the rest of the system, not retch\. To show it without `\f[CR]\-\-long\fP`, name it in the config's `\f[CR]fields\fP` list or in `\f[CR]\-\-fields\fP`\.
 .IP \(bu 4
 `\f[CR]gpu\fP`: GPU model(s) and VRAM\.
 .IP \(bu 4
