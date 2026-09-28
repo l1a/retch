@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790606327299,
+  "lastUpdate": 1790606327645,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -23500,70 +23500,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "32c2bb0543a0daf67af877903bf893fea1627c09",
-          "message": "deps: bump owo-colors and action-gh-release (#218)\n\nConsolidates Dependabot #216 and #217 onto a gated branch so the release\nhygiene they bypass -- version bump, NOTES entry, man regen -- is done.\n\nowo-colors 4.3.0 -> 4.4.0 is lockfile-only: the spec is \"4.0\" and a caret\nrange already admits 4.4, so unlike v0.9.5's icy_sixel there is nothing to\nwiden. The whole release is an MSRV raise, 1.81 -> 1.83, which makes &mut in\nconst fn unconditional -- so the crate deletes its build.rs (58 lines of\nrustc-version sniffing for a const_mut_refs cfg) and Style's private bit-flag\nsetters become &mut self in place. No public API change, and retch never\nconstructs a Style. Nothing here declares rust-version, there is no\nrust-toolchain.toml, CI is @stable, and both packaging targets require\nunversioned cargo/rust, so the floor binds nothing -- checked rather than\nassumed, because a lockfile-only bump reads as consequence-free.\n\nsrc/theme.rs hardcodes ANSI sequences that must equal what owo-colors emits,\nso a bump of the crate that produces them is what breaks them silently. A\nprobe over the whole production surface (.color(Rgb), .green(), .red(),\n.bright_blue(); five call sites is all of it) emitted byte-identical output\nunder both versions, with each probe's own Cargo.lock read back to confirm it\nreally resolved that version -- without which the check passes by testing one\nversion twice.\n\nACTIVE_IFACE_PREFIX and FG_RESET claimed that coupling in a doc comment with\nno test behind it; rgb_prefix had one, those two did not. Two tests now pin\nthem, both watched failing against a mutated constant (94->96, 39->0) before\nbeing kept. The FG_RESET one covers the basic-ANSI forms, since the nested\nspans in practice are .green()/.red() from crates/sysinfo/src/network.rs.\n\naction-gh-release 3.0.2 -> 3.0.3: v3.0.3 is an annotated tag, so the ref\nresolves to a tag object; dereferenced it gives efb35369, which is what the\npin says -- verified against the tag, not trusted from the PR title. Of 16\ncommits, 13 are npm bumps; the one functional change is src/github.ts\n\"safely classify GitHub API errors\". The YAML was parsed and compared rather\nthan eyeballed: exactly one semantic diff, .jobs.release.steps[4].uses. The\nrelease job runs only on a v* tag, so no CI run on this PR exercises it.\n\nretch-cli -> 0.9.13. Patch bump.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-09-02T10:49:29-07:00",
-          "tree_id": "579c1d63d7ed00137b9b8623b88e357f159ede38",
-          "url": "https://github.com/l1a/retch/commit/32c2bb0543a0daf67af877903bf893fea1627c09"
-        },
-        "date": 1788373815222,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 177.54999455022516,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 2.9480038412143914,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 97.17931157469445,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 82.5590461754048,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 45964.35960133742,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 489.971422773447,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 767.2903079001424,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2508723955,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "58c0d3b14acd2f18daf565c23e3a729d01d24e92",
           "message": "Add disk-io and net-io throughput fields (#219)\n\nCloses two of the three remaining NOTES §6 fastfetch gaps. Both are\n--long and above, Linux only, in the v0.5.0 shape: pure helpers in a new\ncrates/sysinfo/src/io.rs under thin /proc and sysfs readers.\n\nThe design problem is the interval, not the counters. The kernel exposes\nonly cumulative bytes, so a rate needs two samples and a known window.\nfastfetch sleeps ~1 s for it -- measured, not assumed: `fastfetch -s\nNetIO` takes 1.00 s against 0.00 s for a counter-only module. That would\nput --long (~500 ms) behind fastfetch, which NOTES §3 treats as blocking.\nSo this uses the v0.3.49 cpu-usage pattern instead: sample before the\nconcurrent probe scope, diff after it, making the run's own collection\nwindow the sampling window. The second sample is taken after the\ncpu_usage block so the 200 ms sleep that block already performs on Unix\nwidens the window rather than being paid for twice.\n\nMeasured with a control run, which is what makes it evidence: --long is\n521.1 +- 40.3 ms here against 513.4 +- 33.2 ms on main, while main\nbenchmarked against itself read 533.4 +- 69.6 ms -- the branch/main gap\nis smaller than main's spread against itself. Standard mode at 40 runs:\n382.3 +- 9.7 vs 381.2 +- 10.9. Against fastfetch: retch --long 526 ms vs\n`fastfetch -c all` 1.097 s, now reporting the same two fields. An\nisolated `--fields disk-io` hits the ~100 ms floor at 0.10 s, the only\ncase where either field costs anything.\n\nDISKSTATS_SECTOR_BYTES = 512 is load-bearing and was checked: a known\n64 MiB write moved the counter 146808 sectors, i.e. 71 MiB at 512\nB/sector (the excess is btrfs metadata and CoW) against an impossible\n573 MiB at 4096. Recorded limit: the test host's own hw_sector_size is\n512, so this confirms the value without discriminating \"always 512\" from\n\"the hardware sector size\".\n\nTwo tests were watched failing against mutated code -- 512 to 4096 fails\nthe column test, and saturating_sub to wrapping_sub fails the reset test\nwith 1.8e19 B/s, exactly the reading its comment predicts. Rates were\ncross-checked against fastfetch under a sustained load (249.5/264.1 MB/s\nvs 192.95/192.98 MiB/s over its own window; both 0 idle) after a first\nattempt that agreed only because both tools had sampled an idle disk.\n\ndisk.rs's virtual-device name filter is now shared rather than copied, so\nphys-disk and disk-io cannot drift apart on what counts as a disk.\n\nStrata golden counts Long 54->56, Full 63->65. 12 new unit tests, keyed\non a verbatim /proc/diskstats fixture with an injected device filter so\nno test depends on the block devices of the machine running it.\n\nretch-sysinfo -> 0.1.57 (new public io module); retch-cli -> 0.10.0.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-09-07T14:04:54-07:00",
@@ -27013,6 +26949,110 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 423170495,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "45cc196a781a7102604b983f41dd370af721ffcf",
+          "message": "Take CPU cores and net detail off the serial path (#274)\n\n--short on arrakis: 4.05 -> 3.39 ms (fastfetch matched: 2.71 ms), with\nidentical output. With RETCH_TIMING now also covering os, kernel,\nhost, uptime, arch and boot-time, the trace showed:\n\n- The CPU core string (\"16C / 32T\") was ~0.8 ms of serial work before\n  the concurrent scope: sysinfo's physical-core count, which reads\n  /proc/cpuinfo a second time, plus the Linux hybrid-CPU check. It is\n  now a concurrent probe, cpu-cores.\n- The hybrid check read two sysfs files per cpufreq policy, 64 reads\n  on a 32-thread CPU to conclude \"not hybrid\". Policies partition the\n  CPUs, so with one policy per CPU affected_cpus is no longer read,\n  and the scan stops at a third frequency tier. hybrid_cores_in takes\n  the cpufreq directory, so it is tested against fixture trees.\n- The interface list (net-detail) ran serially after the whole scope\n  though it needs only the net probe's answer; it now runs on that\n  probe's thread.\n\nWith a single field retch and fastfetch are level (1.4 vs 1.2 ms), so\nstartup, config and rendering are not the remaining gap; reading\n/proc/cpuinfo twice is.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-28T07:29:12-07:00",
+          "tree_id": "854c9411c2a2d511bb82858174e379b283e71f26",
+          "url": "https://github.com/l1a/retch/commit/45cc196a781a7102604b983f41dd370af721ffcf"
+        },
+        "date": 1790606327593,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 59031356,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2419874820,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1325903334,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 39709180,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 49631316,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 424466580,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 160984874,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 41781970.00000001,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 179.36478251424995,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948580595182426,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 99.88231422660051,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 82.28479179900843,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46276.75091613072,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 485.0323636730358,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 739.5761247058292,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 377538095,
             "unit": "ns"
           }
         ]
