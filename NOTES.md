@@ -146,15 +146,28 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.19.1)
+## Current State (v0.19.2)
 
-`main` carries **`retch-cli` 0.19.1** / **`retch-sysinfo` 0.1.77**. Newest released tag is
+`main` carries **`retch-cli` 0.19.2** / **`retch-sysinfo` 0.1.78**. Newest released tag is
 **`v0.18.4`** (GitHub, crates.io and the AUR verified 2026-09-26; COPR and the tap not checked).
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.19.2 — `cpu-usage` no longer waits 200 ms after the probes; `--long` 404 → 218 ms**
+  (arrakis, same sitting; fastfetch matched `--long` 512 ms). The first sample is taken at
+  `sys-init`, so only `MINIMUM_CPU_UPDATE_INTERVAL - elapsed` is waited out — usually 0–18 ms.
+  `--full` 1111 → 919 ms (weather is the rest).
+  - **Overlapping the window changed what it measured**, and that had to be fixed with it:
+    the window now covers retch's own probes instead of an idle sleep, so their CPU read as
+    system load (+1.3 points here, ~+13 on a 4-core box by arithmetic). retch now subtracts its
+    own CPU time (`getrusage` SELF + CHILDREN) over the window. Checked against `/proc/stat`
+    sampled with retch not running, interleaved 15×: outside 1.01% median, new build 1.20%,
+    **old build 2.10%** — the old reading was already ~1 point high, just diluted.
+  - Windows still diffs `GetSystemTimes` across the run **without** that correction, so it
+    carries the same bias. Open in §5.
 
 - **v0.19.1 — `RETCH_TIMING`, and Linux no longer loads the process table.**
   - **`RETCH_TIMING=1 retch [...]`** prints each probe's start offset and duration to stderr
@@ -341,8 +354,10 @@ Fields: `os`, `kernel`, `host`, `cpu`, `cpu-cache`, `motherboard`, `gpu`, `displ
 ### `--long`
 Standard plus diagnostics. Aimed at understanding system health and network configuration.
 Adds over standard:
-- `cpu-usage` — needs two samples ≥200 ms apart on Linux/macOS, taken serially after the
-  concurrent scope, so it is a fixed ~200 ms of this mode's runtime
+- `cpu-usage` — needs two samples ≥200 ms apart on Linux/macOS. The first is taken before the
+  concurrent scope, so only whatever part of the interval the scope has not already spent is
+  waited out afterwards (v0.19.2; usually none in `--long`). retch's own CPU time over that
+  window is subtracted, since the window now covers its own probes
 - `bios` — firmware vendor, version, date
 - `temp` (consolidated) — **one representative reading per physical unit**: CPU, GPU, SSD/NVMe,
   WiFi adapter, System/Motherboard. Rule: highest sensor within each category (worst-case
@@ -393,16 +408,17 @@ Adds over long:
 
 Live items only. Completed items are removed rather than struck through — `git log` has them.
 
-- **BLOCKING per §3: retch is slower than fastfetch in every mode** once the comparison is like
-  for like (numbers in Current State v0.19.0). Leads, none investigated yet:
+- **BLOCKING per §3: retch is slower than fastfetch in some modes** once the comparison is like
+  for like. On arrakis after v0.19.2: default ~8–9 vs 12–15 ms and `--long` 218 vs 512 ms
+  (**retch ahead**); `--short` 3.7 vs 2.2 ms and `--full` 919 vs 522 ms (behind). Leads:
   - **default, real hardware only** — 35–57 ms on arrakis at times, ~9 ms at others (ahead of
     fastfetch's 14.8), on the same binary; level in a container. The slow state made
     `procs`/`audio`/`shell`/`terminal` ~50 ms each. Cause unknown; v0.19.1 removed the process
     table on Linux anyway. **Capture it with `RETCH_TIMING=1` when it recurs** (§7.5).
-  - **`--long`** — `cpu-usage` waits a fixed 200 ms *after* the concurrent scope, although its
-    first sample is taken before it. `RETCH_TIMING` showed the scope already takes 237 ms, so
-    the wait is pure waste: sleep only `200 ms - elapsed` (what Windows already does). Then
-    `public-ip` (ipify, ~235 ms here) is the limit; `ipinfo.io` answers in ~95 ms.
+  - **`--long`** — now ahead. `public-ip` (ipify, ~235 ms here) is the limit on the scope;
+    `ipinfo.io` answers in ~95 ms.
+  - **Windows `cpu-usage` still includes retch's own CPU**: it diffs `GetSystemTimes` across the
+    run without the v0.19.2 correction. Same fix via `GetProcessTimes`, and child processes.
   - **`--full`** — weather is ~870 ms: `ipinfo.io` (~95 ms) then Open-Meteo over HTTPS
     (~750 ms; ~180 ms RTT to Germany, TLS ~370 ms). fastfetch makes ONE plain-HTTP request to
     `wttr.in` (~360 ms), which geolocates by IP itself. **Decided: switch to `wttr.in`**
@@ -836,6 +852,13 @@ nobody asked.
   before and after a fix, in the same sitting, and treat a whole-suite slowdown as a warning
   that the machine, not the code, is being measured.** `RETCH_TIMING` exists so the slow state
   can be captured while it is happening.
+- **Moving a sampling window moves what it samples.** Overlapping `cpu-usage`'s wait with the
+  probes was a pure speed change on paper, and it quietly made the displayed figure count
+  retch's own work as system load. The tell was a *systematic* offset between old and new
+  builds on the same idle machine, not noise. Whenever a change shortens or moves a
+  measurement window, compare the *values*, not just the timings, and check both against an
+  outside reference (`/proc/stat` sampled with retch not running). That check also showed the
+  old figure had been ~1 point high all along.
 - **`cargo test -q` prints dots, not `<name> ... FAILED`.** A mutation harness that greps for
   the FAILED line under `-q` reports every mutation as missed. Drop `-q`, and assert the run
   executed exactly one test (`running 1 test`) so a filter typo cannot pass either.

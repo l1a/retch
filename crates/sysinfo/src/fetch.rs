@@ -227,6 +227,60 @@ fn cpu_refresh_kind(
     Some(kind)
 }
 
+/// How much longer to wait before a second sample, given the `interval` the two samples
+/// must be apart and the time already `elapsed` since the first. Zero once the interval
+/// has passed — the work done in between counts toward it.
+#[cfg_attr(target_os = "windows", allow(dead_code))]
+fn remaining_wait(
+    interval: std::time::Duration,
+    elapsed: std::time::Duration,
+) -> std::time::Duration {
+    interval.saturating_sub(elapsed)
+}
+
+/// System-wide CPU usage with retch's own share taken out.
+///
+/// `usage` is sysinfo's percentage averaged over all `cpus` across `window`; `own` is the
+/// CPU time retch and its finished child processes used in that same window. Their share
+/// of the machine is `own / (window × cpus)`, which is removed so the figure describes the
+/// system rather than the tool measuring it. Clamped at zero, since sampling granularity
+/// can make the estimate of retch's share slightly exceed the whole measured load.
+#[cfg_attr(target_os = "windows", allow(dead_code))]
+fn exclude_own_usage(
+    usage: f32,
+    own: std::time::Duration,
+    window: std::time::Duration,
+    cpus: usize,
+) -> f32 {
+    if cpus == 0 || window.is_zero() {
+        return usage;
+    }
+    let own_pct = 100.0 * own.as_secs_f64() / (window.as_secs_f64() * cpus as f64);
+    (f64::from(usage) - own_pct).max(0.0) as f32
+}
+
+/// CPU time used so far by this process (all threads) plus its children that have been
+/// waited for — the `curl` and other helpers the probes run.
+#[cfg(not(target_os = "windows"))]
+fn own_cpu_time() -> std::time::Duration {
+    fn to_duration(t: libc::timeval) -> std::time::Duration {
+        std::time::Duration::from_secs(t.tv_sec.max(0) as u64)
+            + std::time::Duration::from_micros(t.tv_usec.max(0) as u64)
+    }
+    fn usage(who: libc::c_int) -> std::time::Duration {
+        // SAFETY: `rusage` is a plain C struct of integers and `timeval`s, for which the
+        // all-zero bit pattern is a valid value.
+        let mut ru: libc::rusage = unsafe { std::mem::zeroed() };
+        // SAFETY: `who` is RUSAGE_SELF or RUSAGE_CHILDREN, and `&mut ru` points to a live,
+        // correctly sized `rusage` that getrusage only writes into for the call's duration.
+        if unsafe { libc::getrusage(who, &mut ru) } != 0 {
+            return std::time::Duration::ZERO;
+        }
+        to_duration(ru.ru_utime) + to_duration(ru.ru_stime)
+    }
+    usage(libc::RUSAGE_SELF) + usage(libc::RUSAGE_CHILDREN)
+}
+
 /// Whether to call `System::load_average()` at all.
 ///
 /// Two reasons to skip it, and the second is Windows-only:
@@ -314,6 +368,15 @@ impl SystemInfo {
         // comes from GetSystemTimes, so `sys` is never mutated there.
         #[cfg_attr(target_os = "windows", allow(unused_mut))]
         let mut sys = crate::timing::timed("sys-init", || System::new_with_specifics(refresh_kind));
+        // On Unix, `sys-init` just took the first CPU-usage sample (see `cpu_refresh_kind`).
+        // Mark when, so the `cpu_usage` block only waits for whatever part of sysinfo's
+        // minimum interval the probes in between have not already spent.
+        #[cfg(not(target_os = "windows"))]
+        let cpu_usage_t0 = std::time::Instant::now();
+        // retch's own CPU time at the same moment, so its share of the window can be taken
+        // back out of the reading (see `exclude_own_usage`).
+        #[cfg(not(target_os = "windows"))]
+        let cpu_usage_own0 = own_cpu_time();
 
         let os = System::long_os_version()
             .or_else(System::name)
@@ -857,8 +920,12 @@ impl SystemInfo {
             None
         };
 
-        // CPU usage. On Unix, sysinfo needs a delta between two refreshes and enforces a
-        // ~200 ms minimum interval, so we sleep once. On Windows we instead diff the
+        // CPU usage. On Unix, sysinfo needs a delta between two refreshes at least
+        // `MINIMUM_CPU_UPDATE_INTERVAL` apart (200 ms on Linux and macOS). The first refresh
+        // was `sys-init`, before the concurrent scope, so only the part of the interval the
+        // scope has not already used is waited out — in `--long` usually none of it. Until
+        // v0.19.2 this slept the full 200 ms *after* the scope, which RETCH_TIMING showed as
+        // pure serial waste (scope 237 ms, then 200 ms more). On Windows we instead diff the
         // GetSystemTimes sample taken before the concurrent scope against a fresh one — the
         // collection window is the delta, so no sleep is added to the run.
         let cpu_usage = if should_collect("cpu-usage")
@@ -867,15 +934,22 @@ impl SystemInfo {
         {
             #[cfg(not(target_os = "windows"))]
             {
-                crate::timing::timed("cpu-usage-wait", || {
-                    std::thread::sleep(std::time::Duration::from_millis(200))
-                });
+                let wait =
+                    remaining_wait(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL, cpu_usage_t0.elapsed());
+                crate::timing::timed("cpu-usage-wait", || std::thread::sleep(wait));
                 sys.refresh_cpu_usage();
-                let usage: f32 =
+                let window = cpu_usage_t0.elapsed();
+                let own = own_cpu_time().saturating_sub(cpu_usage_own0);
+                let raw: f32 =
                     sys.cpus().iter().map(|c| c.cpu_usage()).sum::<f32>() / sys.cpus().len() as f32;
+                // The window now overlaps retch's own probes rather than an idle sleep, so
+                // their CPU time would otherwise read as load (+1.3 points on a 32-thread
+                // machine, ~+13 on a 4-core one). `raw` still decides whether sysinfo had
+                // a reading at all: an idle system may legitimately adjust to 0.0%.
+                let usage = exclude_own_usage(raw, own, window, sys.cpus().len());
                 let avg = System::load_average();
                 let load_str = format!("{:.2}, {:.2}, {:.2}", avg.one, avg.five, avg.fifteen);
-                if usage > 0.0 {
+                if raw > 0.0 {
                     Some(format!("{:.1}% (load: {})", usage, load_str))
                 } else if avg.one > 0.0 {
                     Some(format!("load: {}", load_str))
@@ -910,10 +984,10 @@ impl SystemInfo {
         };
 
         // Second I/O sample. Deliberately after the `cpu_usage` block above: on Unix that
-        // block sleeps 200 ms for sysinfo's minimum refresh interval, and taking the
-        // second sample afterwards folds that sleep into the window instead of paying for
-        // it twice. The floor below therefore only ever fires for a request so small that
-        // neither the concurrent scope nor the CPU sleep happened.
+        // block may still wait out the rest of sysinfo's minimum refresh interval, and taking
+        // the second sample afterwards folds any such wait into the window instead of paying
+        // for it twice. The floor below therefore only ever fires for a request so small that
+        // neither the concurrent scope nor a CPU wait filled it.
         let (disk_io, net_io) = if want_disk_io || want_net_io {
             let floor = std::time::Duration::from_millis(100);
             let elapsed = io_t0.elapsed();
@@ -2137,6 +2211,86 @@ mod win_cpu {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn remaining_wait_covers_only_what_the_work_in_between_did_not() {
+        use std::time::Duration;
+        let ms = Duration::from_millis;
+        assert_eq!(remaining_wait(ms(200), ms(0)), ms(200), "nothing elapsed");
+        assert_eq!(remaining_wait(ms(200), ms(157)), ms(43), "the remainder");
+        assert_eq!(remaining_wait(ms(200), ms(200)), ms(0), "exactly spent");
+        // The `--long` case this exists for: a 237 ms scope already covers the interval,
+        // so the old fixed 200 ms sleep after it was entirely wasted.
+        assert_eq!(
+            remaining_wait(ms(200), ms(237)),
+            ms(0),
+            "overspent, no wait"
+        );
+    }
+
+    #[test]
+    fn exclude_own_usage_removes_retchs_share_of_the_machine() {
+        use std::time::Duration;
+        let ms = Duration::from_millis;
+        // 100 ms of retch CPU over a 200 ms window on 4 CPUs is 12.5% of the machine.
+        assert!((exclude_own_usage(20.0, ms(100), ms(200), 4) - 7.5).abs() < 1e-4);
+        // The same work is a far smaller share of a 32-thread machine: 1.5625%.
+        assert!((exclude_own_usage(3.0, ms(100), ms(200), 32) - 1.4375).abs() < 1e-4);
+        // No own time, nothing removed.
+        assert_eq!(exclude_own_usage(5.0, ms(0), ms(200), 8), 5.0);
+    }
+
+    #[test]
+    fn exclude_own_usage_never_goes_negative_or_divides_by_zero() {
+        use std::time::Duration;
+        let ms = Duration::from_millis;
+        assert_eq!(exclude_own_usage(1.0, ms(100), ms(200), 4), 0.0, "clamped");
+        assert_eq!(
+            exclude_own_usage(5.0, ms(10), ms(0), 4),
+            5.0,
+            "empty window"
+        );
+        assert_eq!(exclude_own_usage(5.0, ms(10), ms(200), 0), 5.0, "no CPUs");
+    }
+
+    /// `own_cpu_time` must actually move when this process burns CPU — a getrusage call
+    /// that silently returned zero would make the correction a no-op.
+    #[cfg(not(target_os = "windows"))]
+    #[test]
+    fn own_cpu_time_counts_work_done_by_this_process() {
+        let before = own_cpu_time();
+        let t = std::time::Instant::now();
+        let mut x: u64 = 0;
+        while t.elapsed() < std::time::Duration::from_millis(50) {
+            x = std::hint::black_box(x.wrapping_mul(6364136223846793005).wrapping_add(1));
+        }
+        let used = own_cpu_time().saturating_sub(before);
+        assert!(
+            used >= std::time::Duration::from_millis(20),
+            "50 ms of busy work registered as {used:?}"
+        );
+    }
+
+    /// `cpu-usage` requested on its own has no probes to overlap with, so the run must
+    /// still span the full minimum interval — a shorter one would diff two samples taken
+    /// almost together and report noise. Guards against the wait being computed from the
+    /// wrong starting point, or skipped.
+    #[cfg(not(target_os = "windows"))]
+    #[test]
+    fn cpu_usage_alone_still_waits_out_the_minimum_interval() {
+        let opts = CollectOptions {
+            fields: Some(vec!["cpu-usage".to_string()]),
+            ..Default::default()
+        };
+        let t0 = std::time::Instant::now();
+        let _ = SystemInfo::collect(opts).expect("collect");
+        let elapsed = t0.elapsed();
+        assert!(
+            elapsed >= sysinfo::MINIMUM_CPU_UPDATE_INTERVAL,
+            "cpu-usage alone took {elapsed:?}, under sysinfo's {:?} minimum",
+            sysinfo::MINIMUM_CPU_UPDATE_INTERVAL
+        );
+    }
 
     #[test]
     fn cpu_refresh_kind_is_none_when_no_cpu_field_is_selected() {
