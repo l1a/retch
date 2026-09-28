@@ -1,42 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790573479147,
+  "lastUpdate": 1790573811801,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "distinct": true,
-          "id": "7f3f848bd89ae2741965fa25fc330c4091527224",
-          "message": "refactor(sysinfo): isolate remaining detect_* functions into dedicated modules\n\nExtracts all remaining detection logic from fetch.rs into single-purpose\nmodules: bios, camera, gamepad, motherboard, packages, shell, terminal,\nand theme. Adds win_reg as a shared Windows registry helper. fetch.rs\nshrinks from 2275 lines to 443 lines. Bumps retch-sysinfo to v0.1.11 and\nretch-cli to v0.3.11.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
-          "timestamp": "2026-06-10T12:14:26-07:00",
-          "tree_id": "3950745990a47b83b5b2a5caa43203d7c63bf919",
-          "url": "https://github.com/l1a/retch/commit/7f3f848bd89ae2741965fa25fc330c4091527224"
-        },
-        "date": 1781119190180,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "CLI execution - retch",
-            "unit": "ns",
-            "value": 369309963.0400001
-          },
-          {
-            "name": "CLI execution - fastfetch",
-            "unit": "ns",
-            "value": 1016038582.54
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -5080,6 +5046,70 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch (full)",
             "unit": "ns",
             "value": 519925929.1200001
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "faf5509f4d5a84898daf555278b11d5b143f35ac",
+          "message": "Stop RETCH_TIMING losing lines to stderr redirect (#272)\n\nOn Linux, gpu_api.rs points fd 2 at /dev/null while the GPU drivers\nload, to hide their noise. The redirect is process-wide, so any other\nprobe's RETCH_TIMING line printed in that window was lost: a --full\ntrace could miss public-ip while \"Public IP:\" was shown. It was a race;\nRETCH_TIMING=1 retch --fields public-ip,vulkan,opengl,opencl kept the\npublic-ip line in 9 of 15 runs.\n\ntiming::start() now duplicates stderr before any probe runs, and every\nline is written to that copy, which a later dup2 over fd 2 cannot\ntouch: 15 of 15 runs. The duplicate comes from as_fd() and\ntry_clone_to_owned(), so the fix itself needs no unsafe. A unit test\nreproduces both halves on a temp file standing in for stderr: the line\nwritten through the redirected descriptor is lost, the one written\nthrough the copy is kept.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T22:36:13-07:00",
+          "tree_id": "bbcde92326fa972e4ce49e572e468a9ba9b3993f",
+          "url": "https://github.com/l1a/retch/commit/faf5509f4d5a84898daf555278b11d5b143f35ac"
+        },
+        "date": 1790573811801,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 3532035.04
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2328776.1399999997
+          },
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 7424909.72
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 12488091.32
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 219110509.42000002
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 512195079.11999995
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 609284565.46
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 521033091.66
           }
         ]
       }
