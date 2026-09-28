@@ -186,30 +186,17 @@ bench-cli:
     cargo build --release
     hyperfine --warmup 3 --runs 10 '{{retch_release_bin}}'
 
-# Compare retch against fastfetch and neofetch (requires: hyperfine)
+# The pairs live in scripts/cli_bench.py -- the same ones CI and `just bench-upload` run -- and
+# fastfetch is given the generated benches/fastfetch/<mode>.jsonc, never your own config.
+# Compare retch against fastfetch in all four modes (requires: hyperfine; fastfetch optional)
 bench-compare:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    python3 scripts/install_hyperfine.py 2>/dev/null || python scripts/install_hyperfine.py
+    @"{{PY}}" scripts/install_hyperfine.py
     cargo build --release
-    echo "=== Comparing Standard/Default ==="
-    if command -v fastfetch > /dev/null; then
-        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}}' 'fastfetch'
-    else
-        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}}'
-    fi
-    echo "=== Comparing Short ==="
-    if command -v fastfetch > /dev/null; then
-        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --short' 'fastfetch -c none'
-    else
-        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --short'
-    fi
-    echo "=== Comparing Long ==="
-    if command -v fastfetch > /dev/null; then
-        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --long' 'fastfetch -c all'
-    else
-        hyperfine --warmup 3 --runs 10 '{{retch_release_bin}} --long'
-    fi
+    @"{{PY}}" scripts/cli_bench.py --out-dir "$(mktemp -d)" $(command -v fastfetch >/dev/null || echo --no-fastfetch)
+
+# Regenerate benches/fastfetch/*.jsonc from src/fields.rs (run after moving a field between modes)
+fastfetch-configs:
+    @"{{PY}}" scripts/fastfetch_configs.py --write
 
 # Upload local benchmark results to the gh-pages dashboard (requires: hyperfine, gh)
 # On Windows: run from Git Bash, or invoke python scripts/upload_local_bench.py directly.
@@ -647,15 +634,23 @@ wip-check:
 # 0, criterion alone kept the step green, and every CI CLI timing was discarded -- visible only
 # by counting series in the published data.js, where all five CI suites held none.
 #
-# Two self-tests, because there are two failure modes. bench_labels pins the six series names
-# (renaming one silently FORKS a series rather than renaming it, orphaning its history), and
-# parse_criterion pins that the glob reads every file the workflow writes and that a missing
-# source is an error rather than a warning.
+# bench_labels pins the eight series names (renaming one silently FORKS a series rather than
+# renaming it, orphaning its history), and parse_criterion pins that the glob reads every file
+# the benchmark writes and that a missing source is an error rather than a warning.
+#
+# Since v0.19.0 it also proves the comparison is like for like: fastfetch_configs checks that
+# benches/fastfetch/*.jsonc still match the modes in src/fields.rs (so moving a field without
+# regenerating fails here), cli_bench that every pair maps onto exactly the pinned series, and
+# install_fastfetch that every CI runner gets the right release asset.
 
 # Prove the benchmark result parser reads every source and refuses a partial result (offline)
 bench-check:
     @"{{PY}}" scripts/bench_labels.py
     @"{{PY}}" scripts/parse_criterion.py --self-test
+    @"{{PY}}" scripts/fastfetch_configs.py
+    @"{{PY}}" scripts/fastfetch_configs.py --self-test
+    @"{{PY}}" scripts/cli_bench.py --self-test
+    @"{{PY}}" scripts/install_fastfetch.py --self-test
 
 # Refuse control characters and carriage returns in tracked text (offline, no network)
 text-check:

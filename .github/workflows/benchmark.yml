@@ -3,6 +3,23 @@ name: Continuous Benchmarking
 on:
   push:
     branches: [ "main" ]
+  # A PR that changes what is benchmarked, or how, runs the five benchmark jobs WITHOUT
+  # publishing (see `publish`'s `if:`). Until v0.19.0 this workflow ran only on push to main,
+  # so the first post-merge run was the only test of any change to it -- v0.18.4's publish
+  # fix exists because of exactly that. src/fields.rs is here because it decides which fields
+  # each mode shows, and so what both tools are timed doing.
+  pull_request:
+    paths:
+      - ".github/workflows/benchmark.yml"
+      - "benches/**"
+      - "scripts/bench_labels.py"
+      - "scripts/cli_bench.py"
+      - "scripts/fastfetch_configs.py"
+      - "scripts/install_fastfetch.py"
+      - "scripts/install_hyperfine.py"
+      - "scripts/parse_criterion.py"
+      - "src/fields.rs"
+  workflow_dispatch:
 
 # The five benchmark jobs below run in PARALLEL and hand their results to one `publish` job,
 # because every publish writes the same dev/bench/data.js on the same branch. That serialises
@@ -12,8 +29,11 @@ on:
 #
 # cancel-in-progress is deliberately false: a benchmark run that is cancelled half way has
 # already spent the runner time, and its results are still wanted.
+#
+# Only runs that PUBLISH share the group. A PR or manual run gets a group of its own, so it
+# neither waits behind a publishing run nor holds one up.
 concurrency:
-  group: continuous-benchmarking
+  group: ${{ github.event_name == 'push' && 'continuous-benchmarking' || format('continuous-benchmarking-{0}', github.ref) }}
   cancel-in-progress: false
 
 permissions:
@@ -31,6 +51,7 @@ jobs:
     steps:
       - name: Install dependencies (Fedora)
         run: |
+          dnf upgrade -y --refresh
           dnf install -y git curl gcc make sqlite-devel python3
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
@@ -40,7 +61,7 @@ jobs:
 
       - name: Install fastfetch and hyperfine
         run: |
-          python3 scripts/install_fastfetch.py
+          python3 scripts/install_fastfetch.py --latest-release
           python3 scripts/install_hyperfine.py
 
       - name: Build release binary
@@ -49,9 +70,7 @@ jobs:
       - name: Run benchmarks
         run: |
           cargo bench
-          hyperfine --warmup 3 --runs 10 './target/release/retch' 'fastfetch' --export-json hyperfine_default.json
-          hyperfine --warmup 3 --runs 10 './target/release/retch --short' 'fastfetch -c none' --export-json hyperfine_short.json
-          hyperfine --warmup 3 --runs 10 './target/release/retch --long' 'fastfetch -c all' --export-json hyperfine_long.json
+          python3 scripts/cli_bench.py
           python3 scripts/parse_criterion.py
 
       # Publishing is deferred to the `publish` job so these five can run in
@@ -70,6 +89,7 @@ jobs:
     steps:
       - name: Install dependencies (Fedora)
         run: |
+          dnf upgrade -y --refresh
           dnf install -y git curl gcc make sqlite-devel python3
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
@@ -79,7 +99,7 @@ jobs:
 
       - name: Install fastfetch and hyperfine
         run: |
-          python3 scripts/install_fastfetch.py
+          python3 scripts/install_fastfetch.py --latest-release
           python3 scripts/install_hyperfine.py
 
       - name: Build release binary
@@ -88,9 +108,7 @@ jobs:
       - name: Run benchmarks
         run: |
           cargo bench
-          hyperfine --warmup 3 --runs 10 './target/release/retch' 'fastfetch' --export-json hyperfine_default.json
-          hyperfine --warmup 3 --runs 10 './target/release/retch --short' 'fastfetch -c none' --export-json hyperfine_short.json
-          hyperfine --warmup 3 --runs 10 './target/release/retch --long' 'fastfetch -c all' --export-json hyperfine_long.json
+          python3 scripts/cli_bench.py
           python3 scripts/parse_criterion.py
 
       # Publishing is deferred to the `publish` job so these five can run in
@@ -116,7 +134,7 @@ jobs:
 
       - name: Install fastfetch and hyperfine
         run: |
-          python3 scripts/install_fastfetch.py
+          python3 scripts/install_fastfetch.py --latest-release
           python3 scripts/install_hyperfine.py
 
       - name: Build release binary
@@ -125,9 +143,7 @@ jobs:
       - name: Run benchmarks
         run: |
           cargo bench
-          hyperfine --warmup 3 --runs 10 './target/release/retch' 'fastfetch' --export-json hyperfine_default.json
-          hyperfine --warmup 3 --runs 10 './target/release/retch --short' 'fastfetch -c none' --export-json hyperfine_short.json
-          hyperfine --warmup 3 --runs 10 './target/release/retch --long' 'fastfetch -c all' --export-json hyperfine_long.json
+          python3 scripts/cli_bench.py
           python3 scripts/parse_criterion.py
 
       # Publishing is deferred to the `publish` job so these five can run in
@@ -158,7 +174,7 @@ jobs:
 
       - name: Install fastfetch and hyperfine
         run: |
-          python scripts/install_fastfetch.py
+          python scripts/install_fastfetch.py --latest-release
           python scripts/install_hyperfine.py
 
       - name: Build release binary
@@ -167,9 +183,7 @@ jobs:
       - name: Run benchmarks
         run: |
           cargo bench
-          hyperfine --warmup 3 --runs 10 '.\target\release\retch.exe' 'fastfetch' --export-json hyperfine_default.json
-          hyperfine --warmup 3 --runs 10 '.\target\release\retch.exe --short' 'fastfetch -c none' --export-json hyperfine_short.json
-          hyperfine --warmup 3 --runs 10 '.\target\release\retch.exe --long' 'fastfetch -c all' --export-json hyperfine_long.json
+          python scripts/cli_bench.py
           python scripts/parse_criterion.py
 
       # Publishing is deferred to the `publish` job so these five can run in
@@ -200,7 +214,7 @@ jobs:
 
       - name: Install fastfetch and hyperfine
         run: |
-          python scripts/install_fastfetch.py
+          python scripts/install_fastfetch.py --latest-release
           python scripts/install_hyperfine.py
 
       - name: Build release binary
@@ -209,9 +223,7 @@ jobs:
       - name: Run benchmarks
         run: |
           cargo bench
-          hyperfine --warmup 3 --runs 10 '.\target\release\retch.exe' 'fastfetch' --export-json hyperfine_default.json
-          hyperfine --warmup 3 --runs 10 '.\target\release\retch.exe --short' 'fastfetch -c none' --export-json hyperfine_short.json
-          hyperfine --warmup 3 --runs 10 '.\target\release\retch.exe --long' 'fastfetch -c all' --export-json hyperfine_long.json
+          python scripts/cli_bench.py
           python scripts/parse_criterion.py
 
       # Publishing is deferred to the `publish` job so these five can run in
@@ -245,7 +257,10 @@ jobs:
       - benchmark-windows-arm
     # Runs unless the whole run was cancelled, so a single failed platform does not discard
     # the other four results. Each step below is guarded on its own artifact.
-    if: ${{ !cancelled() }}
+    #
+    # Publishes ONLY for a push to main: a PR or manual run benchmarks without writing to the
+    # dashboard, whose series are one point per main commit.
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1

@@ -73,7 +73,7 @@ retch - a fast, feature-rich system information fetcher
 :   Short output mode. Equivalent to `--mode short`. Shows: OS, Kernel, Host, CPU, GPU, Memory, Disk.
 
 **-l, --long**
-:   Long output mode. Shows diagnostics fields — firmware, thermals (consolidated: one reading per physical unit), shell, desktop, network, Bluetooth, battery, packages, and more. Does not include cosmetic or slow-running fields (use `--full` for those).
+:   Long output mode. Shows diagnostics fields — CPU usage, firmware, thermals (consolidated: one reading per physical unit), shell, desktop, network, Bluetooth, battery, packages, and more. Does not include cosmetic or slow-running fields (use `--full` for those).
 
 **-f, --full**
 :   Full output mode. Shows everything in `--long` plus slow and cosmetic fields: UI theme, icons, cursor, weather (requires network), and FUSE mounts. Expect multi-second runtimes.
@@ -112,7 +112,7 @@ You can generate a starting configuration with:
   - `cpu`: CPU model name.
   - `cpu-freq`: CPU current/max/min frequencies.
   - `cpu-cache`: CPU L1/L2/L3 cache sizes.
-  - `cpu-usage`: Current CPU utilization percentage.
+  - `cpu-usage`: Current CPU utilization percentage. Long mode and above: on Linux and macOS a usage figure needs two samples at least 200 ms apart, which would dominate the default mode's runtime (Windows measures across the run instead). To show it without `--long`, name it in the config's `fields` list or in `--fields`.
   - `gpu`: GPU model(s) and VRAM.
   - `vulkan`: Vulkan API version, driver name and driver version, e.g. `1.4.354 - radv [Mesa 26.1.8]`. Linux, Windows and macOS. **On macOS this is normally absent**, and correctly so: macOS ships no Vulkan, which exists there only through MoltenVK once a user installs it, so the field reports only when the Khronos loader (`libvulkan.1.dylib`) is present. Full mode only by default.
   - `opengl`: OpenGL version string, e.g. `4.6 (Compatibility Profile) Mesa 26.1.8` on Linux or `4.1 Metal - 90.5` on macOS. Linux, Windows and macOS, each needing a different mechanism to obtain a context: Linux reads it from a headless EGL context, Windows from a WGL context on a window that is created hidden and never shown, and macOS from a CGL context that needs no window at all. macOS caps OpenGL at 4.1 and exposes it only through a core profile, which is what retch requests — the legacy profile would report 2.1 on the same machine. Full mode only by default.

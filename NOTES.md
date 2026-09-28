@@ -117,8 +117,13 @@ information gathering without any dependency on `clap` or the CLI.
     `-march=native` would emit a binary that SIGILLs on users' machines. Verified absent from
     the release tarball at the time; the AUR package is safe for the same reason.)
 - **Benchmarking**: `just bench` (criterion), `just bench-cli` (hyperfine), `just bench-compare`
-  (vs fastfetch/neofetch). CI tracks trends on pushes to `main` via GitHub Pages;
+  (retch vs fastfetch in all four modes). CI tracks trends on pushes to `main` via GitHub Pages;
   `just bench-upload` pushes local results, and a `post-merge` hook does it automatically.
+  The pairs are defined once, in `scripts/cli_bench.py`, and fastfetch always runs
+  `benches/fastfetch/<mode>.jsonc` — generated from `src/fields.rs` by
+  `scripts/fastfetch_configs.py`, so **after moving a field between modes run
+  `just fastfetch-configs`** (`just check` fails until you do). A PR touching any of that, or
+  `src/fields.rs`, runs the five CI benchmark jobs without publishing.
 - **Performance Regression Vigilance**: After every merge, check the post-merge benchmark
   output. A primary goal of retch is to be faster than fastfetch — **if retch is slower than
   fastfetch in any mode, treat it as a blocking issue.** Local benchmarks can be skewed by slow
@@ -141,15 +146,42 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.18.5)
+## Current State (v0.19.0)
 
-`main` carries **`retch-cli` 0.18.5** / **`retch-sysinfo` 0.1.76**. Newest released tag is
-**`v0.18.0`**, live on GitHub, crates.io, the AUR, COPR and the Homebrew tap.
+`main` carries **`retch-cli` 0.19.0** / **`retch-sysinfo` 0.1.76**. Newest released tag is
+**`v0.18.4`** (GitHub, crates.io and the AUR verified 2026-09-26; COPR and the tap not checked).
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.19.0 — `cpu-usage` moved to `--long`, and the fastfetch comparison is like for like.**
+  **Read this before quoting any retch-vs-fastfetch number from before it.**
+  - **The old comparison measured the wrong thing.** Plain `fastfetch` loads the user's config;
+    `-c none` means "load no config". So on CI (no config) the default and `--short` pairs both
+    ran fastfetch's built-in 20-module default, which is why those two series always timed
+    identically, and locally plain `fastfetch` ran the developer's config (arrakis: ~75 modules
+    including public-IP and weather lookups, 529 ms). **The local "retch is faster" came from
+    that config.** Nothing compared `--full`.
+  - **Now each mode is matched**: `retch [--<mode>]` vs `fastfetch -c benches/fastfetch/<mode>.jsonc`,
+    same fields, with fastfetch's network timeouts set to retch's (2 s public IP, 4 s weather;
+    fastfetch's default is none). Its sampling waits are left at fastfetch's defaults, because
+    that is a real design difference being measured. No match exists for `domain`,
+    `domain-search`, `arch`, `cpu-freq`; each config lists them.
+  - **`cpu-usage` was ~80% of the default mode**: a fixed 200 ms sleep on Unix (sysinfo's
+    minimum refresh interval) after the concurrent scope. Default mode on arrakis 271 -> 35 ms.
+  - **Measured after the change (hyperfine, fastfetch 2.69.0), retch is still slower in EVERY
+    mode**, which §3 treats as blocking; see §5. arrakis (Ryzen AI Max+ 395): short 3.6 vs
+    2.5 ms, default 35 vs 12 ms, long 383 vs 275 ms, full 1.12 s vs 0.38 s. Fresh
+    `fedora:latest` container, same laptop: short 3.6 vs 2.3, **default 6.3 vs 6.1 (level)**,
+    long 347 vs 331 ms, full 1.08 s vs 0.87 s (±1.6 s: one slow network request).
+  - **CI now runs the same, newest fastfetch everywhere** (its latest GitHub release, not five
+    package managers; Fedora had 2.68.1 the day after 2.69.0 shipped), prints its version, and
+    `dnf upgrade`s the Fedora container. The old fallback downloader was broken on macOS and
+    Windows arm64 and nobody knew, because CI never reached it.
+  - **New dashboard series**: `retch --full` and `fastfetch (short|default|long|full)`. The old
+    fastfetch series stop rather than splice two workloads into one line.
 
 - **v0.18.4 — the parallel publish job could not publish, and the first run said so.**
   v0.18.3's five benchmark jobs ran perfectly in parallel — **604 s (10.1 min) against the
@@ -276,7 +308,7 @@ strict superset of the one above it.
 | Mode | Flag | Typical runtime | Purpose |
 |---|---|---|---|
 | Short | `--short` | <100ms | Hardware snapshot — fastest, scriptable |
-| Standard | *(none)* | ~200ms | Daily-use system overview |
+| Standard | *(none)* | <50ms | Daily-use system overview |
 | Long | `--long` | ~500ms | Diagnostics — consolidated thermals, network detail, firmware |
 | Full | `--full` | ~5s+ | Everything, including slow and cosmetic fields |
 
@@ -286,15 +318,18 @@ Fields: `os`, `kernel`, `host`, `cpu`, `gpu`, `memory`, `disk`, `net`
 
 ### Standard (no flag)
 Full system overview suitable for daily use. No slow fields, no sensors, no cosmetic fields.
-Fields: `os`, `kernel`, `host`, `cpu`, `cpu-cache`, `cpu-usage`, `motherboard`, `gpu`,
-`display`, `audio`, `camera`, `memory`, `phys-mem`, `swap`, `load`, `disk`, `phys-disk`, `net`,
-`uptime`
+Fields: `os`, `kernel`, `host`, `cpu`, `cpu-cache`, `motherboard`, `gpu`, `display`, `audio`,
+`camera`, `memory`, `phys-mem`, `swap`, `load`, `disk`, `phys-disk`, `net`, `uptime`
 - BIOS moves to `--long` (firmware detail, not needed at a glance)
+- CPU usage moves to `--long` (v0.19.0): its 200 ms sampling sleep on Unix was ~80% of this
+  mode's runtime
 - Gamepad moves to `--full` (cosmetic/slow)
 
 ### `--long`
 Standard plus diagnostics. Aimed at understanding system health and network configuration.
 Adds over standard:
+- `cpu-usage` — needs two samples ≥200 ms apart on Linux/macOS, taken serially after the
+  concurrent scope, so it is a fixed ~200 ms of this mode's runtime
 - `bios` — firmware vendor, version, date
 - `temp` (consolidated) — **one representative reading per physical unit**: CPU, GPU, SSD/NVMe,
   WiFi adapter, System/Motherboard. Rule: highest sensor within each category (worst-case
@@ -344,6 +379,19 @@ Adds over long:
 ## 5. Future Work / Backlog
 
 Live items only. Completed items are removed rather than struck through — `git log` has them.
+
+- **BLOCKING per §3: retch is slower than fastfetch in every mode** once the comparison is like
+  for like (numbers in Current State v0.19.0). Leads, none investigated yet:
+  - **default, real hardware only** — 35 vs 12 ms on arrakis, but level in a container, so the
+    cost is in probes that find real devices there (display/EDID, audio, camera, GPU are the
+    first suspects). Measure absolute time per probe, not `--fields` differences (§7.1).
+  - **`--long`** — `cpu-usage`'s 200 ms sleep runs *after* the concurrent scope. Taking the first
+    sample before the scope and sleeping only the remainder (what Windows already does) would
+    overlap it with the other probes.
+  - **`--full`** — weather makes two sequential `curl` processes (ipinfo, then Open-Meteo)
+    where fastfetch makes one request; public IP is another `curl` spawn.
+  - **`--short`** — 3.6 vs 2.3–2.5 ms: startup or the concurrent scope's fixed cost.
+  - macOS and Windows have not been looked at under the matched configs at all.
 
 - **CI automation of the publish steps.** A tag still does not, by itself, publish to crates.io
   or push to the AUR and the tap. Since v0.17.5 this is a genuine port rather than a redesign —
@@ -568,6 +616,24 @@ nobody asked.
   none` can never print `none` — `head` succeeds whether or not `grep` matched. Either drop the
   pipe, or capture with `grep -c` and test the number. Same family as the `$pipestatus` entry:
   the guard is attached to the wrong command.
+
+- **A comparison against another tool's default measures whoever's config is loaded.**
+  `fastfetch` with no `-c` reads the user's config file; `-c none` reads none. So the same
+  command measured the built-in default on CI and a 75-module personal config on a developer
+  box, and every "retch is faster" for months came from the second. The tell was in the CI
+  data: `fastfetch` and `fastfetch -c none` timed identically on every runner. **Pin the other
+  tool's configuration explicitly, derive it from the same field table as ours, and check it
+  did the work** — its network modules really returned a public IP and weather, rather than
+  "winning" by failing fast.
+- **Finding a file by name alone can pick a decoy that "works".** The fastfetch release tarball
+  also ships its bash completion as `.../completions/fastfetch`; an `os.walk` that stopped at
+  the first `fastfetch` chose it, and running it "succeeded" with an empty version. Only the
+  first real install caught it. Constrain the location (`bin/`) and check the output says what
+  it should, not just the exit code. And make the decoy in a test sort *before* the real file,
+  or the test passes whether or not the constraint exists — the first version of this one did.
+- **Count invocations, not mentions.** A guard that counted `scripts/cli_bench.py` in the
+  workflow also counted the new `pull_request` path filter naming it, so the totals matched by
+  coincidence and a job could have dropped the call unnoticed. Match the command shape.
 
 ### 7.2 Testing conventions
 

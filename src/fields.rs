@@ -106,9 +106,13 @@ const FIELDS: &[FieldDef] = &[
         key: "cpu-cache",
         min_mode: Mode::Standard,
     },
+    // Long, not Standard: on Linux and macOS a usage figure needs two samples at least
+    // 200 ms apart (sysinfo's minimum refresh interval), and nothing else in the default
+    // mode takes that long -- it was ~80% of the default mode's runtime, and the reason
+    // retch was slower than fastfetch there (fastfetch's own default omits CPU usage).
     FieldDef {
         key: "cpu-usage",
-        min_mode: Mode::Standard,
+        min_mode: Mode::Long,
     },
     // --- Graphics / firmware / peripherals ---
     FieldDef {
@@ -430,7 +434,7 @@ mod tests {
         // Golden counts pinning the current strata sizes (see NOTES.md §4).
         // A change here should be deliberate and accompany a docs/NOTES update.
         assert_eq!(fields_for(Mode::Short).len(), 8, "short field count");
-        assert_eq!(fields_for(Mode::Standard).len(), 19, "standard field count");
+        assert_eq!(fields_for(Mode::Standard).len(), 18, "standard field count");
         assert_eq!(fields_for(Mode::Long).len(), 56, "long field count");
         assert_eq!(fields_for(Mode::Full).len(), 68, "full field count");
     }
@@ -454,8 +458,15 @@ mod tests {
         assert!(standard.contains("phys-mem"));
         assert!(standard.contains("cpu-cache"));
         assert!(!standard.contains("bios"), "bios is long+, not standard");
+        // cpu-usage costs a fixed 200 ms sampling sleep on Unix, so it must stay out of
+        // the default mode (see the FIELDS entry).
+        assert!(
+            !standard.contains("cpu-usage"),
+            "cpu-usage is long+, not standard"
+        );
 
         let long: HashSet<_> = fields_for(Mode::Long).into_iter().collect();
+        assert!(long.contains("cpu-usage"));
         assert!(long.contains("bios"));
         assert!(long.contains("terminal-size"));
         assert!(long.contains("wm"));

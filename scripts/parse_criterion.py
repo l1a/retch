@@ -4,7 +4,7 @@
 """Collect criterion and hyperfine results into `benchmark_result.json` for the dashboard.
 
 Run by `.github/workflows/benchmark.yml` in each of the five platform jobs, after
-`cargo bench` and the three `hyperfine --export-json` invocations. Its output is handed to
+`cargo bench` and `scripts/cli_bench.py` (one `hyperfine --export-json` per output mode). Its output is handed to
 github-action-benchmark, which appends it to `dev/bench/data.js` on `gh-pages`.
 
 WHY THIS READS A GLOB AND WHY IT NOW FAILS LOUDLY -- both halves are the fix for a defect
@@ -169,28 +169,29 @@ def _self_test():
         cwd = os.getcwd()
         os.chdir(d)
         try:
-            # --- the regression: the three real filenames must all be read -----------------
-            for suffix, cmds in [
-                ("default", [("./target/release/retch", 0.3), ("fastfetch", 0.6)]),
-                ("short", [("./target/release/retch --short", 0.01),
-                           ("fastfetch -c none", 0.02)]),
-                ("long", [("./target/release/retch --long", 0.4),
-                          ("fastfetch -c all", 0.6)]),
-            ]:
-                with open(f"hyperfine_{suffix}.json", "w", encoding="utf-8") as fh:
-                    json.dump({"results": [{"command": c, "mean": m} for c, m in cmds]}, fh)
+            # --- the regression: every real filename must be read ---------------------------
+            # Fixtures come from cli_bench.pairs(), the one definition of the commands and file
+            # names, so this cannot keep passing on a stale hand-written copy of them.
+            import cli_bench
+            n_expected = 0
+            for i, (mode, cmds) in enumerate(cli_bench.pairs("Linux")):
+                with open(cli_bench.export_name(mode), "w", encoding="utf-8") as fh:
+                    json.dump({"results": [{"command": c, "mean": 0.01 * (i + 1)}
+                                           for c in cmds]}, fh)
+                n_expected += len(cmds)
 
             hyper, probs = collect_hyperfine(HYPERFINE_GLOB)
-            check("all three files are read", len(hyper) == 6, f"got {len(hyper)}: {probs}")
+            check("every mode's file is read", len(hyper) == n_expected,
+                  f"got {len(hyper)} of {n_expected}: {probs}")
             check("no problems on a good set", not probs, str(probs))
             names = sorted(e["name"] for e in hyper)
-            check("the six expected series appear",
+            check("exactly the expected series appear",
                   names == sorted(__import__("bench_labels").EXPECTED_LABELS), str(names))
 
             # THE BUG ITSELF: the old hardcoded name must not be what makes this work.
             os.rename("hyperfine_default.json", "hyperfine_result.json")
             still, _ = collect_hyperfine(HYPERFINE_GLOB)
-            check("the glob is not keyed on one name", len(still) == 6,
+            check("the glob is not keyed on one name", len(still) == n_expected,
                   f"got {len(still)} after renaming one file")
             os.rename("hyperfine_result.json", "hyperfine_default.json")
 
@@ -216,7 +217,7 @@ def _self_test():
             if os.path.exists("out.json"):
                 with open("out.json", encoding="utf-8") as fh:
                     got = json.load(fh)
-                check("six CLI entries survive", len(got) == 6, str(len(got)))
+                check("every CLI entry survives", len(got) == n_expected, str(len(got)))
                 check("entries are sorted",
                       [e["name"] for e in got] == sorted(e["name"] for e in got), str(got))
 
@@ -234,34 +235,44 @@ def _self_test():
             if os.path.exists("both.json"):
                 with open("both.json", encoding="utf-8") as fh:
                     both = json.load(fh)
-                check("criterion and CLI are merged", len(both) == 7, str(len(both)))
+                check("criterion and CLI are merged", len(both) == n_expected + 1,
+                      str(len(both)))
             else:
                 check("both.json was written", False, "no output -- see the failure above")
 
             # --- THE COUPLING THAT WAS MISSING, and the whole reason this defect existed --
-            # Assert the default glob matches every filename the workflow actually writes.
-            # b45894a changed those filenames and not this script; nothing connected the two,
-            # so nothing complained. Now they are connected: change the workflow without
-            # changing the glob and `just check` fails here.
+            # b45894a changed the filenames the workflow wrote and not this script; nothing
+            # connected the two, so nothing complained. Since v0.19.0 cli_bench.py names the
+            # files, so assert (1) every name it writes matches the default glob, and (2) the
+            # workflow gets its CLI timings from cli_bench.py in EVERY job that publishes, and
+            # never from a hand-written hyperfine line that could name a file of its own.
             import fnmatch
+            written = [cli_bench.export_name(m) for m in cli_bench.MODE_NAMES]
+            unmatched = [n for n in written if not fnmatch.fnmatch(n, HYPERFINE_GLOB)]
+            check("every file cli_bench writes is matched by the default glob", not unmatched,
+                  f"{unmatched} not matched by {HYPERFINE_GLOB!r} -- the b45894a defect")
             wf = os.path.join(repo_root, ".github", "workflows", "benchmark.yml")
             if os.path.isfile(wf):
                 with open(wf, encoding="utf-8") as fh:
                     wf_text = fh.read()
-                written = sorted(set(re.findall(r"--export-json\s+(\S+)", wf_text)))
-                check("the workflow exports at least one hyperfine file", written,
-                      "no --export-json found -- has the workflow stopped running hyperfine?")
-                unmatched = [n for n in written if not fnmatch.fnmatch(n, HYPERFINE_GLOB)]
-                check("every file the workflow writes is matched by the default glob",
-                      not unmatched,
-                      f"{unmatched} written by benchmark.yml but not matched by "
-                      f"{HYPERFINE_GLOB!r} -- this is exactly the b45894a defect")
+                # Count INVOCATIONS, not mentions: the workflow's pull_request path filter
+                # names both scripts too, and counting those would let a job silently drop
+                # cli_bench.py while the totals still matched.
+                parsers = len(re.findall(r"python3?\s+scripts/parse_criterion\.py", wf_text))
+                runners = len(re.findall(r"python3?\s+scripts/cli_bench\.py", wf_text))
+                check("the workflow runs parse_criterion.py at all", parsers > 0,
+                      "has the workflow stopped collecting results?")
+                check("every job that collects results runs cli_bench.py first",
+                      runners == parsers, f"{runners} cli_bench.py vs {parsers} parse_criterion.py")
+                check("no job calls hyperfine directly", "--export-json" not in wf_text,
+                      "a raw hyperfine line bypasses cli_bench.py and can name its own file")
             else:
                 print(f"  (skipped: {wf} not present)")
 
             # --- duplicates are reported rather than silently doubling a series -----------
             with open("hyperfine_copy.json", "w", encoding="utf-8") as fh:
-                json.dump({"results": [{"command": "fastfetch", "mean": 0.6}]}, fh)
+                json.dump({"results": [{"command": cli_bench.fastfetch_command("default"),
+                                        "mean": 0.6}]}, fh)
             rc = main(["--criterion-dir", "crit", "--hyperfine-glob", HYPERFINE_GLOB,
                        "--output", "dup.json"])
             check("a duplicated series is refused", rc == 1, f"exit {rc}")
