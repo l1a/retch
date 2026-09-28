@@ -339,7 +339,7 @@ accent_color = "bright_green"
 title_color = "bright_yellow"
 separator_color = "bright_black"
 
-# Location for weather lookup (city name, ZIP code, or lat/lon coordinates).
+# Location for weather lookup (city name, ZIP code, airport code, or lat/lon coordinates).
 # If unset, your location is auto-detected from your IP address.
 # weather_location = "London"
 

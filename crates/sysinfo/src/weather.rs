@@ -1,7 +1,15 @@
 // SPDX-FileCopyrightText: 2026 Ken Tobias
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! Weather information via Open-Meteo (forecast) and Open-Meteo geocoding / ipinfo.io.
+//! Weather information via [wttr.in](https://wttr.in), in one HTTPS request.
+//!
+//! Until v0.20.0 this took two requests in sequence: ipinfo.io to turn the caller's IP into
+//! coordinates, then Open-Meteo for the forecast. Both weather hosts sit in Germany, so from
+//! the US each round trip was ~180 ms and the pair cost ~870 ms — most of `--full`'s runtime.
+//! wttr.in geolocates the caller itself and answers a compact custom format, so a single
+//! request (~550 ms over HTTPS) replaces both. fastfetch uses the same service over plain
+//! HTTP (~360 ms); HTTPS was chosen deliberately, keeping the request and the approximate
+//! location it reveals encrypted.
 
 /// Temperature unit for weather display.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -24,10 +32,11 @@ impl std::str::FromStr for WeatherUnit {
 }
 
 impl WeatherUnit {
-    fn api_param(self) -> &'static str {
+    /// wttr.in's unit switch: `u` for USCS (°F), `m` for metric (°C).
+    fn wttr_flag(self) -> &'static str {
         match self {
-            Self::Fahrenheit => "fahrenheit",
-            Self::Celsius => "celsius",
+            Self::Fahrenheit => "u",
+            Self::Celsius => "m",
         }
     }
 
@@ -39,130 +48,86 @@ impl WeatherUnit {
     }
 }
 
-struct GeoPoint {
-    lat: f64,
-    lon: f64,
-    display: String,
-}
-
 /// Fetch current weather for `location` and return a formatted string like
 /// `"Santa Barbara, California: ☀️ 67°F"`.
 ///
-/// If `location` is `None` or empty the caller's IP address is used to
-/// auto-detect a location via ipinfo.io.  Returns `None` on any network
-/// failure, unrecognised location, or JSON parse error — weather is
-/// best-effort and should never block the rest of the output.
+/// If `location` is `None` or empty, wttr.in locates the caller by IP address. Otherwise
+/// it accepts a city (`London`, `Thousand Oaks, CA`), a US ZIP code, a three-letter airport
+/// code, `lat,lon` coordinates, or `~landmark`, and the location is shown as given.
+/// Returns `None` on any network failure, unknown location (wttr.in answers HTTP 500, which
+/// `curl -f` treats as failure), or unexpected response — weather is best-effort and must
+/// never block or garble the rest of the output.
 pub(crate) fn detect_weather(location: Option<&str>, unit: WeatherUnit) -> Option<String> {
-    let geo = match location {
-        Some(loc) if !loc.is_empty() => resolve_location(loc)?,
-        _ => geolocate_ip()?,
+    let location = location.map(str::trim).filter(|l| !l.is_empty());
+    let body = curl_get(&wttr_url(location, unit))?;
+    parse_wttr(&body, unit, location.is_some())
+}
+
+/// The one request: location (empty for IP-based), then `%l` location, `%c` condition
+/// emoji and `%t` temperature, `|`-separated, in the requested unit.
+fn wttr_url(location: Option<&str>, unit: WeatherUnit) -> String {
+    format!(
+        "https://wttr.in/{}?format=%l|%c|%t&{}",
+        location.map(url_encode).unwrap_or_default(),
+        unit.wttr_flag()
+    )
+}
+
+/// Parses `location|emoji |+67°F` into `location: emoji 67°F`.
+///
+/// Strict on purpose: anything that is not exactly three fields with a temperature in the
+/// requested unit is rejected, so an error or rate-limit page served with HTTP 200 can
+/// never be printed as weather.
+fn parse_wttr(body: &str, unit: WeatherUnit, overridden: bool) -> Option<String> {
+    let mut fields = body.trim().split('|');
+    let (loc, emoji, temp) = (fields.next()?, fields.next()?, fields.next()?);
+    if fields.next().is_some() {
+        return None;
+    }
+    let loc = loc.trim();
+    if loc.is_empty() {
+        return None;
+    }
+    let degrees: f64 = temp
+        .trim()
+        .strip_suffix(unit.symbol())?
+        .trim_start_matches('+')
+        .parse()
+        .ok()?;
+    let emoji = match emoji.trim() {
+        "" => "🌡️",
+        e => e,
     };
-    let (temp, wmo_code) = fetch_open_meteo(geo.lat, geo.lon, unit)?;
-    let emoji = wmo_to_emoji(wmo_code);
+    let display = if overridden {
+        loc.to_string()
+    } else {
+        shorten_location(loc)
+    };
     Some(format!(
         "{}: {} {:.0}{}",
-        geo.display,
+        display,
         emoji,
-        temp,
+        degrees,
         unit.symbol()
     ))
 }
 
-/// Parse a raw "lat,lon" coordinate string, returning `None` if not in that form.
-fn parse_coords(s: &str) -> Option<GeoPoint> {
-    let s = s.trim();
-    let comma = s.find(',')?;
-    let lat: f64 = s[..comma].trim().parse().ok()?;
-    let lon: f64 = s[comma + 1..].trim().parse().ok()?;
-    if !(-90.0..=90.0).contains(&lat) || !(-180.0..=180.0).contains(&lon) {
-        return None;
+/// wttr.in names an IP-derived location `City, Region, Country`. retch has always shown
+/// `City, Region` for the US and `City, Country` elsewhere, so keep that.
+fn shorten_location(loc: &str) -> String {
+    let parts: Vec<&str> = loc.split(", ").collect();
+    match parts.as_slice() {
+        [city, region, .., country] if is_us(country) => format!("{city}, {region}"),
+        [city, .., country] if parts.len() >= 2 => format!("{city}, {country}"),
+        _ => loc.to_string(),
     }
-    Some(GeoPoint {
-        lat,
-        lon,
-        display: s.to_string(),
-    })
 }
 
-fn resolve_location(loc: &str) -> Option<GeoPoint> {
-    if let Some(coords) = parse_coords(loc) {
-        return Some(coords);
-    }
-    geocode_open_meteo(loc)
-}
-
-/// Geocode a city/place name using the Open-Meteo geocoding API.
-///
-/// The API's `name` parameter only matches city names, so "City, State" inputs are split
-/// on the first comma and only the city part is sent.
-fn geocode_open_meteo(loc: &str) -> Option<GeoPoint> {
-    let city_part = loc.split(',').next().unwrap_or(loc).trim();
-    let encoded = url_encode(city_part);
-    let url = format!(
-        "https://geocoding-api.open-meteo.com/v1/search?name={}&count=1&language=en&format=json",
-        encoded
-    );
-    let body = curl_get(&url)?;
-    let v: serde_json::Value = serde_json::from_str(&body).ok()?;
-    let result = v.get("results")?.get(0)?;
-
-    let lat = result.get("latitude")?.as_f64()?;
-    let lon = result.get("longitude")?.as_f64()?;
-    let name = result.get("name")?.as_str().unwrap_or(loc);
-    let country_code = result
-        .get("country_code")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-    let admin1 = result.get("admin1").and_then(|v| v.as_str()).unwrap_or("");
-    let country = result.get("country").and_then(|v| v.as_str()).unwrap_or("");
-
-    let display = if !admin1.is_empty() && country_code == "US" {
-        format!("{}, {}", name, admin1)
-    } else if !country.is_empty() {
-        format!("{}, {}", name, country)
-    } else {
-        name.to_string()
-    };
-
-    Some(GeoPoint { lat, lon, display })
-}
-
-/// Determine location from the outbound IP address via ipinfo.io.
-fn geolocate_ip() -> Option<GeoPoint> {
-    let body = curl_get("https://ipinfo.io/json")?;
-    let v: serde_json::Value = serde_json::from_str(&body).ok()?;
-
-    let loc_str = v.get("loc")?.as_str()?;
-    let comma = loc_str.find(',')?;
-    let lat: f64 = loc_str[..comma].parse().ok()?;
-    let lon: f64 = loc_str[comma + 1..].parse().ok()?;
-
-    let city = v.get("city").and_then(|v| v.as_str()).unwrap_or("");
-    let region = v.get("region").and_then(|v| v.as_str()).unwrap_or("");
-    let country = v.get("country").and_then(|v| v.as_str()).unwrap_or("");
-
-    let display = match (city.is_empty(), region.is_empty(), country == "US") {
-        (false, false, true) => format!("{}, {}", city, region),
-        (false, _, false) if !country.is_empty() => format!("{}, {}", city, country),
-        (false, _, _) => city.to_string(),
-        _ => loc_str.to_string(),
-    };
-
-    Some(GeoPoint { lat, lon, display })
-}
-
-/// Fetch current temperature and WMO weather code from Open-Meteo.
-fn fetch_open_meteo(lat: f64, lon: f64, unit: WeatherUnit) -> Option<(f64, u16)> {
-    let url = format!(
-        "https://api.open-meteo.com/v1/forecast?latitude={:.5}&longitude={:.5}&current=temperature_2m,weather_code&temperature_unit={}",
-        lat, lon, unit.api_param()
-    );
-    let body = curl_get(&url)?;
-    let v: serde_json::Value = serde_json::from_str(&body).ok()?;
-    let current = v.get("current")?;
-    let temp = current.get("temperature_2m")?.as_f64()?;
-    let wmo = current.get("weather_code")?.as_u64()? as u16;
-    Some((temp, wmo))
+fn is_us(country: &str) -> bool {
+    matches!(
+        country,
+        "US" | "USA" | "United States" | "United States of America"
+    )
 }
 
 /// Run `curl -sf --max-time 4 <url>` and return stdout on success, `None` on any failure.
@@ -177,31 +142,23 @@ fn curl_get(url: &str) -> Option<String> {
     String::from_utf8(out.stdout).ok()
 }
 
-/// Map a WMO weather interpretation code to a representative emoji.
-fn wmo_to_emoji(code: u16) -> &'static str {
-    match code {
-        0 => "☀️",
-        1 => "🌤️",
-        2 => "⛅",
-        3 => "☁️",
-        45 | 48 => "🌫️",
-        51 | 53 | 55 => "🌦️",
-        56 | 57 | 61..=67 | 80 | 81 => "🌧️",
-        82 | 95..=99 => "⛈️",
-        71..=77 | 85 | 86 => "🌨️",
-        _ => "🌡️",
-    }
-}
-
+/// Percent-encodes a location for the URL path. Spaces become `+`, which wttr.in accepts.
+///
+/// Non-ASCII characters are encoded as their UTF-8 bytes. Before v0.20.0 this encoded the
+/// Unicode code point instead (`ã` as `%E3`, which is not valid UTF-8), so a name like
+/// `São Paulo` never reached any weather service intact.
 fn url_encode(s: &str) -> String {
-    s.chars()
-        .map(|c| match c {
-            ' ' => "+".to_string(),
-            ',' => "%2C".to_string(),
-            c if c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '_' | '~') => c.to_string(),
-            c => format!("%{:02X}", c as u32),
-        })
-        .collect()
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        match b {
+            b' ' => out.push('+'),
+            b if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~') => {
+                out.push(b as char)
+            }
+            b => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
 }
 
 #[cfg(test)]
@@ -214,32 +171,27 @@ mod tests {
         assert_eq!(url_encode("Thousand Oaks, CA"), "Thousand+Oaks%2C+CA");
         assert_eq!(url_encode("New York"), "New+York");
         assert_eq!(url_encode("93426"), "93426");
+        assert_eq!(url_encode("34.42,-119.70"), "34.42%2C-119.70");
+        assert_eq!(url_encode("~Eiffel Tower"), "~Eiffel+Tower");
     }
 
     #[test]
-    fn test_parse_coords() {
-        let g = parse_coords("34.42,-119.70").unwrap();
-        assert!((g.lat - 34.42).abs() < 1e-6);
-        assert!((g.lon - -119.70).abs() < 1e-6);
-
-        assert!(parse_coords("Santa Barbara").is_none());
-        assert!(parse_coords("93101").is_none());
+    fn url_encode_uses_utf8_bytes_not_code_points() {
+        // `ã` is U+00E3; its UTF-8 form is C3 A3. The old encoder emitted `%E3`.
+        assert_eq!(url_encode("São Paulo"), "S%C3%A3o+Paulo");
+        assert_eq!(url_encode("Zürich"), "Z%C3%BCrich");
     }
 
     #[test]
-    fn test_parse_coords_edge_cases() {
-        // Spaces around the comma are allowed.
-        let g = parse_coords("34.42, -119.70").unwrap();
-        assert!((g.lat - 34.42).abs() < 1e-6);
-        assert!((g.lon - -119.70).abs() < 1e-6);
-
-        // Out-of-range latitude must be rejected.
-        assert!(parse_coords("91.0,0.0").is_none());
-        // Out-of-range longitude must be rejected.
-        assert!(parse_coords("0.0,181.0").is_none());
-        // Both negative (southern hemisphere, western hemisphere) is valid.
-        let g = parse_coords("-33.87,151.21").unwrap();
-        assert!((g.lat - -33.87).abs() < 1e-6);
+    fn wttr_url_carries_location_and_unit() {
+        assert_eq!(
+            wttr_url(None, WeatherUnit::Fahrenheit),
+            "https://wttr.in/?format=%l|%c|%t&u"
+        );
+        assert_eq!(
+            wttr_url(Some("Thousand Oaks, CA"), WeatherUnit::Celsius),
+            "https://wttr.in/Thousand+Oaks%2C+CA?format=%l|%c|%t&m"
+        );
     }
 
     #[test]
@@ -259,68 +211,101 @@ mod tests {
         );
     }
 
+    // Fixtures below are verbatim wttr.in responses captured 2026-09-28.
+
     #[test]
-    fn test_wmo_to_emoji() {
-        assert_eq!(wmo_to_emoji(0), "☀️"); // clear
-        assert_eq!(wmo_to_emoji(1), "🌤️"); // mainly clear
-        assert_eq!(wmo_to_emoji(2), "⛅"); // partly cloudy
-        assert_eq!(wmo_to_emoji(3), "☁️"); // overcast
-        assert_eq!(wmo_to_emoji(45), "🌫️"); // fog
-        assert_eq!(wmo_to_emoji(48), "🌫️"); // rime fog
-        assert_eq!(wmo_to_emoji(51), "🌦️"); // light drizzle
-        assert_eq!(wmo_to_emoji(63), "🌧️"); // moderate rain
-        assert_eq!(wmo_to_emoji(73), "🌨️"); // moderate snow
-        assert_eq!(wmo_to_emoji(82), "⛈️"); // violent rain showers
-        assert_eq!(wmo_to_emoji(95), "⛈️"); // thunderstorm
-        assert_eq!(wmo_to_emoji(200), "🌡️"); // unknown code → fallback
+    fn parses_an_ip_located_us_response() {
+        assert_eq!(
+            parse_wttr(
+                "Newbury Park, California, US|☁️ |+69°F",
+                WeatherUnit::Fahrenheit,
+                false
+            )
+            .as_deref(),
+            Some("Newbury Park, California: ☁️ 69°F")
+        );
     }
 
-    /// Tests the display-name logic in `geolocate_ip` using hand-constructed JSON —
-    /// no network required.
     #[test]
-    fn test_geolocate_ip_display_name() {
-        // US city: should produce "City, Region"
-        let us_json = r#"{"city":"Santa Barbara","region":"California","country":"US","loc":"34.42,-119.70"}"#;
-        let v: serde_json::Value = serde_json::from_str(us_json).unwrap();
-        let city = v.get("city").and_then(|v| v.as_str()).unwrap_or("");
-        let region = v.get("region").and_then(|v| v.as_str()).unwrap_or("");
-        let country = v.get("country").and_then(|v| v.as_str()).unwrap_or("");
-        let display = match (city.is_empty(), region.is_empty(), country == "US") {
-            (false, false, true) => format!("{}, {}", city, region),
-            (false, _, false) if !country.is_empty() => format!("{}, {}", city, country),
-            (false, _, _) => city.to_string(),
-            _ => "0,0".to_string(),
-        };
-        assert_eq!(display, "Santa Barbara, California");
+    fn parses_celsius_and_negative_temperatures() {
+        assert_eq!(
+            parse_wttr("London|☁️ |+15°C", WeatherUnit::Celsius, true).as_deref(),
+            Some("London: ☁️ 15°C")
+        );
+        assert_eq!(
+            parse_wttr("Nuuk|🌨️ |-7°C\n", WeatherUnit::Celsius, true).as_deref(),
+            Some("Nuuk: 🌨️ -7°C")
+        );
+    }
 
-        // Non-US city: should produce "City, Country"
-        let non_us_json =
-            r#"{"city":"London","region":"England","country":"GB","loc":"51.51,-0.13"}"#;
-        let v: serde_json::Value = serde_json::from_str(non_us_json).unwrap();
-        let city = v.get("city").and_then(|v| v.as_str()).unwrap_or("");
-        let region = v.get("region").and_then(|v| v.as_str()).unwrap_or("");
-        let country = v.get("country").and_then(|v| v.as_str()).unwrap_or("");
-        let display = match (city.is_empty(), region.is_empty(), country == "US") {
-            (false, false, true) => format!("{}, {}", city, region),
-            (false, _, false) if !country.is_empty() => format!("{}, {}", city, country),
-            (false, _, _) => city.to_string(),
-            _ => "0,0".to_string(),
-        };
-        assert_eq!(display, "London, GB");
+    #[test]
+    fn an_override_is_shown_as_given() {
+        // wttr.in echoes the query; a ZIP, airport code or coordinates stay as typed.
+        assert_eq!(
+            parse_wttr("93426|☀️ |+58°F", WeatherUnit::Fahrenheit, true).as_deref(),
+            Some("93426: ☀️ 58°F")
+        );
+        assert_eq!(
+            parse_wttr("34.42,-119.70|☀️ |+63°F", WeatherUnit::Fahrenheit, true).as_deref(),
+            Some("34.42,-119.70: ☀️ 63°F")
+        );
+        // Three comma-separated parts would be shortened if this were an IP-derived name;
+        // typed by the user, it must survive intact.
+        assert_eq!(
+            parse_wttr(
+                "Paris, Ile-de-France, France|☀️ |+17°C",
+                WeatherUnit::Celsius,
+                true
+            )
+            .as_deref(),
+            Some("Paris, Ile-de-France, France: ☀️ 17°C")
+        );
+    }
 
-        // No city: should fall back to raw "lat,lon"
-        let no_city_json = r#"{"city":"","region":"","country":"US","loc":"34.42,-119.70"}"#;
-        let v: serde_json::Value = serde_json::from_str(no_city_json).unwrap();
-        let city = v.get("city").and_then(|v| v.as_str()).unwrap_or("");
-        let region = v.get("region").and_then(|v| v.as_str()).unwrap_or("");
-        let country = v.get("country").and_then(|v| v.as_str()).unwrap_or("");
-        let loc_str = "34.42,-119.70";
-        let display = match (city.is_empty(), region.is_empty(), country == "US") {
-            (false, false, true) => format!("{}, {}", city, region),
-            (false, _, false) if !country.is_empty() => format!("{}, {}", city, country),
-            (false, _, _) => city.to_string(),
-            _ => loc_str.to_string(),
-        };
-        assert_eq!(display, "34.42,-119.70");
+    #[test]
+    fn rejects_anything_that_is_not_a_weather_line() {
+        let f = WeatherUnit::Fahrenheit;
+        // wttr.in's unknown-location body (it comes with HTTP 500, but must not parse
+        // even if some proxy passed it through as a 200).
+        assert_eq!(
+            parse_wttr(
+                "location not found: upstream error: opencage: invalid response",
+                f,
+                true
+            ),
+            None
+        );
+        assert_eq!(parse_wttr("", f, false), None);
+        assert_eq!(parse_wttr("a|b", f, false), None, "too few fields");
+        assert_eq!(parse_wttr("a|b|+5°F|x", f, false), None, "too many fields");
+        assert_eq!(parse_wttr("|☀️ |+5°F", f, false), None, "no location");
+        assert_eq!(parse_wttr("X|☀️ |warm", f, false), None, "no number");
+        assert_eq!(
+            parse_wttr("X|☀️ |+5°C", f, false),
+            None,
+            "wrong unit for the request"
+        );
+    }
+
+    #[test]
+    fn a_missing_emoji_falls_back_to_a_thermometer() {
+        assert_eq!(
+            parse_wttr("X| |+5°F", WeatherUnit::Fahrenheit, true).as_deref(),
+            Some("X: 🌡️ 5°F")
+        );
+    }
+
+    #[test]
+    fn shorten_location_keeps_retchs_long_standing_display() {
+        assert_eq!(
+            shorten_location("Santa Barbara, California, US"),
+            "Santa Barbara, California"
+        );
+        assert_eq!(
+            shorten_location("London, City of London, United Kingdom"),
+            "London, United Kingdom"
+        );
+        assert_eq!(shorten_location("Paris, France"), "Paris, France");
+        assert_eq!(shorten_location("Somewhere"), "Somewhere");
     }
 }

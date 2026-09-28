@@ -259,9 +259,9 @@ fn default_config_content() -> String {
 # short = true     # Host, OS, Kernel, CPU, GPU, Memory, Disk
 # long = true      # Show all fields
 
-# Location for weather lookup (city name, ZIP code, or lat/lon coordinates).
+# Location for weather lookup (city name, ZIP code, airport code, or lat/lon coordinates).
 # If unset, your location is auto-detected from your IP address.
-# Examples: "London", "10001", "48.8566,2.3522"
+# Examples: "London", "10001", "SFO", "48.8566,2.3522"
 # weather_location = ""
 
 # Temperature unit for weather: "fahrenheit" or "celsius"

@@ -148,7 +148,7 @@ pub struct SystemInfo {
     pub bootmgr: Option<String>,
     /// Default editor ($VISUAL / $EDITOR).
     pub editor: Option<String>,
-    /// Current weather from Open-Meteo.
+    /// Current weather from wttr.in.
     pub weather: Option<String>,
     /// Active window manager name.
     pub wm: Option<String>,
