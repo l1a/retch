@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790566282125,
+  "lastUpdate": 1790566282985,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18994,70 +18994,6 @@ window.BENCHMARK_DATA = {
             "username": "web-flow"
           },
           "distinct": true,
-          "id": "7fc56ef6232dd6bec8ff5e4b6126b8ed5893dd93",
-          "message": "Fix the COPR SRPM step: mock moves %{_topdir} (#212)\n\n.copr/Makefile ran rpmdev-setuptree and copied the spec into\n$(HOME)/rpmbuild/SPECS. rpmdev-setuptree builds its tree at rpm's\n%{_topdir}, and mock redefines that to /builddir/build -- so on COPR the\ndirectory never existed and build 10927005 died in 60 seconds with\n\"cp: cannot create regular file '/builddir/rpmbuild/SPECS/'\".\n\nv0.9.8 claimed the Makefile was verified by running exactly what COPR\nruns. It was not: it ran in a plain fedora container, where %{_topdir}\nkeeps its default. COPR runs it inside mock. The claim was true of the\ncommand and false of the environment.\n\nFixed by removing the dependency rather than chasing the path: no\nrpmdev-setuptree, no %{_topdir}, no $(HOME) -- _sourcedir and _srcrpmdir\nare passed explicitly with --define. Tested twice, once normally and once\nwith %_topdir forced to /builddir/build as mock sets it.\n\nAlso corrects the edit-package-scm flags in NOTES: --method, not --type,\nand no --subdir.\n\nAssisted-By: Claude Opus 5",
-          "timestamp": "2026-08-31T21:23:37-07:00",
-          "tree_id": "770bab44f250aae33c771ebb99637fa1b520ef52",
-          "url": "https://github.com/l1a/retch/commit/7fc56ef6232dd6bec8ff5e4b6126b8ed5893dd93"
-        },
-        "date": 1788238382567,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "display__parse_monitor_name_from_edid",
-            "value": 225.07048504547203,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_refresh_rate_from_edid",
-            "value": 5.040310289635754,
-            "unit": "ns"
-          },
-          {
-            "name": "display__parse_serial_number_from_edid",
-            "value": 117.12441398196513,
-            "unit": "ns"
-          },
-          {
-            "name": "fetch__format_cpu_cores",
-            "value": 98.93612352641853,
-            "unit": "ns"
-          },
-          {
-            "name": "gpu__detect_gpus",
-            "value": 43484.72922737906,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_iw_link_output",
-            "value": 572.683534488651,
-            "unit": "ns"
-          },
-          {
-            "name": "network__parse_netsh_output",
-            "value": 964.9756206323285,
-            "unit": "ns"
-          },
-          {
-            "name": "systeminfo__collect",
-            "value": 2763127035,
-            "unit": "ns"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "634380+l1a@users.noreply.github.com",
-            "name": "Ken Tobias",
-            "username": "l1a"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
           "id": "8fed7c2a0957a824e4ef1e3e9a8b6ade917895af",
           "message": "Guard the COPR spec against drift (#213)\n\npackaging/copr/retch.spec's Version: tracks the last released tag and is\nbumped by hand at release time, with nothing checking the result. That is\nthe construct, and the missing guard, that let packaging/aur/PKGBUILD sit\neleven releases stale while CI stayed green. v0.7.1 fixed that for the AUR\nafter the drift; this does it for COPR before.\n\nscripts/copr_check.py (offline, wired into just check) asserts five things:\nVersion: equals the PKGBUILD's pkgver, Version: is not ahead of Cargo.toml,\nthe newest %changelog entry matches Version-Release, Source0 still uses\n%{version}, and cargo build still passes --locked. All five were watched\nfailing against the real files, including the negative case that matters\nmost: a Version: trailing Cargo.toml must stay silent.\n\nThe copr CI job builds the SRPM twice - plain, and under mock's environment.\nThe second run is the v0.9.9 regression test, and reproducing it correctly\ntook two attempts: forcing %_topdir alone does NOT fail on the pre-fix\nMakefile, because rpmdev-setuptree builds its tree wherever _topdir points.\nHOME=/builddir is the other half, in a fresh container. Verified against the\npre-fix Makefile from a606bbe, which dies with the exact production message.\n\nAlso adds .copr/** to packaging.yml's pull_request filter. copr.yml watched\nit only on push to main, so a PR touching only .copr/Makefile was verified\nby nothing - which is how the v0.9.9 bug reached main.\n\nCorrects NOTES section 3's .cargo/config.toml claim: no such file exists or\nis tracked, only .cargo/audit.toml.\n\nAssisted-By: Claude Opus 5",
           "timestamp": "2026-09-01T13:17:46-07:00",
@@ -22267,6 +22203,110 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 2222796935,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "58a66026936bd99d4e61cf153d817794cbece137",
+          "message": "Match fastfetch benchmarks; move cpu-usage to long (#268)\n\nThe retch-vs-fastfetch comparison measured different workloads. Plain\n`fastfetch` loads the user's config and `-c none` loads none, so on CI\nboth ran fastfetch's built-in 20-module default, and locally the\ndeveloper's ~75-module config. Every \"retch is faster\" came from that.\n\nEach mode is now matched field for field: `retch [--<mode>]` against\n`fastfetch -c benches/fastfetch/<mode>.jsonc`, generated from\nsrc/fields.rs by scripts/fastfetch_configs.py, with fastfetch's network\ntimeouts set to retch's. The pairs live once, in scripts/cli_bench.py,\nshared by CI, `just bench-compare` and `just bench-upload`. CI installs\nthe same newest fastfetch release on every runner.\n\ncpu-usage moves from the default mode to --long. Its fixed 200 ms\nsampling sleep on Linux/macOS was ~80% of the default mode's runtime\n(271 -> 35 ms on arrakis).\n\nDashboard: `retch --full` is new, and the fastfetch series are now\n`fastfetch (short|default|long|full)`; the old ones stop rather than\nsplice two workloads into one line. bench-check guards the configs\nagainst drift from src/fields.rs.\n\nMatched numbers still show retch slower in every mode; NOTES.md §5\ntracks it as blocking.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-27T20:21:07-07:00",
+          "tree_id": "6dba41ec633bb9db8f95634ecf59a01408d6d2c8",
+          "url": "https://github.com/l1a/retch/commit/58a66026936bd99d4e61cf153d817794cbece137"
+        },
+        "date": 1790566282926,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 27858390.000000004,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2372973025.9999995,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1308311880,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 18695198.000000004,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 25779920,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 2083971626.0000002,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 189362190.00000003,
+            "unit": "ns"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 21243268.000000004,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 179.47317724026396,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.8332315722732817,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 100.30835939248963,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 76.70276032432989,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 32704.314930063654,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 438.16693047038177,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 760.5056639885634,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 864673470,
             "unit": "ns"
           }
         ]
