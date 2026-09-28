@@ -378,12 +378,14 @@ impl SystemInfo {
         #[cfg(not(target_os = "windows"))]
         let cpu_usage_own0 = own_cpu_time();
 
-        let os = System::long_os_version()
-            .or_else(System::name)
-            .unwrap_or_else(|| "Unknown".to_string());
+        let os = crate::timing::timed("os", || {
+            System::long_os_version()
+                .or_else(System::name)
+                .unwrap_or_else(|| "Unknown".to_string())
+        });
 
-        let kernel = System::kernel_version();
-        let hostname = System::host_name();
+        let kernel = crate::timing::timed("kernel", System::kernel_version);
+        let hostname = crate::timing::timed("host", System::host_name);
 
         let cpu = if should_collect("cpu") {
             sys.cpus()
@@ -399,12 +401,6 @@ impl SystemInfo {
         } else {
             0
         };
-        let cpu_core_info = if should_collect("cpu") {
-            format_cpu_cores(cpu_cores, System::physical_core_count())
-        } else {
-            String::new()
-        };
-
         let memory = if should_collect("memory") {
             let total_mem = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
             let used_mem = sys.used_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
@@ -425,7 +421,7 @@ impl SystemInfo {
             String::new()
         };
 
-        let uptime = format!("{}s", System::uptime());
+        let uptime = format!("{}s", crate::timing::timed("uptime", System::uptime));
 
         let disks: Vec<String> = if should_collect("disk") {
             let disks_list =
@@ -524,7 +520,7 @@ impl SystemInfo {
             None
         };
 
-        let arch = System::cpu_arch();
+        let arch = crate::timing::timed("arch", System::cpu_arch);
 
         let processes = if should_collect("procs") || should_collect("audio") {
             #[cfg(target_os = "linux")]
@@ -585,7 +581,7 @@ impl SystemInfo {
             gpu,
             packages,
             public_ip,
-            (local_ip, active_interface),
+            ((local_ip, active_interface), networks),
             motherboard,
             bios,
             displays,
@@ -603,8 +599,21 @@ impl SystemInfo {
             (media, player),
             gpu_apis,
             shell,
+            cpu_core_info,
         ) = crate::timing::timed("scope", || {
             std::thread::scope(|s| {
+                // `NC / NT` needs sysinfo's physical-core count and, on Linux, the hybrid-CPU
+                // check that reads two sysfs files per cpufreq policy: ~0.8 ms together on a
+                // 32-thread machine, all of it serial before the scope until v0.20.3.
+                let cpu_cores_handle = if should_collect("cpu") {
+                    Some(s.spawn(move || {
+                        crate::timing::timed("cpu-cores", || {
+                            format_cpu_cores(cpu_cores, System::physical_core_count())
+                        })
+                    }))
+                } else {
+                    None
+                };
                 let gpu_handle = if should_collect("gpu") {
                     Some(s.spawn(|| {
                         crate::timing::timed("gpu", || {
@@ -631,12 +640,21 @@ impl SystemInfo {
                 } else {
                     None
                 };
+                // The interface list needs only this probe's answer, so it is built on the
+                // same thread. Until v0.20.3 it ran serially after the whole scope.
                 let network_ips_handle = if should_collect("net") {
                     Some(s.spawn(|| {
-                        crate::timing::timed(
+                        let (local_ip, active_interface) = crate::timing::timed(
                             "net",
                             crate::network::detect_active_interface_and_local_ip,
-                        )
+                        );
+                        let networks = crate::timing::timed("net-detail", || {
+                            crate::network::detect_networks(
+                                active_interface.as_deref(),
+                                local_ip.as_deref(),
+                            )
+                        });
+                        ((local_ip, active_interface), networks)
                     }))
                 } else {
                     None
@@ -779,8 +797,8 @@ impl SystemInfo {
                     packages_handle.and_then(|h| h.join().ok().flatten()),
                     public_ip_handle.and_then(|h| h.join().ok().flatten()),
                     network_ips_handle
-                        .map(|h| h.join().unwrap_or((None, None)))
-                        .unwrap_or((None, None)),
+                        .map(|h| h.join().unwrap_or(((None, None), Vec::new())))
+                        .unwrap_or(((None, None), Vec::new())),
                     motherboard_handle.and_then(|h| h.join().ok().flatten()),
                     bios_handle.and_then(|h| h.join().ok().flatten()),
                     displays_handle
@@ -816,6 +834,9 @@ impl SystemInfo {
                         .map(|h| h.join().unwrap_or_default())
                         .unwrap_or_default(),
                     shell_handle.and_then(|h| h.join().ok().flatten()),
+                    cpu_cores_handle
+                        .map(|h| h.join().unwrap_or_default())
+                        .unwrap_or_default(),
                 )
             })
         });
@@ -844,15 +865,7 @@ impl SystemInfo {
             b_cpu.cmp(&a_cpu)
         });
 
-        let networks = if should_collect("net") {
-            crate::timing::timed("net-detail", || {
-                crate::network::detect_networks(active_interface.as_deref(), local_ip.as_deref())
-            })
-        } else {
-            Vec::new()
-        };
-
-        let boot_timestamp = System::boot_time();
+        let boot_timestamp = crate::timing::timed("boot-time", System::boot_time);
         let boot_dt = chrono::Local
             .timestamp_opt(boot_timestamp as i64, 0)
             .single()
@@ -1500,50 +1513,78 @@ fn format_cpu_cores_plain(logical: usize, physical: Option<usize>) -> String {
     }
 }
 
-/// On Linux, detects Intel hybrid topology (P-cores + E-cores) by grouping CPUs
-/// by their maximum cpufreq frequency. Returns `None` if not hybrid or unavailable.
+/// On Linux, detects hybrid topology (P-cores + E-cores) by grouping CPUs by their maximum
+/// cpufreq frequency. Returns `None` if not hybrid or unavailable.
 #[cfg(target_os = "linux")]
 fn detect_hybrid_cores(logical: usize) -> Option<String> {
+    hybrid_cores_in(
+        std::path::Path::new("/sys/devices/system/cpu/cpufreq"),
+        logical,
+    )
+}
+
+/// The reading half of [`detect_hybrid_cores`], against any cpufreq directory so tests can
+/// use a fixture tree.
+///
+/// Two costs are avoided, since a 32-thread machine made this the slowest part of the `CPU`
+/// field (~0.75 ms; v0.20.3):
+/// - cpufreq policies partition the CPUs, so when there are as many policies as logical
+///   CPUs each covers exactly one, and `affected_cpus` need not be read — half the reads on
+///   the common per-CPU-policy x86 layout.
+/// - Only exactly two frequency tiers mean hybrid, so the scan stops at a third.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn hybrid_cores_in(cpufreq: &std::path::Path, logical: usize) -> Option<String> {
     use std::collections::HashMap;
     use std::fs;
 
-    let cpufreq = std::path::Path::new("/sys/devices/system/cpu/cpufreq");
-    if !cpufreq.exists() {
-        return None;
-    }
+    let policies: Vec<std::path::PathBuf> = fs::read_dir(cpufreq)
+        .ok()?
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.is_dir())
+        .collect();
+    let one_cpu_each = policies.len() == logical;
 
-    // Map max_freq → number of CPUs in that policy
+    // Map max_freq -> number of CPUs in the policies at that frequency.
     let mut freq_to_count: HashMap<u64, usize> = HashMap::new();
     let mut total_accounted = 0usize;
-
-    let Ok(policies) = fs::read_dir(cpufreq) else {
-        return None;
-    };
-
-    for policy in policies.flatten() {
-        let path = policy.path();
-        if !path.is_dir() {
-            continue;
-        }
-        let max_freq_str = fs::read_to_string(path.join("cpuinfo_max_freq")).ok()?;
-        let max_freq: u64 = max_freq_str.trim().parse().ok()?;
-        let affected = fs::read_to_string(path.join("affected_cpus")).ok()?;
-        let count = affected.split_whitespace().count();
+    for path in &policies {
+        let max_freq: u64 = fs::read_to_string(path.join("cpuinfo_max_freq"))
+            .ok()?
+            .trim()
+            .parse()
+            .ok()?;
+        let count = if one_cpu_each {
+            1
+        } else {
+            fs::read_to_string(path.join("affected_cpus"))
+                .ok()?
+                .split_whitespace()
+                .count()
+        };
         *freq_to_count.entry(max_freq).or_insert(0) += count;
         total_accounted += count;
+        if freq_to_count.len() > 2 {
+            return None;
+        }
     }
+    hybrid_label(&freq_to_count, total_accounted, logical)
+}
 
-    // Only report hybrid if we have exactly 2 frequency tiers and they account for all threads
+/// `"NP + ME / KT"` when exactly two frequency tiers account for every logical CPU; the
+/// higher tier is the performance cores.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn hybrid_label(
+    freq_to_count: &std::collections::HashMap<u64, usize>,
+    total_accounted: usize,
+    logical: usize,
+) -> Option<String> {
     if freq_to_count.len() != 2 || total_accounted != logical {
         return None;
     }
-
-    let mut tiers: Vec<(u64, usize)> = freq_to_count.into_iter().collect();
+    let mut tiers: Vec<(u64, usize)> = freq_to_count.iter().map(|(f, c)| (*f, *c)).collect();
     tiers.sort_by_key(|t| std::cmp::Reverse(t.0)); // highest freq first = P-cores
-    let (_, p_count) = tiers[0];
-    let (_, e_count) = tiers[1];
-
-    Some(format!("{}P + {}E / {}T", p_count, e_count, logical))
+    Some(format!("{}P + {}E / {}T", tiers[0].1, tiers[1].1, logical))
 }
 
 /// On macOS Apple Silicon, detects P/E cores via `hw.nperflevels` and
@@ -2211,6 +2252,76 @@ mod win_cpu {
 
 #[cfg(test)]
 mod tests {
+
+    /// Builds a fake cpufreq tree: one `policyN` per `(max_freq, affected)` entry, where
+    /// `affected: None` writes no `affected_cpus` file at all.
+    fn fake_cpufreq(name: &str, policies: &[(u64, Option<&str>)]) -> std::path::PathBuf {
+        let root =
+            std::env::temp_dir().join(format!("retch-cpufreq-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        for (i, (freq, affected)) in policies.iter().enumerate() {
+            let dir = root.join(format!("policy{i}"));
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::write(dir.join("cpuinfo_max_freq"), format!("{freq}\n")).unwrap();
+            if let Some(a) = affected {
+                std::fs::write(dir.join("affected_cpus"), a).unwrap();
+            }
+        }
+        root
+    }
+
+    #[test]
+    fn hybrid_per_cpu_policies_need_no_affected_cpus() {
+        // 4 P-cores at 5 GHz, 8 E-cores at 3.8 GHz, one policy per CPU, and no
+        // `affected_cpus` files: the count must come from the policy count alone.
+        let mut p: Vec<(u64, Option<&str>)> = vec![(5_000_000, None); 4];
+        p.extend(vec![(3_800_000, None); 8]);
+        let root = fake_cpufreq("percpu", &p);
+        assert_eq!(hybrid_cores_in(&root, 12).as_deref(), Some("4P + 8E / 12T"));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn hybrid_cluster_policies_still_read_affected_cpus() {
+        // big.LITTLE style: cluster policies, deliberately unequal in size so a P/E swap
+        // cannot produce the same string.
+        let root = fake_cpufreq(
+            "cluster",
+            &[
+                (2_400_000, Some("0 1\n")),
+                (1_800_000, Some("2 3 4 5 6 7\n")),
+            ],
+        );
+        assert_eq!(hybrid_cores_in(&root, 8).as_deref(), Some("2P + 6E / 8T"));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn hybrid_is_none_for_one_or_three_tiers() {
+        let one = fake_cpufreq("one", &vec![(3_000_000, None); 8]);
+        assert_eq!(
+            hybrid_cores_in(&one, 8),
+            None,
+            "a single tier is not hybrid"
+        );
+        let _ = std::fs::remove_dir_all(&one);
+        let three = fake_cpufreq(
+            "three",
+            &[(3_000_000, None), (2_000_000, None), (1_000_000, None)],
+        );
+        assert_eq!(hybrid_cores_in(&three, 3), None, "three tiers are not P/E");
+        let _ = std::fs::remove_dir_all(&three);
+    }
+
+    #[test]
+    fn hybrid_is_none_when_policies_do_not_cover_every_cpu() {
+        let root = fake_cpufreq(
+            "partial",
+            &[(5_000_000, Some("0 1\n")), (3_000_000, Some("2\n"))],
+        );
+        assert_eq!(hybrid_cores_in(&root, 8), None);
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     #[test]
     fn remaining_wait_covers_only_what_the_work_in_between_did_not() {
