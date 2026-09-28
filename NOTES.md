@@ -146,15 +146,29 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.19.2)
+## Current State (v0.20.0)
 
-`main` carries **`retch-cli` 0.19.2** / **`retch-sysinfo` 0.1.78**. Newest released tag is
+`main` carries **`retch-cli` 0.20.0** / **`retch-sysinfo` 0.1.79**. Newest released tag is
 **`v0.18.4`** (GitHub, crates.io and the AUR verified 2026-09-26; COPR and the tap not checked).
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.0 — weather comes from wttr.in in ONE HTTPS request** (was ipinfo.io, then
+  Open-Meteo, in sequence). Weather alone 845 → 564 ms on arrakis; fastfetch uses the same
+  service over plain HTTP at ~364 ms. HTTPS was chosen deliberately (user decision): the
+  request reveals the approximate location. Custom format `%l|%c|%t` (47 bytes), parsed
+  strictly, so an error or rate-limit page served with HTTP 200 is never shown as weather.
+  - **Visible changes**: an override is shown **as typed** (`London`, `93426`, `SFO`) — user
+    decision; wttr.in's JSON only names the nearest *weather station* (London → Walworth,
+    93426 → Bee Rock, SFO → Lomita Park), and real names would need a second request again.
+    Auto-location still shows `City, State` (US) / `City, Country`, from wttr.in's own geoip,
+    which can name a neighbouring town (Newbury Park vs ipinfo's Thousand Oaks). ZIP codes,
+    airport codes and `~landmark` now work. `serde_json` is no longer a dependency.
+  - **Fixed on the way: `url_encode` encoded code points, not UTF-8** (`ã` → `%E3`), so
+    `São Paulo` or `Zürich` never reached any weather service. See §7.3.
 
 - **v0.19.2 — `cpu-usage` no longer waits 200 ms after the probes; `--long` 404 → 218 ms**
   (arrakis, same sitting; fastfetch matched `--long` 512 ms). The first sample is taken at
@@ -386,7 +400,7 @@ Adds over long:
 - Cosmetic fields: `theme`, `icons`, `cursor` (`font` and `terminal-font` remain in `--long`)
 - `vulkan`, `opengl`, `opencl` — collected together on purpose; they dlopen loaders into the
   same driver stack, so splitting them across threads buys contention, not overlap
-- `gamepad`, `weather` (Open-Meteo, ~4 s network timeout)
+- `gamepad`, `weather` (wttr.in, one HTTPS request, ~4 s network timeout)
 - FUSE mounts — disk detection re-enables `statvfs` for `fuse.*` entries (skipped elsewhere to
   avoid 600ms+ hangs from cryfs/EncFS vaults)
 
@@ -419,10 +433,12 @@ Live items only. Completed items are removed rather than struck through — `git
     `ipinfo.io` answers in ~95 ms.
   - **Windows `cpu-usage` still includes retch's own CPU**: it diffs `GetSystemTimes` across the
     run without the v0.19.2 correction. Same fix via `GetProcessTimes`, and child processes.
-  - **`--full`** — weather is ~870 ms: `ipinfo.io` (~95 ms) then Open-Meteo over HTTPS
-    (~750 ms; ~180 ms RTT to Germany, TLS ~370 ms). fastfetch makes ONE plain-HTTP request to
-    `wttr.in` (~360 ms), which geolocates by IP itself. **Decided: switch to `wttr.in`**
-    (HTTPS ~560 ms, or HTTP ~365 ms to match fastfetch — not yet chosen).
+  - **`--full`** — weather is now one HTTPS request to wttr.in (~565 ms; v0.20.0). fastfetch's
+    ~365 ms is the same service over plain HTTP, which was declined; the remaining gap is the
+    TLS handshake to a server ~180 ms away. Next lead: `public-ip` → `ipinfo.io`.
+  - **`RETCH_TIMING` drops lines in `--full`**: `gpu_api.rs`'s `SuppressStderr` `dup2`s
+    `/dev/null` over fd 2 process-wide while GPU drivers load, swallowing any other probe's
+    timing line printed meanwhile. Fix: dup fd 2 at `timing::start()`, write to that. §7.5.
   - **macOS default (848 vs 414 ms on CI)** — prime suspect `phys-mem`, which spawns
     `system_profiler`; also `phys-disk` runs `diskutil` once per disk. `RETCH_TIMING=1` on a
     Mac settles it.
@@ -767,6 +783,12 @@ nobody asked.
   around the open never fired. `mode=ro` does not help either; `immutable=1` does.
 
 **Cross-platform**
+- **Percent-encode the UTF-8 bytes, never the code point.** `format!("%{:02X}", c as u32)`
+  turns `ã` (U+00E3) into `%E3`, which is not UTF-8, so every non-ASCII place name failed —
+  silently, since weather is best-effort. Iterate `s.bytes()`: `ã` is `%C3%A3`.
+- **An API's "location" may not be the one you asked about.** wttr.in's JSON `nearest_area`
+  is the nearest weather station's area, not the query: `London` → Walworth, `SFO` → Lomita
+  Park. Check what a field *is* against a few known inputs before displaying it.
 - **A Vulkan instance below 1.2 silently ignores the `pNext` chain** — a call that succeeds
   while returning empty strings and no error. And `vkEnumerateInstanceVersion` returns the
   *loader* version, not the device `apiVersion`: the cheap call answers a different question,
@@ -859,6 +881,11 @@ nobody asked.
   measurement window, compare the *values*, not just the timings, and check both against an
   outside reference (`/proc/stat` sampled with retch not running). That check also showed the
   old figure had been ~1 point high all along.
+- **Redirecting fd 2 silences every thread, not just yours.** `gpu_api.rs` points stderr at
+  `/dev/null` while GPU drivers load; `RETCH_TIMING` lines from other threads printed in that
+  window vanished, so `--full` traces were quietly incomplete (found 2026-09-28: `public-ip`
+  missing while `Public IP:` printed). A trace that is missing a line looks exactly like a
+  probe that did not run — count the lines against the probes you expect.
 - **`cargo test -q` prints dots, not `<name> ... FAILED`.** A mutation harness that greps for
   the FAILED line under `-q` reports every mutation as missed. Drop `-q`, and assert the run
   executed exactly one test (`running 1 test`) so a filter typo cannot pass either.

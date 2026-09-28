@@ -99,7 +99,7 @@ You can generate a starting configuration with:
 - **ascii_only**: Boolean indicating whether to restrict logo to ASCII representation.
 - **chafa**: Boolean indicating whether to force Chafa symbols output.
 - **logo**: Distro name/ID to force override logo detection.
-- **weather_location**: Location for weather lookup. Accepts a city name (`"London"`), US ZIP code (`"10001"`), or lat/lon coordinates (`"48.8566,2.3522"`). If unset, your location is auto-detected from your outbound IP via ipinfo.io.
+- **weather_location**: Location for weather lookup. Accepts a city name (`"London"`, `"Thousand Oaks, CA"`), US ZIP code (`"10001"`), airport code (`"SFO"`), lat/lon coordinates (`"48.8566,2.3522"`) or a landmark (`"~Eiffel Tower"`), and is shown as written. If unset, wttr.in locates you from your outbound IP and the location is shown as city and state (US) or city and country.
 - **weather_unit**: Temperature unit for the `weather` field. Accepts `"fahrenheit"` (default) or `"celsius"`. Can also be set via `--weather-unit` on the CLI.
 - **fields**: Array of strings selecting which fields are shown. This is a membership test only — it does **not** reorder output; display order is fixed. Available fields are:
   - `os`: Operating system name.
@@ -169,7 +169,7 @@ You can generate a starting configuration with:
   - `font`: UI system font.
   - `users`: Current logged in users.
   - `packages`: Installed package counts (supporting dpkg, rpm, pacman, flatpak, snap, homebrew, scoop, chocolatey, etc.).
-  - `weather`: Current weather via Open-Meteo (city, condition, temperature). Requires network access. Full mode only by default (~4s network timeout).
+  - `weather`: Current weather via wttr.in (location, condition, temperature), one HTTPS request. Requires network access. Full mode only by default (~4s network timeout).
 
 # THEMES
 

@@ -198,9 +198,9 @@ const DEFAULT_CHAFA_BLOCK: &str = r##"# Force Chafa symbols output (even if grap
 const DEFAULT_LOGO_BLOCK: &str = r##"# Force a specific distribution logo by name/ID
 # logo = "arch""##;
 
-const DEFAULT_WEATHER_LOCATION_BLOCK: &str = r##"# Location for weather lookup (city name, ZIP code, or lat/lon coordinates).
+const DEFAULT_WEATHER_LOCATION_BLOCK: &str = r##"# Location for weather lookup (city name, ZIP code, airport code, or lat/lon coordinates).
 # If unset, your location is auto-detected from your IP address.
-# Examples: "London", "10001", "48.8566,2.3522"
+# Examples: "London", "10001", "SFO", "48.8566,2.3522"
 # weather_location = """##;
 
 const DEFAULT_WEATHER_UNIT_BLOCK: &str = r##"# Temperature unit for weather: "fahrenheit" or "celsius"
