@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790716332180,
+  "lastUpdate": 1790716332486,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -879,6 +879,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 269.1716525042259,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9e79fef974446bac7f0e90a3babffe03184a8d0c",
+          "message": "Fail the COPR run when secrets are missing here (#280)\n\ncopr.yml's credentials step printed a notice and exited 0 whenever a\nCOPR secret was empty. The skip exists so forks, which have no\nsecrets, stay green, but it fired on l1a/retch too: a lost secret\nwould give a green release run that rebuilt nothing. rusticprofile's\nidentical guard hid its never-added secrets that way for weeks.\n\nOn l1a/retch a missing secret is now an ::error:: and exit 1. Forks\nstill skip.\n\ncopr_check.py --self-test now extracts that step from copr.yml and\nruns it under bash with a throwaway HOME and GITHUB_ENV in three\ncases: canonical repo without secrets must fail, a fork must skip,\ncanonical repo with secrets must write the config. A fixture of the\nold guard must be caught. packaging.yml runs the self-test in CI and\nnow triggers on copr.yml changes, since copr.yml itself runs only on\na tag or by hand.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T14:02:31-07:00",
+          "tree_id": "da4fe5e19592173f73ec9d5fb59423fe3fb0df7b",
+          "url": "https://github.com/l1a/retch/commit/9e79fef974446bac7f0e90a3babffe03184a8d0c"
+        },
+        "date": 1790716332431,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2095053.0999999999,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 252531273.87999997,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252264358.82,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1299399.4200000002,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2792328.4,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 361150335.98,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205242929.52,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1802654.2200000002,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 391516953.025,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 969.091446082826,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 109.39624713494814,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9466429868847297,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 56.38141555076273,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7726.315545706845,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70561.3398618692,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4771.145987846661,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 3422.4913359395673,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 56924.97382819592,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 344.620771802808,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 255.38775814496944,
             "unit": "ns"
           }
         ]
