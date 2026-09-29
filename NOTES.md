@@ -150,15 +150,22 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.7)
+## Current State (v0.20.8)
 
-`main` carries **`retch-cli` 0.20.7** / **`retch-sysinfo` 0.1.85**. Newest released tag is
-**`v0.18.4`** (GitHub, crates.io and the AUR verified 2026-09-26; COPR and the tap not checked).
+`main` carries **`retch-cli` 0.20.8** / **`retch-sysinfo` 0.1.85**. Newest released tag is
+**`v0.20.7`**.
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.8: the CLI benchmarks run the default mode first again** (`RUN_ORDER` in
+  `scripts/cli_bench.py`: default, short, long, full), as the workflow did before v0.19.0.
+  v0.19.0's mode-order run put `--short` first, straight after the build, and the next run
+  raised a macOS `--short` Performance Alert (24.4 → 52.4 ms) on a commit that changed no
+  `--short` code. **Open:** check whether macOS `--short` settles on the runs after this one.
+  If it does, the cold runner was the cause. If not, the alert was noise or has another cause.
 
 - **v0.20.7 — the benchmark dashboard restarted, by version, with the old history archived.**
   - **Why**: until v0.19.0 the fastfetch series measured the wrong workload (fastfetch's
