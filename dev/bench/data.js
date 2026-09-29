@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790715106318,
+  "lastUpdate": 1790715789307,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -144,6 +144,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 518493464.56,
             "extra": "v0.20.8; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "9e79fef974446bac7f0e90a3babffe03184a8d0c",
+          "message": "Fail the COPR run when secrets are missing here (#280)\n\ncopr.yml's credentials step printed a notice and exited 0 whenever a\nCOPR secret was empty. The skip exists so forks, which have no\nsecrets, stay green, but it fired on l1a/retch too: a lost secret\nwould give a green release run that rebuilt nothing. rusticprofile's\nidentical guard hid its never-added secrets that way for weeks.\n\nOn l1a/retch a missing secret is now an ::error:: and exit 1. Forks\nstill skip.\n\ncopr_check.py --self-test now extracts that step from copr.yml and\nruns it under bash with a throwaway HOME and GITHUB_ENV in three\ncases: canonical repo without secrets must fail, a fork must skip,\ncanonical repo with secrets must write the config. A fixture of the\nold guard must be caught. packaging.yml runs the self-test in CI and\nnow triggers on copr.yml changes, since copr.yml itself runs only on\na tag or by hand.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T14:02:31-07:00",
+          "tree_id": "da4fe5e19592173f73ec9d5fb59423fe3fb0df7b",
+          "url": "https://github.com/l1a/retch/commit/9e79fef974446bac7f0e90a3babffe03184a8d0c"
+        },
+        "date": 1790715789307,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 3808250.12,
+            "extra": "v0.20.9; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 14895547.420000002,
+            "extra": "v0.20.9; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 2370897.68,
+            "extra": "v0.20.9; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2694825.78,
+            "extra": "v0.20.9; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 227674287.55999997,
+            "extra": "v0.20.9; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 510054625.66,
+            "extra": "v0.20.9; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 619182136.4200001,
+            "extra": "v0.20.9; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 517010436.32,
+            "extra": "v0.20.9; AC"
           }
         ]
       }
