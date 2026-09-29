@@ -169,7 +169,7 @@ You can generate a starting configuration with:
   - `font`: UI system font.
   - `users`: Current logged in users.
   - `packages`: Installed package counts (supporting dpkg, rpm, pacman, flatpak, snap, homebrew, scoop, chocolatey, etc.).
-  - `weather`: Current weather via wttr.in (location, condition, temperature), one HTTPS request. Requires network access. Full mode only by default (~4s network timeout).
+  - `weather`: Current weather via wttr.in (location, condition, temperature), one plain-HTTP request, as fastfetch does. Requires network access. Full mode only by default (~4s network timeout).
 
 # THEMES
 
