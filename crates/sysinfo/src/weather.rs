@@ -1,15 +1,20 @@
 // SPDX-FileCopyrightText: 2026 Ken Tobias
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! Weather information via [wttr.in](https://wttr.in), in one HTTPS request.
+//! Weather information via [wttr.in](http://wttr.in), in one plain-HTTP request.
 //!
 //! Until v0.20.0 this took two requests in sequence: ipinfo.io to turn the caller's IP into
 //! coordinates, then Open-Meteo for the forecast. Both weather hosts sit in Germany, so from
 //! the US each round trip was ~180 ms and the pair cost ~870 ms — most of `--full`'s runtime.
 //! wttr.in geolocates the caller itself and answers a compact custom format, so a single
-//! request (~550 ms over HTTPS) replaces both. fastfetch uses the same service over plain
-//! HTTP (~360 ms); HTTPS was chosen deliberately, keeping the request and the approximate
-//! location it reveals encrypted.
+//! request replaces both.
+//!
+//! **Plain HTTP since v0.20.10**, as fastfetch does. v0.20.0–v0.20.9 used HTTPS, and the TLS
+//! 1.3 handshake costs one extra round trip to a server ~190 ms away: 570 vs 373 ms median
+//! on arrakis, which alone kept `--full` behind fastfetch. The trade-off is that the request,
+//! and the approximate location in the reply, travel unencrypted. Because anyone on the path
+//! can also rewrite the reply, `parse_wttr` rejects any response containing a control
+//! character, so a tampered reply cannot put terminal escape sequences on the screen.
 
 /// Temperature unit for weather display.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -67,7 +72,7 @@ pub(crate) fn detect_weather(location: Option<&str>, unit: WeatherUnit) -> Optio
 /// emoji and `%t` temperature, `|`-separated, in the requested unit.
 fn wttr_url(location: Option<&str>, unit: WeatherUnit) -> String {
     format!(
-        "https://wttr.in/{}?format=%l|%c|%t&{}",
+        "http://wttr.in/{}?format=%l|%c|%t&{}",
         location.map(url_encode).unwrap_or_default(),
         unit.wttr_flag()
     )
@@ -78,8 +83,18 @@ fn wttr_url(location: Option<&str>, unit: WeatherUnit) -> String {
 /// Strict on purpose: anything that is not exactly three fields with a temperature in the
 /// requested unit is rejected, so an error or rate-limit page served with HTTP 200 can
 /// never be printed as weather.
+///
+/// A body containing any control character is rejected whole. The request is plain HTTP, so
+/// the reply can be rewritten in transit, and the location field is printed verbatim: an
+/// `ESC` there would reach the terminal. Real replies never contain one (the emoji are a
+/// symbol plus U+FE0F, a combining mark), and a reply that does has been tampered with, so
+/// none of it is trusted rather than stripping the escapes and showing the rest.
 fn parse_wttr(body: &str, unit: WeatherUnit, overridden: bool) -> Option<String> {
-    let mut fields = body.trim().split('|');
+    let body = body.trim();
+    if body.chars().any(char::is_control) {
+        return None;
+    }
+    let mut fields = body.split('|');
     let (loc, emoji, temp) = (fields.next()?, fields.next()?, fields.next()?);
     if fields.next().is_some() {
         return None;
@@ -186,12 +201,49 @@ mod tests {
     fn wttr_url_carries_location_and_unit() {
         assert_eq!(
             wttr_url(None, WeatherUnit::Fahrenheit),
-            "https://wttr.in/?format=%l|%c|%t&u"
+            "http://wttr.in/?format=%l|%c|%t&u"
         );
         assert_eq!(
             wttr_url(Some("Thousand Oaks, CA"), WeatherUnit::Celsius),
-            "https://wttr.in/Thousand+Oaks%2C+CA?format=%l|%c|%t&m"
+            "http://wttr.in/Thousand+Oaks%2C+CA?format=%l|%c|%t&m"
         );
+    }
+
+    #[test]
+    fn rejects_a_reply_carrying_control_characters() {
+        // Plain HTTP can be rewritten in transit, and the location is printed verbatim.
+        let f = WeatherUnit::Fahrenheit;
+        assert_eq!(
+            parse_wttr("\u{1b}]0;pwned\u{7}X|☀️ |+5°F", f, true),
+            None,
+            "OSC title escape in the location"
+        );
+        assert_eq!(
+            parse_wttr("X\u{1b}[2J|☀️ |+5°F", f, true),
+            None,
+            "CSI clear-screen in the location"
+        );
+        assert_eq!(parse_wttr("X|☀️\u{8}|+5°F", f, true), None, "backspace");
+        assert_eq!(
+            parse_wttr("Los Angeles, California,\rUS|☀️ |+82°F", f, false),
+            None,
+            "carriage return mid-line"
+        );
+    }
+
+    #[test]
+    fn real_weather_emoji_are_not_control_characters() {
+        // Each is a symbol plus U+FE0F (a combining mark); none may trip the control check.
+        // Verbatim from wttr.in replies: the trailing newline is trimmed before the check.
+        for emoji in ["☀️", "☁️", "⛅️", "🌦️", "🌧️", "⛈️", "🌨️", "❄️", "🌫️", "🌩️"]
+        {
+            let reply = format!("Los Angeles, California, US|{emoji} |+82°F\n");
+            assert_eq!(
+                parse_wttr(&reply, WeatherUnit::Fahrenheit, false),
+                Some(format!("Los Angeles, California: {emoji} 82°F")),
+                "{emoji}"
+            );
+        }
     }
 
     #[test]

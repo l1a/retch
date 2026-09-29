@@ -150,15 +150,27 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.9)
+## Current State (v0.20.10)
 
-`main` carries **`retch-cli` 0.20.9** / **`retch-sysinfo` 0.1.85**. Newest released tag is
+`main` carries **`retch-cli` 0.20.10** / **`retch-sysinfo` 0.1.86**. Newest released tag is
 **`v0.20.7`**.
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.10: weather goes over plain HTTP, like fastfetch; `--full` 621 → 425 ms on arrakis
+  (fastfetch 519).** This reverses v0.20.0's HTTPS choice (user decision, 2026-09-29). The
+  TLS 1.3 handshake was one extra round trip to wttr.in, ~190 ms away: 570 vs 373 ms median,
+  10 interleaved runs of the same request. It was the whole `--full` gap. HTTP answers 200
+  with the same body and no redirect, and an unknown location is still a 500.
+  - **Trade-off, accepted:** the request and the approximate location in the reply now travel
+    unencrypted.
+  - **Hardening that came with it:** anyone on the path can now rewrite the reply, and the
+    location is printed verbatim. So `parse_wttr` rejects any reply containing a control
+    character (an `ESC` would otherwise reach the terminal). Weather emoji are a symbol plus
+    U+FE0F, a combining mark, and a test pins that they still parse.
 
 - **v0.20.9: missing COPR credentials fail the release run on `l1a/retch`.** They used to be
   a `::notice::` plus exit 0 on every repo. That skip exists so forks stay green, but it also
@@ -282,7 +294,8 @@ Recent work worth knowing about, beyond what `git log` says:
   `public-ip` line in 9/15 runs on v0.20.0 and 15/15 after. No `unsafe` in the fix
   (`as_fd().try_clone_to_owned()`).
 
-- **v0.20.0 — weather comes from wttr.in in ONE HTTPS request** (was ipinfo.io, then
+- **v0.20.0 — weather comes from wttr.in in ONE HTTPS request** (HTTPS reversed to plain HTTP
+  in v0.20.10, see above; was ipinfo.io, then
   Open-Meteo, in sequence). Weather alone 845 → 564 ms on arrakis; fastfetch uses the same
   service over plain HTTP at ~364 ms. HTTPS was chosen deliberately (user decision): the
   request reveals the approximate location. Custom format `%l|%c|%t` (47 bytes), parsed
@@ -526,7 +539,7 @@ Adds over long:
 - Cosmetic fields: `theme`, `icons`, `cursor` (`font` and `terminal-font` remain in `--long`)
 - `vulkan`, `opengl`, `opencl` — collected together on purpose; they dlopen loaders into the
   same driver stack, so splitting them across threads buys contention, not overlap
-- `gamepad`, `weather` (wttr.in, one HTTPS request, ~4 s network timeout)
+- `gamepad`, `weather` (wttr.in, one plain-HTTP request, ~4 s network timeout)
 - FUSE mounts — disk detection re-enables `statvfs` for `fuse.*` entries (skipped elsewhere to
   avoid 600ms+ hangs from cryfs/EncFS vaults)
 
@@ -548,9 +561,10 @@ Adds over long:
 
 Live items only. Completed items are removed rather than struck through — `git log` has them.
 
-- **BLOCKING per §3: retch is slower than fastfetch in some modes** once the comparison is like
-  for like. On arrakis after v0.19.2: default ~8–9 vs 12–15 ms and `--long` 218 vs 512 ms
-  (**retch ahead**); `--short` 3.7 vs 2.2 ms and `--full` 919 vs 522 ms (behind). Leads:
+- **BLOCKING per §3 on macOS and possibly Windows; clear on Linux.** On arrakis (on AC) since
+  v0.20.10 retch is ahead or level in all four matched modes: default 3.8 vs 14.9 ms, `--short`
+  2.4 vs 2.7, `--long` 228 vs 510, `--full` 425 vs 519 ms. macOS CI's default mode is still
+  behind (848 vs 414 ms), and Windows is unexamined. Leads:
   - **default, real hardware only** — 35–57 ms on arrakis at times, ~9 ms at others (ahead of
     fastfetch's 14.8), on the same binary; level in a container. The slow state made
     `procs`/`audio`/`shell`/`terminal` ~50 ms each. Cause unknown; v0.19.1 removed the process
@@ -558,9 +572,9 @@ Live items only. Completed items are removed rather than struck through — `git
   - **`--long`** — now ahead (~218 vs 512 ms), at its ~200 ms `cpu-usage` floor (v0.20.2).
   - **Windows `cpu-usage` still includes retch's own CPU**: it diffs `GetSystemTimes` across the
     run without the v0.19.2 correction. Same fix via `GetProcessTimes`, and child processes.
-  - **`--full`** — weather is now one HTTPS request to wttr.in (~565 ms; v0.20.0). fastfetch's
-    ~365 ms is the same service over plain HTTP, which was declined; the remaining gap is the
-    TLS handshake to a server ~180 ms away.
+  - **`--full`** — ahead since v0.20.10 (weather over plain HTTP). Still bound by `weather`
+    (~375 ms). After it, `temp` then `wm` run serially, ~24 ms together; running them
+    concurrently is the next small win.
   - **macOS default (848 vs 414 ms on CI)** — prime suspect `phys-mem`, which spawns
     `system_profiler`; also `phys-disk` runs `diskutil` once per disk. `RETCH_TIMING=1` on a
     Mac settles it.
@@ -936,6 +950,10 @@ nobody asked.
 - **Percent-encode the UTF-8 bytes, never the code point.** `format!("%{:02X}", c as u32)`
   turns `ã` (U+00E3) into `%E3`, which is not UTF-8, so every non-ASCII place name failed —
   silently, since weather is best-effort. Iterate `s.bytes()`: `ã` is `%C3%A3`.
+- **Text from an unencrypted source is terminal input.** Over plain HTTP any hop can rewrite
+  the reply, and a field printed verbatim (wttr.in's location) can then carry `ESC` sequences
+  that retitle the window, clear the screen or worse. Reject a reply containing control
+  characters outright rather than stripping them: a reply that has any has been tampered with.
 - **An API's "location" may not be the one you asked about.** wttr.in's JSON `nearest_area`
   is the nearest weather station's area, not the query: `London` → Walworth, `SFO` → Lomita
   Park. Check what a field *is* against a few known inputs before displaying it.
