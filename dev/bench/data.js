@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790716332486,
+  "lastUpdate": 1790716332802,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1257,6 +1257,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 518.8061917311461,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9e79fef974446bac7f0e90a3babffe03184a8d0c",
+          "message": "Fail the COPR run when secrets are missing here (#280)\n\ncopr.yml's credentials step printed a notice and exited 0 whenever a\nCOPR secret was empty. The skip exists so forks, which have no\nsecrets, stay green, but it fired on l1a/retch too: a lost secret\nwould give a green release run that rebuilt nothing. rusticprofile's\nidentical guard hid its never-added secrets that way for weeks.\n\nOn l1a/retch a missing secret is now an ::error:: and exit 1. Forks\nstill skip.\n\ncopr_check.py --self-test now extracts that step from copr.yml and\nruns it under bash with a throwaway HOME and GITHUB_ENV in three\ncases: canonical repo without secrets must fail, a fork must skip,\ncanonical repo with secrets must write the config. A fixture of the\nold guard must be caught. packaging.yml runs the self-test in CI and\nnow triggers on copr.yml changes, since copr.yml itself runs only on\na tag or by hand.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T14:02:31-07:00",
+          "tree_id": "da4fe5e19592173f73ec9d5fb59423fe3fb0df7b",
+          "url": "https://github.com/l1a/retch/commit/9e79fef974446bac7f0e90a3babffe03184a8d0c"
+        },
+        "date": 1790716332744,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 427695205.06,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1032561743.3000001,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1032560721.56,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 48879877.58,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 850264554.96,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 762846710,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 793051109.26,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 43270831.78,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 657050037.55,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 606.5563111837782,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 199.9772142336347,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.2324710489147983,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 96.22790529143961,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6282.406985353342,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1885.0024295630938,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 657.9762330137995,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 107806.34779893028,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 548.5548920296487,
             "unit": "ns"
           }
         ]
