@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790715104533,
+  "lastUpdate": 1790715104830,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -543,6 +543,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 264.5950860381732,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5a56a32891519db3e8b22b1b22f25bccafaff7c3",
+          "message": "Run the default benchmark mode first again (#279)\n\ncli_bench.py ran the four retch-vs-fastfetch pairs in MODES order\nsince v0.19.0, so --short ran first, straight after the build on a\ncold runner. The workflow before that always started with the default\nmode. The first run on the new order raised a macOS --short\nPerformance Alert (24.4 -> 52.4 ms) on a commit that changed no\n--short code.\n\nRUN_ORDER (default, short, long, full) now sets the order pairs() and\nrun() use. MODES is unchanged, since config generation and the strata\nlogic depend on it. Series are keyed by command string, so no\ndashboard series forks. The self-test pins the exact order, checks it\ncovers every mode once, and checks pairs() follows it.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T13:40:54-07:00",
+          "tree_id": "eb5cbd2f1dcc4734f7909c53c88b787ff01f5190",
+          "url": "https://github.com/l1a/retch/commit/5a56a32891519db3e8b22b1b22f25bccafaff7c3"
+        },
+        "date": 1790715104777,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2554530.74,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 265471749.7,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252342634.78000006,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1625275.06,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3248978.6400000006,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 398730559.09999996,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205620337.87999997,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2205894.76,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 477377434.85,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 968.2734151505495,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 109.76809183858227,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946608871292736,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 55.94899225286473,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7752.136722064934,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70553.8638921818,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4793.9357421999175,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 3449.3751087873097,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 57287.399970276965,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 344.78226620381076,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 269.1716525042259,
             "unit": "ns"
           }
         ]
