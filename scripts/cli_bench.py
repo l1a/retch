@@ -35,6 +35,16 @@ from fastfetch_configs import MODES, REPO_ROOT  # noqa: E402
 
 MODE_NAMES = tuple(mode for mode, _ in MODES)
 
+# The order the pairs RUN in, which is deliberately not MODE_NAMES' order. Whatever runs first
+# runs straight after the build, on a runner that is still cold, and the workflow before
+# v0.19.0 always started with the default mode. v0.19.0 switched to MODE_NAMES order, putting
+# `--short` first, and the first run afterwards raised a macOS `--short` Performance Alert
+# (24.4 -> 52.4 ms) for a commit that changed no `--short` code. Running default first again
+# takes that variable out. Reorder here, never MODES: that tuple also drives config
+# generation and the strata logic in fastfetch_configs.py. Series are keyed by command, not
+# position, so the order does not affect the dashboard.
+RUN_ORDER = ("default", "short", "long", "full")
+
 
 def retch_binary(system=None):
     """The release binary, spelled the way the dashboard labels expect."""
@@ -59,9 +69,9 @@ def export_name(mode):
 
 
 def pairs(system=None, with_fastfetch=True):
-    """[(mode, [commands])] in mode order."""
+    """[(mode, [commands])] in RUN_ORDER, the order run() executes them."""
     out = []
-    for mode in MODE_NAMES:
+    for mode in RUN_ORDER:
         cmds = [retch_command(mode, system)]
         if with_fastfetch:
             cmds.append(fastfetch_command(mode))
@@ -97,6 +107,15 @@ def _self_test():
 
     expect("four modes, least to most verbose",
            MODE_NAMES == ("short", "default", "long", "full"), str(MODE_NAMES))
+    # Pinned exactly, so the order cannot drift back to MODE_NAMES' (see RUN_ORDER), and
+    # checked against what pairs() yields, since that is what run() executes.
+    expect("default runs first, then the rest least to most verbose",
+           RUN_ORDER == ("default", "short", "long", "full"), str(RUN_ORDER))
+    expect("the run order covers every mode exactly once",
+           sorted(RUN_ORDER) == sorted(MODE_NAMES), f"{RUN_ORDER} vs {MODE_NAMES}")
+    expect("pairs() follows the run order",
+           tuple(mode for mode, _ in pairs("Linux")) == RUN_ORDER,
+           str([mode for mode, _ in pairs("Linux")]))
     for system in ("Linux", "Darwin", "Windows"):
         labels = [label_for_command(c) for _, cmds in pairs(system) for c in cmds]
         expect(f"{system}: every command maps to an expected series",
