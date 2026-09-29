@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790715106009,
+  "lastUpdate": 1790715106318,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1261,6 +1261,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 749879690,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5a56a32891519db3e8b22b1b22f25bccafaff7c3",
+          "message": "Run the default benchmark mode first again (#279)\n\ncli_bench.py ran the four retch-vs-fastfetch pairs in MODES order\nsince v0.19.0, so --short ran first, straight after the build on a\ncold runner. The workflow before that always started with the default\nmode. The first run on the new order raised a macOS --short\nPerformance Alert (24.4 -> 52.4 ms) on a commit that changed no\n--short code.\n\nRUN_ORDER (default, short, long, full) now sets the order pairs() and\nrun() use. MODES is unchanged, since config generation and the strata\nlogic depend on it. Series are keyed by command string, so no\ndashboard series forks. The self-test pins the exact order, checks it\ncovers every mode once, and checks pairs() follows it.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T13:40:54-07:00",
+          "tree_id": "eb5cbd2f1dcc4734f7909c53c88b787ff01f5190",
+          "url": "https://github.com/l1a/retch/commit/5a56a32891519db3e8b22b1b22f25bccafaff7c3"
+        },
+        "date": 1790715106264,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 56627490.00000002,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2391854102,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1322022456,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 35060864,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 38356310.000000015,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 449181722.00000006,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 174214596.00000003,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 36993444,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 181.77709790855667,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9507274730689304,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 101.73221016286631,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 80.99300507277881,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46063.9772188206,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 497.96653113339664,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 726.4206410900284,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 414415560,
             "unit": "ns"
           }
         ]
