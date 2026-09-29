@@ -150,15 +150,27 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.8)
+## Current State (v0.20.9)
 
-`main` carries **`retch-cli` 0.20.8** / **`retch-sysinfo` 0.1.85**. Newest released tag is
+`main` carries **`retch-cli` 0.20.9** / **`retch-sysinfo` 0.1.85**. Newest released tag is
 **`v0.20.7`**.
 
 Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
 listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.9: missing COPR credentials fail the release run on `l1a/retch`.** They used to be
+  a `::notice::` plus exit 0 on every repo. That skip exists so forks stay green, but it also
+  fired here. `copr_check.py --self-test` now runs `copr.yml`'s real credentials step under
+  bash, in three cases: canonical repo without secrets (must fail), fork (must skip),
+  canonical repo with secrets (must configure). CI runs that self-test, and `packaging.yml`
+  now triggers on changes to `copr.yml`.
+  - **Still open in the siblings:** `etr` and `rusticprofile` carry the identical guard, and
+    `rusticprofile` has no COPR secrets at all. Each needs the same fix.
+  - The COPR API token on corrino (`~/.config/copr`) expires **2027-02-27**. If the repo
+    secrets hold that token, renew both together. This fix covers *empty* secrets only. An
+    expired token is non-empty, gets past the guard, and fails at the `copr-cli` call.
 
 - **v0.20.8: the CLI benchmarks run the default mode first again** (`RUN_ORDER` in
   `scripts/cli_bench.py`: default, short, long, full), as the workflow did before v0.19.0.

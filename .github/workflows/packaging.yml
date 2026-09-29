@@ -37,6 +37,9 @@ on:
       # which mock moves) reached main and failed on COPR instead of in CI. Same hole as
       # the Justfile one above, one directory over.
       - '.copr/**'
+      # copr.yml runs only on a tag or by hand, so a PR changing its credentials guard
+      # would otherwise reach main without copr_check.py's self-test ever running it.
+      - '.github/workflows/copr.yml'
       - '.github/workflows/packaging.yml'
   workflow_dispatch:
 
@@ -273,8 +276,10 @@ jobs:
       # Offline consistency, the same half `just check` runs. CI invokes cargo directly and
       # never `just` (see NOTES.md), so the checker has to be called explicitly here or the
       # guard only ever runs on the machine of whoever remembered to type `just check`.
+      # --self-test as well: it also RUNS copr.yml's credentials step, which must fail on
+      # l1a/retch when a secret is missing and skip only on a fork.
       - name: Verify the spec has not drifted
-        run: python3 scripts/copr_check.py
+        run: python3 scripts/copr_check.py --self-test && python3 scripts/copr_check.py
 
       # This is the artifact-level half, and it is deliberately the SRPM step rather than a
       # full `rpmbuild -ba`: COPR itself does the full build on every packaging commit, so
