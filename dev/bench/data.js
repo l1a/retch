@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790715104830,
+  "lastUpdate": 1790715105139,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -799,6 +799,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 601.6172588301699,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5a56a32891519db3e8b22b1b22f25bccafaff7c3",
+          "message": "Run the default benchmark mode first again (#279)\n\ncli_bench.py ran the four retch-vs-fastfetch pairs in MODES order\nsince v0.19.0, so --short ran first, straight after the build on a\ncold runner. The workflow before that always started with the default\nmode. The first run on the new order raised a macOS --short\nPerformance Alert (24.4 -> 52.4 ms) on a commit that changed no\n--short code.\n\nRUN_ORDER (default, short, long, full) now sets the order pairs() and\nrun() use. MODES is unchanged, since config generation and the strata\nlogic depend on it. Series are keyed by command string, so no\ndashboard series forks. The self-test pins the exact order, checks it\ncovers every mode once, and checks pairs() follows it.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T13:40:54-07:00",
+          "tree_id": "eb5cbd2f1dcc4734f7909c53c88b787ff01f5190",
+          "url": "https://github.com/l1a/retch/commit/5a56a32891519db3e8b22b1b22f25bccafaff7c3"
+        },
+        "date": 1790715105085,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 360400390.04,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1248987987.66,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1108864023.34,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 44429931.56,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 739729560.64,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 645471425.16,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 705116590.0400001,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 28871639.96,
+            "unit": "ns",
+            "extra": "v0.20.8"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 1147079350.1,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 661.980926652773,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 201.30353919743482,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.5351148617942494,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 112.34741608987902,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 8089.926950180299,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1791.488166744725,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 631.2422997964717,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 189872.22660872893,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 518.8061917311461,
             "unit": "ns"
           }
         ]
