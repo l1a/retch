@@ -13,6 +13,31 @@
 // Place real logos in assets/logos/<distro>.png
 // Example: assets/logos/arch.png, assets/logos/fedora.png, assets/logos/tux.png
 
+/// Every distro logo retch ships, as `(id, display name)`, in the order `--print-logos` and
+/// `--list-distros` show them. Any other id falls back to Tux.
+///
+/// Both flags read this one list. Until v0.20.11 each kept its own copy, and
+/// `--list-distros` still lacked the five logos added after it was written. A test ties
+/// this list to `assets/logos/*.txt`, so adding a logo without an entry here fails.
+pub const KNOWN_LOGOS: &[(&str, &str)] = &[
+    ("arch", "Arch Linux"),
+    ("debian", "Debian"),
+    ("endeavouros", "EndeavourOS"),
+    ("fedora", "Fedora"),
+    ("garuda", "Garuda Linux"),
+    ("kali", "Kali Linux"),
+    ("linuxmint", "Linux Mint"),
+    ("manjaro", "Manjaro"),
+    ("mx", "MX Linux"),
+    ("nixos", "NixOS"),
+    ("opensuse", "openSUSE"),
+    ("pop", "Pop!_OS"),
+    ("ubuntu", "Ubuntu"),
+    ("zorin", "Zorin OS"),
+    ("macos", "macOS"),
+    ("windows", "Windows"),
+];
+
 /// Returns the raw PNG bytes for an embedded distro logo.
 ///
 /// If the distro is not recognized, it falls back to the Tux (Linux) logo.
@@ -749,6 +774,33 @@ pub fn print_sixel_logo_from_path(path: &std::path::Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn known_logos_match_the_shipped_logo_files() {
+        // Every logo file (except the Tux fallback) must be listed, and every listed id must
+        // have a file. `--list-distros` drifted from the files once; this pins both directions.
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/logos");
+        let mut shipped: Vec<String> = std::fs::read_dir(&dir)
+            .expect("assets/logos exists")
+            .filter_map(|e| {
+                let name = e.ok()?.file_name().into_string().ok()?;
+                name.strip_suffix(".txt").map(str::to_string)
+            })
+            .filter(|id| id != "tux")
+            .collect();
+        shipped.sort();
+        let mut listed: Vec<String> = KNOWN_LOGOS.iter().map(|(id, _)| id.to_string()).collect();
+        listed.sort();
+        assert_eq!(listed, shipped, "KNOWN_LOGOS vs assets/logos/*.txt");
+    }
+
+    #[test]
+    fn every_known_logo_renders_its_own_art_not_tux() {
+        let tux = get_ascii_logo(None);
+        for (id, _) in KNOWN_LOGOS {
+            assert_ne!(get_ascii_logo(Some(id)), tux, "{id} falls back to Tux");
+        }
+    }
 
     #[test]
     fn test_get_ascii_logo_arch() {

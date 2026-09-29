@@ -17,7 +17,7 @@ retch is benchmarked against fastfetch on every merge to `main`. Current numbers
 
 ### Configuration
 
-retch reads `~/.config/retch/config.toml`, created on first run. Themes, field selection and logo behaviour are all configurable; see the [Configuration and Theming](https://github.com/l1a/retch/wiki/Configuration-and-Theming) wiki page.
+retch reads `~/.config/retch/config.toml` (or `$XDG_CONFIG_HOME/retch/config.toml`); `retch --write-config` creates one with every option. Themes, field selection and logo behaviour are all configurable; see the [Configuration and Theming](https://github.com/l1a/retch/wiki/Configuration-and-Theming) wiki page.
 
 ### Links
 

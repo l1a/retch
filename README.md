@@ -3,7 +3,7 @@
 A fast, feature-rich system information fetcher written in Rust.
 
 > **Note**: The crate is published as `retch-cli` on crates.io because the name `retch` was already taken.  
-> Users interact with the tool as `retch` (binary name and config directory `~/.config/retch/`).
+> Users interact with the tool as `retch`: that is the binary name and the config folder name (see [Configuration](#configuration)).
 
 ## Status
 
@@ -151,7 +151,7 @@ inputs.retch.url = "github:l1a/retch";
 
 # Home Manager module
 programs.retch.enable = true;
-# Optionally configure retch (writes ~/.config/retch/config.toml):
+# Optionally configure retch (writes retch's config.toml; see Configuration):
 programs.retch.settings = {
   theme = "catppuccin";
 };
@@ -293,7 +293,16 @@ Retch provides standard documentation and quick-reference guides:
 
 ## Configuration
 
-retch looks for a configuration file at `~/.config/retch/config.toml` (or `$XDG_CONFIG_HOME/retch/config.toml`).
+retch reads `config.toml` from a `retch` folder in your platform's config directory:
+
+| Platform | Path |
+|---|---|
+| Linux | `$XDG_CONFIG_HOME/retch/config.toml`, or `~/.config/retch/config.toml` when `XDG_CONFIG_HOME` is unset (the XDG Base Directory spec) |
+| macOS | `~/Library/Application Support/retch/config.toml` |
+| Windows | `%APPDATA%\retch\config.toml` |
+
+No file is created on its own: `retch --write-config` writes one with every option, and
+`--config <path>` reads a different file.
 
 ### Setup Commands
 

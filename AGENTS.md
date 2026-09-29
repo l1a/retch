@@ -167,8 +167,8 @@ captures context that is not in the code.
 
 ## 1. Project Overview
 `retch` is a fast, feature-rich system information fetcher written in Rust (published on
-crates.io as `retch-cli`; the binary and config directory are `retch` /
-`~/.config/retch/`). It runs concurrent hardware/system probes (GPU, display, network,
+crates.io as `retch-cli`; the binary is `retch`, and its config lives in `retch/` under the
+platform config directory, `~/.config/retch/` on Linux). It runs concurrent hardware/system probes (GPU, display, network,
 audio, Bluetooth, etc.) and renders themed output, including graphical distro logos. See
 NOTES.md for full architecture and current status.
 
