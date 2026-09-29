@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790719501075,
+  "lastUpdate": 1790719501844,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1215,6 +1215,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 255.38775814496944,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e3d16e03aab826b6e8eb6d6b94d1df991165ba49",
+          "message": "Fetch weather over plain HTTP, like fastfetch (#281)\n\nweather used one HTTPS request to wttr.in since v0.20.0. The TLS 1.3\nhandshake is one extra round trip to a server ~190 ms away: 570 vs\n373 ms median, 10 interleaved runs of the same request on arrakis. It\nwas the entire --full gap to fastfetch, which uses the same service\nover plain HTTP. HTTP answers 200 with the same body and no redirect,\nand an unknown location is still a 500, so curl -f still fails it.\n\n--full on arrakis (15 runs, AC): 621 -> 425 ms; fastfetch 519 ms.\nWeather output identical.\n\nThe trade-off is that the request and the approximate location in the\nreply are now unencrypted, and any hop can rewrite the reply.\nparse_wttr prints the location verbatim, so it now rejects any reply\ncontaining a control character: an ESC there would reach the\nterminal. Real replies never contain one; weather emoji are a symbol\nplus U+FE0F, a combining mark, and a test pins that they still parse.\n\nretch-sysinfo 0.1.86, retch-cli 0.20.10.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T14:53:35-07:00",
+          "tree_id": "aaa14d15c51db8ebde24227739e7b4285f271d39",
+          "url": "https://github.com/l1a/retch/commit/e3d16e03aab826b6e8eb6d6b94d1df991165ba49"
+        },
+        "date": 1790719501807,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2418726.6799999997,
+            "unit": "ns",
+            "extra": "v0.20.10"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 252568005.84000006,
+            "unit": "ns",
+            "extra": "v0.20.10"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252419736.79999995,
+            "unit": "ns",
+            "extra": "v0.20.10"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1504668.1200000003,
+            "unit": "ns",
+            "extra": "v0.20.10"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3018240.38,
+            "unit": "ns",
+            "extra": "v0.20.10"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 216782480.23999995,
+            "unit": "ns",
+            "extra": "v0.20.10"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205297040.5,
+            "unit": "ns",
+            "extra": "v0.20.10"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2080673.72,
+            "unit": "ns",
+            "extra": "v0.20.10"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 239831830.15,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 984.2341362095788,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 111.35616627800569,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9467302980551966,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 52.821656208658545,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7794.97209982301,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71334.28354705396,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4761.126238286066,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 3438.1819242836464,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 57139.40668243816,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 348.4362779523224,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 266.8388482713848,
             "unit": "ns"
           }
         ]
