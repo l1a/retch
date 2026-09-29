@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790716333108,
+  "lastUpdate": 1790716333419,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1943,6 +1943,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 414415560,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9e79fef974446bac7f0e90a3babffe03184a8d0c",
+          "message": "Fail the COPR run when secrets are missing here (#280)\n\ncopr.yml's credentials step printed a notice and exited 0 whenever a\nCOPR secret was empty. The skip exists so forks, which have no\nsecrets, stay green, but it fired on l1a/retch too: a lost secret\nwould give a green release run that rebuilt nothing. rusticprofile's\nidentical guard hid its never-added secrets that way for weeks.\n\nOn l1a/retch a missing secret is now an ::error:: and exit 1. Forks\nstill skip.\n\ncopr_check.py --self-test now extracts that step from copr.yml and\nruns it under bash with a throwaway HOME and GITHUB_ENV in three\ncases: canonical repo without secrets must fail, a fork must skip,\ncanonical repo with secrets must write the config. A fixture of the\nold guard must be caught. packaging.yml runs the self-test in CI and\nnow triggers on copr.yml changes, since copr.yml itself runs only on\na tag or by hand.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T14:02:31-07:00",
+          "tree_id": "da4fe5e19592173f73ec9d5fb59423fe3fb0df7b",
+          "url": "https://github.com/l1a/retch/commit/9e79fef974446bac7f0e90a3babffe03184a8d0c"
+        },
+        "date": 1790716333364,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 54295268.00000001,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2398536984,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1321205612,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 36937642,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 39336757.99999999,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 609394184,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 169493482,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 38044572.00000001,
+            "unit": "ns",
+            "extra": "v0.20.9"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 180.31143783064672,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9484743334880075,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 101.03254466863872,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 80.68129985440677,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47937.687863265295,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 482.011231135669,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 713.6620380663466,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 549939400,
             "unit": "ns"
           }
         ]
