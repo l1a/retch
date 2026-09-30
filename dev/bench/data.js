@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790738342525,
+  "lastUpdate": 1790738342831,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3307,6 +3307,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 291445215,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "80bbe4b3c7c3fd3636ffef5ce5c7557d0d6d749c",
+          "message": "Fix --list-distros and document real config paths (#282)\n\n--list-distros printed its own hand-written list, which never gained\nthe five logos added after it was written: mx, linuxmint, kali, zorin\nand garuda. Both it and --print-logos now read logo::KNOWN_LOGOS, and\ntwo tests pin the list to assets/logos/*.txt in both directions.\n\nThe config path is dirs::config_dir(): XDG on Linux, but\n~/Library/Application Support/retch/ on macOS and %APPDATA%\\retch\\ on\nWindows. The README, man page, COPR page and AGENTS.md all said\n~/.config/retch/, so a config put there was ignored on macOS and\nWindows. They now state each platform's path (user decision: document\nthe behaviour, don't change it). The man page also listed --short\nwithout Net and promised multi-second --full runs.\n\nThe Nix Home Manager module wrote xdg.configFile on macOS too, so its\nsettings never took effect there; on Darwin it now writes the\nApplication Support path. Checked with lib.evalModules in a nixos/nix\ncontainer for x86_64-linux and aarch64-darwin, old module as control.\n\nNOTES.md: section 6 said every fastfetch gap was closed on all three\nplatforms. Windows has no keyboard, mouse, brightness, power-adapter,\nlogin-manager or tpm; section 6a now lists them.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T20:07:59-07:00",
+          "tree_id": "7c8f75dd771a51b4256b304cfa00597809106e76",
+          "url": "https://github.com/l1a/retch/commit/80bbe4b3c7c3fd3636ffef5ce5c7557d0d6d749c"
+        },
+        "date": 1790738342771,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 57023792,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2392524432.0000005,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1331007498,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 33629504,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 37017942.00000001,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 332293832,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 172498188.00000003,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 35734824.00000001,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 180.10282435358968,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9527708778857855,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 100.43168154802726,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 80.93507319532134,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46716.988267329616,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 484.5607443265035,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 721.9879257696641,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 285921482.5,
             "unit": "ns"
           }
         ]
