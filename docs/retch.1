@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.20.11" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.20.12" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -154,11 +154,13 @@ retch \-\-write\-config
 .IP \(bu 4
 \fBshow_logo\fP: Boolean indicating whether to show the logo (default: `\f[CR]true\fP`)\.
 .IP \(bu 4
-\fBascii_only\fP: Boolean indicating whether to restrict logo to ASCII representation\.
+\fBascii_only\fP: Boolean: always draw the ASCII logo, like `\f[CR]\-\-ascii\-logo\fP` (default: `\f[CR]false\fP`)\.
 .IP \(bu 4
-\fBchafa\fP: Boolean indicating whether to force Chafa symbols output\.
+\fBchafa\fP: Boolean: draw the logo as Chafa symbols, like `\f[CR]\-\-chafa\-logo\fP` (default: `\f[CR]false\fP`)\.
 .IP \(bu 4
-\fBlogo\fP: Distro name/ID to force override logo detection\.
+\fBlogo\fP: Distro name/ID to force override logo detection\. For a picture of your own, put a
+\fIlogo\.png\fP in the same folder as \fIconfig\.toml\fP: it replaces the distro logo in Kitty, iTerm2,
+Sixel and Chafa output, but not in ASCII mode\.
 .IP \(bu 4
 \fBweather_location\fP: Location for weather lookup\. Accepts a city name (`\f[CR]"London"\fP`, `\f[CR]"Thousand Oaks, CA"\fP`), US ZIP code (`\f[CR]"10001"\fP`), airport code (`\f[CR]"SFO"\fP`), lat/lon coordinates (`\f[CR]"48\.8566,2\.3522"\fP`) or a landmark (`\f[CR]"~Eiffel Tower"\fP`), and is shown as written\. If unset, wttr\.in locates you from your outbound IP and the location is shown as city and state (US) or city and country\.
 .IP \(bu 4

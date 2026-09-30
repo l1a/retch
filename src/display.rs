@@ -41,6 +41,14 @@ fn should_show_logo(
     config_show_logo.unwrap_or(true) && stdout_is_tty // auto mode: default-on, but TTY-gated
 }
 
+/// Whether to draw the ASCII logo instead of an image or Chafa logo: the `--ascii-logo` flag
+/// or `ascii_only = true` in the config. Until v0.20.12 only the flag was read here, so the
+/// config key did nothing. (`should_show_logo` still keys on the flag alone: forcing a logo
+/// into a pipe is for an explicit command-line request, not a standing config preference.)
+fn wants_ascii_logo(cli_ascii_logo: bool, config_ascii_only: Option<bool>) -> bool {
+    cli_ascii_logo || config_ascii_only.unwrap_or(false)
+}
+
 /// Decide whether to emit ANSI colour.
 ///
 /// `--color=always` and `--color=never` are final. Otherwise (the flag omitted, or `auto`)
@@ -915,7 +923,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             None
         };
 
-        if cli.ascii_logo {
+        if wants_ascii_logo(cli.ascii_logo, _config.ascii_only) {
             active_logo = ActiveLogo::Lines(logo::get_distro_logo_lines(distro_hint.as_deref()));
         } else if _config.chafa.unwrap_or(false) || cli.chafa_logo {
             let mut resolved = false;
@@ -1382,6 +1390,21 @@ mod tests {
         // rather than presenting a down one as the connection.
         let nets = vec![net("eth0", false), net("eth1", false)];
         assert!(choose_net_line(&nets, None).is_none());
+    }
+
+    // ── wants_ascii_logo ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_ascii_only_config_selects_the_ascii_logo() {
+        // The regression: `ascii_only = true` in config.toml was never read here.
+        assert!(wants_ascii_logo(false, Some(true)));
+        assert!(wants_ascii_logo(true, None));
+        assert!(
+            wants_ascii_logo(true, Some(false)),
+            "the flag wins over a config false"
+        );
+        assert!(!wants_ascii_logo(false, Some(false)));
+        assert!(!wants_ascii_logo(false, None));
     }
 
     // ── should_show_logo ──────────────────────────────────────────────────────

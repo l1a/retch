@@ -150,13 +150,30 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.11)
+## Current State (v0.20.12)
 
-`main` carries **`retch-cli` 0.20.11** / **`retch-sysinfo` 0.1.86**. Newest released tag is
+`main` carries **`retch-cli` 0.20.12** / **`retch-sysinfo` 0.1.86**. Newest released tag is
 **`v0.20.10`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
 (§6a). What is open is listed in §5, §6a and §6c.
+
+Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.12: `ascii_only = true` in `config.toml` works.** `display.rs` chose the ASCII
+  logo from `cli.ascii_logo` alone and never read the merged config's `ascii_only`, so the key
+  did nothing (measured in a pty claiming Kitty support: the config key still drew the Kitty
+  image, the flag drew ASCII). `wants_ascii_logo` reads both. The `chafa` key and the custom
+  `logo.png` (in retch's config folder, used by the image protocols and Chafa) are now
+  documented. `should_show_logo` still keys on the flag alone: forcing a logo into a pipe is for
+  an explicit command-line request.
+- **Open: the `graphics` lint pass tests the wrong build.** `graphics` has been a default
+  feature since May 2026 (`b1f736e`), so the plain `--workspace` clippy already compiles it, and
+  `just check`'s extra `--features graphics` pass and CI's `graphics-feature` job re-test the
+  default. The build nothing tests is `--no-default-features`, and it currently fails
+  `clippy -D warnings` (4 dead-code errors in `display.rs`: the image variants of
+  `ActiveLogo`). No shipped package uses that build. Fix: point the extra pass at
+  `--no-default-features` and clear the dead code, or drop the pass.
 
 - **v0.20.11: `--list-distros` lists every shipped logo.** It kept its own hand-written list,
   which never gained mx, linuxmint, kali, zorin and garuda. `--list-distros` and
@@ -175,10 +192,6 @@ The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lack
     so it was checked by hand: `lib.evalModules` on the module in a `nixos/nix` container, at
     the nixpkgs rev in `flake.lock`, for `x86_64-linux` and `aarch64-darwin`, with the old module
     as the control (which wrote `xdg.configFile` on Darwin).
-  - The same folder also holds an optional `logo.png` (`display.rs`), which is not documented
-    anywhere yet.
-
-Recent work worth knowing about, beyond what `git log` says:
 
 - **v0.20.10: weather goes over plain HTTP, like fastfetch; `--full` 621 → 425 ms on arrakis
   (fastfetch 519).** This reverses v0.20.0's HTTPS choice (user decision, 2026-09-29). The
@@ -886,6 +899,12 @@ nobody asked.
 
 ### 7.2 Testing conventions
 
+- **A config key that parses is not a config key that works.** `ascii_only` was parsed,
+  merged with its CLI flag, and covered by a merge test, while the one place that decides the
+  logo read only the flag. Test a new key at the point where it changes behaviour, and search
+  for every consumer of the matching CLI flag (`cli.<flag>`): each one that skips the merged
+  config is a key that silently does nothing.
+
 - **Pure helper + thin I/O wrapper.** Every detector splits into a pure function (parsing,
   formatting, classification) and a wrapper that reads `/proc`, sysfs, the registry or an FFI
   call. Tests target the pure half with verbatim fixtures captured from a real machine, so no
@@ -1124,6 +1143,8 @@ nobody asked.
   **both** crates, which is why a major bump widens two manifests)
 - `unicode-width` — Terminal column measurement for layout
 
-The optional `graphics` feature is **not** compiled by the default `--workspace` clippy, so
-`just check` runs a separate `--features graphics` pass and CI has a dedicated
-`graphics-feature` job.
+The `graphics` feature is **on by default** (`default = ["graphics"]`), so the default
+`--workspace` build and clippy already compile it. `just check`'s separate `--features
+graphics` pass and CI's `graphics-feature` job therefore re-test the default configuration;
+the untested one is `--no-default-features` (see Current State). This paragraph used to say
+the opposite.
