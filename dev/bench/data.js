@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790739236011,
+  "lastUpdate": 1790739236287,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2631,6 +2631,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 526.333012756334,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "19b379904d67825172c8333b277699b6a62fc2c8",
+          "message": "Make ascii_only in config.toml select ASCII (#283)\n\ndisplay.rs picked the ASCII logo from the --ascii-logo flag alone and\nnever read the merged config's ascii_only, so the key did nothing. In\na pty claiming Kitty support, ascii_only = true still drew the Kitty\nimage while the flag drew ASCII. wants_ascii_logo now reads both;\nshould_show_logo still keys on the flag alone, since forcing a logo\ninto a pipe is for an explicit command-line request.\n\nAlso documents the chafa key and the custom logo.png (read from\nretch's config folder by the image protocols and Chafa), and corrects\nNOTES.md section 8: graphics is a default feature, so the extra\n--features graphics lint re-tests the default while the\n--no-default-features build, which fails clippy, goes untested.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T20:23:01-07:00",
+          "tree_id": "66c37c0846880b9d3fbd50d81550777942848a1e",
+          "url": "https://github.com/l1a/retch/commit/19b379904d67825172c8333b277699b6a62fc2c8"
+        },
+        "date": 1790739236234,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 381041897.44,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1128679490.8799999,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1053755837.46,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 24116961.82,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 681113159.8400002,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 784298932.6800002,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 749045412.4599999,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 25064499.220000003,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 794382383.3,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 559.2635321632854,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 157.83924968455813,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.5595327766594247,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 80.37130146429547,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5835.304401228855,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1545.586090146945,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 563.8823902029137,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 130318.58673908061,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 452.56066407984383,
             "unit": "ns"
           }
         ]
