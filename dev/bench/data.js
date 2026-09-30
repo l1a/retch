@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790739235730,
+  "lastUpdate": 1790739236011,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1887,6 +1887,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 288.53921423680225,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "19b379904d67825172c8333b277699b6a62fc2c8",
+          "message": "Make ascii_only in config.toml select ASCII (#283)\n\ndisplay.rs picked the ASCII logo from the --ascii-logo flag alone and\nnever read the merged config's ascii_only, so the key did nothing. In\na pty claiming Kitty support, ascii_only = true still drew the Kitty\nimage while the flag drew ASCII. wants_ascii_logo now reads both;\nshould_show_logo still keys on the flag alone, since forcing a logo\ninto a pipe is for an explicit command-line request.\n\nAlso documents the chafa key and the custom logo.png (read from\nretch's config folder by the image protocols and Chafa), and corrects\nNOTES.md section 8: graphics is a default feature, so the extra\n--features graphics lint re-tests the default while the\n--no-default-features build, which fails clippy, goes untested.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T20:23:01-07:00",
+          "tree_id": "66c37c0846880b9d3fbd50d81550777942848a1e",
+          "url": "https://github.com/l1a/retch/commit/19b379904d67825172c8333b277699b6a62fc2c8"
+        },
+        "date": 1790739235955,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2388687.0999999996,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 252987591.54,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252330378.28000003,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1520072.4400000002,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2848737.2000000007,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 247271474.54000002,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205576236.08000004,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2073724.84,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 318726345.1,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 970.3146607430311,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 109.93254471966861,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9466555890085147,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 57.92033855632506,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7808.785924824051,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70995.97021190605,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4740.12214635385,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 3432.482956914954,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 57028.40042875274,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 349.72128109172735,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 274.31526023722927,
             "unit": "ns"
           }
         ]
