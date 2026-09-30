@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790738341943,
+  "lastUpdate": 1790738342228,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2173,6 +2173,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 489.24540999334056,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "80bbe4b3c7c3fd3636ffef5ce5c7557d0d6d749c",
+          "message": "Fix --list-distros and document real config paths (#282)\n\n--list-distros printed its own hand-written list, which never gained\nthe five logos added after it was written: mx, linuxmint, kali, zorin\nand garuda. Both it and --print-logos now read logo::KNOWN_LOGOS, and\ntwo tests pin the list to assets/logos/*.txt in both directions.\n\nThe config path is dirs::config_dir(): XDG on Linux, but\n~/Library/Application Support/retch/ on macOS and %APPDATA%\\retch\\ on\nWindows. The README, man page, COPR page and AGENTS.md all said\n~/.config/retch/, so a config put there was ignored on macOS and\nWindows. They now state each platform's path (user decision: document\nthe behaviour, don't change it). The man page also listed --short\nwithout Net and promised multi-second --full runs.\n\nThe Nix Home Manager module wrote xdg.configFile on macOS too, so its\nsettings never took effect there; on Darwin it now writes the\nApplication Support path. Checked with lib.evalModules in a nixos/nix\ncontainer for x86_64-linux and aarch64-darwin, old module as control.\n\nNOTES.md: section 6 said every fastfetch gap was closed on all three\nplatforms. Windows has no keyboard, mouse, brightness, power-adapter,\nlogin-manager or tpm; section 6a now lists them.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T20:07:59-07:00",
+          "tree_id": "7c8f75dd771a51b4256b304cfa00597809106e76",
+          "url": "https://github.com/l1a/retch/commit/80bbe4b3c7c3fd3636ffef5ce5c7557d0d6d749c"
+        },
+        "date": 1790738342171,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 423574922.5000001,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1161871875.2600002,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1070039286.6199999,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 22560108.340000004,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 759749197.4000001,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 829334295.7600001,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 844414986.72,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 32868516.54000001,
+            "unit": "ns",
+            "extra": "v0.20.11"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 918060047.9,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 611.1250338042705,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 188.30519995811298,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.866825961186423,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 95.1358593109275,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6899.30208843914,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1693.195135803382,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 607.9665783263401,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 131009.7586061788,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 526.333012756334,
             "unit": "ns"
           }
         ]
