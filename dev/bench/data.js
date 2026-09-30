@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790740033199,
+  "lastUpdate": 1790740033505,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3089,6 +3089,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 452.56066407984383,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e67fdd5128a973545ef52e0d926ba03c6f976fab",
+          "message": "Lint the build without default features (#284)\n\ngraphics has been a default feature since May, so the --workspace\nclippy already compiles it. just check's second clippy pass and CI's\ngraphics-feature job ran --features graphics on the belief that it was\noff by default, which only repeated the default. Meanwhile the build\nwithout it stopped passing clippy: three unused supports_* probes in\nlogo.rs and the never-constructed image variants of ActiveLogo.\n\nBoth now build and lint -p retch-cli --no-default-features, and the CI\njob is renamed no-default-features. The probes are cfg-gated like the\ncode that reads them; the enum gets a targeted, commented allowance,\nsince its layout code is shared. No shipped package uses that build.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T20:37:14-07:00",
+          "tree_id": "915d3fe2cb4640a03978fc9320479f1f638dd51a",
+          "url": "https://github.com/l1a/retch/commit/e67fdd5128a973545ef52e0d926ba03c6f976fab"
+        },
+        "date": 1790740033447,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 407748534.36,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1037505106.72,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1014032101.7600002,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 16187462.64,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 495380250.9600001,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 490942144.12000006,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 508979364.36,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 22559649.94,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 613473743.9,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 478.81329079066506,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 142.1188119983438,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.8564937866919287,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 65.06344876324927,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4985.92896027574,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1075.5096674861109,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 450.1887211068324,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 97013.35041969907,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 363.0580888791869,
             "unit": "ns"
           }
         ]
