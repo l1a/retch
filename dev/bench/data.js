@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790740032345,
+  "lastUpdate": 1790740033199,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2223,6 +2223,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 274.31526023722927,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e67fdd5128a973545ef52e0d926ba03c6f976fab",
+          "message": "Lint the build without default features (#284)\n\ngraphics has been a default feature since May, so the --workspace\nclippy already compiles it. just check's second clippy pass and CI's\ngraphics-feature job ran --features graphics on the belief that it was\noff by default, which only repeated the default. Meanwhile the build\nwithout it stopped passing clippy: three unused supports_* probes in\nlogo.rs and the never-constructed image variants of ActiveLogo.\n\nBoth now build and lint -p retch-cli --no-default-features, and the CI\njob is renamed no-default-features. The probes are cfg-gated like the\ncode that reads them; the enum gets a targeted, commented allowance,\nsince its layout code is shared. No shipped package uses that build.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T20:37:14-07:00",
+          "tree_id": "915d3fe2cb4640a03978fc9320479f1f638dd51a",
+          "url": "https://github.com/l1a/retch/commit/e67fdd5128a973545ef52e0d926ba03c6f976fab"
+        },
+        "date": 1790740033137,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2116655.4400000004,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 252423135.00000003,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252458925.77999994,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1269749.72,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2758753.8400000003,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 245464465.80000004,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 209662688.17999998,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1789211.7200000002,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 344252268,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 972.7969614216587,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 110.62453866337107,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9468357106880223,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 57.890615616736795,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7962.744480702588,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71247.83000821415,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4788.679227688337,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 3423.43935275119,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 57540.75137925331,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 357.534850520313,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 268.95666497142827,
             "unit": "ns"
           }
         ]
