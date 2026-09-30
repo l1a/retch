@@ -61,7 +61,7 @@ retch - a fast, feature-rich system information fetcher
 :   Print a default configuration file to stdout.
 
 **--write-config** [*PATH*]
-:   Write the default configuration to a file (uses `~/.config/retch/config.toml` if no path is given).
+:   Write the default configuration to a file (uses the default path, see CONFIGURATION, if no path is given).
 
 **--merge-config**
 :   Merge default configuration settings (as comments) into an existing config file at the default path (or custom path if `--config` is supplied).
@@ -70,27 +70,38 @@ retch - a fast, feature-rich system information fetcher
 :   Comma-separated list of fields to display, overriding the config file's default list.
 
 **-s, --short**
-:   Short output mode. Equivalent to `--mode short`. Shows: OS, Kernel, Host, CPU, GPU, Memory, Disk.
+:   Short output mode. Equivalent to `--mode short`. Shows: OS, Kernel, Host, CPU, GPU, Memory, Disk, Net.
 
 **-l, --long**
 :   Long output mode. Shows diagnostics fields — CPU usage, firmware, thermals (consolidated: one reading per physical unit), shell, desktop, network, Bluetooth, battery, packages, and more. Does not include cosmetic or slow-running fields (use `--full` for those).
 
 **-f, --full**
-:   Full output mode. Shows everything in `--long` plus slow and cosmetic fields: UI theme, icons, cursor, weather (requires network), and FUSE mounts. Expect multi-second runtimes.
+:   Full output mode. Shows everything in `--long` plus slow and cosmetic fields: UI theme, icons, cursor, weather (requires network), and FUSE mounts. Its runtime is mostly network requests (weather, public IP).
 
 # CONFIGURATION
 
-retch reads its configuration from:
+retch reads *config.toml* from a *retch* folder in the platform's config directory.
+
+On Linux this follows the XDG Base Directory spec:
 
     $XDG_CONFIG_HOME/retch/config.toml
 
-or
+or, when XDG_CONFIG_HOME is unset:
 
     ~/.config/retch/config.toml
 
-You can generate a starting configuration with:
+On macOS:
 
-    retch --generate-config > ~/.config/retch/config.toml
+    ~/Library/Application Support/retch/config.toml
+
+On Windows:
+
+    %APPDATA%\retch\config.toml
+
+No file is created automatically. Write a starting configuration, with every option, to the
+default path with:
+
+    retch --write-config
 
 ## Available Configuration Keys
 

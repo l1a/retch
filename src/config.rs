@@ -55,7 +55,8 @@ pub struct CustomTheme {
 impl Config {
     /// Loads the configuration from the default system path.
     ///
-    /// Typically looks in `~/.config/retch/config.toml`.
+    /// Reads `retch/config.toml` under `dirs::config_dir()`: `$XDG_CONFIG_HOME` or `~/.config`
+    /// on Linux, `~/Library/Application Support` on macOS, `%APPDATA%` on Windows.
     pub fn load(custom_path: Option<&str>) -> anyhow::Result<Self> {
         let path = if let Some(p) = custom_path {
             Some(PathBuf::from(p))

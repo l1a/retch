@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "September 2026" "retch 0.20.10" "System Information Fetcher"
+.TH "RETCH" "1" "September 2026" "retch 0.20.11" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -79,7 +79,7 @@ Print a default configuration file to stdout\.
 .RE
 \fB\-\-write\-config\fP [\fIPATH\fP]\fP
 .RS
-Write the default configuration to a file (uses `\f[CR]~/\.config/retch/config\.toml\fP` if no path is given)\.
+Write the default configuration to a file (uses the default path, see CONFIGURATION, if no path is given)\.
 .RE
 \fB\-\-merge\-config\fP
 .RS
@@ -91,7 +91,7 @@ Comma\-separated list of fields to display, overriding the config file's default
 .RE
 \fB\-s, \-\-short\fP
 .RS
-Short output mode\. Equivalent to `\f[CR]\-\-mode short\fP`\. Shows: OS, Kernel, Host, CPU, GPU, Memory, Disk\.
+Short output mode\. Equivalent to `\f[CR]\-\-mode short\fP`\. Shows: OS, Kernel, Host, CPU, GPU, Memory, Disk, Net\.
 .RE
 \fB\-l, \-\-long\fP
 .RS
@@ -99,12 +99,14 @@ Long output mode\. Shows diagnostics fields \-\- CPU usage, firmware, thermals (
 .RE
 \fB\-f, \-\-full\fP
 .RS
-Full output mode\. Shows everything in `\f[CR]\-\-long\fP` plus slow and cosmetic fields: UI theme, icons, cursor, weather (requires network), and FUSE mounts\. Expect multi\-second runtimes\.
+Full output mode\. Shows everything in `\f[CR]\-\-long\fP` plus slow and cosmetic fields: UI theme, icons, cursor, weather (requires network), and FUSE mounts\. Its runtime is mostly network requests (weather, public IP)\.
 .RE
 
 .SH "CONFIGURATION"
 .PP
-retch reads its configuration from:
+retch reads \fIconfig\.toml\fP from a \fIretch\fP folder in the platform's config directory\.
+.PP
+On Linux this follows the XDG Base Directory spec:
 .RS
 .PP
 .nf
@@ -112,7 +114,7 @@ $XDG_CONFIG_HOME/retch/config\.toml
 .fi
 .RE
 .PP
-or
+or, when XDG_CONFIG_HOME is unset:
 .RS
 .PP
 .nf
@@ -120,11 +122,28 @@ or
 .fi
 .RE
 .PP
-You can generate a starting configuration with:
+On macOS:
 .RS
 .PP
 .nf
-retch \-\-generate\-config > ~/\.config/retch/config\.toml
+~/Library/Application Support/retch/config\.toml
+.fi
+.RE
+.PP
+On Windows:
+.RS
+.PP
+.nf
+%APPDATA%\eretch\econfig\.toml
+.fi
+.RE
+.PP
+No file is created automatically\. Write a starting configuration, with every option, to the
+default path with:
+.RS
+.PP
+.nf
+retch \-\-write\-config
 .fi
 .RE
 

@@ -102,17 +102,9 @@ fn main() -> anyhow::Result<()> {
 
     if cli.list_distros {
         println!("Known distros:");
-        println!("  arch");
-        println!("  debian");
-        println!("  fedora");
-        println!("  nixos");
-        println!("  ubuntu");
-        println!("  pop (Pop!_OS)");
-        println!("  manjaro");
-        println!("  endeavouros");
-        println!("  opensuse");
-        println!("  macos (macOS / OS X)");
-        println!("  windows (Windows 10 / 11)");
+        for (id, name) in retch_cli::logo::KNOWN_LOGOS {
+            println!("  {id} ({name})");
+        }
         println!("  (others fall back to Tux)");
         return Ok(());
     }
@@ -122,26 +114,7 @@ fn main() -> anyhow::Result<()> {
 
         println!("Available logos:\n");
 
-        let logos = [
-            ("arch", "Arch Linux"),
-            ("debian", "Debian"),
-            ("endeavouros", "EndeavourOS"),
-            ("fedora", "Fedora"),
-            ("garuda", "Garuda Linux"),
-            ("kali", "Kali Linux"),
-            ("linuxmint", "Linux Mint"),
-            ("manjaro", "Manjaro"),
-            ("mx", "MX Linux"),
-            ("nixos", "NixOS"),
-            ("opensuse", "openSUSE"),
-            ("pop", "Pop!_OS"),
-            ("ubuntu", "Ubuntu"),
-            ("zorin", "Zorin OS"),
-            ("macos", "macOS"),
-            ("windows", "Windows"),
-        ];
-
-        for (id, name) in logos {
+        for &(id, name) in logo::KNOWN_LOGOS {
             println!("{}:", name);
             logo::print_distro_logo_with_ascii(Some(id), cli.ascii_logo, cli.chafa_logo);
             println!();

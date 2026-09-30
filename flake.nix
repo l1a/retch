@@ -81,7 +81,7 @@
 
             package = lib.mkOption {
               type = lib.types.package;
-              default = self.packages.${pkgs.system}.default;
+              default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
             };
 
             settings = lib.mkOption {
@@ -90,12 +90,24 @@
               description = "Configuration for retch";
             };
           };
-          config = lib.mkIf cfg.enable {
-            home.packages = [ cfg.package ];
-            xdg.configFile."retch/config.toml" = {
-              source = tomlFormat.generate "config.toml" cfg.settings;
-            };
-          };
+          # retch reads its config from dirs::config_dir(): the XDG config home on Linux, but
+          # ~/Library/Application Support on macOS, where xdg.configFile would write a file
+          # retch never reads.
+          config = lib.mkIf cfg.enable (
+            lib.mkMerge [
+              { home.packages = [ cfg.package ]; }
+              (lib.mkIf pkgs.stdenv.hostPlatform.isDarwin {
+                home.file."Library/Application Support/retch/config.toml" = {
+                  source = tomlFormat.generate "config.toml" cfg.settings;
+                };
+              })
+              (lib.mkIf (!pkgs.stdenv.hostPlatform.isDarwin) {
+                xdg.configFile."retch/config.toml" = {
+                  source = tomlFormat.generate "config.toml" cfg.settings;
+                };
+              })
+            ]
+          );
         };
     };
 }

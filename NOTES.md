@@ -150,13 +150,33 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.10)
+## Current State (v0.20.11)
 
-`main` carries **`retch-cli` 0.20.10** / **`retch-sysinfo` 0.1.86**. Newest released tag is
-**`v0.20.7`**.
+`main` carries **`retch-cli` 0.20.11** / **`retch-sysinfo` 0.1.86**. Newest released tag is
+**`v0.20.10`**.
 
-Everything in §6 (the fastfetch feature gap) is closed on all three platforms. What is open is
-listed in §5, §6a and §6c.
+The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
+(§6a). What is open is listed in §5, §6a and §6c.
+
+- **v0.20.11: `--list-distros` lists every shipped logo.** It kept its own hand-written list,
+  which never gained mx, linuxmint, kali, zorin and garuda. `--list-distros` and
+  `--print-logos` now both read `logo::KNOWN_LOGOS`, and a test ties that list to
+  `assets/logos/*.txt` in both directions.
+- **v0.20.11: the docs state the real config path on each platform.** `Config::config_path()`
+  uses `dirs::config_dir()`: XDG on Linux (`$XDG_CONFIG_HOME` or `~/.config`), but
+  `~/Library/Application Support/retch/` on macOS and `%APPDATA%\retch\` on Windows. The
+  README, man page, COPR page and wiki all said `~/.config/retch/`, so a config put where they
+  said was silently ignored on macOS and Windows. User decision: document the code's behaviour
+  rather than change it.
+  - **The Nix Home Manager module had the same bug**: it wrote `xdg.configFile`, i.e.
+    `~/.config/retch/config.toml`, on macOS too, so `programs.retch.settings` never took effect
+    there. On Darwin it now writes `home.file."Library/Application Support/retch/config.toml"`.
+    **No CI job evaluates the flake** (the Nix job is `if: false`, and no fleet host has Nix),
+    so it was checked by hand: `lib.evalModules` on the module in a `nixos/nix` container, at
+    the nixpkgs rev in `flake.lock`, for `x86_64-linux` and `aarch64-darwin`, with the old module
+    as the control (which wrote `xdg.configFile` on Darwin).
+  - The same folder also holds an optional `logo.png` (`display.rs`), which is not documented
+    anywhere yet.
 
 Recent work worth knowing about, beyond what `git log` says:
 
@@ -619,10 +639,13 @@ Live items only. Completed items are removed rather than struck through — `git
 
 ## 6. Feature Gap with Fastfetch
 
-**Every field-level gap is closed, on all three platforms.** Hardware (`brightness`,
-`keyboard`, `mouse`, `power-adapter`, `tpm`), GPU APIs (`vulkan`, `opengl`, `opencl`), storage
-(`btrfs`, `zpool`, `disk-io`), network (`net-io`), desktop/UI (`wm-theme`, `login-manager`,
-`wallpaper`, `terminal-theme`) and media (`player`, `media`) all report.
+**Every field-level gap is closed on Linux; macOS lacks only `tpm` (deliberately, §6c); Windows
+lacks six fields (§6a).** Hardware (`brightness`, `keyboard`, `mouse`, `power-adapter`, `tpm`),
+GPU APIs (`vulkan`, `opengl`, `opencl`), storage (`btrfs`, `zpool`, `disk-io`), network
+(`net-io`), desktop/UI (`wm-theme`, `login-manager`, `wallpaper`, `terminal-theme`) and media
+(`player`, `media`) all report on Linux. Until v0.20.11 this line said "on all three
+platforms", which the code never supported: check a platform claim against the detector's
+`cfg` arms, not against this file.
 
 Where retch deliberately reports **more** than fastfetch: `opencl` (fastfetch prints a platform
 version even when the platform exposes no device), Windows Bluetooth (fastfetch misses LE
@@ -638,6 +661,14 @@ Remaining platform-specific defects are in §6a and §6c.
 
 ## 6a. Windows cross-platform parity — open items
 
+- **Six fields are not implemented on Windows**, so they are simply absent there:
+  - `keyboard`, `mouse`: `input.rs` has Linux and macOS arms only.
+  - `brightness`, `power-adapter`, `login-manager`: `fetch.rs` detectors have Linux and macOS
+    arms only.
+  - `tpm`: Linux only.
+
+  Each needs a native Windows source (no PowerShell, per the rest of the Windows work) and a
+  Windows machine to verify on.
 - **Logo renders above the text, not beside it (upper-right)** on Windows Terminal
   (CLI/rendering, `retch-cli` `src/`). Likely terminal-detection or cursor-positioning specific
   to Windows Terminal. Do **not** conflate this with the v0.9.2 flush-right fix, which was
@@ -645,8 +676,10 @@ Remaining platform-specific defects are in §6a and §6c.
 - **`chafa` mode is ignored on Windows even when requested on the CLI.** Investigate PATH
   resolution, protocol-detection override, and Windows spawn/path handling.
 
-Both need a TTY, so both need real hardware (arrakis) — a piped run cannot distinguish the
-chafa case from the documented v0.6.6 behaviour.
+Both need a TTY, so both need a real Windows machine; a piped run cannot distinguish the
+chafa case from the documented v0.6.6 behaviour. **The fleet has had no Windows host since
+2026-09-16**, when arrakis went back to Fedora, so every Windows item here currently has
+only CI to verify against.
 
 **Deliberately not implemented on Windows** (no faithful native source): `load` (no load-average
 equivalent), `editor` (env-only `$VISUAL`/`$EDITOR`), conhost `terminal-font` (only Windows
