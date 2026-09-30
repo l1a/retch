@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790739236557,
+  "lastUpdate": 1790739236843,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3989,6 +3989,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 285921482.5,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "19b379904d67825172c8333b277699b6a62fc2c8",
+          "message": "Make ascii_only in config.toml select ASCII (#283)\n\ndisplay.rs picked the ASCII logo from the --ascii-logo flag alone and\nnever read the merged config's ascii_only, so the key did nothing. In\na pty claiming Kitty support, ascii_only = true still drew the Kitty\nimage while the flag drew ASCII. wants_ascii_logo now reads both;\nshould_show_logo still keys on the flag alone, since forcing a logo\ninto a pipe is for an explicit command-line request.\n\nAlso documents the chafa key and the custom logo.png (read from\nretch's config folder by the image protocols and Chafa), and corrects\nNOTES.md section 8: graphics is a default feature, so the extra\n--features graphics lint re-tests the default while the\n--no-default-features build, which fails clippy, goes untested.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T20:23:01-07:00",
+          "tree_id": "66c37c0846880b9d3fbd50d81550777942848a1e",
+          "url": "https://github.com/l1a/retch/commit/19b379904d67825172c8333b277699b6a62fc2c8"
+        },
+        "date": 1790739236791,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 55933030.00000001,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2397136816.0000005,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1344961135.9999998,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 34871828.00000001,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 37390880,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 407046796.0000001,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 147052666.00000003,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 36946498.00000001,
+            "unit": "ns",
+            "extra": "v0.20.12"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 179.90688053286664,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9482071173012434,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 99.85225718570506,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 78.72885288905269,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 48933.74592685407,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 475.0113394150179,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 710.2749674257132,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 348691760,
             "unit": "ns"
           }
         ]
