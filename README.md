@@ -336,7 +336,12 @@ show_logo = true
 # Force ASCII-only logo output (even if graphical protocols are supported)
 ascii_only = false
 
+# Force Chafa (Unicode block art) logo output, like --chafa-logo
+chafa = false
+
 # Override the detected distribution logo (e.g. "ubuntu", "fedora", "pop", "macos", "windows")
+# To use your own picture instead, put a logo.png in the same folder as this file: it replaces
+# the distro logo in Kitty, iTerm2, Sixel and Chafa output (not in ASCII mode).
 logo = "pop"
 
 # Custom theme colors (applied if theme = "custom" or as partial overrides)

@@ -107,9 +107,11 @@ default path with:
 
 - **theme**: Theme name to use. (default: `"auto"`).
 - **show_logo**: Boolean indicating whether to show the logo (default: `true`).
-- **ascii_only**: Boolean indicating whether to restrict logo to ASCII representation.
-- **chafa**: Boolean indicating whether to force Chafa symbols output.
-- **logo**: Distro name/ID to force override logo detection.
+- **ascii_only**: Boolean: always draw the ASCII logo, like `--ascii-logo` (default: `false`).
+- **chafa**: Boolean: draw the logo as Chafa symbols, like `--chafa-logo` (default: `false`).
+- **logo**: Distro name/ID to force override logo detection. For a picture of your own, put a
+  *logo.png* in the same folder as *config.toml*: it replaces the distro logo in Kitty, iTerm2,
+  Sixel and Chafa output, but not in ASCII mode.
 - **weather_location**: Location for weather lookup. Accepts a city name (`"London"`, `"Thousand Oaks, CA"`), US ZIP code (`"10001"`), airport code (`"SFO"`), lat/lon coordinates (`"48.8566,2.3522"`) or a landmark (`"~Eiffel Tower"`), and is shown as written. If unset, wttr.in locates you from your outbound IP and the location is shown as city and state (US) or city and country.
 - **weather_unit**: Temperature unit for the `weather` field. Accepts `"fahrenheit"` (default) or `"celsius"`. Can also be set via `--weather-unit` on the CLI.
 - **fields**: Array of strings selecting which fields are shown. This is a membership test only — it does **not** reorder output; display order is fixed. Available fields are:
