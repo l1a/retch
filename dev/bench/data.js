@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790740033810,
+  "lastUpdate": 1790740034109,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4671,6 +4671,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 348691760,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e67fdd5128a973545ef52e0d926ba03c6f976fab",
+          "message": "Lint the build without default features (#284)\n\ngraphics has been a default feature since May, so the --workspace\nclippy already compiles it. just check's second clippy pass and CI's\ngraphics-feature job ran --features graphics on the belief that it was\noff by default, which only repeated the default. Meanwhile the build\nwithout it stopped passing clippy: three unused supports_* probes in\nlogo.rs and the never-constructed image variants of ActiveLogo.\n\nBoth now build and lint -p retch-cli --no-default-features, and the CI\njob is renamed no-default-features. The probes are cfg-gated like the\ncode that reads them; the enum gets a targeted, commented allowance,\nsince its layout code is shared. No shipped package uses that build.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T20:37:14-07:00",
+          "tree_id": "915d3fe2cb4640a03978fc9320479f1f638dd51a",
+          "url": "https://github.com/l1a/retch/commit/e67fdd5128a973545ef52e0d926ba03c6f976fab"
+        },
+        "date": 1790740034048,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 56364238,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2401334158,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1319881723.9999998,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 35067576.00000001,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 37550858,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 304528348,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 143511644,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 36528366.00000001,
+            "unit": "ns",
+            "extra": "v0.20.13"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 182.91746903113363,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9559283928308657,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 100.0020904805248,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 79.43132738333523,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 44904.4395033912,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 475.6454315670224,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 704.2709983708103,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 257450970,
             "unit": "ns"
           }
         ]
