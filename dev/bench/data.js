@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790739236843,
+  "lastUpdate": 1790739464824,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -432,6 +432,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 514003522.0400001,
             "extra": "v0.20.12; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "e67fdd5128a973545ef52e0d926ba03c6f976fab",
+          "message": "Lint the build without default features (#284)\n\ngraphics has been a default feature since May, so the --workspace\nclippy already compiles it. just check's second clippy pass and CI's\ngraphics-feature job ran --features graphics on the belief that it was\noff by default, which only repeated the default. Meanwhile the build\nwithout it stopped passing clippy: three unused supports_* probes in\nlogo.rs and the never-constructed image variants of ActiveLogo.\n\nBoth now build and lint -p retch-cli --no-default-features, and the CI\njob is renamed no-default-features. The probes are cfg-gated like the\ncode that reads them; the enum gets a targeted, commented allowance,\nsince its layout code is shared. No shipped package uses that build.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-09-29T20:37:14-07:00",
+          "tree_id": "915d3fe2cb4640a03978fc9320479f1f638dd51a",
+          "url": "https://github.com/l1a/retch/commit/e67fdd5128a973545ef52e0d926ba03c6f976fab"
+        },
+        "date": 1790739464824,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 2028072.9400000002,
+            "extra": "v0.20.13; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 8186132.340000001,
+            "extra": "v0.20.13; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 1481451.06,
+            "extra": "v0.20.13; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 1363198.5599999998,
+            "extra": "v0.20.13; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 213360111.0,
+            "extra": "v0.20.13; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 507442665.79999995,
+            "extra": "v0.20.13; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 398732385.03999996,
+            "extra": "v0.20.13; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 513474464.74,
+            "extra": "v0.20.13; AC"
           }
         ]
       }
