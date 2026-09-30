@@ -899,7 +899,10 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         print_line("Weather", weather);
     }
 
-    // Setup logo representation
+    // Setup logo representation. The three image variants are constructed only with the
+    // `graphics` feature; the code that lays them out is shared, so it stays compiled and the
+    // variants are allowed to be unused in a `--no-default-features` build.
+    #[cfg_attr(not(feature = "graphics"), allow(dead_code))]
     enum ActiveLogo {
         Lines(Vec<String>),
         Kitty(Vec<u8>, usize, usize), // bytes, cols, rows

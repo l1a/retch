@@ -553,8 +553,12 @@ pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool, chaf
     let has_chafa = chafa_available();
 
     if !chafa_only {
+        // Only the image protocols below read these, and they exist only with `graphics`.
+        #[cfg(feature = "graphics")]
         let supports_kitty = supports_kitty();
+        #[cfg(feature = "graphics")]
         let supports_iterm2 = supports_iterm2();
+        #[cfg(feature = "graphics")]
         let supports_sixel = supports_sixel();
 
         // 1. Try embedded graphical logo (Kitty)
