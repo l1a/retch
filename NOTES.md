@@ -150,9 +150,9 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.12)
+## Current State (v0.20.13)
 
-`main` carries **`retch-cli` 0.20.12** / **`retch-sysinfo` 0.1.86**. Newest released tag is
+`main` carries **`retch-cli` 0.20.13** / **`retch-sysinfo` 0.1.86**. Newest released tag is
 **`v0.20.10`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
@@ -160,6 +160,13 @@ The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lack
 
 Recent work worth knowing about, beyond what `git log` says:
 
+- **v0.20.13: the extra lint pass covers `--no-default-features`.** `graphics` has been a
+  default feature since May 2026 (`b1f736e`), so the `--workspace` clippy already compiles it;
+  `just check`'s second pass and CI's job (renamed `graphics-feature` -> `no-default-features`)
+  ran `--features graphics` and only repeated the default. Meanwhile the build without it had
+  stopped passing clippy: 3 unused `supports_*` probes in `logo.rs` and the never-constructed
+  image variants of `ActiveLogo`. Both passes now build and lint `-p retch-cli
+  --no-default-features`, which is clean. No shipped package uses that build.
 - **v0.20.12: `ascii_only = true` in `config.toml` works.** `display.rs` chose the ASCII
   logo from `cli.ascii_logo` alone and never read the merged config's `ascii_only`, so the key
   did nothing (measured in a pty claiming Kitty support: the config key still drew the Kitty
@@ -167,14 +174,6 @@ Recent work worth knowing about, beyond what `git log` says:
   `logo.png` (in retch's config folder, used by the image protocols and Chafa) are now
   documented. `should_show_logo` still keys on the flag alone: forcing a logo into a pipe is for
   an explicit command-line request.
-- **Open: the `graphics` lint pass tests the wrong build.** `graphics` has been a default
-  feature since May 2026 (`b1f736e`), so the plain `--workspace` clippy already compiles it, and
-  `just check`'s extra `--features graphics` pass and CI's `graphics-feature` job re-test the
-  default. The build nothing tests is `--no-default-features`, and it currently fails
-  `clippy -D warnings` (4 dead-code errors in `display.rs`: the image variants of
-  `ActiveLogo`). No shipped package uses that build. Fix: point the extra pass at
-  `--no-default-features` and clear the dead code, or drop the pass.
-
 - **v0.20.11: `--list-distros` lists every shipped logo.** It kept its own hand-written list,
   which never gained mx, linuxmint, kali, zorin and garuda. `--list-distros` and
   `--print-logos` now both read `logo::KNOWN_LOGOS`, and a test ties that list to
@@ -1144,7 +1143,7 @@ nobody asked.
 - `unicode-width` — Terminal column measurement for layout
 
 The `graphics` feature is **on by default** (`default = ["graphics"]`), so the default
-`--workspace` build and clippy already compile it. `just check`'s separate `--features
-graphics` pass and CI's `graphics-feature` job therefore re-test the default configuration;
-the untested one is `--no-default-features` (see Current State). This paragraph used to say
-the opposite.
+`--workspace` build and clippy compile it. `just check`'s second clippy pass and CI's
+`no-default-features` job cover the other build, `-p retch-cli --no-default-features`. Until
+v0.20.13 both ran `--features graphics` on the belief that it was off by default, which
+repeated the default while the build without it went untested.

@@ -139,10 +139,11 @@ render-check:
 check: standard-check render-check aur-check copr-check brew-check metadata-check text-check wip-check bench-check
     cargo fmt -- --check
     cargo clippy --workspace -- -D warnings
-    # Also lint the optional `graphics` feature (base64/image/icy_sixel in src/logo.rs),
-    # which the default --workspace clippy above does not compile. Targets retch-cli (the
-    # package that defines the feature), not --workspace.
-    cargo clippy --features graphics -- -D warnings
+    # Also lint retch-cli WITHOUT its default `graphics` feature (base64/image/icy_sixel).
+    # `graphics` is a default feature, so the --workspace clippy above already covers it;
+    # this pass covers the other build. Until v0.20.13 it ran `--features graphics`, which
+    # repeated the default while this build quietly stopped passing.
+    cargo clippy -p retch-cli --no-default-features -- -D warnings
 
 # Run security audit (requires cargo-audit)
 audit:
