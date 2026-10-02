@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790970707318,
+  "lastUpdate": 1790970707721,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3233,6 +3233,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 254.41968414010566,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "49db22cc74ebea3f11599867b72d52a399cdfc08",
+          "message": "Stop reporting macOS Bluetooth as Off when unknown (#287)\n\nOn macOS 26 and later IOBluetoothHCIController no longer publishes\nBluetoothControllerPowerIsOn, and get_bluetooth_state folded the\nmissing property into false, so a Mac with Bluetooth on and a keyboard\nconnected printed \"Bluetooth: Off (Apple Bluetooth)\" (chani, macOS 27).\n\nThe power state is now an Option. When it cannot be read the line\ncarries no state at all, \"Bluetooth: Apple Bluetooth\", per the rule\nthat under-reporting beats asserting something false. Known states\nprint exactly as before. \"Apple Bluetooth\" is bluetooth.rs's fallback\nwhen no chipset string exists, which answers the NOTES question of\nwhere the name came from.\n\nA real power source is still open (NOTES 6c): the preferences plist\nhas no ControllerPowerState, and system_profiler knows but costs a\nseconds-long spawn. Tests pin both branches; reverting unknown to Off\nfails them.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-02T12:41:17-07:00",
+          "tree_id": "3ec0a099872ef85d74f69c184c9a09ab9e4917ff",
+          "url": "https://github.com/l1a/retch/commit/49db22cc74ebea3f11599867b72d52a399cdfc08"
+        },
+        "date": 1790970707673,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2239922.14,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 279056512.12,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252424093.23999998,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1406287.6400000004,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3065707.7400000007,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 297807138.02,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205926177.33999997,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2083223.6400000004,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 322322078.2,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 993.5826333291064,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 105.93703021530166,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.94721915292431,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 45.319588359320576,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7831.476505720291,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71667.59668900064,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4824.109750587034,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 3466.207653368464,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 58044.33279173629,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 279.3741075209892,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 269.87044272963476,
             "unit": "ns"
           }
         ]
