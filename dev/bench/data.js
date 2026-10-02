@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790965512303,
+  "lastUpdate": 1790965512595,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3549,6 +3549,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 363.0580888791869,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "00b400ee23e90baba5613eef371399452a2e2633",
+          "message": "Read macOS physical disks from IOKit (#285)\n\nphys-disk spawned `diskutil list -plist` and then one `diskutil info\n-plist` per whole disk, serially. Each call is a round trip to\ndiskarbitrationd (~0.2 s), so on an M3 Pro with four whole disks (three\nof them synthesized APFS containers that were then discarded) the field\ntook 0.97-1.04 s and was the whole of the default mode's critical path.\nThe NOTES suspect, phys-mem, was wrong; RETCH_TIMING=1 found it.\n\nIt now walks IOBlockStorageDriver in IOKit: the whole-disk IOMedia\nchild gives BSD Name and Size, the IOBlockStorageDevice parent gives\nProduct Name, Medium Type and Physical Interconnect, which are the\nvalues diskutil reported as MediaName, SolidState and BusProtocol.\nSynthesized APFS disks have no driver and never appear; disk images\nread \"Virtual Interface\" and are skipped, as diskutil skipped them.\n\nphys-disk: ~1 s -> 0.15 ms. Default mode on chani (battery, same\nsitting): v0.20.13 305-322 ms, this 108-126 ms, fastfetch's matched\ndefault 145-161 ms. Output identical in all four modes, also with a\ndisk image attached. Tests cover the formatter (three mutations, all\ncaught) and the numeric diskN sort.\n\nAlso fixes the Linux build under Rust 1.99, which reached CI after\nmain last passed: gpu_api.rs declared libc's variadic `open` as\nnon-variadic in its own extern block, now a hard error (\"invalid\ndefinition of the runtime `open` symbol used by the standard library\").\nThe fd calls (dup, dup2, close, open) now come from the libc crate.\nVerified by reproducing the error with rustc 1.99 and by compiling and\nrunning the same SuppressStderr logic against libc on macOS.\n\nAlso records the remaining macOS --short gap (the `disk` field, ~39 ms\nin sysinfo's free-space query) and the pre-existing Intel PCI-Express\n[SSD] labelling, and fixes the stale newest-tag line in NOTES.md.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-02T11:14:06-07:00",
+          "tree_id": "474ef4a382ae5724b9c9012c522080d7ac0a6106",
+          "url": "https://github.com/l1a/retch/commit/00b400ee23e90baba5613eef371399452a2e2633"
+        },
+        "date": 1790965512553,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 431320629.36,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1001213669.3400003,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 971097265.8400004,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 32963268.320000004,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 497212916.46,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 437096185.74,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 418557886.6399999,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 37064297.419999994,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 458361156.25,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 636.3136394713232,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 148.7417191162653,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.6539599098498394,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 86.02083848576136,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6076.014934503964,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1731.0544555199965,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 430.21202355141884,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 123354.30397794189,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 485.291317873687,
             "unit": "ns"
           }
         ]
