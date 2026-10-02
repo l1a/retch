@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790973575086,
+  "lastUpdate": 1790973575374,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6167,6 +6167,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 248664252.5,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ddc8016cedff49fcd78adaf49f6bd6b5b41987e6",
+          "message": "Fix release notes after v0.20.16 (#288)\n\nCorrect NOTES.md: cargo owner --list does not authenticate the\ncrates.io token, the newest released tag is v0.20.16, and record\nthe auto-mode blocks hit during the release. Bump to 0.20.17.\n\nAssisted-By: Claude Sonnet 5.5",
+          "timestamp": "2026-10-02T13:28:51-07:00",
+          "tree_id": "cbeeadcd4295a30f824bf2b9c0bc725f87ce1436",
+          "url": "https://github.com/l1a/retch/commit/ddc8016cedff49fcd78adaf49f6bd6b5b41987e6"
+        },
+        "date": 1790973575328,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 36333316.00000001,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2353078592,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1309115074,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 29941904,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 33512966.000000004,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 333922732.00000006,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 174313703.99999997,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 32158644,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 217.68047331952644,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.594559625875773,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 132.16423998010816,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 94.59735874740201,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 43875.379786657504,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 605.4517445806406,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 794.575099965858,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 302614410,
             "unit": "ns"
           }
         ]
