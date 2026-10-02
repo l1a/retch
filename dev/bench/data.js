@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790740034109,
+  "lastUpdate": 1790964889639,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -504,6 +504,80 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 513474464.74,
             "extra": "v0.20.13; AC"
+          }
+        ]
+      }
+    ],
+    "Local - macOS arm64 (real hardware)": [
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "00b400ee23e90baba5613eef371399452a2e2633",
+          "message": "Read macOS physical disks from IOKit (#285)\n\nphys-disk spawned `diskutil list -plist` and then one `diskutil info\n-plist` per whole disk, serially. Each call is a round trip to\ndiskarbitrationd (~0.2 s), so on an M3 Pro with four whole disks (three\nof them synthesized APFS containers that were then discarded) the field\ntook 0.97-1.04 s and was the whole of the default mode's critical path.\nThe NOTES suspect, phys-mem, was wrong; RETCH_TIMING=1 found it.\n\nIt now walks IOBlockStorageDriver in IOKit: the whole-disk IOMedia\nchild gives BSD Name and Size, the IOBlockStorageDevice parent gives\nProduct Name, Medium Type and Physical Interconnect, which are the\nvalues diskutil reported as MediaName, SolidState and BusProtocol.\nSynthesized APFS disks have no driver and never appear; disk images\nread \"Virtual Interface\" and are skipped, as diskutil skipped them.\n\nphys-disk: ~1 s -> 0.15 ms. Default mode on chani (battery, same\nsitting): v0.20.13 305-322 ms, this 108-126 ms, fastfetch's matched\ndefault 145-161 ms. Output identical in all four modes, also with a\ndisk image attached. Tests cover the formatter (three mutations, all\ncaught) and the numeric diskN sort.\n\nAlso fixes the Linux build under Rust 1.99, which reached CI after\nmain last passed: gpu_api.rs declared libc's variadic `open` as\nnon-variadic in its own extern block, now a hard error (\"invalid\ndefinition of the runtime `open` symbol used by the standard library\").\nThe fd calls (dup, dup2, close, open) now come from the libc crate.\nVerified by reproducing the error with rustc 1.99 and by compiling and\nrunning the same SuppressStderr logic against libc on macOS.\n\nAlso records the remaining macOS --short gap (the `disk` field, ~39 ms\nin sysinfo's free-space query) and the pre-existing Intel PCI-Express\n[SSD] labelling, and fixes the stale newest-tag line in NOTES.md.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-02T11:14:06-07:00",
+          "tree_id": "474ef4a382ae5724b9c9012c522080d7ac0a6106",
+          "url": "https://github.com/l1a/retch/commit/00b400ee23e90baba5613eef371399452a2e2633"
+        },
+        "date": 1790964889639,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 110778675.88000001,
+            "extra": "v0.20.14; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 131084483.98,
+            "extra": "v0.20.14; battery"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 33824088.24000001,
+            "extra": "v0.20.14; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 14997709.040000001,
+            "extra": "v0.20.14; battery"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 231027520.00000003,
+            "extra": "v0.20.14; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 659215461.6999999,
+            "extra": "v0.20.14; battery"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 494794331.86,
+            "extra": "v0.20.14; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 666626619.1600002,
+            "extra": "v0.20.14; battery"
           }
         ]
       }
