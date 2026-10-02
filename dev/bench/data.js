@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790967152926,
+  "lastUpdate": 1790967153226,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2825,6 +2825,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 250.95469067233594,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1dc26f7a7899d6901721819a5fdfedfcae0ed5a4",
+          "message": "List macOS volumes natively; free space from statfs (#286)\n\nmacOS --short was 43-46 ms against fastfetch's 16 ms, and all of it was\nthe `disk` field (~39 ms; the --version floor is 3.7 ms). sysinfo's\nDisks asked CoreFoundation for every mount's\nkCFURLVolumeAvailableCapacityForImportantUsageKey, which costs ~9 ms\nper volume on first query.\n\nMounts now come from getfsstat(MNT_NOWAIT). The same two CFURL keys\nsysinfo filtered on, IsBrowsable and IsLocal, pick the volumes, so the\nlist is unchanged: /System/Volumes/Data carries MNT_DONTBROWSE but is\nbrowsable to CoreFoundation, so f_flags cannot stand in for it. A fresh\nstatfs sizes only the kept volumes.\n\nVisible change, macOS only (user decision): \"free\" is f_bavail, as df\nand fastfetch report it, and no longer counts purgeable space, so it\ncan read lower than Finder (315.0 GiB vs ~336 here). The man page's\n`disk` entry says so. Totals are unchanged.\n\n--short on chani (battery): 33.5 -> 7.0 ms, fastfetch 17.0. The disk\nprobe 39 -> 1.95 ms. Tests pin the selection against chani's real\n13-mount table; three mutations of the filter, all caught.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-02T11:41:45-07:00",
+          "tree_id": "f10a0fceebad4d7781d2b9f62f9e1ccd6aefc7a9",
+          "url": "https://github.com/l1a/retch/commit/1dc26f7a7899d6901721819a5fdfedfcae0ed5a4"
+        },
+        "date": 1790967153182,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2315106.6999999997,
+            "unit": "ns",
+            "extra": "v0.20.15"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 252570752.95999998,
+            "unit": "ns",
+            "extra": "v0.20.15"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252531656.21999997,
+            "unit": "ns",
+            "extra": "v0.20.15"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1559568.4200000004,
+            "unit": "ns",
+            "extra": "v0.20.15"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2970677,
+            "unit": "ns",
+            "extra": "v0.20.15"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 232280931.56,
+            "unit": "ns",
+            "extra": "v0.20.15"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205261666.32000002,
+            "unit": "ns",
+            "extra": "v0.20.15"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2074670.3200000003,
+            "unit": "ns",
+            "extra": "v0.20.15"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 245812505.1,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 934.2775611551913,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 105.57680112123872,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9468660481153734,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 45.29746683741087,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7739.198316956926,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71099.05436751003,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4815.778727944786,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 3450.7958547066273,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 57848.05808754461,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 273.9225061082915,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 254.41968414010566,
             "unit": "ns"
           }
         ]
