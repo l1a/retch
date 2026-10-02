@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790970708118,
+  "lastUpdate": 1790970709120,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5597,6 +5597,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 383661250,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "49db22cc74ebea3f11599867b72d52a399cdfc08",
+          "message": "Stop reporting macOS Bluetooth as Off when unknown (#287)\n\nOn macOS 26 and later IOBluetoothHCIController no longer publishes\nBluetoothControllerPowerIsOn, and get_bluetooth_state folded the\nmissing property into false, so a Mac with Bluetooth on and a keyboard\nconnected printed \"Bluetooth: Off (Apple Bluetooth)\" (chani, macOS 27).\n\nThe power state is now an Option. When it cannot be read the line\ncarries no state at all, \"Bluetooth: Apple Bluetooth\", per the rule\nthat under-reporting beats asserting something false. Known states\nprint exactly as before. \"Apple Bluetooth\" is bluetooth.rs's fallback\nwhen no chipset string exists, which answers the NOTES question of\nwhere the name came from.\n\nA real power source is still open (NOTES 6c): the preferences plist\nhas no ControllerPowerState, and system_profiler knows but costs a\nseconds-long spawn. Tests pin both branches; reverting unknown to Off\nfails them.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-02T12:41:17-07:00",
+          "tree_id": "3ec0a099872ef85d74f69c184c9a09ab9e4917ff",
+          "url": "https://github.com/l1a/retch/commit/49db22cc74ebea3f11599867b72d52a399cdfc08"
+        },
+        "date": 1790970709075,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 33141160.000000004,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2352918560,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1306450702,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 24177910,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 31106110,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 279739690.00000006,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 133542391.99999999,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 27050710,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 230.0689352209909,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.479082640937421,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 125.56170192678796,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 97.65487430134041,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42965.91353634718,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 571.2177399941592,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 894.7729667904748,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 248664252.5,
             "unit": "ns"
           }
         ]
