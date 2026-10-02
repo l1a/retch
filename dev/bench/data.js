@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790964889639,
+  "lastUpdate": 1790965512012,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1503,6 +1503,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 292.3654301568464,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "00b400ee23e90baba5613eef371399452a2e2633",
+          "message": "Read macOS physical disks from IOKit (#285)\n\nphys-disk spawned `diskutil list -plist` and then one `diskutil info\n-plist` per whole disk, serially. Each call is a round trip to\ndiskarbitrationd (~0.2 s), so on an M3 Pro with four whole disks (three\nof them synthesized APFS containers that were then discarded) the field\ntook 0.97-1.04 s and was the whole of the default mode's critical path.\nThe NOTES suspect, phys-mem, was wrong; RETCH_TIMING=1 found it.\n\nIt now walks IOBlockStorageDriver in IOKit: the whole-disk IOMedia\nchild gives BSD Name and Size, the IOBlockStorageDevice parent gives\nProduct Name, Medium Type and Physical Interconnect, which are the\nvalues diskutil reported as MediaName, SolidState and BusProtocol.\nSynthesized APFS disks have no driver and never appear; disk images\nread \"Virtual Interface\" and are skipped, as diskutil skipped them.\n\nphys-disk: ~1 s -> 0.15 ms. Default mode on chani (battery, same\nsitting): v0.20.13 305-322 ms, this 108-126 ms, fastfetch's matched\ndefault 145-161 ms. Output identical in all four modes, also with a\ndisk image attached. Tests cover the formatter (three mutations, all\ncaught) and the numeric diskN sort.\n\nAlso fixes the Linux build under Rust 1.99, which reached CI after\nmain last passed: gpu_api.rs declared libc's variadic `open` as\nnon-variadic in its own extern block, now a hard error (\"invalid\ndefinition of the runtime `open` symbol used by the standard library\").\nThe fd calls (dup, dup2, close, open) now come from the libc crate.\nVerified by reproducing the error with rustc 1.99 and by compiling and\nrunning the same SuppressStderr logic against libc on macOS.\n\nAlso records the remaining macOS --short gap (the `disk` field, ~39 ms\nin sysinfo's free-space query) and the pre-existing Intel PCI-Express\n[SSD] labelling, and fixes the stale newest-tag line in NOTES.md.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-02T11:14:06-07:00",
+          "tree_id": "474ef4a382ae5724b9c9012c522080d7ac0a6106",
+          "url": "https://github.com/l1a/retch/commit/00b400ee23e90baba5613eef371399452a2e2633"
+        },
+        "date": 1790965511981,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 4331880.3,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 325427334.70000005,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 253261628.82000008,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 2064511.7000000004,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3591793.8000000007,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 352663917.90000004,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 207535055.82000002,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2328732.5000000005,
+            "unit": "ns",
+            "extra": "v0.20.14"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 396882553.6,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2044.0643222976682,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 111.64014935878484,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.8234342930915295,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 60.52979282476324,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 17949.107108202425,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 189981.56140854434,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12760.996374305152,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 8649.399755594204,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 162116.65428588708,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 327.2503090908972,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 272.70370063350094,
             "unit": "ns"
           }
         ]
