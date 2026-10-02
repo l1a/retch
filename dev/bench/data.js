@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790970707721,
+  "lastUpdate": 1790970708118,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4465,6 +4465,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 400.8735343620946,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "49db22cc74ebea3f11599867b72d52a399cdfc08",
+          "message": "Stop reporting macOS Bluetooth as Off when unknown (#287)\n\nOn macOS 26 and later IOBluetoothHCIController no longer publishes\nBluetoothControllerPowerIsOn, and get_bluetooth_state folded the\nmissing property into false, so a Mac with Bluetooth on and a keyboard\nconnected printed \"Bluetooth: Off (Apple Bluetooth)\" (chani, macOS 27).\n\nThe power state is now an Option. When it cannot be read the line\ncarries no state at all, \"Bluetooth: Apple Bluetooth\", per the rule\nthat under-reporting beats asserting something false. Known states\nprint exactly as before. \"Apple Bluetooth\" is bluetooth.rs's fallback\nwhen no chipset string exists, which answers the NOTES question of\nwhere the name came from.\n\nA real power source is still open (NOTES 6c): the preferences plist\nhas no ControllerPowerState, and system_profiler knows but costs a\nseconds-long spawn. Tests pin both branches; reverting unknown to Off\nfails them.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-02T12:41:17-07:00",
+          "tree_id": "3ec0a099872ef85d74f69c184c9a09ab9e4917ff",
+          "url": "https://github.com/l1a/retch/commit/49db22cc74ebea3f11599867b72d52a399cdfc08"
+        },
+        "date": 1790970708072,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 452904935.3,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1029205079.9600002,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1105008781.5,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 34317438.4,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 301970622.5,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 496596196.46,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 375577785.6,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 39237388.199999996,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 368590519.8,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 517.0269492044405,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 171.20390876208896,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9832355938006097,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 92.49838708401045,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6292.399612118498,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1638.9583796789898,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 466.35613279747287,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 116600.97649139815,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 443.3031584001931,
             "unit": "ns"
           }
         ]
