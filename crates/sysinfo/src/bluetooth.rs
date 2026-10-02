@@ -153,22 +153,8 @@ pub fn detect_bluetooth() -> Option<String> {
 
     #[cfg(target_os = "macos")]
     {
-        if let Some((power_on, chipset)) = crate::macos_ffi::get_bluetooth_state() {
-            let state = if power_on { "On" } else { "Off" };
-            let mut info_str = state.to_string();
-            if let Some(ch) = chipset {
-                info_str.push_str(&format!(" (Apple {})", ch));
-            } else {
-                info_str.push_str(" (Apple Bluetooth)");
-            }
-            // Connected device names require Obj-C IOBluetooth; not available via C IOKit.
-            if power_on {
-                info_str.push_str(" - connected devices unknown");
-            }
-            Some(info_str)
-        } else {
-            None
-        }
+        crate::macos_ffi::get_bluetooth_state()
+            .map(|(power, chipset)| format_macos_bluetooth(power, chipset.as_deref()))
     }
 
     #[cfg(target_os = "windows")]
@@ -179,6 +165,26 @@ pub fn detect_bluetooth() -> Option<String> {
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     {
         None
+    }
+}
+
+/// Formats the macOS Bluetooth line from the IOKit controller's power state and chipset.
+///
+/// `power` is `None` when the state cannot be read (macOS 26+ publishes no power property),
+/// and then **no state is printed at all**: the honest answer is unknown, and printing `Off`
+/// for a radio that is on is the asserting-something-false case NOTES §7.2 rules out. The
+/// controller name is `Apple <chipset>`, or `Apple Bluetooth` when no chipset string exists.
+#[cfg(target_os = "macos")]
+fn format_macos_bluetooth(power: Option<bool>, chipset: Option<&str>) -> String {
+    let name = match chipset {
+        Some(ch) => format!("Apple {}", ch),
+        None => "Apple Bluetooth".to_string(),
+    };
+    match power {
+        // Connected device names require Obj-C IOBluetooth; not available via C IOKit.
+        Some(true) => format!("On ({}) - connected devices unknown", name),
+        Some(false) => format!("Off ({})", name),
+        None => name,
     }
 }
 
@@ -505,6 +511,31 @@ mod tests {
         assert_eq!(
             parse_macos_bluetooth(sample_state_on),
             Some("On (Apple BCM_4388) - 0 connected".to_string())
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_format_macos_bluetooth_unknown_power_is_not_off() {
+        // macOS 26+/27: IOBluetoothHCIController has no BluetoothControllerPowerIsOn and no
+        // chipset string (seen on an M3 Pro with Bluetooth on). Must not claim "Off".
+        assert_eq!(format_macos_bluetooth(None, None), "Apple Bluetooth");
+        assert_eq!(
+            format_macos_bluetooth(None, Some("BCM_4388")),
+            "Apple BCM_4388"
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_format_macos_bluetooth_known_power_unchanged() {
+        assert_eq!(
+            format_macos_bluetooth(Some(true), Some("BCM_4388")),
+            "On (Apple BCM_4388) - connected devices unknown"
+        );
+        assert_eq!(
+            format_macos_bluetooth(Some(false), None),
+            "Off (Apple Bluetooth)"
         );
     }
 

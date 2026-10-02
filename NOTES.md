@@ -150,15 +150,18 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.15)
+## Current State (v0.20.16)
 
-`main` carries **`retch-cli` 0.20.15** / **`retch-sysinfo` 0.1.88**. Newest released tag is
+`main` carries **`retch-cli` 0.20.16** / **`retch-sysinfo` 0.1.89**. Newest released tag is
 **`v0.20.13`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
 (§6a). What is open is listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.16: macOS `Bluetooth` no longer says `Off` when it cannot tell.** It now prints
+  `Apple Bluetooth` with no state on macOS 26+, where the power property is gone; see §6c.
 
 - **v0.20.15: macOS `disk` lists mounts natively, and "free" is now `statfs`'s `f_bavail`
   (user decision).** `--short` on chani 33.5 → **7.0 ms (fastfetch 17.0)**; the `disk` probe
@@ -770,19 +773,18 @@ SQLite open-mode defect — see §7.3.
 
 ## 6c. macOS cross-platform parity — open items
 
-- **`Bluetooth` reports `Off` while Bluetooth devices are connected**
-  (`macos_ffi.rs::get_bluetooth_state`). `iokit_property_as_bool(service,
-  "BluetoothControllerPowerIsOn")` returns `None` on macOS 26 — **the property does not
-  exist**; `IOBluetoothHCIController` exposes only `IOClass`, `Built-In` and
-  `BluetoothTransportConnected = Yes`. The `.unwrap_or(false)` then turns "could not read" into
-  a confident `Off`. The three chipset-name properties it tries are absent too, yet the field
-  still prints a name — so that comes from a fallback elsewhere, worth tracing at the same time.
-  - **Deliberately not fixed blind.** `BluetoothTransportConnected` is the obvious replacement,
-    but confirming it tracks the *radio* being switched off means toggling Bluetooth off, which
-    would disconnect the keyboard in use. **Confirm it reads `No` with the radio off before
-    relying on it.**
-  - **The safe partial fix is independent of that question and can be done anywhere**: stop
-    reporting `Off` when the property cannot be read at all.
+- **`Bluetooth` has no power state on macOS 26+** (`macos_ffi.rs::get_bluetooth_state`).
+  `IOBluetoothHCIController` no longer publishes `BluetoothControllerPowerIsOn` (macOS 27 on
+  chani: only `IOClass`, `Built-In`, `BluetoothTransportConnected = Yes`), nor any of the three
+  chipset properties. **Partial fix in v0.20.16:** an unreadable state is printed as no state,
+  `Bluetooth: Apple Bluetooth`, instead of the `Off` that `.unwrap_or(false)` produced; the
+  `Apple Bluetooth` name is `bluetooth.rs`'s fallback when no chipset string exists.
+  - **Still open: a real power source.** `BluetoothTransportConnected` is the obvious
+    candidate, but confirming it tracks the *radio* means switching Bluetooth off, which
+    disconnects the keyboard in use. Confirm it reads `No` with the radio off before relying on
+    it. Ruled out on chani: `/Library/Preferences/com.apple.Bluetooth.plist` has no
+    `ControllerPowerState`; `system_profiler SPBluetoothDataType` knows (`State: On`, chipset
+    `BCM_4388`) but costs a seconds-long spawn.
 
 - **An Intel Mac's internal NVMe prints `[SSD]`, not `[NVMe SSD]`** (pre-existing, kept
   as is in v0.20.14 so the IOKit port changed no output). The NVMe rule matches `pcie` or
