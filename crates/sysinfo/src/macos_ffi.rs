@@ -1543,7 +1543,12 @@ unsafe fn enumerate_hid_usage(page: u32, usage: u32) -> Vec<String> {
 
 /// Return `(power_on, chipset_name)` from the IOBluetoothHCIController IOKit service.
 /// Connected device names are NOT available via pure-C IOKit (requires Obj-C IOBluetooth).
-pub fn get_bluetooth_state() -> Option<(bool, Option<String>)> {
+///
+/// The power state is `None` when the controller does not publish
+/// `BluetoothControllerPowerIsOn`, which is the case on macOS 26 and later (the service there
+/// carries only `BluetoothTransportConnected`). Unknown is reported as unknown: until v0.20.16
+/// it was folded into `false`, so a Mac with Bluetooth on and devices connected read `Off`.
+pub fn get_bluetooth_state() -> Option<(Option<bool>, Option<String>)> {
     unsafe {
         let svc_name = CString::new("IOBluetoothHCIController").unwrap();
         let matching = IOServiceMatching(svc_name.as_ptr());
@@ -1554,8 +1559,7 @@ pub fn get_bluetooth_state() -> Option<(bool, Option<String>)> {
         if service == MACH_PORT_NULL {
             return None;
         }
-        let power =
-            iokit_property_as_bool(service, "BluetoothControllerPowerIsOn").unwrap_or(false);
+        let power = iokit_property_as_bool(service, "BluetoothControllerPowerIsOn");
         // Try several property names for chipset/product string
         let chipset = iokit_property_as_string(service, "HardwareTransportCurrentSetting")
             .or_else(|| iokit_property_as_string(service, "ProductName"))
