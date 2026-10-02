@@ -150,10 +150,10 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.16)
+## Current State (v0.20.17)
 
-`main` carries **`retch-cli` 0.20.16** / **`retch-sysinfo` 0.1.89**. Newest released tag is
-**`v0.20.13`**.
+`main` carries **`retch-cli` 0.20.17** / **`retch-sysinfo` 0.1.89**. Newest released tag is
+**`v0.20.16`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
 (§6a). What is open is listed in §5, §6a and §6c.
@@ -1096,8 +1096,10 @@ nobody asked.
   message against the intended text before pushing** — a pushed tag is far more annoying to fix.
 - **An expired crates.io token 403s at *upload*, not at start**, so it reads as a crate
   permissions problem. The credentials file existing proves nothing about its validity. This
-  blocked two consecutive releases; `cargo owner --list retch-cli` is an authenticated read that
-  proves the token up front.
+  blocked two consecutive releases. **`cargo owner --list retch-cli` does NOT prove the token**: it
+  is a public read and printed the owner with `CARGO_REGISTRY_TOKEN=bogus-not-a-token` (exit 0).
+  Only an upload authenticates. After a `cargo login`, treat the token as unproven until
+  `just publish` succeeds, and have a way to re-login ready.
 - **Check the index against the pin every release.** A two-crate publish and a CLI-only publish
   are both normal, and assuming either is wrong. `publish-check` skipping the retch-cli dry run
   before a release is the correct behaviour, not a failure.
@@ -1122,6 +1124,12 @@ nobody asked.
 
 ### 7.5 Tooling and environment
 
+- **Claude Code's auto-mode classifier blocks some release steps, and the user has to run them.**
+  Seen on 2026-10-02: `git push --force-with-lease` and a following `just pr` ("Git Destructive"),
+  and `AUR_CONFIRM=y just aur-publish` ("Create Public Surface"). It also refused to add its own
+  allow rule ("Self-Modification"). Do not look for a way around it: hand the exact command to the
+  user to run with `!`, then verify the result from the channel (a fresh clone, not the exit code).
+  A first check made before the user's run finished read the old AUR version; re-check.
 - **`just` parses `{{` inside a recipe body before the shell or Python ever sees it** — an
   incidental `{{` in an embedded heredoc breaks the whole Justfile.
 - **In a `#!` shebang recipe, `just` does NOT strip a leading `@`** — that is plain-recipe
