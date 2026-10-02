@@ -150,15 +150,33 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.13)
+## Current State (v0.20.14)
 
-`main` carries **`retch-cli` 0.20.13** / **`retch-sysinfo` 0.1.86**. Newest released tag is
-**`v0.20.10`**.
+`main` carries **`retch-cli` 0.20.14** / **`retch-sysinfo` 0.1.87**. Newest released tag is
+**`v0.20.13`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
 (§6a). What is open is listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.14: macOS `phys-disk` reads IOKit instead of spawning `diskutil`; the default mode
+  is now ahead of fastfetch on a Mac.** The recorded prime suspect (`phys-mem`) was wrong:
+  `RETCH_TIMING=1` on chani (M3 Pro, macOS 27) showed `phys-disk` at **0.97–1.04 s**, i.e.
+  `diskutil list` plus one `diskutil info` per whole disk, serially, ~0.2 s each, for four
+  whole disks of which three are synthesized APFS containers that are then discarded. Now
+  0.15 ms. Default mode, same sitting, on battery: **main 305–322 ms, this 108–126 ms,
+  fastfetch matched default 145–161 ms**. (main also measured 1.10 s ± 0.26 earlier that day:
+  diskutil's cost swings a lot.) Output is identical in every mode, including with a disk
+  image attached; see §7.3 for which IOKit property stands in for which diskutil key.
+  - **Also in v0.20.14: Rust 1.99 broke every Linux build.** `gpu_api.rs` declared
+    `fn open(path, flags) -> c_int` in its own `extern` block; `open` is variadic, and 1.99
+    (2026-09-28) makes a mismatched redeclaration of a symbol std uses a hard error ("invalid
+    definition of the runtime `open` symbol used by the standard library"). The fd calls now
+    come from the `libc` crate. `main` had last passed CI on 1.98.1, so this PR was the first
+    to see it. **Prefer `libc`'s declarations to hand-written ones for anything std also
+    calls**, and note that a Mac cannot catch this for `cfg(target_os = "linux")` code: the
+    lint fires only where the declaration compiles.
 
 - **v0.20.13: the extra lint pass covers `--no-default-features`.** `graphics` has been a
   default feature since May 2026 (`b1f736e`), so the `--workspace` clippy already compiles it;
@@ -607,9 +625,17 @@ Live items only. Completed items are removed rather than struck through — `git
   - **`--full`** — ahead since v0.20.10 (weather over plain HTTP). Still bound by `weather`
     (~375 ms). After it, `temp` then `wm` run serially, ~24 ms together; running them
     concurrently is the next small win.
-  - **macOS default (848 vs 414 ms on CI)** — prime suspect `phys-mem`, which spawns
-    `system_profiler`; also `phys-disk` runs `diskutil` once per disk. `RETCH_TIMING=1` on a
-    Mac settles it.
+  - **macOS default** — was 848 vs 414 ms on CI; the cause was `phys-disk`'s serial
+    `diskutil` spawns, fixed in v0.20.14 (now ahead locally, 108–126 vs 145–161 ms). Check the
+    next macOS CI points. What is left on chani (`RETCH_TIMING=1`): `phys-mem` ~80 ms, and
+    `disk` (~40 ms) followed by `audio` (~44 ms) on the serial path.
+  - **macOS `--short`: retch 43–46 ms vs fastfetch 16 ms (chani, battery). BLOCKING.** It is
+    all `disk` (~39 ms; the `--version` floor is 3.7 ms). sysinfo's `Disks` asks CoreFoundation
+    for `kCFURLVolumeAvailableCapacityForImportantUsageKey`, which costs ~9 ms per volume on its
+    first query, apparently for every `getfsstat` mount before the browsable filter. That key
+    is the free figure retch prints (336.6 GiB here), and it counts purgeable space: plain
+    `statvfs` (fastfetch) says 316.2 GiB. Querying it only for the volumes that are kept keeps
+    the number; switching to `statvfs` changes it. **That choice is the user's.**
   - **`--short`** — level with fastfetch since v0.20.5, on battery and on AC.
   - **default: `phys-mem` is the long pole, ~1.4–2.2 ms** since v0.20.6 (retch ~4x ahead of
     fastfetch there anyway). On Linux it needs `dmidecode`, which is root-only, so an
@@ -748,6 +774,13 @@ SQLite open-mode defect — see §7.3.
     relying on it.**
   - **The safe partial fix is independent of that question and can be done anywhere**: stop
     reporting `Off` when the property cannot be read at all.
+
+- **An Intel Mac's internal NVMe prints `[SSD]`, not `[NVMe SSD]`** (pre-existing, kept
+  as is in v0.20.14 so the IOKit port changed no output). The NVMe rule matches `pcie` or
+  `nvme` in the bus string, but macOS spells it `PCI-Express`, and PCIe alone does not imply
+  NVMe (2015–16 MacBooks used AHCI over PCIe). The IOKit device class
+  (`IONVMeBlockStorageDevice` vs `IOAHCIBlockStorageDevice`) is the honest signal; it needs
+  an Intel Mac to verify.
 
 **Decided — `tpm` stays absent on macOS.** Macs have a **Secure Enclave**, not a TPM. The field
 reports a TPM *specification* version (`2.0`/`1.2`) and a Secure Enclave has none; labelling one
@@ -974,6 +1007,17 @@ nobody asked.
 - **The CGL profile attribute decides the OpenGL version reported**: no attribute or legacy
   gives `2.1`, a core profile gives `4.1` on the same machine. Writing the obvious thing reports
   less than half what the machine supports, as a perfectly plausible string.
+- **`diskutil` is ~0.2 s per call** (a round trip to `diskarbitrationd`), so one call per disk
+  made `phys-disk` a second-long serial cost. IOKit holds the same facts, walked from each
+  `IOBlockStorageDriver`: the whole-disk `IOMedia` child (`Whole`, `BSD Name`, `Size`), and the
+  `IOBlockStorageDevice` parent's `Device Characteristics` / `Protocol Characteristics`.
+  Mapping, each checked against diskutil on chani: `MediaName` = `Product Name` (**not** the
+  IOMedia name minus ` Media`: a disk image's IOMedia is `Apple Disk Image Media` while its
+  `MediaName` is `Disk Image`); `SolidState` = `Medium Type` `Solid State`; `BusProtocol` =
+  `Physical Interconnect`, except that a disk image reads `Virtual Interface` (diskutil:
+  `Disk Image`, `VirtualOrPhysical = Virtual`). Synthesized APFS container disks have no
+  block-storage driver, so a driver walk never sees them. Note the real internal disk reports
+  `VirtualOrPhysical = Unknown`, not `Physical`.
 - **Brightness lives on `AppleARMBacklight`** on Apple Silicon — the documented
   `IODisplayConnect`, `AppleBacklightDisplay`, `AppleCLCD2` and `IOMobileFramebufferShim` all
   return nothing.

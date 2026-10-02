@@ -183,6 +183,13 @@ extern "C" {
         plane: *const i8,
         iter: *mut IOIterator,
     ) -> i32;
+    pub fn IORegistryEntryGetParentEntry(
+        entry: IOService,
+        plane: *const i8,
+        parent: *mut IOService,
+    ) -> i32;
+    /// `name` must point to an `io_name_t`, i.e. a 128-byte buffer.
+    pub fn IORegistryEntryGetName(entry: IOService, name: *mut i8) -> i32;
 }
 
 /// Read an IOKit registry property as a Rust String (handles CFString and CFData).
@@ -495,6 +502,186 @@ pub fn get_block_storage_io() -> Vec<(String, u64, u64)> {
     }
     out.sort_by(|a, b| a.0.cmp(&b.0));
     out
+}
+
+// ─── Physical disks — IOBlockStorageDriver → IOMedia / IOBlockStorageDevice ──
+
+/// One whole disk as IOKit describes it, before `disk.rs` formats or filters it.
+///
+/// Each field is the IOKit property `diskutil info -plist` reports under the name in
+/// brackets, which is what lets the native reader keep the old output exactly:
+/// `model` [`MediaName`], `size_bytes` [`TotalSize`], `solid_state` [`SolidState`],
+/// `interconnect` [`BusProtocol`, except that disk images read `Virtual Interface` here
+/// where diskutil prints `Disk Image`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MacDiskRaw {
+    /// Whole-disk BSD name (`disk0`); the sort key, so the order matches diskutil's.
+    pub bsd_name: String,
+    /// `Device Characteristics` → `Product Name`, else the `IOMedia` entry name.
+    pub model: String,
+    /// The whole-disk `IOMedia`'s `Size`.
+    pub size_bytes: Option<u64>,
+    /// `Device Characteristics` → `Medium Type` is `Solid State`.
+    pub solid_state: bool,
+    /// `Protocol Characteristics` → `Physical Interconnect` (`Apple Fabric`, `USB`, …).
+    pub interconnect: String,
+}
+
+/// Read one string from a dictionary-valued registry property, e.g.
+/// `Device Characteristics` → `Product Name`.
+unsafe fn iokit_dict_property_string(
+    entry: IOService,
+    property: &str,
+    key: &str,
+) -> Option<String> {
+    let dict = with_cfstring(property, |k| {
+        IORegistryEntryCreateCFProperty(entry, k, kCFAllocatorDefault, 0)
+    });
+    if dict.is_null() {
+        return None;
+    }
+    let _owned = OwnedCF(dict);
+    if CFGetTypeID(dict) != CFDictionaryGetTypeID() {
+        return None;
+    }
+    cf_dict_string(dict as CFDictionaryRef, key)
+}
+
+/// The registry entry's own name (`APPLE SSD AP1024Z Media` for a whole-disk `IOMedia`).
+unsafe fn iokit_entry_name(entry: IOService) -> Option<String> {
+    // io_name_t is char[128]; IORegistryEntryGetName NUL-terminates within it.
+    let mut buf = [0i8; 128];
+    if IORegistryEntryGetName(entry, buf.as_mut_ptr()) != 0 {
+        return None;
+    }
+    let bytes: Vec<u8> = buf
+        .iter()
+        .take_while(|&&c| c != 0)
+        .map(|&c| c as u8)
+        .collect();
+    String::from_utf8(bytes).ok().filter(|s| !s.is_empty())
+}
+
+/// The first child of `driver` that is a whole-disk `IOMedia` with a BSD name.
+/// The caller owns the returned entry and must `IOObjectRelease` it.
+unsafe fn block_driver_whole_media(driver: IOService) -> Option<(IOService, String)> {
+    let plane = b"IOService\0";
+    let mut iter: IOIterator = MACH_PORT_NULL;
+    if IORegistryEntryGetChildIterator(driver, plane.as_ptr() as *const i8, &mut iter) != 0 {
+        return None;
+    }
+    let mut found = None;
+    loop {
+        let child = IOIteratorNext(iter);
+        if child == MACH_PORT_NULL {
+            break;
+        }
+        if found.is_none() && iokit_property_as_bool(child, "Whole") == Some(true) {
+            if let Some(name) = iokit_property_as_string(child, "BSD Name") {
+                found = Some((child, name));
+                continue; // keep `child` alive for the caller
+            }
+        }
+        IOObjectRelease(child);
+    }
+    IOObjectRelease(iter);
+    found
+}
+
+/// Enumerate whole disks natively, replacing `diskutil list` + one `diskutil info` per disk.
+///
+/// **Why:** those were N+1 serial process spawns, each a round trip to `diskarbitrationd`,
+/// ~0.2 s apiece — 0.97–1.04 s for four whole disks on an M-series Mac, which made
+/// `phys-disk` the entire critical path of the default mode. This reads the same
+/// properties straight from the registry.
+///
+/// Walks every `IOBlockStorageDriver` (as [`get_block_storage_io`] does): the whole-disk
+/// `IOMedia` is its child and the `IOBlockStorageDevice` carrying the model and bus is its
+/// parent. Synthesized APFS container disks are not backed by a driver at all, so they never
+/// appear here — the case diskutil marks `VirtualOrPhysical = Virtual`. A driver with no media
+/// (an empty SD reader) has no whole-disk child and is skipped, as diskutil skips it. Disk
+/// images *are* driver-backed and are returned; `disk.rs` drops them by their interconnect.
+pub fn get_physical_disks() -> Vec<MacDiskRaw> {
+    let mut out = Vec::new();
+    // SAFETY: every IOKit object obtained here (iterator, driver, media, device) is
+    // released exactly once on every path; CF values are wrapped in `OwnedCF` or are
+    // borrowed from a dictionary that outlives the read, per the module's memory rules.
+    unsafe {
+        let class = CString::new("IOBlockStorageDriver").unwrap();
+        let matching = IOServiceMatching(class.as_ptr());
+        if matching.is_null() {
+            return out;
+        }
+        let mut iter: IOIterator = MACH_PORT_NULL;
+        // IOServiceGetMatchingServices consumes `matching`; do not release it.
+        if IOServiceGetMatchingServices(IOKIT_MAIN_PORT, matching as CFDictionaryRef, &mut iter)
+            != 0
+        {
+            return out;
+        }
+        let plane = b"IOService\0";
+        loop {
+            let driver = IOIteratorNext(iter);
+            if driver == MACH_PORT_NULL {
+                break;
+            }
+            if let Some((media, bsd_name)) = block_driver_whole_media(driver) {
+                let size_bytes = iokit_property_as_u64(media, "Size");
+                let media_name = iokit_entry_name(media);
+                IOObjectRelease(media);
+
+                let mut device: IOService = MACH_PORT_NULL;
+                let (product, medium, interconnect) = if IORegistryEntryGetParentEntry(
+                    driver,
+                    plane.as_ptr() as *const i8,
+                    &mut device,
+                ) == 0
+                {
+                    let r = (
+                        iokit_dict_property_string(
+                            device,
+                            "Device Characteristics",
+                            "Product Name",
+                        ),
+                        iokit_dict_property_string(device, "Device Characteristics", "Medium Type"),
+                        iokit_dict_property_string(
+                            device,
+                            "Protocol Characteristics",
+                            "Physical Interconnect",
+                        ),
+                    );
+                    IOObjectRelease(device);
+                    r
+                } else {
+                    (None, None, None)
+                };
+
+                out.push(MacDiskRaw {
+                    bsd_name,
+                    model: product
+                        .filter(|p| !p.trim().is_empty())
+                        .or(media_name)
+                        .unwrap_or_default(),
+                    size_bytes,
+                    solid_state: medium.as_deref() == Some("Solid State"),
+                    interconnect: interconnect.unwrap_or_default(),
+                });
+            }
+            IOObjectRelease(driver);
+        }
+        IOObjectRelease(iter);
+    }
+    out.sort_by_key(|d| bsd_disk_sort_key(&d.bsd_name));
+    out
+}
+
+/// Sort key putting `disk2` before `disk10`, as diskutil lists them.
+pub fn bsd_disk_sort_key(name: &str) -> (u64, String) {
+    let n = name
+        .strip_prefix("disk")
+        .and_then(|d| d.parse::<u64>().ok())
+        .unwrap_or(u64::MAX);
+    (n, name.to_string())
 }
 
 // ─── HID input devices — IOHIDDevice ─────────────────────────────────────────
