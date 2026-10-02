@@ -150,15 +150,29 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.14)
+## Current State (v0.20.15)
 
-`main` carries **`retch-cli` 0.20.14** / **`retch-sysinfo` 0.1.87**. Newest released tag is
+`main` carries **`retch-cli` 0.20.15** / **`retch-sysinfo` 0.1.88**. Newest released tag is
 **`v0.20.13`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
 (§6a). What is open is listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.15: macOS `disk` lists mounts natively, and "free" is now `statfs`'s `f_bavail`
+  (user decision).** `--short` on chani 33.5 → **7.0 ms (fastfetch 17.0)**; the `disk` probe
+  39 → 1.95 ms. sysinfo's `Disks` asked CoreFoundation for
+  `kCFURLVolumeAvailableCapacityForImportantUsageKey`, ~9 ms per volume on first query.
+  - **Visible change, macOS only:** free space no longer counts purgeable space, so it matches
+    `df` and fastfetch and can read lower than Finder (315.0 GiB vs sysinfo's ~336 here). The
+    man page's `disk` entry says so. Total is unchanged (`f_blocks * f_bsize` equals what
+    CoreFoundation reported).
+  - **The volume list is unchanged**, and that needed CoreFoundation, not `f_flags`:
+    `/System/Volumes/Data` carries `MNT_DONTBROWSE` yet CoreFoundation calls it browsable, and
+    sysinfo listed it (in `--long`). So `get_mounts` still asks CFURL for
+    `kCFURLVolumeIsBrowsableKey` and `kCFURLVolumeIsLocalKey`, which cost ~2 ms for all 13
+    mounts. Listing is `MNT_NOWAIT`; sizes come from a fresh `statfs` on kept volumes only.
 
 - **v0.20.14: macOS `phys-disk` reads IOKit instead of spawning `diskutil`; the default mode
   is now ahead of fastfetch on a Mac.** The recorded prime suspect (`phys-mem`) was wrong:
@@ -611,10 +625,11 @@ Adds over long:
 
 Live items only. Completed items are removed rather than struck through — `git log` has them.
 
-- **BLOCKING per §3 on macOS and possibly Windows; clear on Linux.** On arrakis (on AC) since
-  v0.20.10 retch is ahead or level in all four matched modes: default 3.8 vs 14.9 ms, `--short`
-  2.4 vs 2.7, `--long` 228 vs 510, `--full` 425 vs 519 ms. macOS CI's default mode is still
-  behind (848 vs 414 ms), and Windows is unexamined. Leads:
+- **Clear on Linux and macOS locally; Windows unexamined, and macOS CI not yet re-checked.**
+  On arrakis (on AC) since v0.20.10 retch is ahead or level in all four matched modes: default
+  3.8 vs 14.9 ms, `--short` 2.4 vs 2.7, `--long` 228 vs 510, `--full` 425 vs 519 ms. On chani
+  (M3 Pro, battery) since v0.20.15: `--short` 7.0 vs 17.0, default 109 vs 134, `--long` 231 vs
+  674, `--full` 500 vs 751 ms. Leads:
   - **default, real hardware only** — 35–57 ms on arrakis at times, ~9 ms at others (ahead of
     fastfetch's 14.8), on the same binary; level in a container. The slow state made
     `procs`/`audio`/`shell`/`terminal` ~50 ms each. Cause unknown; v0.19.1 removed the process
@@ -627,15 +642,9 @@ Live items only. Completed items are removed rather than struck through — `git
     concurrently is the next small win.
   - **macOS default** — was 848 vs 414 ms on CI; the cause was `phys-disk`'s serial
     `diskutil` spawns, fixed in v0.20.14 (now ahead locally, 108–126 vs 145–161 ms). Check the
-    next macOS CI points. What is left on chani (`RETCH_TIMING=1`): `phys-mem` ~80 ms, and
-    `disk` (~40 ms) followed by `audio` (~44 ms) on the serial path.
-  - **macOS `--short`: retch 43–46 ms vs fastfetch 16 ms (chani, battery). BLOCKING.** It is
-    all `disk` (~39 ms; the `--version` floor is 3.7 ms). sysinfo's `Disks` asks CoreFoundation
-    for `kCFURLVolumeAvailableCapacityForImportantUsageKey`, which costs ~9 ms per volume on its
-    first query, apparently for every `getfsstat` mount before the browsable filter. That key
-    is the free figure retch prints (336.6 GiB here), and it counts purgeable space: plain
-    `statvfs` (fastfetch) says 316.2 GiB. Querying it only for the volumes that are kept keeps
-    the number; switching to `statvfs` changes it. **That choice is the user's.**
+    next macOS CI points. What is left on chani (`RETCH_TIMING=1`): `phys-mem` ~80 ms, then
+    `audio` ~44 ms (it starts after `sys-init`, inside the scope), `display` ~33 ms.
+  - **macOS `--short`** — ahead since v0.20.15 (7.0 vs 17.0 ms on chani): it was all `disk`.
   - **`--short`** — level with fastfetch since v0.20.5, on battery and on AC.
   - **default: `phys-mem` is the long pole, ~1.4–2.2 ms** since v0.20.6 (retch ~4x ahead of
     fastfetch there anyway). On Linux it needs `dmidecode`, which is root-only, so an
@@ -1018,6 +1027,13 @@ nobody asked.
   `Disk Image`, `VirtualOrPhysical = Virtual`). Synthesized APFS container disks have no
   block-storage driver, so a driver walk never sees them. Note the real internal disk reports
   `VirtualOrPhysical = Unknown`, not `Physical`.
+- **`kCFURLVolumeAvailableCapacityForImportantUsageKey` costs ~9 ms per volume** on first
+  query (it computes purgeable space); the browsable/local/total keys cost ~0.1 ms. A library
+  that asks for it on every mount turns a free-space line into the slowest probe in `--short`.
+- **`MNT_DONTBROWSE` is not CoreFoundation's "browsable".** `/System/Volumes/Data` carries
+  the flag yet `kCFURLVolumeIsBrowsableKey` is true for it (and the CF *enumerator* hides it:
+  three answers to one question). A filter on `f_flags` alone silently drops it. Pick the
+  oracle the old behaviour used, and test against a real mount table.
 - **Brightness lives on `AppleARMBacklight`** on Apple Silicon — the documented
   `IODisplayConnect`, `AppleBacklightDisplay`, `AppleCLCD2` and `IOMobileFramebufferShim` all
   return nothing.

@@ -147,8 +147,8 @@ default path with:
   - `uptime`: System uptime.
   - `procs`: Active process count.
   - `load`: Average system load.
-  - `disk`: Mounted disk capacity, usage, and mountpoint.
-  - `phys-disk`: Physical disk model, size, and type (NVMe SSD, SSD, HDD). On Windows, uses native storage IOCTLs; no PowerShell and no administrator rights.
+  - `disk`: Mounted disk capacity, usage, and mountpoint. "Free" is the space an unprivileged user can write, as `df` reports it; on macOS this does not count purgeable space, so it can read lower than Finder.
+  - `phys-disk`: Physical disk model, size, and type (NVMe SSD, SSD, HDD). On Windows, uses native storage IOCTLs; no PowerShell and no administrator rights. On macOS, read from IOKit; no `diskutil`.
   - `disk-io`: Per-disk read/write throughput in bytes per second, for physical whole disks only (partitions are excluded — their traffic is already counted against the parent device). On Linux, read from `/proc/diskstats` and named after the kernel device (`nvme0n1`). On Windows, read via the `IOCTL_DISK_PERFORMANCE` storage IOCTL and named after the drive index (`PhysicalDrive0`); no PowerShell and no administrator rights. On macOS, read from the `Statistics` dictionary of each IOKit `IOBlockStorageDriver` and named after the BSD device (`disk0`); this is the same source `iostat` reports from. Long mode and above. See **I/O RATES** below for how the rate is measured.
   - `btrfs`: Mounted btrfs filesystem label, subvolume, and space allocation (`btrfs filesystem show`/`usage`); one entry per mount point, so a filesystem mounted at both `/` and `/home` via separate subvolumes shows two entries. Snapshot count is shown when it can be read (`btrfs subvolume list -s`, requires root) and omitted otherwise. Linux only. Long mode and above.
   - `zpool`: Imported ZFS pool name, allocation, and health (`zpool list`). Linux and macOS with ZFS installed; empty if `zpool` is not present. Long mode and above.
