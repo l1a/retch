@@ -10,18 +10,52 @@
 /// (e.g. cryfs/EncFS vaults), so they are only enabled in `--full` mode.
 ///
 /// On Linux, reads /proc/mounts and calls statvfs ourselves so we can filter
-/// before the blocking call. On other platforms, delegates to sysinfo::Disks.
+/// before the blocking call. On macOS, lists mounts with `getfsstat` and sizes them with
+/// `statfs` (see [`macos_volume_entry`]). Elsewhere, delegates to sysinfo::Disks.
 pub fn detect_logical_disks(include_fuse: bool) -> Vec<(String, u64, u64, String)> {
     #[cfg(target_os = "linux")]
     {
         detect_logical_linux(include_fuse)
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "macos")]
+    {
+        let _ = include_fuse;
+        crate::macos_ffi::get_mounts()
+            .iter()
+            .filter_map(macos_volume_entry)
+            .collect()
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
         let _ = include_fuse;
         detect_logical_sysinfo()
     }
+}
+
+/// Selects and shapes one macOS mount as `(mount point, total, available, fs type)`.
+///
+/// Keeps exactly the volumes `sysinfo::Disks` kept before v0.20.15: browsable and local, with
+/// a non-zero size. That is `/` and `/System/Volumes/Data` on a stock Mac, plus any mounted
+/// external volume; APFS system volumes, `devfs` and `autofs` are not browsable.
+///
+/// **Available space is `statfs`'s `f_bavail`, not sysinfo's figure** (user decision,
+/// v0.20.15). sysinfo reported CoreFoundation's "available for important usage", which counts
+/// purgeable space (Finder's number): 336.6 vs 316.2 GiB on the Mac this was written on. That
+/// query cost ~9 ms per volume and was all of `--short`'s gap to fastfetch, which reports
+/// `f_bavail` too, as `df` does.
+#[cfg(target_os = "macos")]
+pub fn macos_volume_entry(m: &crate::macos_ffi::MacMount) -> Option<(String, u64, u64, String)> {
+    if !m.browsable || !m.local || m.total_bytes == 0 {
+        return None;
+    }
+    Some((
+        m.mount_point.clone(),
+        m.total_bytes,
+        m.avail_bytes,
+        m.fs_type.clone(),
+    ))
 }
 
 /// Filesystem types that are virtual/pseudo and should never appear in disk output.
@@ -111,7 +145,7 @@ fn detect_logical_linux(include_fuse: bool) -> Vec<(String, u64, u64, String)> {
     results
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 fn detect_logical_sysinfo() -> Vec<(String, u64, u64, String)> {
     use sysinfo::Disks;
     Disks::new_with_refreshed_list()
@@ -832,6 +866,107 @@ mod tests {
         assert_eq!(
             super::format_macos_disk(&d),
             Some("500 GB [HDD]".to_string())
+        );
+    }
+
+    /// A `MacMount` fixture. Flags are as CoreFoundation reported them on an M-series Mac.
+    #[cfg(target_os = "macos")]
+    fn mac_mount(
+        mp: &str,
+        fs: &str,
+        total: u64,
+        browsable: bool,
+        local: bool,
+    ) -> crate::macos_ffi::MacMount {
+        crate::macos_ffi::MacMount {
+            mount_point: mp.to_string(),
+            fs_type: fs.to_string(),
+            total_bytes: total,
+            avail_bytes: total / 3,
+            browsable,
+            local,
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_macos_volume_entry_keeps_what_sysinfo_kept() {
+        // The 13 mounts of chani (macOS 27), with CoreFoundation's flags. sysinfo kept
+        // exactly `/` and `/System/Volumes/Data`; note Data is browsable to CoreFoundation
+        // although its statfs flags carry MNT_DONTBROWSE, which is why the flag is read
+        // from CoreFoundation and not from f_flags.
+        let mounts = [
+            mac_mount("/", "apfs", 994_662_584_320, true, true),
+            mac_mount("/dev", "devfs", 220_160, false, true),
+            mac_mount("/System/Volumes/VM", "apfs", 994_662_584_320, false, true),
+            mac_mount(
+                "/System/Volumes/Preboot",
+                "apfs",
+                994_662_584_320,
+                false,
+                true,
+            ),
+            mac_mount(
+                "/System/Volumes/Update",
+                "apfs",
+                994_662_584_320,
+                false,
+                true,
+            ),
+            mac_mount("/System/Volumes/xarts", "apfs", 524_288_000, false, true),
+            mac_mount(
+                "/System/Volumes/iSCPreboot",
+                "apfs",
+                524_288_000,
+                false,
+                true,
+            ),
+            mac_mount("/System/Volumes/Hardware", "apfs", 524_288_000, false, true),
+            mac_mount("/System/Volumes/Data", "apfs", 994_662_584_320, true, true),
+            mac_mount("/System/Volumes/Data/home", "autofs", 0, false, false),
+            mac_mount("/Volumes/Recovery", "apfs", 994_662_584_320, false, true),
+            mac_mount(
+                "/System/Volumes/Update/SFR/mnt1",
+                "apfs",
+                5_368_709_120,
+                false,
+                true,
+            ),
+            mac_mount(
+                "/System/Volumes/Update/mnt1",
+                "apfs",
+                994_662_584_320,
+                false,
+                true,
+            ),
+        ];
+        let kept: Vec<String> = mounts
+            .iter()
+            .filter_map(super::macos_volume_entry)
+            .map(|(mp, ..)| mp)
+            .collect();
+        assert_eq!(kept, vec!["/", "/System/Volumes/Data"]);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_macos_volume_entry_drops_remote_and_empty() {
+        // A browsable SMB share is not local (sysinfo skipped it, as other platforms do).
+        let smb = mac_mount("/Volumes/share", "smbfs", 4_000_000_000_000, true, false);
+        assert_eq!(super::macos_volume_entry(&smb), None);
+        // A browsable local volume whose statfs failed (size 0) is not reported as 0 GB.
+        let empty = mac_mount("/Volumes/X", "apfs", 0, true, true);
+        assert_eq!(super::macos_volume_entry(&empty), None);
+        // An external disk is kept with its statfs figures and fs type.
+        let ext = mac_mount("/Volumes/USB", "exfat", 128_000_000_000, true, true);
+        assert_eq!(
+            super::macos_volume_entry(&ext),
+            Some((
+                "/Volumes/USB".to_string(),
+                128_000_000_000,
+                128_000_000_000 / 3,
+                "exfat".to_string()
+            ))
         );
     }
 

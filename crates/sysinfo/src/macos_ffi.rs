@@ -684,6 +684,155 @@ pub fn bsd_disk_sort_key(name: &str) -> (u64, String) {
     (n, name.to_string())
 }
 
+// ─── Mounted volumes — getfsstat + CFURL browsable/local flags ───────────────
+
+pub type CFURLRef = *const c_void;
+
+#[link(name = "CoreFoundation", kind = "framework")]
+extern "C" {
+    static kCFURLVolumeIsBrowsableKey: CFStringRef;
+    static kCFURLVolumeIsLocalKey: CFStringRef;
+    fn CFArrayCreate(
+        alloc: CFAllocatorRef,
+        values: *const *const c_void,
+        num_values: isize,
+        callbacks: *const c_void,
+    ) -> CFArrayRef;
+    fn CFURLCreateFromFileSystemRepresentation(
+        alloc: CFAllocatorRef,
+        buffer: *const u8,
+        buf_len: isize,
+        is_directory: u8,
+    ) -> CFURLRef;
+    fn CFURLCopyResourcePropertiesForKeys(
+        url: CFURLRef,
+        keys: CFArrayRef,
+        error: *mut *const c_void,
+    ) -> CFDictionaryRef;
+}
+
+/// One mounted filesystem, as `getfsstat`/`statfs` and CoreFoundation describe it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MacMount {
+    pub mount_point: String,
+    /// `f_fstypename` (`apfs`, `msdos`, …).
+    pub fs_type: String,
+    /// `f_blocks * f_bsize` from a fresh `statfs`.
+    pub total_bytes: u64,
+    /// `f_bavail * f_bsize`: what a non-root user can write, as `df` and fastfetch report it.
+    /// Unlike sysinfo's figure this does not count purgeable space.
+    pub avail_bytes: u64,
+    /// `kCFURLVolumeIsBrowsableKey` (false when absent).
+    pub browsable: bool,
+    /// `kCFURLVolumeIsLocalKey` (true when absent).
+    pub local: bool,
+}
+
+/// Read a `CFBoolean` out of a CFDictionary by key. The value is borrowed ("Get" rule).
+unsafe fn cf_dict_bool_by_cfkey(dict: CFDictionaryRef, key: CFStringRef) -> Option<bool> {
+    let value = CFDictionaryGetValue(dict, key);
+    if value.is_null() || CFGetTypeID(value) != CFBooleanGetTypeID() {
+        return None;
+    }
+    Some(CFBooleanGetValue(value as CFBooleanRef))
+}
+
+/// `(browsable, local)` for a mount point, from the same two CFURL resource keys sysinfo
+/// filtered on. `None` when CoreFoundation cannot describe the volume (sysinfo skipped those).
+///
+/// **Only these two keys are requested.** sysinfo also asked for
+/// `kCFURLVolumeAvailableCapacityForImportantUsageKey`, which costs ~9 ms per volume on first
+/// query; that one key was the whole of macOS `--short`'s gap to fastfetch. These two cost
+/// ~2 ms for all 13 mounts of an M-series Mac.
+unsafe fn volume_browsable_local(mount_point: &[u8], keys: CFArrayRef) -> Option<(bool, bool)> {
+    let url = CFURLCreateFromFileSystemRepresentation(
+        kCFAllocatorDefault,
+        mount_point.as_ptr(),
+        mount_point.len() as isize,
+        1,
+    );
+    if url.is_null() {
+        return None;
+    }
+    let _url = OwnedCF(url);
+    let props = CFURLCopyResourcePropertiesForKeys(url, keys, ptr::null_mut());
+    if props.is_null() {
+        return None;
+    }
+    let _props = OwnedCF(props);
+    Some((
+        cf_dict_bool_by_cfkey(props, kCFURLVolumeIsBrowsableKey).unwrap_or(false),
+        cf_dict_bool_by_cfkey(props, kCFURLVolumeIsLocalKey).unwrap_or(true),
+    ))
+}
+
+/// Mounted filesystems with fresh sizes and the browsable/local flags `disk.rs` filters on.
+///
+/// Replaces `sysinfo::Disks` on macOS, which listed the same mounts (`getfsstat`) but asked
+/// CoreFoundation for capacity too. Listing uses `MNT_NOWAIT`, so a hung network or FUSE
+/// mount cannot block it; sizes come from a separate `statfs` only for mounts that are local
+/// and browsable, because `MNT_NOWAIT`'s cached figures may be stale.
+pub fn get_mounts() -> Vec<MacMount> {
+    let mut out = Vec::new();
+    // SAFETY: `getfsstat` writes at most `bufsize` bytes into a buffer sized for `count`
+    // entries, and only the `n` it reports are read. The CF array borrows two global
+    // constants (NULL callbacks: nothing to retain), and every CF object created here is
+    // released through `OwnedCF`.
+    unsafe {
+        let count = libc::getfsstat(ptr::null_mut(), 0, libc::MNT_NOWAIT);
+        if count < 1 {
+            return out;
+        }
+        let mut buf: Vec<libc::statfs> = Vec::with_capacity(count as usize);
+        let bufsize = count * std::mem::size_of::<libc::statfs>() as libc::c_int;
+        let n = libc::getfsstat(buf.as_mut_ptr(), bufsize, libc::MNT_NOWAIT);
+        if n < 1 {
+            return out;
+        }
+        buf.set_len(n.min(count) as usize);
+
+        let key_values = [kCFURLVolumeIsBrowsableKey, kCFURLVolumeIsLocalKey];
+        let keys = CFArrayCreate(
+            kCFAllocatorDefault,
+            key_values.as_ptr(),
+            key_values.len() as isize,
+            ptr::null(),
+        );
+        if keys.is_null() {
+            return out;
+        }
+        let _keys = OwnedCF(keys);
+
+        for entry in &buf {
+            let mount = std::ffi::CStr::from_ptr(entry.f_mntonname.as_ptr());
+            let Some((browsable, local)) = volume_browsable_local(mount.to_bytes(), keys) else {
+                continue;
+            };
+            let fs_type = std::ffi::CStr::from_ptr(entry.f_fstypename.as_ptr())
+                .to_string_lossy()
+                .into_owned();
+            let (mut total_bytes, mut avail_bytes) = (0, 0);
+            if browsable && local {
+                let mut st: libc::statfs = std::mem::zeroed();
+                if libc::statfs(mount.as_ptr(), &mut st) == 0 {
+                    let bsize = st.f_bsize as u64;
+                    total_bytes = st.f_blocks.saturating_mul(bsize);
+                    avail_bytes = st.f_bavail.saturating_mul(bsize);
+                }
+            }
+            out.push(MacMount {
+                mount_point: mount.to_string_lossy().into_owned(),
+                fs_type,
+                total_bytes,
+                avail_bytes,
+                browsable,
+                local,
+            });
+        }
+    }
+    out
+}
+
 // ─── HID input devices — IOHIDDevice ─────────────────────────────────────────
 
 /// One HID interface as IOKit reports it: `(product, usage_page, usage)`.
