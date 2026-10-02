@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790973574776,
+  "lastUpdate": 1790973575086,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4923,6 +4923,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 443.3031584001931,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ddc8016cedff49fcd78adaf49f6bd6b5b41987e6",
+          "message": "Fix release notes after v0.20.16 (#288)\n\nCorrect NOTES.md: cargo owner --list does not authenticate the\ncrates.io token, the newest released tag is v0.20.16, and record\nthe auto-mode blocks hit during the release. Bump to 0.20.17.\n\nAssisted-By: Claude Sonnet 5.5",
+          "timestamp": "2026-10-02T13:28:51-07:00",
+          "tree_id": "cbeeadcd4295a30f824bf2b9c0bc725f87ce1436",
+          "url": "https://github.com/l1a/retch/commit/ddc8016cedff49fcd78adaf49f6bd6b5b41987e6"
+        },
+        "date": 1790973575042,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 316754560.04,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 971186083.9,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 878963788.1400001,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 11397464.18,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 273035030.64000005,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 316120476.00000006,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 287040484.14000005,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 6669305.78,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 239392266,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 353.64902234887074,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 107.41853049897483,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.698844700656131,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 62.355160587789086,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 3714.9615394989096,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 918.7941106685563,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 390.9837497593918,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 70353.72395515465,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 287.46918385719425,
             "unit": "ns"
           }
         ]
