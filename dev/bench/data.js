@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790973573720,
+  "lastUpdate": 1790973574776,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3569,6 +3569,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 269.87044272963476,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ddc8016cedff49fcd78adaf49f6bd6b5b41987e6",
+          "message": "Fix release notes after v0.20.16 (#288)\n\nCorrect NOTES.md: cargo owner --list does not authenticate the\ncrates.io token, the newest released tag is v0.20.16, and record\nthe auto-mode blocks hit during the release. Bump to 0.20.17.\n\nAssisted-By: Claude Sonnet 5.5",
+          "timestamp": "2026-10-02T13:28:51-07:00",
+          "tree_id": "cbeeadcd4295a30f824bf2b9c0bc725f87ce1436",
+          "url": "https://github.com/l1a/retch/commit/ddc8016cedff49fcd78adaf49f6bd6b5b41987e6"
+        },
+        "date": 1790973574730,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2257967.4600000004,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 252434710.53999993,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252415490.26000005,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1316936.34,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2970647.7600000002,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 225738385.94,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205561316.75999996,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2007275.1400000001,
+            "unit": "ns",
+            "extra": "v0.20.17"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 232727119.525,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 935.8423662381023,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 106.00682405288553,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9468262205465,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 45.39917066914769,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7736.57449368233,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 72172.97637221872,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4809.183918121036,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 3468.948774426637,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 57281.48150131386,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 278.1195882793701,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 252.73161098487043,
             "unit": "ns"
           }
         ]
