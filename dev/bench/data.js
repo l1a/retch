@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790970121272,
+  "lastUpdate": 1790970707318,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -642,7 +642,7 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch --full",
             "unit": "ns",
-            "value": 446244514.0,
+            "value": 446244514,
             "extra": "v0.20.15; AC"
           },
           {
@@ -1911,6 +1911,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 292.7058760672588,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "49db22cc74ebea3f11599867b72d52a399cdfc08",
+          "message": "Stop reporting macOS Bluetooth as Off when unknown (#287)\n\nOn macOS 26 and later IOBluetoothHCIController no longer publishes\nBluetoothControllerPowerIsOn, and get_bluetooth_state folded the\nmissing property into false, so a Mac with Bluetooth on and a keyboard\nconnected printed \"Bluetooth: Off (Apple Bluetooth)\" (chani, macOS 27).\n\nThe power state is now an Option. When it cannot be read the line\ncarries no state at all, \"Bluetooth: Apple Bluetooth\", per the rule\nthat under-reporting beats asserting something false. Known states\nprint exactly as before. \"Apple Bluetooth\" is bluetooth.rs's fallback\nwhen no chipset string exists, which answers the NOTES question of\nwhere the name came from.\n\nA real power source is still open (NOTES 6c): the preferences plist\nhas no ControllerPowerState, and system_profiler knows but costs a\nseconds-long spawn. Tests pin both branches; reverting unknown to Off\nfails them.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-02T12:41:17-07:00",
+          "tree_id": "3ec0a099872ef85d74f69c184c9a09ab9e4917ff",
+          "url": "https://github.com/l1a/retch/commit/49db22cc74ebea3f11599867b72d52a399cdfc08"
+        },
+        "date": 1790970707274,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2695534.2399999998,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 273445646.87999994,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252306878.00000006,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1467474.68,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2003939.6399999997,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 405449235.38000005,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 204998769.80000004,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1434929.78,
+            "unit": "ns",
+            "extra": "v0.20.16"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 388148817.85,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1432.2896804615814,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 60.75015778182069,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.10709781588855,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 27.972148308753447,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 14375.206919488977,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 154154.331796121,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 10398.463551827186,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 6955.859230283988,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 130334.13582602923,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 155.35867932293468,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 141.9338911950453,
             "unit": "ns"
           }
         ]
