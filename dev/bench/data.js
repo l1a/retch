@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790970709500,
+  "lastUpdate": 1790972961392,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -504,6 +504,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 513474464.74,
             "extra": "v0.20.13; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "ddc8016cedff49fcd78adaf49f6bd6b5b41987e6",
+          "message": "Fix release notes after v0.20.16 (#288)\n\nCorrect NOTES.md: cargo owner --list does not authenticate the\ncrates.io token, the newest released tag is v0.20.16, and record\nthe auto-mode blocks hit during the release. Bump to 0.20.17.\n\nAssisted-By: Claude Sonnet 5.5",
+          "timestamp": "2026-10-02T13:28:51-07:00",
+          "tree_id": "cbeeadcd4295a30f824bf2b9c0bc725f87ce1436",
+          "url": "https://github.com/l1a/retch/commit/ddc8016cedff49fcd78adaf49f6bd6b5b41987e6"
+        },
+        "date": 1790972961392,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 2186472.64,
+            "extra": "v0.20.17; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 8154253.84,
+            "extra": "v0.20.17; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 1471015.4,
+            "extra": "v0.20.17; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 1432230.0000000002,
+            "extra": "v0.20.17; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 216414794.30000004,
+            "extra": "v0.20.17; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 509535046.70000017,
+            "extra": "v0.20.17; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 375711695.2600001,
+            "extra": "v0.20.17; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 514743880.05999994,
+            "extra": "v0.20.17; AC"
           }
         ]
       }
