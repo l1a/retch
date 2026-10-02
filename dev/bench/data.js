@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790969421298,
+  "lastUpdate": 1790970121272,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -650,6 +650,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 667110618.1,
             "extra": "v0.20.15; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "49db22cc74ebea3f11599867b72d52a399cdfc08",
+          "message": "Stop reporting macOS Bluetooth as Off when unknown (#287)\n\nOn macOS 26 and later IOBluetoothHCIController no longer publishes\nBluetoothControllerPowerIsOn, and get_bluetooth_state folded the\nmissing property into false, so a Mac with Bluetooth on and a keyboard\nconnected printed \"Bluetooth: Off (Apple Bluetooth)\" (chani, macOS 27).\n\nThe power state is now an Option. When it cannot be read the line\ncarries no state at all, \"Bluetooth: Apple Bluetooth\", per the rule\nthat under-reporting beats asserting something false. Known states\nprint exactly as before. \"Apple Bluetooth\" is bluetooth.rs's fallback\nwhen no chipset string exists, which answers the NOTES question of\nwhere the name came from.\n\nA real power source is still open (NOTES 6c): the preferences plist\nhas no ControllerPowerState, and system_profiler knows but costs a\nseconds-long spawn. Tests pin both branches; reverting unknown to Off\nfails them.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-02T12:41:17-07:00",
+          "tree_id": "3ec0a099872ef85d74f69c184c9a09ab9e4917ff",
+          "url": "https://github.com/l1a/retch/commit/49db22cc74ebea3f11599867b72d52a399cdfc08"
+        },
+        "date": 1790970121272,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 103423356.50000001,
+            "extra": "v0.20.16; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 135404094.10000002,
+            "extra": "v0.20.16; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 7295235.699999999,
+            "extra": "v0.20.16; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 15597452.3,
+            "extra": "v0.20.16; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 234411862.60000002,
+            "extra": "v0.20.16; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 674989466.8,
+            "extra": "v0.20.16; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 467877961.68000007,
+            "extra": "v0.20.16; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 677923161.6800001,
+            "extra": "v0.20.16; AC"
           }
         ]
       }
