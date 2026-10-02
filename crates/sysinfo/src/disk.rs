@@ -229,146 +229,48 @@ fn detect_linux() -> Vec<String> {
     disks
 }
 
+/// Physical disks on macOS, read natively from IOKit (see
+/// [`crate::macos_ffi::get_physical_disks`]).
+///
+/// Until v0.20.14 this spawned `diskutil list -plist` and then one `diskutil info -plist` per
+/// whole disk, serially — ~1 s on an M-series Mac with four whole disks, and the whole of the
+/// default mode's critical path. The output is unchanged.
 #[cfg(target_os = "macos")]
 fn detect_macos() -> Vec<String> {
-    // `diskutil list -plist` lists all disks; parse the XML property list.
-    // We only want whole disks (not partitions), so we look at top-level entries.
-    let output = std::process::Command::new("diskutil")
-        .args(["list", "-plist"])
-        .output();
+    crate::macos_ffi::get_physical_disks()
+        .iter()
+        .filter_map(format_macos_disk)
+        .collect()
+}
 
-    let Ok(out) = output else {
-        return Vec::new();
+/// Formats one IOKit whole disk into its display label, or `None` when it is virtual.
+///
+/// Kept identical to the label the old `diskutil info -plist` parser produced, field for
+/// field: `MediaName` is the device's `Product Name`, `BusProtocol` its
+/// `Physical Interconnect`, `SolidState` its `Medium Type`. **Disk images are the one
+/// virtual disk the IOKit walk returns** (synthesized APFS containers have no block-storage
+/// driver at all); diskutil marks them `Virtual` and IOKit says `Virtual Interface`.
+#[cfg(target_os = "macos")]
+pub fn format_macos_disk(disk: &crate::macos_ffi::MacDiskRaw) -> Option<String> {
+    if disk.interconnect == "Virtual Interface" {
+        return None;
+    }
+
+    let protocol = disk.interconnect.to_lowercase();
+    let kind = if protocol.contains("pcie") || protocol.contains("nvme") {
+        "NVMe SSD"
+    } else if disk.solid_state {
+        "SSD"
+    } else {
+        "HDD"
     };
-    if !out.status.success() {
-        return Vec::new();
-    }
 
-    // Use simple text parsing of the plist XML to avoid a plist dependency.
-    let text = String::from_utf8_lossy(&out.stdout);
+    let size_str = disk.size_bytes.map(format_size).unwrap_or_default();
 
-    // Parse the WholeDisks array — macOS pre-filters this to whole-disk identifiers
-    // (e.g. "disk0", "disk1"), excluding partitions like "disk0s1".
-    let mut disk_ids: Vec<String> = Vec::new();
-    let mut in_whole_disks = false;
-    for line in text.lines() {
-        let trimmed = line.trim();
-        if trimmed == "<key>WholeDisks</key>" {
-            in_whole_disks = true;
-            continue;
-        }
-        if in_whole_disks {
-            if trimmed == "</array>" {
-                break;
-            }
-            if let Some(inner) = trimmed
-                .strip_prefix("<string>")
-                .and_then(|s| s.strip_suffix("</string>"))
-            {
-                disk_ids.push(inner.to_string());
-            }
-        }
-    }
-
-    let mut disks = Vec::new();
-    for id in disk_ids {
-        if let Some(entry) = diskutil_info(&id) {
-            disks.push(entry);
-        }
-    }
-    disks
-}
-
-#[cfg(target_os = "macos")]
-fn diskutil_info(disk_id: &str) -> Option<String> {
-    let output = std::process::Command::new("diskutil")
-        .args(["info", "-plist", disk_id])
-        .output()
-        .ok()?;
-
-    if !output.status.success() {
-        return None;
-    }
-
-    let text = String::from_utf8_lossy(&output.stdout);
-    parse_diskutil_info_plist(&text)
-}
-
-/// Parses a `diskutil info -plist` XML text into a formatted disk label string.
-/// Returns `None` for virtual disks or unparseable output.
-#[cfg(target_os = "macos")]
-pub fn parse_diskutil_info_plist(text: &str) -> Option<String> {
-    let mut model = String::new();
-    let mut size_bytes: Option<u64> = None;
-    let mut is_ssd = false;
-    let mut protocol = String::new();
-    let mut virtual_or_physical = String::new();
-
-    let mut last_key = String::new();
-    for line in text.lines() {
-        let trimmed = line.trim();
-        if let Some(key) = trimmed
-            .strip_prefix("<key>")
-            .and_then(|s| s.strip_suffix("</key>"))
-        {
-            last_key = key.to_string();
-            continue;
-        }
-        if let Some(val) = trimmed
-            .strip_prefix("<string>")
-            .and_then(|s| s.strip_suffix("</string>"))
-        {
-            match last_key.as_str() {
-                // MediaName gives the clean model string (e.g. "APPLE SSD AP1024Z");
-                // IORegistryEntryName appends " Media" and is used only as a fallback.
-                "MediaName" => {
-                    if !val.is_empty() {
-                        model = val.to_string();
-                    }
-                }
-                "IORegistryEntryName" => {
-                    if model.is_empty() && !val.is_empty() {
-                        model = val.to_string();
-                    }
-                }
-                "BusProtocol" => protocol = val.to_string(),
-                "VirtualOrPhysical" => virtual_or_physical = val.to_string(),
-                _ => {}
-            }
-        }
-        if let Some(val) = trimmed
-            .strip_prefix("<integer>")
-            .and_then(|s| s.strip_suffix("</integer>"))
-        {
-            if last_key == "TotalSize" {
-                size_bytes = val.parse().ok();
-            }
-        }
-        if trimmed == "<true/>" && last_key == "SolidState" {
-            is_ssd = true;
-        }
-    }
-
-    // Skip APFS synthesized and other virtual disk objects
-    if virtual_or_physical == "Virtual" {
-        return None;
-    }
-
-    let kind =
-        if protocol.to_lowercase().contains("pcie") || protocol.to_lowercase().contains("nvme") {
-            "NVMe SSD"
-        } else if is_ssd {
-            "SSD"
-        } else {
-            "HDD"
-        };
-
-    let size_str = size_bytes.map(format_size).unwrap_or_default();
-
-    let label = if model.is_empty() {
+    let label = if disk.model.trim().is_empty() {
         format!("{} [{}]", size_str, kind)
     } else {
-        format!("{} {} [{}]", model.trim(), size_str, kind)
+        format!("{} {} [{}]", disk.model.trim(), size_str, kind)
     };
 
     Some(label.trim().to_string())
@@ -869,74 +771,77 @@ mod tests {
         assert_eq!(format_size(2_000_398_934_016), "2.0 TB");
     }
 
+    /// A `MacDiskRaw` fixture; every value below was read from a real Mac's IORegistry.
     #[cfg(target_os = "macos")]
-    #[test]
-    fn test_parse_diskutil_info_plist_apple_silicon() {
-        // Matches real output from an Apple M-series Mac (disk0).
-        // IORegistryEntryName comes before MediaName in the plist; MediaName must win.
-        let plist = r#"<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>BusProtocol</key>
-	<string>Apple Fabric</string>
-	<key>IORegistryEntryName</key>
-	<string>APPLE SSD AP1024Z Media</string>
-	<key>MediaName</key>
-	<string>APPLE SSD AP1024Z</string>
-	<key>SolidState</key>
-	<true/>
-	<key>TotalSize</key>
-	<integer>1000555581440</integer>
-	<key>VirtualOrPhysical</key>
-	<string>Unknown</string>
-</dict>
-</plist>"#;
-        let result = super::parse_diskutil_info_plist(plist);
-        assert_eq!(result, Some("APPLE SSD AP1024Z 1.0 TB [SSD]".to_string()));
+    fn mac_disk(
+        model: &str,
+        size: Option<u64>,
+        ssd: bool,
+        bus: &str,
+    ) -> crate::macos_ffi::MacDiskRaw {
+        crate::macos_ffi::MacDiskRaw {
+            bsd_name: "disk0".to_string(),
+            model: model.to_string(),
+            size_bytes: size,
+            solid_state: ssd,
+            interconnect: bus.to_string(),
+        }
     }
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn test_parse_diskutil_info_plist_nvme() {
-        let plist = r#"<?xml version="1.0" encoding="UTF-8"?>
-<plist version="1.0">
-<dict>
-	<key>BusProtocol</key>
-	<string>PCIe</string>
-	<key>MediaName</key>
-	<string>Samsung SSD 990 Pro</string>
-	<key>SolidState</key>
-	<true/>
-	<key>TotalSize</key>
-	<integer>2000398934016</integer>
-	<key>VirtualOrPhysical</key>
-	<string>Physical</string>
-</dict>
-</plist>"#;
-        let result = super::parse_diskutil_info_plist(plist);
+    fn test_format_macos_disk_apple_silicon() {
+        // chani (M-series), disk0: IOEmbeddedNVMeBlockDevice, `Physical Interconnect` =
+        // "Apple Fabric", `Medium Type` = "Solid State". Same label the diskutil parser gave.
+        let d = mac_disk(
+            "APPLE SSD AP1024Z",
+            Some(1_000_555_581_440),
+            true,
+            "Apple Fabric",
+        );
         assert_eq!(
-            result,
+            super::format_macos_disk(&d),
+            Some("APPLE SSD AP1024Z 1.0 TB [SSD]".to_string())
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_format_macos_disk_nvme() {
+        let d = mac_disk("Samsung SSD 990 Pro", Some(2_000_398_934_016), true, "PCIe");
+        assert_eq!(
+            super::format_macos_disk(&d),
             Some("Samsung SSD 990 Pro 2.0 TB [NVMe SSD]".to_string())
         );
     }
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn test_parse_diskutil_info_plist_virtual_skipped() {
-        let plist = r#"<?xml version="1.0" encoding="UTF-8"?>
-<plist version="1.0">
-<dict>
-	<key>MediaName</key>
-	<string>APFS Container Disk</string>
-	<key>TotalSize</key>
-	<integer>500000000000</integer>
-	<key>VirtualOrPhysical</key>
-	<string>Virtual</string>
-</dict>
-</plist>"#;
-        let result = super::parse_diskutil_info_plist(plist);
-        assert_eq!(result, None);
+    fn test_format_macos_disk_image_skipped() {
+        // A mounted .dmg as IOKit reports it (IODiskImageBlockStorageDeviceOutKernel):
+        // diskutil calls it `VirtualOrPhysical = Virtual`, so it must not be listed.
+        let d = mac_disk("Disk Image", Some(10_485_760), false, "Virtual Interface");
+        assert_eq!(super::format_macos_disk(&d), None);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_format_macos_disk_no_medium_type_is_hdd() {
+        // USB enclosures often publish no `Medium Type`; diskutil then says SolidState=false.
+        let d = mac_disk("", Some(500_107_862_016), false, "USB");
+        assert_eq!(
+            super::format_macos_disk(&d),
+            Some("500 GB [HDD]".to_string())
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_bsd_disk_sort_key_is_numeric() {
+        use crate::macos_ffi::bsd_disk_sort_key;
+        let mut names = vec!["disk10", "disk2", "disk0", "disk1"];
+        names.sort_by_key(|n| bsd_disk_sort_key(n));
+        assert_eq!(names, vec!["disk0", "disk1", "disk2", "disk10"]);
     }
 
     #[cfg(target_os = "windows")]

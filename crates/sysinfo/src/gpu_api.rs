@@ -1080,17 +1080,12 @@ mod opencl {
     type ClGetDeviceInfo =
         unsafe extern "C" fn(*mut c_void, u32, usize, *mut c_void, *mut usize) -> i32;
 
+    // The fd calls come from the `libc` crate, not a local `extern` block: `open` is
+    // variadic (`int open(const char *, int, ...)`), and since Rust 1.99 a non-variadic
+    // redeclaration of a symbol std itself uses is a hard error ("invalid definition of the
+    // runtime `open` symbol used by the standard library").
     #[cfg(target_os = "linux")]
-    extern "C" {
-        fn dup(oldfd: c_int) -> c_int;
-        fn dup2(oldfd: c_int, newfd: c_int) -> c_int;
-        fn close(fd: c_int) -> c_int;
-        fn open(path: *const c_char, flags: c_int) -> c_int;
-    }
-    #[cfg(target_os = "linux")]
-    const STDERR_FILENO: c_int = 2;
-    #[cfg(target_os = "linux")]
-    const O_WRONLY: c_int = 1;
+    use libc::{close, dup, dup2, open, O_WRONLY, STDERR_FILENO};
 
     /// Silences `stderr` for its lifetime, restoring the original on drop.
     ///
