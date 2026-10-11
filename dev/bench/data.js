@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791756439036,
+  "lastUpdate": 1791757190284,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -599,6 +599,29 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/l1a/retch/commit/51cfe8f12234bdf793372a2e8a445841d6fd69c3"
         },
         "date": 1791755904294,
+        "tool": "customSmallerIsBetter",
+        "benches": []
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "8d20d6430d32b6f0e7bdb9f5a80881a6bcc2d70a",
+          "message": "Name Linux GPUs from udev before pci.ids (#291)\n\nretch --short on corrino (Intel Iris Xe + NVIDIA MX550) was 8.4 ms\nagainst fastfetch's 5.8. RETCH_TIMING showed the gpu probe as the\nwhole critical path: it read and walked the 1.6 MB pci.ids once per\nGPU, ~4 ms cold for the Intel iGPU near the end of the file and ~1.5 ms\nfor the NVIDIA card, whose name the driver's /proc entry then replaced\nanyway. A faster search does not help (str::find costs the same).\n\nresolve_gpu_name now asks each source lazily, first hit wins: the\nNVIDIA driver's /proc model, amdgpu.ids (AMD), udev's resolved\nID_MODEL_FROM_DATABASE in /run/udev/data/+pci:<slot> (~300 bytes),\nthen pci.ids, then a generic vendor name. AMD names from udev or\npci.ids still go through the codename table, as before.\n\n--short on corrino: 8.42 -> 3.32 ms (fastfetch 5.81); default 9.70 ->\n5.78 ms. GPU, Vulkan, OpenGL and OpenCL lines are identical in all four\nmodes, and identical in a fedora:44 container with no /run/udev, where\nthe pci.ids fallback runs. Tests pin the order with sources that panic\nif called; five mutations were all caught.\n\nretch-sysinfo 0.1.89 -> 0.1.90, retch-cli 0.20.18 -> 0.20.19.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-11T15:19:14-07:00",
+          "tree_id": "39483f60f40a8e71c7bcc026028d415e06ebb3a4",
+          "url": "https://github.com/l1a/retch/commit/8d20d6430d32b6f0e7bdb9f5a80881a6bcc2d70a"
+        },
+        "date": 1791757190284,
         "tool": "customSmallerIsBetter",
         "benches": []
       }
