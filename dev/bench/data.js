@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791756438384,
+  "lastUpdate": 1791756438679,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5332,6 +5332,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 287.46918385719425,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "51cfe8f12234bdf793372a2e8a445841d6fd69c3",
+          "message": "Bump libc to 0.2.190 (consolidate #289) (#290)\n\nRolls Dependabot #289 onto a gated branch so the version bump, NOTES\nheader and man-page regeneration it skips are done. Lockfile-only: both\ncrates' \"0.2\" specs already admit libc 0.2.190, nothing else moves, and\nthe libc lines in Cargo.lock are byte-identical to Dependabot's.\n\nlibc 0.2.190 adds Default impls for more structs, a libc_unstable_time64\ncfg (opt-in, unused here) and new constants, mostly on Apple and BSD.\nretch's own libc use (the Linux fd calls in gpu_api.rs and the sysinfo\nFFI) builds and passes clippy and the full test suite unchanged, and\nthe GPU-API fields still print on real hardware.\n\nretch-sysinfo stays at 0.1.89: a lockfile change alters nothing that\ncrate publishes.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-11T14:57:48-07:00",
+          "tree_id": "e1f0d55f8bb50b94dde179076cd192dcf11d3783",
+          "url": "https://github.com/l1a/retch/commit/51cfe8f12234bdf793372a2e8a445841d6fd69c3"
+        },
+        "date": 1791756438636,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 342886951.46000004,
+            "unit": "ns",
+            "extra": "v0.20.18"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 998240993.2400001,
+            "unit": "ns",
+            "extra": "v0.20.18"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 900424946.8800001,
+            "unit": "ns",
+            "extra": "v0.20.18"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 14579486.000000006,
+            "unit": "ns",
+            "extra": "v0.20.18"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 319081976.56000006,
+            "unit": "ns",
+            "extra": "v0.20.18"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 374865818.3399999,
+            "unit": "ns",
+            "extra": "v0.20.18"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 355911671.58000004,
+            "unit": "ns",
+            "extra": "v0.20.18"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 10325373.4,
+            "unit": "ns",
+            "extra": "v0.20.18"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 280005973.875,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 390.2944597893221,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 114.66463063136375,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.9023537030101672,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 61.90577473051771,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4788.85858210573,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1113.5593462813872,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 371.141263530861,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 77226.72433842818,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 316.736591300399,
             "unit": "ns"
           }
         ]
