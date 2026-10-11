@@ -113,7 +113,104 @@ fn lookup_amdgpu_ids(device_id: &str, revision_id: &str) -> Option<String> {
     lookup_amdgpu_ids_in(&content, device_id, revision_id)
 }
 
+/// Extracts the device name udev resolved from its hardware database, from the content of
+/// a udev device data file (`/run/udev/data/+pci:<slot>`).
+///
+/// udev resolves every PCI device's name at boot and stores it as
+/// `E:ID_MODEL_FROM_DATABASE=<name>`, in the same form pci.ids gives (e.g.
+/// `Raptor Lake-P [Iris Xe Graphics]`). Reading that ~300-byte file costs microseconds, while
+/// walking the ~1.6 MB pci.ids costs milliseconds per device: 4 ms for an Intel iGPU near the
+/// end of the file, cold. Returns `None` if the key is missing or empty, so the caller can
+/// fall back to pci.ids.
+pub fn parse_udev_pci_model(data: &str) -> Option<String> {
+    data.lines()
+        .find_map(|line| line.strip_prefix("E:ID_MODEL_FROM_DATABASE="))
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+}
+
+/// Extracts the marketing name from the NVIDIA driver's
+/// `/proc/driver/nvidia/gpus/<slot>/information` content (`Model: \t\t NVIDIA GeForce MX550`).
+///
+/// Returns `None` if there is no `Model:` line or its value is empty.
+pub fn parse_nvidia_proc_model(info: &str) -> Option<String> {
+    info.lines()
+        .find_map(|line| line.strip_prefix("Model:"))
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+}
+
+/// Picks a GPU's display name from the available sources, querying each only if needed.
+///
+/// Order, first hit wins:
+/// 1. **NVIDIA**: the proprietary driver's own model name (`nvidia_driver_model`). It is the
+///    most specific source and has always won, so nothing else is looked up for it.
+/// 2. **AMD**: libdrm's `amdgpu.ids` (`amdgpu_ids`), the only source keyed by revision.
+/// 3. udev's resolved name (`udev_model`), then pci.ids (`pci_ids`), then a generic vendor
+///    name. AMD names from this step still go through [`improve_amd_gpu_name`].
+///
+/// Each source is a closure so that the expensive ones are never run when a cheaper one has
+/// already answered. That laziness is the point: the pci.ids walk used to be the whole
+/// critical path of `retch --short` on a two-GPU laptop.
+pub fn resolve_gpu_name(
+    vendor_id: &str,
+    nvidia_driver_model: impl FnOnce() -> Option<String>,
+    amdgpu_ids: impl FnOnce() -> Option<String>,
+    udev_model: impl FnOnce() -> Option<String>,
+    pci_ids: impl FnOnce() -> Option<String>,
+) -> String {
+    let is_nvidia = vendor_id.contains("10de");
+    let is_amd = vendor_id.contains("1002");
+
+    if is_nvidia {
+        if let Some(name) = nvidia_driver_model() {
+            return name;
+        }
+    }
+    if is_amd {
+        if let Some(name) = amdgpu_ids() {
+            return name;
+        }
+    }
+
+    let name = udev_model().or_else(pci_ids).unwrap_or_else(|| {
+        if is_nvidia {
+            "NVIDIA GPU".to_string()
+        } else if is_amd {
+            "AMD GPU".to_string()
+        } else if vendor_id.contains("8086") {
+            "Intel GPU".to_string()
+        } else {
+            "Unknown GPU".to_string()
+        }
+    });
+    if is_amd {
+        improve_amd_gpu_name(&name)
+    } else {
+        name
+    }
+}
+
+/// Reads udev's resolved name for the PCI device in `slot` (e.g. `0000:00:02.0`).
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn read_udev_pci_model(slot: &str) -> Option<String> {
+    let data = fs::read_to_string(format!("/run/udev/data/+pci:{slot}")).ok()?;
+    parse_udev_pci_model(&data)
+}
+
+/// Reads the NVIDIA proprietary driver's model name for the GPU in `slot`, if it is loaded.
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn read_nvidia_proc_model(slot: &str) -> Option<String> {
+    let info = fs::read_to_string(format!("/proc/driver/nvidia/gpus/{slot}/information")).ok()?;
+    parse_nvidia_proc_model(&info)
+}
+
 /// Helper to lookup PCI device name in standard system pci.ids files.
+///
+/// Slow: it reads and walks the whole ~1.6 MB file on every call. Prefer
+/// [`resolve_gpu_name`], which only falls back to this when udev has no name.
 pub fn lookup_pci_device(vendor_id: &str, device_id: &str) -> Option<String> {
     let vendor_id = vendor_id.trim_start_matches("0x").to_lowercase();
     let device_id = device_id.trim_start_matches("0x").to_lowercase();
@@ -330,6 +427,12 @@ pub fn detect_gpus() -> Vec<GpuInfo> {
 
                 let device_path = entry.path().join("device");
                 if let Ok(real_path) = std::fs::canonicalize(&device_path) {
+                    // The canonical device directory is named after its PCI slot
+                    // (`0000:01:00.0`), which keys both udev's data and NVIDIA's /proc entry.
+                    let slot = real_path
+                        .file_name()
+                        .map(|s| s.to_string_lossy().into_owned())
+                        .unwrap_or_default();
                     if !seen_devices.insert(real_path) {
                         continue;
                     }
@@ -348,57 +451,19 @@ pub fn detect_gpus() -> Vec<GpuInfo> {
                         continue;
                     }
 
-                    // AMD: prefer libdrm's amdgpu.ids, keyed by device + revision — the
-                    // only source that separates same-device variants (8040S/8050S/8060S).
-                    // pci.ids + the codename table remain the fallback.
-                    let amdgpu_ids_name = if vendor_id.contains("1002") {
-                        fs::read_to_string(device_path.join("revision"))
-                            .ok()
-                            .and_then(|rev| lookup_amdgpu_ids(&device_id, rev.trim()))
-                    } else {
-                        None
-                    };
-
-                    let mut gpu_name = amdgpu_ids_name.unwrap_or_else(|| {
-                        let mut name =
-                            lookup_pci_device(&vendor_id, &device_id).unwrap_or_else(|| {
-                                if vendor_id.contains("10de") {
-                                    "NVIDIA GPU".to_string()
-                                } else if vendor_id.contains("1002") {
-                                    "AMD GPU".to_string()
-                                } else if vendor_id.contains("8086") {
-                                    "Intel GPU".to_string()
-                                } else {
-                                    "Unknown GPU".to_string()
-                                }
-                            });
-                        // Refine AMD GPU names (codename table fallback)
-                        if vendor_id.contains("1002") {
-                            name = improve_amd_gpu_name(&name);
-                        }
-                        name
-                    });
-
-                    // NVIDIA special case: try /proc for even better name
-                    if vendor_id.contains("10de") {
-                        if let Ok(pci_slot_path) = fs::read_link(&device_path) {
-                            if let Some(slot_name) = pci_slot_path.file_name() {
-                                let proc_info_path = format!(
-                                    "/proc/driver/nvidia/gpus/{}/information",
-                                    slot_name.to_string_lossy()
-                                );
-                                if let Ok(info) = fs::read_to_string(proc_info_path) {
-                                    for line in info.lines() {
-                                        if line.starts_with("Model:") {
-                                            gpu_name =
-                                                line.replace("Model:", "").trim().to_string();
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    // AMD: libdrm's amdgpu.ids is keyed by device + revision — the only
+                    // source that separates same-device variants (8040S/8050S/8060S).
+                    let gpu_name = resolve_gpu_name(
+                        &vendor_id,
+                        || read_nvidia_proc_model(&slot),
+                        || {
+                            fs::read_to_string(device_path.join("revision"))
+                                .ok()
+                                .and_then(|rev| lookup_amdgpu_ids(&device_id, rev.trim()))
+                        },
+                        || read_udev_pci_model(&slot),
+                        || lookup_pci_device(&vendor_id, &device_id),
+                    );
 
                     let mut vram_bytes = None;
                     // Try to get VRAM from common sysfs locations (mainly AMD)
@@ -547,6 +612,153 @@ garbage line without commas
         assert_eq!(lookup_amdgpu_ids_in(AMDGPU_IDS_FIXTURE, "9999", "C1"), None);
         assert_eq!(lookup_amdgpu_ids_in(AMDGPU_IDS_FIXTURE, "1586", "FF"), None);
         assert_eq!(lookup_amdgpu_ids_in("", "1586", "C1"), None);
+    }
+
+    // Verbatim /run/udev/data/+pci:0000:01:00.0 from corrino (Fedora 44, NVIDIA MX550).
+    const UDEV_PCI_NVIDIA: &str = "\
+I:8821999
+E:SYSTEMD_WANTS=nvidia-fallback.service
+E:ID_PCI_CLASS_FROM_DATABASE=Display controller
+E:ID_PCI_SUBCLASS_FROM_DATABASE=3D controller
+E:ID_VENDOR_FROM_DATABASE=NVIDIA Corporation
+E:ID_MODEL_FROM_DATABASE=TU117M [GeForce MX550]
+E:ID_PATH=pci-0000:01:00.0
+E:ID_PATH_TAG=pci-0000_01_00_0
+G:systemd
+Q:systemd
+V:1
+";
+
+    #[test]
+    fn test_parse_udev_pci_model() {
+        assert_eq!(
+            parse_udev_pci_model(UDEV_PCI_NVIDIA),
+            Some("TU117M [GeForce MX550]".to_string())
+        );
+        // The vendor, class and subclass keys share the suffix and must not match.
+        let no_model = UDEV_PCI_NVIDIA.replace("E:ID_MODEL_FROM_DATABASE=", "E:ID_OTHER=");
+        assert_eq!(parse_udev_pci_model(&no_model), None);
+        // A device hwdb does not know has no model key; an empty value is not a name.
+        assert_eq!(
+            parse_udev_pci_model("I:1\nE:ID_MODEL_FROM_DATABASE=\nV:1\n"),
+            None
+        );
+        assert_eq!(parse_udev_pci_model(""), None);
+    }
+
+    // Verbatim head of /proc/driver/nvidia/gpus/0000:01:00.0/information from corrino.
+    const NVIDIA_PROC_INFO: &str = "\
+Model: \t\t NVIDIA GeForce MX550
+IRQ:   \t\t 234
+Bus Type: \t PCIe
+Bus Location: \t 0000:01:00.0
+";
+
+    #[test]
+    fn test_parse_nvidia_proc_model() {
+        assert_eq!(
+            parse_nvidia_proc_model(NVIDIA_PROC_INFO),
+            Some("NVIDIA GeForce MX550".to_string())
+        );
+        assert_eq!(parse_nvidia_proc_model("Model: \t\t \nIRQ: 1\n"), None);
+        assert_eq!(parse_nvidia_proc_model("IRQ: 1\n"), None);
+    }
+
+    /// A source that must not be consulted: calling it fails the test.
+    fn never() -> Option<String> {
+        panic!("a later, more expensive GPU name source was consulted")
+    }
+
+    fn some(name: &str) -> impl FnOnce() -> Option<String> + '_ {
+        move || Some(name.to_string())
+    }
+
+    #[test]
+    fn test_resolve_gpu_name_udev_skips_pci_ids() {
+        // The performance fix: when udev has the name, pci.ids is never read.
+        assert_eq!(
+            resolve_gpu_name(
+                "0x8086",
+                never,
+                never,
+                some("Raptor Lake-P [Iris Xe Graphics]"),
+                never
+            ),
+            "Raptor Lake-P [Iris Xe Graphics]"
+        );
+    }
+
+    #[test]
+    fn test_resolve_gpu_name_nvidia_driver_skips_everything() {
+        // The driver's name has always won for NVIDIA, so nothing else is looked up.
+        assert_eq!(
+            resolve_gpu_name("0x10de", some("NVIDIA GeForce MX550"), never, never, never),
+            "NVIDIA GeForce MX550"
+        );
+        // Without the proprietary driver (nouveau), the normal chain applies.
+        assert_eq!(
+            resolve_gpu_name(
+                "0x10de",
+                || None,
+                never,
+                some("TU117M [GeForce MX550]"),
+                never
+            ),
+            "TU117M [GeForce MX550]"
+        );
+    }
+
+    #[test]
+    fn test_resolve_gpu_name_amd_order() {
+        // amdgpu.ids wins and is used verbatim (no codename rewrite).
+        assert_eq!(
+            resolve_gpu_name(
+                "0x1002",
+                never,
+                some("AMD Radeon 8060S Graphics"),
+                never,
+                never
+            ),
+            "AMD Radeon 8060S Graphics"
+        );
+        // Not in amdgpu.ids: udev's pci.ids-style name still gets the codename table.
+        assert_eq!(
+            resolve_gpu_name(
+                "0x1002",
+                never,
+                || None,
+                some("Rembrandt [Radeon 680M]"),
+                never
+            ),
+            "Radeon 680M"
+        );
+    }
+
+    #[test]
+    fn test_resolve_gpu_name_falls_back_in_order() {
+        // No udev data (container, non-udev system): pci.ids as before.
+        assert_eq!(
+            resolve_gpu_name("0x8086", never, never, || None, some("Alder Lake-P GT2")),
+            "Alder Lake-P GT2"
+        );
+        // Nothing knows the device: generic vendor name. The non-NVIDIA/AMD vendors never
+        // consult the driver or amdgpu.ids sources.
+        assert_eq!(
+            resolve_gpu_name("0x8086", never, never, || None, || None),
+            "Intel GPU"
+        );
+        assert_eq!(
+            resolve_gpu_name("0x10de", || None, never, || None, || None),
+            "NVIDIA GPU"
+        );
+        assert_eq!(
+            resolve_gpu_name("0x1002", never, || None, || None, || None),
+            "AMD GPU"
+        );
+        assert_eq!(
+            resolve_gpu_name("0x1af4", never, never, || None, || None),
+            "Unknown GPU"
+        );
     }
 
     #[test]
