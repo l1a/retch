@@ -150,9 +150,9 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.17)
+## Current State (v0.20.18)
 
-`main` carries **`retch-cli` 0.20.17** / **`retch-sysinfo` 0.1.89**. Newest released tag is
+`main` carries **`retch-cli` 0.20.18** / **`retch-sysinfo` 0.1.89**. Newest released tag is
 **`v0.20.16`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
