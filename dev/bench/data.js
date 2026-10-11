@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791757729731,
+  "lastUpdate": 1791757730022,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5741,6 +5741,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 316.736591300399,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8d20d6430d32b6f0e7bdb9f5a80881a6bcc2d70a",
+          "message": "Name Linux GPUs from udev before pci.ids (#291)\n\nretch --short on corrino (Intel Iris Xe + NVIDIA MX550) was 8.4 ms\nagainst fastfetch's 5.8. RETCH_TIMING showed the gpu probe as the\nwhole critical path: it read and walked the 1.6 MB pci.ids once per\nGPU, ~4 ms cold for the Intel iGPU near the end of the file and ~1.5 ms\nfor the NVIDIA card, whose name the driver's /proc entry then replaced\nanyway. A faster search does not help (str::find costs the same).\n\nresolve_gpu_name now asks each source lazily, first hit wins: the\nNVIDIA driver's /proc model, amdgpu.ids (AMD), udev's resolved\nID_MODEL_FROM_DATABASE in /run/udev/data/+pci:<slot> (~300 bytes),\nthen pci.ids, then a generic vendor name. AMD names from udev or\npci.ids still go through the codename table, as before.\n\n--short on corrino: 8.42 -> 3.32 ms (fastfetch 5.81); default 9.70 ->\n5.78 ms. GPU, Vulkan, OpenGL and OpenCL lines are identical in all four\nmodes, and identical in a fedora:44 container with no /run/udev, where\nthe pci.ids fallback runs. Tests pin the order with sources that panic\nif called; five mutations were all caught.\n\nretch-sysinfo 0.1.89 -> 0.1.90, retch-cli 0.20.18 -> 0.20.19.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-11T15:19:14-07:00",
+          "tree_id": "39483f60f40a8e71c7bcc026028d415e06ebb3a4",
+          "url": "https://github.com/l1a/retch/commit/8d20d6430d32b6f0e7bdb9f5a80881a6bcc2d70a"
+        },
+        "date": 1791757729975,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 360668724.02,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1134539036.72,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1059421231.8199998,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 13943884.200000001,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 371165916.02,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 402930665.72,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 373732802.62,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 8161463.2,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 316243309.375,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 350.3482231567476,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 107.02653676289955,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.7068378217698368,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 63.04988672523287,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4204.7603007569105,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 986.0316562547443,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 312.9469769251715,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 65654.97569644588,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 353.7892605445886,
             "unit": "ns"
           }
         ]
