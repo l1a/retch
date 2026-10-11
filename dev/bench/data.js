@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791757190284,
+  "lastUpdate": 1791757729433,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2425,6 +2425,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 238.95412167350113,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8d20d6430d32b6f0e7bdb9f5a80881a6bcc2d70a",
+          "message": "Name Linux GPUs from udev before pci.ids (#291)\n\nretch --short on corrino (Intel Iris Xe + NVIDIA MX550) was 8.4 ms\nagainst fastfetch's 5.8. RETCH_TIMING showed the gpu probe as the\nwhole critical path: it read and walked the 1.6 MB pci.ids once per\nGPU, ~4 ms cold for the Intel iGPU near the end of the file and ~1.5 ms\nfor the NVIDIA card, whose name the driver's /proc entry then replaced\nanyway. A faster search does not help (str::find costs the same).\n\nresolve_gpu_name now asks each source lazily, first hit wins: the\nNVIDIA driver's /proc model, amdgpu.ids (AMD), udev's resolved\nID_MODEL_FROM_DATABASE in /run/udev/data/+pci:<slot> (~300 bytes),\nthen pci.ids, then a generic vendor name. AMD names from udev or\npci.ids still go through the codename table, as before.\n\n--short on corrino: 8.42 -> 3.32 ms (fastfetch 5.81); default 9.70 ->\n5.78 ms. GPU, Vulkan, OpenGL and OpenCL lines are identical in all four\nmodes, and identical in a fedora:44 container with no /run/udev, where\nthe pci.ids fallback runs. Tests pin the order with sources that panic\nif called; five mutations were all caught.\n\nretch-sysinfo 0.1.89 -> 0.1.90, retch-cli 0.20.18 -> 0.20.19.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-11T15:19:14-07:00",
+          "tree_id": "39483f60f40a8e71c7bcc026028d415e06ebb3a4",
+          "url": "https://github.com/l1a/retch/commit/8d20d6430d32b6f0e7bdb9f5a80881a6bcc2d70a"
+        },
+        "date": 1791757729383,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 3005000.2399999998,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 278276075.12,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252749172.24000004,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1545848.58,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2465494.94,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 565753932.4200001,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205986986.94000003,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1653098.5800000003,
+            "unit": "ns",
+            "extra": "v0.20.19"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 363342449.9,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1672.3360344528821,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 86.42023722256806,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.902502696409441,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 48.07521706530771,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 16106.146192991733,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 163834.10316556518,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 11412.828730608275,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 7892.018384529887,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 140128.97180727823,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 237.52485114887827,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 206.54734922520387,
             "unit": "ns"
           }
         ]
