@@ -150,15 +150,32 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.18)
+## Current State (v0.20.19)
 
-`main` carries **`retch-cli` 0.20.18** / **`retch-sysinfo` 0.1.89**. Newest released tag is
+`main` carries **`retch-cli` 0.20.19** / **`retch-sysinfo` 0.1.90**. Newest released tag is
 **`v0.20.16`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
 (§6a). What is open is listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.19: Linux GPU names come from udev before `pci.ids`; `--short` on corrino 8.42 →
+  3.32 ms (fastfetch 5.81).** `RETCH_TIMING` showed the `gpu` probe as the whole critical path
+  (5.3–7.0 ms). It read and walked the 1.6 MB `pci.ids` once per GPU: ~4 ms cold for the Intel
+  iGPU, whose entry is near the end of the file, and ~1.5 ms for the NVIDIA card, whose name
+  the driver's `/proc` entry then replaced anyway. arrakis never paid this, because AMD
+  resolves through `amdgpu.ids` first. `resolve_gpu_name` now asks, lazily and in order: the
+  NVIDIA driver, `amdgpu.ids` (AMD), udev's `ID_MODEL_FROM_DATABASE` in
+  `/run/udev/data/+pci:<slot>` (~0.006 ms), then `pci.ids`.
+  - **Output unchanged** on corrino in all four modes. It was also checked in a `fedora:44`
+    container with no `/run/udev`, where the `pci.ids` fallback gives the same names (and the
+    NVIDIA-first order still saves its scan: 5.3 → 3.4 ms).
+  - **Possible visible difference, not seen yet:** udev's hwdb is systemd's snapshot of the
+    PCI database, so on some host it could name a device differently from a newer hwdata
+    `pci.ids`. A device the hwdb lacks has no key and falls through to `pci.ids`.
+  - Tests pin the order with sources that panic when called, so "skips the scan" is tested,
+    not just "same answer". Five mutations were all caught.
 
 - **v0.20.16: macOS `Bluetooth` no longer says `Off` when it cannot tell.** It now prints
   `Apple Bluetooth` with no state on macOS 26+, where the power property is gone; see §6c.
@@ -648,7 +665,10 @@ Live items only. Completed items are removed rather than struck through — `git
     next macOS CI points. What is left on chani (`RETCH_TIMING=1`): `phys-mem` ~80 ms, then
     `audio` ~44 ms (it starts after `sys-init`, inside the scope), `display` ~33 ms.
   - **macOS `--short`** — ahead since v0.20.15 (7.0 vs 17.0 ms on chani): it was all `disk`.
-  - **`--short`** — level with fastfetch since v0.20.5, on battery and on AC.
+  - **`--short`** — level with fastfetch since v0.20.5 on arrakis, on battery and on AC. On
+    corrino (Intel + NVIDIA) it was 8.4 vs 5.8 ms until v0.20.19 (`pci.ids`, see Current
+    State), now 3.3 vs 5.8 ms. **Measure on more than one GPU vendor**: arrakis's AMD path
+    could not show it.
   - **default: `phys-mem` is the long pole, ~1.4–2.2 ms** since v0.20.6 (retch ~4x ahead of
     fastfetch there anyway). On Linux it needs `dmidecode`, which is root-only, so an
     unprivileged run probably pays for a process spawn that then fails — check first.
@@ -1055,6 +1075,11 @@ nobody asked.
   identical — the receiver synthesises one merged descriptor per paired device. fastfetch
   classifies from those and gets it wrong in both directions. Do **not** "improve" this with a
   capability heuristic; the data to support one does not exist.
+- **`pci.ids` is 1.6 MB, and there is no fast way to search it.** A line walk and
+  `str::find` both cost ~1.2 ms warm (~4 ms cold) to reach an Intel entry near the end.
+  udev has already resolved every PCI device's name at boot
+  (`E:ID_MODEL_FROM_DATABASE=` in `/run/udev/data/+pci:<slot>`, ~300 bytes). Read that, and
+  keep `pci.ids` only as the fallback for systems without udev data (containers).
 - **SQLite `Connection::open` is read-write**, so the root-owned `0644` rpmdb fails on **every
   query** (not on `open()`) with "attempt to write a readonly database" — which is why a guard
   around the open never fired. `mode=ro` does not help either; `immutable=1` does.

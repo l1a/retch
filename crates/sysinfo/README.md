@@ -16,7 +16,7 @@ Extracted from the `retch-cli` binary to allow reuse as a standalone, zero-unnec
 - **Minimal Subprocesses**: Native Win32 FFI / WinRT COM on Windows, a direct binary D-Bus socket client on Linux, and Objective-C runtime / IOKit / SystemConfiguration FFI on macOS, instead of slow shell and interpreter forks. The few remaining spawns (for example `btrfs`, `zpool`, `dmidecode`, or a shell's own version query) run only when their field is requested.
 - **Comprehensive Hardware & OS Detection**:
   - **CPU**: Model name, physical/logical core count, P/E hybrid topology, frequency ranges, and cache sizes (L1/L2/L3).
-  - **GPU & VRAM**: AMD GPUs (via `libdrm` `amdgpu.ids` & PCI IDs), NVIDIA, Intel, Apple Silicon, and the display-adapter registry keys on Windows.
+  - **GPU & VRAM**: AMD GPUs (via `libdrm` `amdgpu.ids`), NVIDIA (driver `/proc` name), Intel and others on Linux (udev's resolved name, PCI IDs as the fallback), Apple Silicon, and the display-adapter registry keys on Windows.
   - **Graphics APIs**: Vulkan, OpenGL and OpenCL versions from the installed loaders.
   - **I/O Throughput**: Disk and network rates sampled over the collection window.
   - **Displays**: Multi-monitor resolution, refresh rates, and model/vendor names parsed from raw EDID binaries.
