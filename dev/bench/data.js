@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790973575672,
+  "lastUpdate": 1791755904294,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -578,6 +578,29 @@ window.BENCHMARK_DATA = {
             "extra": "v0.20.17; AC"
           }
         ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "51cfe8f12234bdf793372a2e8a445841d6fd69c3",
+          "message": "Bump libc to 0.2.190 (consolidate #289) (#290)\n\nRolls Dependabot #289 onto a gated branch so the version bump, NOTES\nheader and man-page regeneration it skips are done. Lockfile-only: both\ncrates' \"0.2\" specs already admit libc 0.2.190, nothing else moves, and\nthe libc lines in Cargo.lock are byte-identical to Dependabot's.\n\nlibc 0.2.190 adds Default impls for more structs, a libc_unstable_time64\ncfg (opt-in, unused here) and new constants, mostly on Apple and BSD.\nretch's own libc use (the Linux fd calls in gpu_api.rs and the sysinfo\nFFI) builds and passes clippy and the full test suite unchanged, and\nthe GPU-API fields still print on real hardware.\n\nretch-sysinfo stays at 0.1.89: a lockfile change alters nothing that\ncrate publishes.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-11T14:57:48-07:00",
+          "tree_id": "e1f0d55f8bb50b94dde179076cd192dcf11d3783",
+          "url": "https://github.com/l1a/retch/commit/51cfe8f12234bdf793372a2e8a445841d6fd69c3"
+        },
+        "date": 1791755904294,
+        "tool": "customSmallerIsBetter",
+        "benches": []
       }
     ],
     "Local - macOS arm64 (real hardware)": [
