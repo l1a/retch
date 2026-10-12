@@ -171,11 +171,11 @@ logos:
     done
     echo "Logo conversion complete."
 
-# OS-appropriate path to the built release binary for hyperfine. hyperfine's
-# default shell is cmd.exe on Windows — which needs backslashes and the .exe
-# suffix to execute a relative path — and sh elsewhere, so a bare POSIX-style
-# './target/release/retch' fails under cmd. Select the right form per OS.
-retch_release_bin := if os_family() == "windows" { 'target\release\retch.exe' } else { './target/release/retch' }
+# OS-appropriate path to the built release binary for hyperfine. bench-cli runs it with
+# --shell=none (hyperfine 2.0's default; 1.x used cmd.exe / sh), and with no shell hyperfine
+# splits the command with POSIX rules, where a backslash is an escape: 'target\release\retch.exe'
+# became 'targetreleaseretch.exe'. So forward slashes everywhere, plus .exe on Windows.
+retch_release_bin := if os_family() == "windows" { './target/release/retch.exe' } else { './target/release/retch' }
 
 # Run criterion micro-benchmarks
 bench:
@@ -185,7 +185,7 @@ bench:
 bench-cli:
     @python3 scripts/install_hyperfine.py 2>/dev/null || python scripts/install_hyperfine.py
     cargo build --release
-    hyperfine --warmup 3 --runs 10 '{{retch_release_bin}}'
+    hyperfine --shell=none --warmup 3 --runs 10 '{{retch_release_bin}}'
 
 # The pairs live in scripts/cli_bench.py -- the same ones CI and `just bench-upload` run -- and
 # fastfetch is given the generated benches/fastfetch/<mode>.jsonc, never your own config.
