@@ -40,7 +40,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from bench_labels import labelled_means  # noqa: E402
+from bench_labels import labelled_means, missing_series  # noqa: E402
 import bench_meta  # noqa: E402
 
 CRITERION_DIR = "target/criterion"
@@ -133,6 +133,11 @@ def main(argv):
     problems = crit_problems + hyper_problems
     if dupes:
         problems.append(f"duplicate series names: {sorted(set(dupes))}")
+    # CI always runs fastfetch, so all eight series are owed. A file that parsed but held fewer
+    # (a result nobody could read, as hyperfine 2.0's export was until v0.20.20) is a failure.
+    missing = missing_series([e["name"] for e in hyper]) if hyper else []
+    if missing:
+        problems.append(f"CLI series with no result: {missing}")
 
     for p in problems:
         print(f"  {p}", file=sys.stderr)
@@ -281,6 +286,29 @@ def _self_test():
                       "a raw hyperfine line bypasses cli_bench.py and can name its own file")
             else:
                 print(f"  (skipped: {wf} not present)")
+
+            # --- a hyperfine 2.x export (schema 2: no top-level mean) is read the same ------
+            with open("hyperfine_short.json", encoding="utf-8") as fh:
+                v1_short = json.load(fh)
+            with open("hyperfine_short.json", "w", encoding="utf-8") as fh:
+                json.dump({"schema_version": 2, "results": [
+                    {"command": r["command"],
+                     "summary": {"time_wall_clock": {"unit": "second", "mean": r["mean"]}}}
+                    for r in v1_short["results"]]}, fh)
+            rc = main(["--criterion-dir", "crit", "--hyperfine-glob", HYPERFINE_GLOB,
+                       "--output", "v2.json"])
+            check("a hyperfine 2.x export publishes like a 1.x one", rc == 0, f"exit {rc}")
+
+            # --- a missing series is refused, not published as a smaller result -----------
+            with open("hyperfine_short.json", "w", encoding="utf-8") as fh:
+                json.dump({"results": v1_short["results"][:1]}, fh)  # drop fastfetch (short)
+            rc = main(["--criterion-dir", "crit", "--hyperfine-glob", HYPERFINE_GLOB,
+                       "--output", "short_missing.json"])
+            check("a missing CLI series is refused", rc == 1, f"exit {rc}")
+            check("nothing is written when a series is missing",
+                  not os.path.exists("short_missing.json"), "a partial result was written")
+            with open("hyperfine_short.json", "w", encoding="utf-8") as fh:
+                json.dump(v1_short, fh)
 
             # --- duplicates are reported rather than silently doubling a series -----------
             with open("hyperfine_copy.json", "w", encoding="utf-8") as fh:

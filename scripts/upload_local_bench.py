@@ -18,7 +18,7 @@ import tempfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from bench_labels import labelled_means  # noqa: E402
+from bench_labels import labelled_means, missing_series  # noqa: E402
 import bench_meta  # noqa: E402
 import cli_bench  # noqa: E402
 
@@ -132,6 +132,16 @@ def run_hyperfine(warmup, runs, extra):
             # to fastfetch, so a point without it cannot be read against its neighbours.
             for label, val_ns in labelled_means(data):
                 results.append({"name": label, "unit": "ns", "value": val_ns, "extra": extra})
+
+    # Never publish fewer series than were run. On 2026-10-11 hyperfine 2.0's export (which
+    # labelled_means could not yet read) produced none, and the post-merge hook still pushed
+    # two empty points to the dashboard while every step reported success.
+    missing = missing_series([r["name"] for r in results], with_fastfetch=has_fastfetch)
+    if missing:
+        print("ERROR: refusing to upload; these series produced no result:", file=sys.stderr)
+        for label in missing:
+            print(f"  {label}", file=sys.stderr)
+        sys.exit(1)
     return results
 
 

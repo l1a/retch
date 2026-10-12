@@ -26,6 +26,7 @@ which is the glob `parse_criterion.py` collects.
 import argparse
 import os
 import platform
+import shlex
 import shutil
 import subprocess
 import sys
@@ -47,9 +48,16 @@ RUN_ORDER = ("default", "short", "long", "full")
 
 
 def retch_binary(system=None):
-    """The release binary, spelled the way the dashboard labels expect."""
+    """The release binary, spelled the way the dashboard labels expect.
+
+    Forward slashes on Windows too. hyperfine runs these with no shell (see SHELL_ARGS), and
+    then splits each command with POSIX rules, where a backslash is an escape: hyperfine 2.0
+    turned `.\\target\\release\\retch.exe` into `.targetreleaseretch.exe` and failed with
+    "program not found" (Windows x64 CI, 2026-10-11). Labels key on the flags, not the path,
+    so the spelling does not fork a dashboard series.
+    """
     if (system or platform.system()) == "Windows":
-        return r".\target\release\retch.exe"
+        return "./target/release/retch.exe"
     return "./target/release/retch"
 
 
@@ -66,6 +74,19 @@ def fastfetch_command(mode):
 
 def export_name(mode):
     return f"hyperfine_{mode}.json"
+
+
+# Always run the commands directly, never through a shell. hyperfine 2.0 made that the
+# default, while 1.x ran them through `sh -c` / `cmd.exe /C`, so without this flag what was
+# measured depended on which hyperfine a runner's package manager handed out (CI got 1.x from
+# apt, dnf, brew and choco, but 2.0 from `cargo install`). `--shell=none` exists since 1.13.
+SHELL_ARGS = ("--shell=none",)
+
+
+def hyperfine_argv(warmup, runs, export_path, cmds):
+    """The full hyperfine command line for one pair. Pure, so the self-test can pin it."""
+    return ["hyperfine", *SHELL_ARGS, "--warmup", str(warmup), "--runs", str(runs),
+            "--export-json", export_path, *cmds]
 
 
 def pairs(system=None, with_fastfetch=True):
@@ -90,8 +111,7 @@ def run(warmup, runs, out_dir, with_fastfetch=True):
     for mode, cmds in pairs(with_fastfetch=with_fastfetch):
         path = os.path.join(out_dir, export_name(mode))
         print(f"\n=== {mode}: {' vs '.join(cmds)}", flush=True)
-        subprocess.run(["hyperfine", "--warmup", str(warmup), "--runs", str(runs),
-                        "--export-json", path, *cmds], cwd=REPO_ROOT, check=True)
+        subprocess.run(hyperfine_argv(warmup, runs, path, cmds), cwd=REPO_ROOT, check=True)
         written.append(path)
     return written
 
@@ -130,6 +150,18 @@ def _self_test():
                export_name(mode).startswith("hyperfine_") and export_name(mode).endswith(".json"))
     expect("default mode passes no flag", retch_command("default", "Linux") == "./target/release/retch")
     expect("full mode passes --full", retch_command("full", "Windows").endswith("retch.exe --full"))
+
+    # With no shell, hyperfine splits each command with POSIX rules (shell-words), so every
+    # command must come apart into exactly its space-separated words. A backslash path does
+    # not: shlex, like shell-words, drops the backslashes.
+    for system in ("Linux", "Darwin", "Windows"):
+        for _, cmds in pairs(system):
+            for c in cmds:
+                expect(f"{system}: {c!r} survives POSIX splitting",
+                       shlex.split(c) == c.split(" "), str(shlex.split(c)))
+    argv = hyperfine_argv(3, 10, "out.json", ["a", "b"])
+    expect("hyperfine runs the commands with no shell", "--shell=none" in argv, str(argv))
+    expect("the commands are hyperfine's last arguments", argv[-2:] == ["a", "b"], str(argv))
 
     if failures:
         for f in failures:

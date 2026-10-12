@@ -41,8 +41,9 @@ def label_for_command(cmd: str) -> str:
     """Map a hyperfine `command` string to its dashboard series name.
 
     Pure, so both callers and the self-test can exercise it without running a benchmark.
-    Handles the Unix (`./target/release/retch`) and Windows (`.\\target\\release\\retch.exe`)
-    forms identically, because it keys on the flags rather than the path.
+    Handles the Unix (`./target/release/retch`) and Windows (`./target/release/retch.exe`
+    since v0.20.20, `.\\target\\release\\retch.exe` before) forms identically, because it keys
+    on the flags rather than the path.
     """
     if "retch" in cmd:
         for flag in ("--short", "--long", "--full"):
@@ -58,12 +59,32 @@ def label_for_command(cmd: str) -> str:
     return f"{CLI_PREFIX}{cmd}"
 
 
+def mean_seconds(res: dict):
+    """One hyperfine result's mean wall-clock time in seconds, or None if it has none.
+
+    Two export schemas exist, and a runner gets whichever its package manager ships:
+      - hyperfine 1.x: a top-level `mean`, in seconds.
+      - hyperfine 2.x (`schema_version: 2`): no top-level `mean`; wall-clock time is
+        `summary.time_wall_clock.mean`, with its unit stated beside it (`"second"`).
+    Reading only the 1.x key made every 2.x export yield nothing, and the local uploader then
+    published two EMPTY points (2026-10-11). Any other unit is refused rather than guessed.
+    """
+    mean = res.get("mean")
+    if isinstance(mean, (int, float)):
+        return float(mean)
+    wall = (res.get("summary") or {}).get("time_wall_clock") or {}
+    if wall.get("unit") == "second" and isinstance(wall.get("mean"), (int, float)):
+        return float(wall["mean"])
+    return None
+
+
 def labelled_means(data: dict):
     """Turn one parsed hyperfine --export-json document into `(label, nanoseconds)` pairs.
 
-    hyperfine reports `mean` in SECONDS; the dashboard stores nanoseconds, matching the
-    criterion entries it sits beside. Getting that conversion wrong would not fail anything --
-    it would silently plot CLI timings a billion times too small next to the criterion ones.
+    hyperfine reports the mean in SECONDS (see mean_seconds for where, per version); the
+    dashboard stores nanoseconds, matching the criterion entries it sits beside. Getting that
+    conversion wrong would not fail anything -- it would silently plot CLI timings a billion
+    times too small next to the criterion ones.
 
     **Returns pairs rather than finished dicts on purpose.** The two callers serialise
     differently and must keep doing so: `upload_local_bench.py` writes `data.js` itself, and
@@ -75,11 +96,23 @@ def labelled_means(data: dict):
     """
     out = []
     for res in data.get("results", []):
-        mean = res.get("mean")
+        mean = mean_seconds(res)
         if mean is None:
             continue
         out.append((label_for_command(res.get("command", "")), mean * 1_000_000_000))
     return out
+
+
+def missing_series(labels, with_fastfetch=True):
+    """The expected CLI series absent from `labels`, in EXPECTED_LABELS order.
+
+    Both publishers check this before writing anything, because a run that yields fewer
+    series than it ran is a failure upstream (a hyperfine that died, an export nobody can
+    read), never a smaller result. Without fastfetch only the four retch series are expected.
+    """
+    have = set(labels)
+    want = [l for l in EXPECTED_LABELS if with_fastfetch or "fastfetch" not in l]
+    return [l for l in want if l not in have]
 
 
 # The eight series the four scripts/cli_bench.py pairs produce. Pinned so a change to the
@@ -115,6 +148,12 @@ def _self_test() -> int:
         (r".\target\release\retch.exe --short", f"{CLI_PREFIX}retch --short"),
         (r".\target\release\retch.exe --long", f"{CLI_PREFIX}retch --long"),
         (r".\target\release\retch.exe --full", f"{CLI_PREFIX}retch --full"),
+        # The Windows spelling cli_bench.py has used since v0.20.20 (forward slashes, so
+        # hyperfine's no-shell POSIX splitting keeps the path). Same series as the old form.
+        ("./target/release/retch.exe", f"{CLI_PREFIX}retch"),
+        ("./target/release/retch.exe --short", f"{CLI_PREFIX}retch --short"),
+        ("./target/release/retch.exe --long", f"{CLI_PREFIX}retch --long"),
+        ("./target/release/retch.exe --full", f"{CLI_PREFIX}retch --full"),
         ("fastfetch -c benches/fastfetch/short.jsonc", f"{CLI_PREFIX}fastfetch (short)"),
         ("fastfetch -c benches/fastfetch/default.jsonc", f"{CLI_PREFIX}fastfetch (default)"),
         ("fastfetch -c benches/fastfetch/long.jsonc", f"{CLI_PREFIX}fastfetch (long)"),
@@ -153,6 +192,39 @@ def _self_test() -> int:
     check("missing mean is skipped",
           labelled_means({"results": [{"command": "x"}]}) == [], "a null mean leaked")
     check("empty document yields nothing", labelled_means({}) == [], "phantom entry")
+
+    # hyperfine 2.x export (schema_version 2), keys as hyperfine 2.0.0 writes them: no
+    # top-level mean, wall-clock time under summary.time_wall_clock with its unit.
+    v2 = {"schema_version": 2, "primary_metric": "time_wall_clock", "results": [
+        {"command": "./target/release/retch --short",
+         "measurements": [{"time_wall_clock": {"value": 0.0025, "unit": "second"}}],
+         "summary": {"time_cpu": {"unit": "second", "mean": 0.9},
+                     "time_wall_clock": {"unit": "second", "count": 3, "mean": 0.0025,
+                                         "median": 0.0026}}},
+    ]}
+    pairs2 = labelled_means(v2)
+    check("hyperfine 2.x export is read", len(pairs2) == 1, str(pairs2))
+    check("2.x reads WALL-CLOCK time, not CPU time, as seconds -> ns",
+          pairs2 == [(f"{CLI_PREFIX}retch --short", 2500000.0)], str(pairs2))
+    check("2.x mean in a unit other than seconds is refused",
+          mean_seconds({"summary": {"time_wall_clock": {"unit": "ms", "mean": 2.5}}}) is None,
+          "an unknown unit was guessed")
+    check("1.x top-level mean still read",
+          mean_seconds({"mean": 0.5, "summary": {}}) == 0.5, "1.x schema regressed")
+
+    # Completeness, which the publishers check before writing anything.
+    full_set = [f"{CLI_PREFIX}retch", f"{CLI_PREFIX}retch --short", f"{CLI_PREFIX}retch --long",
+                f"{CLI_PREFIX}retch --full"]
+    check("nothing collected: every series is missing",
+          missing_series([]) == list(EXPECTED_LABELS), str(missing_series([])))
+    check("all eight collected: none missing", missing_series(EXPECTED_LABELS) == [],
+          str(missing_series(EXPECTED_LABELS)))
+    check("without fastfetch only retch's four are expected",
+          missing_series(full_set, with_fastfetch=False) == [],
+          str(missing_series(full_set, with_fastfetch=False)))
+    check("a missing fastfetch series is reported when fastfetch ran",
+          missing_series(full_set) == [l for l in EXPECTED_LABELS if "fastfetch" in l],
+          str(missing_series(full_set)))
 
     if failures:
         for f in failures:

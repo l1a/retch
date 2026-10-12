@@ -150,15 +150,34 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.19)
+## Current State (v0.20.20)
 
-`main` carries **`retch-cli` 0.20.19** / **`retch-sysinfo` 0.1.90**. Newest released tag is
+`main` carries **`retch-cli` 0.20.20** / **`retch-sysinfo` 0.1.90**. Newest released tag is
 **`v0.20.16`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
 (§6a). What is open is listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.20: the CLI benchmarks work under hyperfine 2.0.** hyperfine 2.0.0 reached
+  crates.io around 2026-10-10 and changed three things at once. Two of them broke us silently:
+  - **It runs commands with no shell by default, and splits them with POSIX rules**, so a
+    backslash is an escape. The Windows x64 runner, whose fallback is an unpinned
+    `cargo install hyperfine`, turned `.\target\release\retch.exe` into
+    `.targetreleaseretch.exe`. The job failed with "program not found" on both of 2026-10-11's
+    merges (#290, #291), so that suite has no v0.20.18 or v0.20.19 point. The other runners
+    still get 1.x from apt, dnf, brew or choco. `cli_bench.py` (and `just bench-cli`) now pass
+    `--shell=none` explicitly, so every version measures the same way, and spell the Windows
+    binary `./target/release/retch.exe`.
+  - **Its JSON export is a new schema** (`schema_version: 2`): no top-level `mean`; wall-clock
+    time is `summary.time_wall_clock.mean`, with its unit beside it. `labelled_means` read
+    only the 1.x key, so on corrino (which had hyperfine 2.0 locally since 2026-10-10) the
+    post-merge hook **published two empty points** (`51cfe8f`, `8d20d64`: zero benches each)
+    to `Local - Linux x64`, while every step reported success. `mean_seconds` now reads both
+    schemas, and both publishers refuse a run missing any expected series (`missing_series`).
+    The two empty entries are still on gh-pages; the dashboard skips them (no benches, no
+    version).
 
 - **v0.20.19: Linux GPU names come from udev before `pci.ids`; `--short` on corrino 8.42 →
   3.32 ms (fastfetch 5.81).** `RETCH_TIMING` showed the `gpu` probe as the whole critical path
@@ -168,7 +187,8 @@ Recent work worth knowing about, beyond what `git log` says:
   resolves through `amdgpu.ids` first. `resolve_gpu_name` now asks, lazily and in order: the
   NVIDIA driver, `amdgpu.ids` (AMD), udev's `ID_MODEL_FROM_DATABASE` in
   `/run/udev/data/+pci:<slot>` (~0.006 ms), then `pci.ids`.
-  - **Output unchanged** on corrino in all four modes. It was also checked in a `fedora:44`
+  - **Output unchanged** on corrino in all four modes, and on arrakis (AMD, checked by the
+    user after the merge). It was also checked in a `fedora:44`
     container with no `/run/udev`, where the `pci.ids` fallback gives the same names (and the
     NVIDIA-first order still saves its scan: 5.3 → 3.4 ms).
   - **Possible visible difference, not seen yet:** udev's hwdb is systemd's snapshot of the
@@ -645,7 +665,17 @@ Adds over long:
 
 Live items only. Completed items are removed rather than struck through — `git log` has them.
 
-- **Clear on Linux and macOS locally; Windows unexamined, and macOS CI not yet re-checked.**
+- **Clear on Linux and macOS locally and on macOS CI; behind on Linux CI `--full`; Windows
+  unexamined.** CI dashboard, read 2026-10-11:
+  - **macOS CI**: ahead in `--short`/`--long`/`--full` since v0.20.15, default about level
+    (v0.20.19: 371 vs 361 ms; v0.20.15–18: 273–319 vs 317–453).
+  - **Linux x64 CI `--full` is behind on every v0.20.x point** (v0.20.19: 566 vs 278 ms; best
+    294 vs 279). fastfetch's `--full` there is only ~26 ms above its `--long`, so **first check
+    that its weather module really returned weather on the runner** (§7.1, "check it did the
+    work") rather than failing fast; on corrino fastfetch's `--full` is ~70–80 ms above its `--long`.
+  - **Windows x64 CI `--short`**: level to slightly behind (27–32 vs 21–30 ms).
+
+  Local figures follow.
   On arrakis (on AC) since v0.20.10 retch is ahead or level in all four matched modes: default
   3.8 vs 14.9 ms, `--short` 2.4 vs 2.7, `--long` 228 vs 510, `--full` 425 vs 519 ms. On chani
   (M3 Pro, battery) since v0.20.15: `--short` 7.0 vs 17.0, default 109 vs 134, `--long` 231 vs
@@ -661,8 +691,8 @@ Live items only. Completed items are removed rather than struck through — `git
     (~375 ms). After it, `temp` then `wm` run serially, ~24 ms together; running them
     concurrently is the next small win.
   - **macOS default** — was 848 vs 414 ms on CI; the cause was `phys-disk`'s serial
-    `diskutil` spawns, fixed in v0.20.14 (now ahead locally, 108–126 vs 145–161 ms). Check the
-    next macOS CI points. What is left on chani (`RETCH_TIMING=1`): `phys-mem` ~80 ms, then
+    `diskutil` spawns, fixed in v0.20.14 (now ahead locally, 108–126 vs 145–161 ms; CI about
+    level, see above). What is left on chani (`RETCH_TIMING=1`): `phys-mem` ~80 ms, then
     `audio` ~44 ms (it starts after `sys-init`, inside the scope), `display` ~33 ms.
   - **macOS `--short`** — ahead since v0.20.15 (7.0 vs 17.0 ms on chani): it was all `disk`.
   - **`--short`** — level with fastfetch since v0.20.5 on arrakis, on battery and on AC. On
@@ -956,6 +986,17 @@ nobody asked.
   reading a redefinition as a speed-up; deleting them loses the record. Freeze the old data
   with a note on what is comparable, and restart with points that carry what a reader needs
   (version, power state). And chart what a noisy environment cannot move: a same-run ratio.
+- **A guard on one publisher does not cover its sibling.** `parse_criterion.py` had refused an
+  empty CLI result since v0.18.2; `upload_local_bench.py` reads the same exports through the
+  same `labelled_means` and had no such check, so when hyperfine 2.0's export yielded nothing
+  it pushed two empty points to gh-pages and exited 0. When you add a guard, list every other
+  writer of the same output and give it the same guard, or share it (`missing_series`).
+- **`just merge-pr` gates on the PR's CI, not on what runs after the merge.** The `main`
+  benchmark run failed on two merges in a row (Windows x64) and nothing said so: the other
+  four suites published, and the local post-merge numbers were read off hyperfine's console,
+  not off what was uploaded. After a merge, check that **the `main` benchmark run for that
+  sha** concluded `success` (`gh run list --workflow benchmark.yml`, filtered on `headSha`),
+  and that the local point on gh-pages actually has benches.
 - **Count invocations, not mentions.** A guard that counted `scripts/cli_bench.py` in the
   workflow also counted the new `pull_request` path filter naming it, so the totals matched by
   coincidence and a job could have dropped the call unnoticed. Match the command shape.
@@ -1155,6 +1196,15 @@ nobody asked.
   allow rule ("Self-Modification"). Do not look for a way around it: hand the exact command to the
   user to run with `!`, then verify the result from the channel (a fresh clone, not the exit code).
   A first check made before the user's run finished read the old AUR version; re-check.
+  The user's `Bash(just merge-pr)` allow rule matches **only the bare command**: on 2026-10-11
+  `git rev-parse ... && just merge-pr | tail` was blocked while plain `just merge-pr` ran. Run
+  the gated recipes on their own, not chained or piped.
+- **An unpinned tool can change what you measure, and how its output looks, under you.**
+  hyperfine 2.0.0 (2026-10) switched the default to no shell, split commands POSIX-style
+  (eating Windows backslashes) and replaced its JSON schema, all in one release, and CI picked
+  it up only where a fallback ran `cargo install hyperfine` unpinned. Pass the behaviour you
+  depend on as an explicit flag (`--shell=none`, which 1.13+ also accepts), read the output by
+  its documented schema version, and test a parser against a real export from each version.
 - **`just` parses `{{` inside a recipe body before the shell or Python ever sees it** — an
   incidental `{{` in an embedded heredoc breaks the whole Justfile.
 - **In a `#!` shebang recipe, `just` does NOT strip a leading `@`** — that is plain-recipe
