@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791777610899,
+  "lastUpdate": 1791777612536,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4433,6 +4433,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 270.2954128333075,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a7cfa0c3f0e28dae4eec94464824108211b7af7e",
+          "message": "Make CLI benchmarks work under hyperfine 2.0 (#292)\n\nhyperfine 2.0.0 reached crates.io around 2026-10-10 and broke the CLI\nbenchmarks two ways, both silently.\n\nIt runs commands with no shell by default and splits them with POSIX\nrules, so a backslash is an escape. The Windows x64 runner falls back\nto an unpinned `cargo install hyperfine`, got 2.0, and turned\n.\\target\\release\\retch.exe into .targetreleaseretch.exe: the main\nbenchmark job failed with \"program not found\" on #290 and #291, so that\nsuite has no v0.20.18 or v0.20.19 point. cli_bench.py and `just\nbench-cli` now pass --shell=none explicitly (1.13+ accepts it too), so\nevery hyperfine version measures the same way, and spell the Windows\nbinary ./target/release/retch.exe. Labels key on the flags, so no\ndashboard series forks.\n\nIts JSON export is a new schema: no top-level `mean`; wall-clock time\nis summary.time_wall_clock.mean. labelled_means read only the 1.x key,\nso with hyperfine 2.0 installed locally the post-merge hook published\ntwo empty points (51cfe8f, 8d20d64) while every step reported success.\nmean_seconds now reads both schemas, and both publishers\n(parse_criterion.py, upload_local_bench.py) refuse a run missing any\nexpected series (missing_series).\n\nVerified: real runs under hyperfine 2.0.0 and 1.18.0 produce all eight\nseries; the uploader's dry run collects eight and, with the 2.x reader\nremoved, refuses. Eight mutations, each caught by its intended test.\n\nNOTES also records the arrakis GPU check, the CI dashboard read\n(Linux x64 --full behind; check fastfetch's weather first), and the\nbare-command `just merge-pr` allow rule.\n\nretch-cli 0.20.19 -> 0.20.20.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-11T20:51:02-07:00",
+          "tree_id": "54584a1b0a27b5f07c61be671ff440acac57c4e8",
+          "url": "https://github.com/l1a/retch/commit/a7cfa0c3f0e28dae4eec94464824108211b7af7e"
+        },
+        "date": 1791777612483,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2198618.3000000003,
+            "unit": "ns",
+            "extra": "v0.20.20"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 252487278.4,
+            "unit": "ns",
+            "extra": "v0.20.20"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252530115.60000005,
+            "unit": "ns",
+            "extra": "v0.20.20"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1415886.8000000003,
+            "unit": "ns",
+            "extra": "v0.20.20"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2875324.3,
+            "unit": "ns",
+            "extra": "v0.20.20"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 210519669.70000002,
+            "unit": "ns",
+            "extra": "v0.20.20"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205810102.20000002,
+            "unit": "ns",
+            "extra": "v0.20.20"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1989159,
+            "unit": "ns",
+            "extra": "v0.20.20"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 268728430.75,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 930.0109884465082,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 108.54548415755796,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9467676620424887,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 47.64649863153243,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7720.236003671463,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70660.48200311523,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4769.500513118572,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 3432.078598558381,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 58337.27268632031,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 275.1531391451505,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 269.68508722061773,
             "unit": "ns"
           }
         ]
