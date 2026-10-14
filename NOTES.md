@@ -150,15 +150,23 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.20)
+## Current State (v0.20.21)
 
-`main` carries **`retch-cli` 0.20.20** / **`retch-sysinfo` 0.1.90**. Newest released tag is
-**`v0.20.16`**.
+`main` carries **`retch-cli` 0.20.21** / **`retch-sysinfo` 0.1.91**. Newest released tag is
+**`v0.20.20`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
 (§6a). What is open is listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.21: a Mac on AC that is holding its charge says `not charging`, not
+  `discharging`.** Found on chani (M3 Pro, macOS 27.0.1) at the 80% charge limit: IOKit
+  reports `IsCharging = No`, `FullyCharged = No`, `ExternalConnected = Yes`, and retch read
+  only the first two. fastfetch said `[AC Connected]` on the same machine. Now
+  `ExternalConnected` is read too, and that case maps to `BatteryState::Unknown`, which
+  already rendered `not charging` for Linux's sysfs `Not charging`. A missing
+  `ExternalConnected` keeps the old answer. See §7.3.
 
 - **v0.20.20: the CLI benchmarks work under hyperfine 2.0.** hyperfine 2.0.0 reached
   crates.io around 2026-10-10 and changed three things at once. Two of them broke us silently:
@@ -1097,6 +1105,10 @@ nobody asked.
   the flag yet `kCFURLVolumeIsBrowsableKey` is true for it (and the CF *enumerator* hides it:
   three answers to one question). A filter on `f_flags` alone silently drops it. Pick the
   oracle the old behaviour used, and test against a real mount table.
+- **`IsCharging = No` does not mean "on battery".** On AC, macOS holds the charge (the 80%
+  limit, Optimized Battery Charging) and the battery neither charges nor discharges, so
+  "not charging and not full" has two meanings. `AppleSmartBattery`'s `ExternalConnected`
+  tells them apart. The old mapping printed `discharging` for a plugged-in Mac.
 - **Brightness lives on `AppleARMBacklight`** on Apple Silicon — the documented
   `IODisplayConnect`, `AppleBacklightDisplay`, `AppleCLCD2` and `IOMobileFramebufferShim` all
   return nothing.
