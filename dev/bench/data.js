@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792037449318,
+  "lastUpdate": 1792037450258,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5105,6 +5105,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 267.88261169921566,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "22f24a82840987adc1249ebe91bb94d71f5f0b5a",
+          "message": "Install fastfetch's universal macOS archive when per-arch is gone (#295)\n\nfastfetch 2.70.0 (2026-10-14) publishes only fastfetch-macos-universal\nfor macOS; 2.69.0 published only fastfetch-macos-aarch64/-amd64. The\nbenchmark installer asked for the per-arch name, got a 404, and the\nmacOS arm64 job of Continuous Benchmarking failed on main for b363009\n(#294). It is the second time fastfetch has switched layouts.\n\nmacOS now tries the per-arch archive and falls back to the universal\none. Both keep the binary at usr/bin/fastfetch, so find_binary_dir is\nunchanged. Only a 404 moves on to the next name: a network error or a\n5xx is raised as itself rather than reported as a missing asset.\n\nVerified: a real --latest-release install on an M3 Pro 404s on aarch64,\nfalls back, and runs fastfetch 2.70.0. The self-test covers the\ncandidates and download_first against a fake release; dropping the\nfallback, or treating every HTTP error as a 404, each fail it.\n\nretch-cli 0.20.21 -> 0.20.22.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-14T20:59:56-07:00",
+          "tree_id": "89497667f1b7375453f246d993b6fb07360b464e",
+          "url": "https://github.com/l1a/retch/commit/22f24a82840987adc1249ebe91bb94d71f5f0b5a"
+        },
+        "date": 1792037450210,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2114033.9000000004,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 276590667.1,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252374779,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1341997.9000000001,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2987718.9000000004,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 274458021.29999995,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 212096997.30000004,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2302275.1,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 373217400.15,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 933.1348355379666,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 108.2778144638479,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9469666726128243,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 46.64042584235968,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7804.5745728866,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 71393.12220827056,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4813.793164204146,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 3454.328293160518,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 58255.496974204936,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 275.0296019345773,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 268.413777334364,
             "unit": "ns"
           }
         ]
