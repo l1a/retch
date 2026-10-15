@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792037450258,
+  "lastUpdate": 1792037450565,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6947,6 +6947,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 338.51330499151254,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "22f24a82840987adc1249ebe91bb94d71f5f0b5a",
+          "message": "Install fastfetch's universal macOS archive when per-arch is gone (#295)\n\nfastfetch 2.70.0 (2026-10-14) publishes only fastfetch-macos-universal\nfor macOS; 2.69.0 published only fastfetch-macos-aarch64/-amd64. The\nbenchmark installer asked for the per-arch name, got a 404, and the\nmacOS arm64 job of Continuous Benchmarking failed on main for b363009\n(#294). It is the second time fastfetch has switched layouts.\n\nmacOS now tries the per-arch archive and falls back to the universal\none. Both keep the binary at usr/bin/fastfetch, so find_binary_dir is\nunchanged. Only a 404 moves on to the next name: a network error or a\n5xx is raised as itself rather than reported as a missing asset.\n\nVerified: a real --latest-release install on an M3 Pro 404s on aarch64,\nfalls back, and runs fastfetch 2.70.0. The self-test covers the\ncandidates and download_first against a fake release; dropping the\nfallback, or treating every HTTP error as a 404, each fail it.\n\nretch-cli 0.20.21 -> 0.20.22.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-14T20:59:56-07:00",
+          "tree_id": "89497667f1b7375453f246d993b6fb07360b464e",
+          "url": "https://github.com/l1a/retch/commit/22f24a82840987adc1249ebe91bb94d71f5f0b5a"
+        },
+        "date": 1792037450520,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 413614658.40000004,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1051224054.1,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1068844054.0999999,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 23224854.1,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 372526954.1,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 415390599.9,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 385873379.2000001,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 13168287.7,
+            "unit": "ns",
+            "extra": "v0.20.22"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 319814309.375,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 416.9023419661245,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 128.74838081408095,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.020752953525837,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 65.13321843456941,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4872.487105299889,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1542.2082524296434,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 347.897667067805,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 82308.38032566421,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 320.6355455449188,
             "unit": "ns"
           }
         ]
