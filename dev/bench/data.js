@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792038490335,
+  "lastUpdate": 1792040102216,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1082,6 +1082,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 859063583.3,
             "extra": "v0.20.23; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "c8f788c68be3548b15ce4475f37417d630f2311c",
+          "message": "Record release notes after v0.20.23 (#297)\n\nNOTES.md: the newest released tag is v0.20.23, and three things the\nrelease ran into:\n\n- just aur-publish needs podman and an AUR SSH key on one host, and\n  none had both. chani has the key, gimli has podman; v0.20.23 went out\n  by running aur-render on gimli and the recipe's push steps on chani.\n- COPR's results URL now redirects to packages.redhat.com, so reading\n  a chroot's repodata needs curl -L.\n- zsh treats an unquoted =0.20.23 as a command lookup, which breaks\n  cargo install --version =X.\n\nretch-cli 0.20.23 -> 0.20.24.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-14T21:54:16-07:00",
+          "tree_id": "f64169d3afb7082f9361bf45d4209abdab4e3c94",
+          "url": "https://github.com/l1a/retch/commit/c8f788c68be3548b15ce4475f37417d630f2311c"
+        },
+        "date": 1792040102216,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 96645337.3,
+            "extra": "v0.20.24; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 146783729.3,
+            "extra": "v0.20.24; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 7158658.3,
+            "extra": "v0.20.24; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 13796691.900000002,
+            "extra": "v0.20.24; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 239784875.0,
+            "extra": "v0.20.24; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 828418116.5,
+            "extra": "v0.20.24; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 507187524.9000001,
+            "extra": "v0.20.24; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 885916062.3000001,
+            "extra": "v0.20.24; AC"
           }
         ]
       }
