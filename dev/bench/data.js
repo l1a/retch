@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791777613467,
+  "lastUpdate": 1792031340167,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -866,6 +866,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 677923161.6800001,
             "extra": "v0.20.16; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "b3630093a37b1ea5560ceb0b3eafb610d10c7f05",
+          "message": "Show macOS battery on AC as not charging (#294)\n\nA Mac on AC that is holding its charge (macOS's 80% limit, Optimized\nBattery Charging) reports IsCharging = No and FullyCharged = No, and\nretch printed it as \"discharging\". fastfetch says \"AC Connected\" on the\nsame machine.\n\nRead AppleSmartBattery's ExternalConnected as well. On AC with the\nbattery neither charging nor full the state is now Unknown, which\nalready renders \"not charging\" (Linux's sysfs \"Not charging\"). Without\nthe property the old answer is kept. The decision is a pure function,\nmac_battery_state, compiled under cfg(test) on every platform so CI\ntests it everywhere.\n\nBumps retch-cli to 0.20.21 and retch-sysinfo to 0.1.91.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-14T19:28:14-07:00",
+          "tree_id": "4cdecaed7e6a172bf9d6d524f302b9b8b4c5418b",
+          "url": "https://github.com/l1a/retch/commit/b3630093a37b1ea5560ceb0b3eafb610d10c7f05"
+        },
+        "date": 1792031340167,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 107066333.1,
+            "extra": "v0.20.21; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 150619091.70000002,
+            "extra": "v0.20.21; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 7227854.1000000015,
+            "extra": "v0.20.21; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 14517829.300000003,
+            "extra": "v0.20.21; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 232412795.90000007,
+            "extra": "v0.20.21; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 804074787.6,
+            "extra": "v0.20.21; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 451841487.5,
+            "extra": "v0.20.21; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 782355295.9000001,
+            "extra": "v0.20.21; AC"
           }
         ]
       }
