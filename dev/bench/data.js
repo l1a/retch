@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792031921311,
+  "lastUpdate": 1792036843705,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -938,6 +938,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 782355295.9000001,
             "extra": "v0.20.21; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "22f24a82840987adc1249ebe91bb94d71f5f0b5a",
+          "message": "Install fastfetch's universal macOS archive when per-arch is gone (#295)\n\nfastfetch 2.70.0 (2026-10-14) publishes only fastfetch-macos-universal\nfor macOS; 2.69.0 published only fastfetch-macos-aarch64/-amd64. The\nbenchmark installer asked for the per-arch name, got a 404, and the\nmacOS arm64 job of Continuous Benchmarking failed on main for b363009\n(#294). It is the second time fastfetch has switched layouts.\n\nmacOS now tries the per-arch archive and falls back to the universal\none. Both keep the binary at usr/bin/fastfetch, so find_binary_dir is\nunchanged. Only a 404 moves on to the next name: a network error or a\n5xx is raised as itself rather than reported as a missing asset.\n\nVerified: a real --latest-release install on an M3 Pro 404s on aarch64,\nfalls back, and runs fastfetch 2.70.0. The self-test covers the\ncandidates and download_first against a fake release; dropping the\nfallback, or treating every HTTP error as a 404, each fail it.\n\nretch-cli 0.20.21 -> 0.20.22.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-14T20:59:56-07:00",
+          "tree_id": "89497667f1b7375453f246d993b6fb07360b464e",
+          "url": "https://github.com/l1a/retch/commit/22f24a82840987adc1249ebe91bb94d71f5f0b5a"
+        },
+        "date": 1792036843705,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 114626670.90000004,
+            "extra": "v0.20.22; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 153831591.70000002,
+            "extra": "v0.20.22; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 6760766.499999999,
+            "extra": "v0.20.22; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 14684129.099999998,
+            "extra": "v0.20.22; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 232998783.4,
+            "extra": "v0.20.22; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 804911629.1,
+            "extra": "v0.20.22; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 483569449.8000001,
+            "extra": "v0.20.22; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 822978375.1000001,
+            "extra": "v0.20.22; AC"
           }
         ]
       }
