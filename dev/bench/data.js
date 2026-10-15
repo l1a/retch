@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792040728260,
+  "lastUpdate": 1792040728562,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5777,6 +5777,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 270.7410464196988,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c8f788c68be3548b15ce4475f37417d630f2311c",
+          "message": "Record release notes after v0.20.23 (#297)\n\nNOTES.md: the newest released tag is v0.20.23, and three things the\nrelease ran into:\n\n- just aur-publish needs podman and an AUR SSH key on one host, and\n  none had both. chani has the key, gimli has podman; v0.20.23 went out\n  by running aur-render on gimli and the recipe's push steps on chani.\n- COPR's results URL now redirects to packages.redhat.com, so reading\n  a chroot's repodata needs curl -L.\n- zsh treats an unquoted =0.20.23 as a command lookup, which breaks\n  cargo install --version =X.\n\nretch-cli 0.20.23 -> 0.20.24.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-14T21:54:16-07:00",
+          "tree_id": "f64169d3afb7082f9361bf45d4209abdab4e3c94",
+          "url": "https://github.com/l1a/retch/commit/c8f788c68be3548b15ce4475f37417d630f2311c"
+        },
+        "date": 1792040728515,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2061486.1,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 531528446.9000001,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252297658.00000003,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1220318.6,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2906687.4,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 686050849.2000002,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205508129.1,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2020640.7000000004,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 381256274.825,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 938.8073806993519,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 106.8132529393841,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9474529372796665,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 45.057228295483526,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7840.394982733706,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70732.24680340987,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 4814.8438371736565,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 3474.9825321600756,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 58524.41940694595,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 281.4489685425301,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 260.682816158628,
             "unit": "ns"
           }
         ]
