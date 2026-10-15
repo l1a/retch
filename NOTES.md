@@ -138,7 +138,7 @@ information gathering without any dependency on `clap` or the CLI.
   git tag -a vX -F <msg-file> --cleanup=verbatim   # see §7.4 on --cleanup
   git push origin vX          # CI builds the GitHub Release; copr.yml fires on the tag
   just publish                # crates.io. Refuses unless HEAD is the tag.
-  just aur-publish X          # renders + pushes to the AUR (needs podman). AUR_CONFIRM=y
+  just aur-publish X          # renders + pushes to the AUR (needs podman; see §7.4). AUR_CONFIRM=y
   just brew-publish X         # renders + pushes to the tap. BREW_CONFIRM=y
   just github-metadata        # About box from packaging/metadata.toml
   ```
@@ -150,10 +150,10 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.23)
+## Current State (v0.20.24)
 
-`main` carries **`retch-cli` 0.20.23** / **`retch-sysinfo` 0.1.91**. Newest released tag is
-**`v0.20.20`**.
+`main` carries **`retch-cli` 0.20.24** / **`retch-sysinfo` 0.1.91**. Newest released tag is
+**`v0.20.23`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
 (§6a). What is open is listed in §5, §6a and §6c.
@@ -1203,6 +1203,16 @@ nobody asked.
   ignore file it excluded a bare filename and kept both the directory form and the anchored
   form — so the first `.copr/Makefile` packed `WIP.md` and the auto-memory directory into the
   SRPM. Assert on the archive's contents, both what must not ship and what must.
+- **`just aur-publish` needs podman and an AUR SSH key on the SAME host, and no host had
+  both on 2026-10-14.** chani (macOS) has the AUR key and no podman; gimli (Fedora) has podman
+  and no AUR host key in `known_hosts`. v0.20.23 was published by splitting the recipe without
+  changing a step: `just aur-render X "$(mktemp -d)/pkg"` on gimli (outside the Syncthing tree,
+  so the `:z` relabel touches nothing synced), scp the PKGBUILD and .SRCINFO back, check the
+  sha256 against the tarball's, then the recipe's own clone/commit/push from chani. Do not write
+  `.SRCINFO` by hand to get around it: the AUR rejects a pair that disagrees.
+- **COPR's results URL now 301s to `packages.redhat.com/api/pulp-content/public-copr/...`.**
+  Reading a chroot's `repodata/` with plain `curl -s` returns nothing and looks like an empty
+  repo; follow redirects (`curl -L`).
 - **Verify a release from the channel, not from the publish exit code.** Install the published
   crate into a throwaway root and *run* it; check the GitHub Release's `retch.1` is
   byte-identical to the committed page; check COPR per chroot rather than the aggregate, and
@@ -1226,6 +1236,9 @@ nobody asked.
   it up only where a fallback ran `cargo install hyperfine` unpinned. Pass the behaviour you
   depend on as an explicit flag (`--shell=none`, which 1.13+ also accepts), read the output by
   its documented schema version, and test a parser against a real export from each version.
+- **zsh expands a word that starts with `=` as a command path**, so
+  `cargo install retch-cli --version =0.20.23` fails with `0.20.23 not found` before cargo
+  runs. Quote it: `--version '=0.20.23'`.
 - **`just` parses `{{` inside a recipe body before the shell or Python ever sees it** — an
   incidental `{{` in an embedded heredoc breaks the whole Justfile.
 - **In a `#!` shebang recipe, `just` does NOT strip a leading `@`** — that is plain-recipe
