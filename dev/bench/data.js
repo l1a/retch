@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792038489939,
+  "lastUpdate": 1792038490138,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -9097,6 +9097,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 248323350,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2497ba0e7d6e6bdd55adc9190745bf9ad07e1771",
+          "message": "Bump toml to 1.1.8 (consolidate #293) (#296)\n\nRolls Dependabot #293 onto a gated branch so the version bump, NOTES\nheader and man-page regeneration it skips are done. Lockfile-only: the\nroot crate's \"1.1\" spec already admits toml 1.1.8, and the Cargo.lock\nlines (toml, toml_datetime, toml_parser, toml_writer, serde_spanned)\nare identical to Dependabot's.\n\ntoml 1.1.7/1.1.8 fix the serializer to encode every key and remove a\nrisk of unsoundness in the parser around synthetic events. retch only\nparses (Config::load): a real config with a field list and a custom hex\ntheme applies, the --generate-config output parses back, and a\nmalformed file still reports toml's located error.\n\nretch-sysinfo stays at 0.1.91: it does not depend on toml.\n\nretch-cli 0.20.22 -> 0.20.23.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-14T21:18:06-07:00",
+          "tree_id": "80a1f51cd240e5c2237904018b159281b7f183cc",
+          "url": "https://github.com/l1a/retch/commit/2497ba0e7d6e6bdd55adc9190745bf9ad07e1771"
+        },
+        "date": 1792038490107,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 25833300.000000004,
+            "unit": "ns",
+            "extra": "v0.20.23"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2343455070,
+            "unit": "ns",
+            "extra": "v0.20.23"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1295606560,
+            "unit": "ns",
+            "extra": "v0.20.23"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 18444530,
+            "unit": "ns",
+            "extra": "v0.20.23"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 29754830,
+            "unit": "ns",
+            "extra": "v0.20.23"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 337491620,
+            "unit": "ns",
+            "extra": "v0.20.23"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 206942339.99999997,
+            "unit": "ns",
+            "extra": "v0.20.23"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 27050900,
+            "unit": "ns",
+            "extra": "v0.20.23"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 191.7742643293557,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 4.454113771124801,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 106.19368732140163,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 80.24309849612897,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42121.48795026149,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 472.15696564697174,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 746.173398661225,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 302157135,
             "unit": "ns"
           }
         ]
