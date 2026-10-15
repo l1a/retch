@@ -19,8 +19,13 @@ versions. The release assets exist for every runner, so every platform now runs 
 newest fastfetch, and the benchmark step prints `fastfetch --version` so the log says which.
 
 The previous fallback downloader was also broken on two platforms and nobody knew, because CI
-never reached it: it fetched `fastfetch-macos-universal.zip`, which fastfetch no longer
-publishes, and gave the Windows arm64 runner the amd64 build.
+never reached it: it fetched `fastfetch-macos-universal.zip`, which fastfetch had stopped
+publishing, and gave the Windows arm64 runner the amd64 build.
+
+fastfetch then flipped back. 2.69.0 shipped `fastfetch-macos-aarch64`/`-amd64`; 2.70.0
+(2026-10-14) shipped only `fastfetch-macos-universal`, and the macOS benchmark job on main
+failed with a 404. So macOS now tries the per-architecture archive and falls back to the
+universal one (see asset_candidates), which survives a flip in either direction.
 """
 
 import os
@@ -29,6 +34,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import urllib.error
 import urllib.request
 import zipfile
 
@@ -53,6 +59,43 @@ def asset_name(system=None, machine=None):
         return f"fastfetch-windows-{arch}.zip"
     raise SystemExit(f"install_fastfetch: no fastfetch release asset for {system}")
 
+
+
+# Both macOS layouts keep the binary at `<archive dir>/usr/bin/fastfetch`, so find_binary_dir
+# needs no change whichever one the release has.
+MACOS_UNIVERSAL = "fastfetch-macos-universal.tar.gz"
+
+
+def asset_candidates(system=None, machine=None):
+    """The release assets to try for this platform, best first.
+
+    Pure, like asset_name. macOS gets the universal archive as a fallback because fastfetch
+    has switched between the two layouts more than once (see the module docstring).
+    """
+    candidates = [asset_name(system, machine)]
+    if (system or platform.system()) == "Darwin":
+        candidates.append(MACOS_UNIVERSAL)
+    return candidates
+
+
+def download_first(candidates, fetch):
+    """Download the first candidate the release has; return (asset, local path).
+
+    `fetch(asset)` downloads one asset and returns its path; it is a parameter so the
+    self-test can drive this without the network. ONLY a 404 moves on to the next name: a
+    network error or a 5xx is a real failure, and trying another name would turn it into a
+    misleading "the release has none of these".
+    """
+    missing = []
+    for asset in candidates:
+        try:
+            return asset, fetch(asset)
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+            print(f"{asset} is not in this release (404)", flush=True)
+            missing.append(asset)
+    raise SystemExit("install_fastfetch: the latest release has none of " + ", ".join(missing))
 
 def binary_name(system=None):
     return "fastfetch.exe" if (system or platform.system()) == "Windows" else "fastfetch"
@@ -80,14 +123,18 @@ def find_binary_dir(root, system=None):
 
 
 def install_latest_release():
-    asset = asset_name()
-    url = RELEASE_URL.format(asset=asset)
     if os.path.isdir(INSTALL_ROOT):
         shutil.rmtree(INSTALL_ROOT)
     os.makedirs(INSTALL_ROOT)
-    archive = os.path.join(INSTALL_ROOT, asset)
-    print(f"Downloading {url}", flush=True)
-    urllib.request.urlretrieve(url, archive)
+
+    def fetch(asset):
+        url = RELEASE_URL.format(asset=asset)
+        archive = os.path.join(INSTALL_ROOT, asset)
+        print(f"Downloading {url}", flush=True)
+        urllib.request.urlretrieve(url, archive)
+        return archive
+
+    asset, archive = download_first(asset_candidates(), fetch)
     if asset.endswith(".zip"):
         with zipfile.ZipFile(archive) as z:
             z.extractall(INSTALL_ROOT)
@@ -167,6 +214,57 @@ def _self_test():
             failures.append(f"asset_name({system}, {machine}) = {got}, want {want}")
     if binary_name("Windows") != "fastfetch.exe" or binary_name("Linux") != "fastfetch":
         failures.append("binary_name")
+
+    # macOS falls back to the universal archive; nothing else has a fallback to try.
+    for machine in ("arm64", "x86_64"):
+        got = asset_candidates("Darwin", machine)
+        if got[1:] != [MACOS_UNIVERSAL]:
+            failures.append(f"asset_candidates(Darwin, {machine}) = {got}, want universal last")
+    for system, machine in (("Linux", "x86_64"), ("Windows", "ARM64")):
+        if len(asset_candidates(system, machine)) != 1:
+            failures.append(f"asset_candidates({system}, {machine}) has a fallback")
+
+    # download_first, against a fake release. The 2.70.0 case: the first name 404s.
+    # Its 404 notices are the fakes', so they are kept out of the self-test's output.
+    import contextlib
+    import io
+    with contextlib.redirect_stdout(io.StringIO()):
+        def fake_release(have, other_error=None):
+            calls = []
+            def fetch(asset):
+                calls.append(asset)
+                if other_error:
+                    raise urllib.error.HTTPError(asset, other_error, "boom", None, None)
+                if asset not in have:
+                    raise urllib.error.HTTPError(asset, 404, "Not Found", None, None)
+                return "/x/" + asset
+            return fetch, calls
+        darwin = asset_candidates("Darwin", "arm64")
+        fetch, calls = fake_release({MACOS_UNIVERSAL})
+        try:
+            got = download_first(darwin, fetch)
+        except SystemExit as e:
+            got = e
+        if got != (MACOS_UNIVERSAL, "/x/" + MACOS_UNIVERSAL):
+            failures.append(f"download_first did not fall back to the universal archive: {got}")
+        fetch, calls = fake_release(set(darwin))
+        download_first(darwin, fetch)
+        if calls != darwin[:1]:
+            failures.append(f"download_first fetched {calls} when the first name existed")
+        fetch, _ = fake_release(set(), other_error=503)
+        try:
+            download_first(darwin, fetch)
+            failures.append("download_first swallowed a 503")
+        except urllib.error.HTTPError:
+            pass
+        except SystemExit:
+            failures.append("download_first turned a 503 into 'release has none of these'")
+        fetch, _ = fake_release(set())
+        try:
+            download_first(darwin, fetch)
+            failures.append("download_first returned with every name missing")
+        except SystemExit:
+            pass
 
     # The archive layouts, including the decoy that bit the first real install: a non-binary
     # file named exactly like the binary. The real one (usr/share/bash-completion/...) sorts
