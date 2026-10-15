@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792040729475,
+  "lastUpdate": 1792040729777,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -9667,6 +9667,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 302157135,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c8f788c68be3548b15ce4475f37417d630f2311c",
+          "message": "Record release notes after v0.20.23 (#297)\n\nNOTES.md: the newest released tag is v0.20.23, and three things the\nrelease ran into:\n\n- just aur-publish needs podman and an AUR SSH key on one host, and\n  none had both. chani has the key, gimli has podman; v0.20.23 went out\n  by running aur-render on gimli and the recipe's push steps on chani.\n- COPR's results URL now redirects to packages.redhat.com, so reading\n  a chroot's repodata needs curl -L.\n- zsh treats an unquoted =0.20.23 as a command lookup, which breaks\n  cargo install --version =X.\n\nretch-cli 0.20.23 -> 0.20.24.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-14T21:54:16-07:00",
+          "tree_id": "f64169d3afb7082f9361bf45d4209abdab4e3c94",
+          "url": "https://github.com/l1a/retch/commit/c8f788c68be3548b15ce4475f37417d630f2311c"
+        },
+        "date": 1792040729728,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 28496960.000000004,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2338722450,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1294551000,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 21086110,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 34565120.00000001,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 333719039.99999994,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 255122420.00000006,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 31018109.999999996,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 228.8238072503046,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.38294700929876,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 128.27311858154147,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 94.702941525304,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 42860.209425908964,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 549.1492794935664,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 878.3026317446258,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 279331242.5,
             "unit": "ns"
           }
         ]
