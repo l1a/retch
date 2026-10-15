@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792031340167,
+  "lastUpdate": 1792031920342,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2787,6 +2787,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 226.00437838149554,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b3630093a37b1ea5560ceb0b3eafb610d10c7f05",
+          "message": "Show macOS battery on AC as not charging (#294)\n\nA Mac on AC that is holding its charge (macOS's 80% limit, Optimized\nBattery Charging) reports IsCharging = No and FullyCharged = No, and\nretch printed it as \"discharging\". fastfetch says \"AC Connected\" on the\nsame machine.\n\nRead AppleSmartBattery's ExternalConnected as well. On AC with the\nbattery neither charging nor full the state is now Unknown, which\nalready renders \"not charging\" (Linux's sysfs \"Not charging\"). Without\nthe property the old answer is kept. The decision is a pure function,\nmac_battery_state, compiled under cfg(test) on every platform so CI\ntests it everywhere.\n\nBumps retch-cli to 0.20.21 and retch-sysinfo to 0.1.91.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-14T19:28:14-07:00",
+          "tree_id": "4cdecaed7e6a172bf9d6d524f302b9b8b4c5418b",
+          "url": "https://github.com/l1a/retch/commit/b3630093a37b1ea5560ceb0b3eafb610d10c7f05"
+        },
+        "date": 1792031920297,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 1531484.0999999999,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 300019053,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 251837687.7,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 917602.4000000001,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1906600.3,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 295616061.00000006,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 204542673.6,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1317336.2,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 370914544.225,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 667.3041127194176,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 69.802334986692,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.130963910696394,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 35.001037296472916,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 6227.238252501764,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 58093.518789311485,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 39073.48877085019,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 38503.88310074732,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 49366.21434584005,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 215.97519816420055,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 189.07478614043794,
             "unit": "ns"
           }
         ]
