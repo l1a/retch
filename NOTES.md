@@ -150,15 +150,24 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.21)
+## Current State (v0.20.22)
 
-`main` carries **`retch-cli` 0.20.21** / **`retch-sysinfo` 0.1.91**. Newest released tag is
+`main` carries **`retch-cli` 0.20.22** / **`retch-sysinfo` 0.1.91**. Newest released tag is
 **`v0.20.20`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
 (§6a). What is open is listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.22: the macOS benchmark installs fastfetch whichever archive layout it ships.**
+  fastfetch 2.70.0 (2026-10-14) published only `fastfetch-macos-universal.*`, after 2.69.0
+  had published only per-arch `fastfetch-macos-aarch64`/`-amd64` -- the second flip, since an
+  older downloader had broken the other way. `install_fastfetch.py --latest-release` 404'd and
+  the macOS arm64 job of Continuous Benchmarking on main failed for `b363009` (#294), so that
+  suite has no v0.20.21 point; the other four platforms published. macOS now tries the
+  per-arch name and falls back to universal (both keep the binary at `usr/bin/fastfetch`).
+  Only a 404 falls through: a network error or 5xx still fails loudly as itself.
 
 - **v0.20.21: a Mac on AC that is holding its charge says `not charging`, not
   `discharging`.** Found on chani (M3 Pro, macOS 27.0.1) at the 80% charge limit: IOKit
