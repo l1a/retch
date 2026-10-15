@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792031920654,
+  "lastUpdate": 1792031921016,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7957,6 +7957,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 284929410,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b3630093a37b1ea5560ceb0b3eafb610d10c7f05",
+          "message": "Show macOS battery on AC as not charging (#294)\n\nA Mac on AC that is holding its charge (macOS's 80% limit, Optimized\nBattery Charging) reports IsCharging = No and FullyCharged = No, and\nretch printed it as \"discharging\". fastfetch says \"AC Connected\" on the\nsame machine.\n\nRead AppleSmartBattery's ExternalConnected as well. On AC with the\nbattery neither charging nor full the state is now Unknown, which\nalready renders \"not charging\" (Linux's sysfs \"Not charging\"). Without\nthe property the old answer is kept. The decision is a pure function,\nmac_battery_state, compiled under cfg(test) on every platform so CI\ntests it everywhere.\n\nBumps retch-cli to 0.20.21 and retch-sysinfo to 0.1.91.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-14T19:28:14-07:00",
+          "tree_id": "4cdecaed7e6a172bf9d6d524f302b9b8b4c5418b",
+          "url": "https://github.com/l1a/retch/commit/b3630093a37b1ea5560ceb0b3eafb610d10c7f05"
+        },
+        "date": 1792031920961,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 25213330,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2344984780,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1293625270.0000002,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 17491620,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 29567390.000000007,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 325600620,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 223196980,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 25397230,
+            "unit": "ns",
+            "extra": "v0.20.21"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 244.40225951129315,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.421428018906888,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 118.18153793904324,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 103.50801867407385,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45160.15631902516,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 543.8916820879818,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 974.8418058008089,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 313469785,
             "unit": "ns"
           }
         ]
