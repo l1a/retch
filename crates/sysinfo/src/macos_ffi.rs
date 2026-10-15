@@ -1579,6 +1579,8 @@ pub struct MacBatteryRaw {
     pub design_mah: Option<u64>,
     pub is_charging: bool,
     pub fully_charged: bool,
+    /// Whether a power adapter is connected; None if the property is absent.
+    pub external_connected: Option<bool>,
     /// Minutes remaining; None if unknown (65535) or unavailable.
     pub time_remaining_mins: Option<u64>,
     pub vendor: Option<String>,
@@ -1604,6 +1606,7 @@ pub fn get_battery_raw() -> Option<MacBatteryRaw> {
         let design_mah = iokit_property_as_u64(service, "DesignCapacity");
         let is_charging = iokit_property_as_bool(service, "IsCharging").unwrap_or(false);
         let fully_charged = iokit_property_as_bool(service, "FullyCharged").unwrap_or(false);
+        let external_connected = iokit_property_as_bool(service, "ExternalConnected");
         // 65535 means unknown/unlimited (AC connected with no estimate); filter it out.
         let time_remaining_mins =
             iokit_property_as_u64(service, "TimeRemaining").filter(|&m| m < 65535);
@@ -1623,6 +1626,7 @@ pub fn get_battery_raw() -> Option<MacBatteryRaw> {
             design_mah,
             is_charging,
             fully_charged,
+            external_connected,
             time_remaining_mins,
             vendor,
             model,

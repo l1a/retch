@@ -133,6 +133,30 @@ pub fn get_battery_info() -> Option<BatteryInfo> {
     None
 }
 
+/// Classify a macOS `AppleSmartBattery` reading.
+///
+/// `IsCharging = No` does not mean the Mac is on battery: on AC, macOS holds the charge
+/// (the 80% charge limit, Optimized Battery Charging), and the battery then neither
+/// charges nor discharges. That case is `Unknown`, which renders as `not charging`, the
+/// same as Linux's sysfs `Not charging`. Without `ExternalConnected` the old answer,
+/// `Discharging`, is kept.
+#[cfg(any(target_os = "macos", test))]
+fn mac_battery_state(
+    fully_charged: bool,
+    is_charging: bool,
+    external_connected: Option<bool>,
+) -> BatteryState {
+    if fully_charged {
+        BatteryState::Full
+    } else if is_charging {
+        BatteryState::Charging
+    } else if external_connected == Some(true) {
+        BatteryState::Unknown
+    } else {
+        BatteryState::Discharging
+    }
+}
+
 #[cfg(target_os = "macos")]
 pub fn get_battery_info() -> Option<BatteryInfo> {
     let raw = crate::macos_ffi::get_battery_raw()?;
@@ -154,13 +178,7 @@ pub fn get_battery_info() -> Option<BatteryInfo> {
         Some((h_max / design as f32) * 100.0)
     });
 
-    let state = if raw.fully_charged {
-        BatteryState::Full
-    } else if raw.is_charging {
-        BatteryState::Charging
-    } else {
-        BatteryState::Discharging
-    };
+    let state = mac_battery_state(raw.fully_charged, raw.is_charging, raw.external_connected);
 
     let time_remaining = raw
         .time_remaining_mins
@@ -530,4 +548,50 @@ fn read_file_to_string<P: AsRef<Path>>(path: P) -> Option<String> {
 #[cfg(target_os = "linux")]
 fn read_file_to_num<T: std::str::FromStr, P: AsRef<Path>>(path: P) -> Option<T> {
     read_file_to_string(path).and_then(|s| s.parse().ok())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{mac_battery_state, BatteryState};
+
+    // The reported case: plugged in, battery held at 80% by macOS. IOKit says
+    // IsCharging = No, FullyCharged = No, ExternalConnected = Yes. This printed
+    // "discharging" until it checked the adapter.
+    #[test]
+    fn mac_on_ac_holding_charge_is_not_discharging() {
+        assert_eq!(
+            mac_battery_state(false, false, Some(true)),
+            BatteryState::Unknown
+        );
+    }
+
+    #[test]
+    fn mac_on_battery_is_discharging() {
+        assert_eq!(
+            mac_battery_state(false, false, Some(false)),
+            BatteryState::Discharging
+        );
+    }
+
+    // No ExternalConnected property: keep the answer retch gave before it was read.
+    #[test]
+    fn mac_without_adapter_property_keeps_old_answer() {
+        assert_eq!(
+            mac_battery_state(false, false, None),
+            BatteryState::Discharging
+        );
+    }
+
+    #[test]
+    fn mac_charging_and_full_win_over_the_adapter_flag() {
+        assert_eq!(
+            mac_battery_state(false, true, Some(true)),
+            BatteryState::Charging
+        );
+        assert_eq!(
+            mac_battery_state(true, false, Some(true)),
+            BatteryState::Full
+        );
+        assert_eq!(mac_battery_state(true, true, None), BatteryState::Full);
+    }
 }
