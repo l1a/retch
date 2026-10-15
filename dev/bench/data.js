@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792040728562,
+  "lastUpdate": 1792040729475,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7863,6 +7863,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 433.7468760226766,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c8f788c68be3548b15ce4475f37417d630f2311c",
+          "message": "Record release notes after v0.20.23 (#297)\n\nNOTES.md: the newest released tag is v0.20.23, and three things the\nrelease ran into:\n\n- just aur-publish needs podman and an AUR SSH key on one host, and\n  none had both. chani has the key, gimli has podman; v0.20.23 went out\n  by running aur-render on gimli and the recipe's push steps on chani.\n- COPR's results URL now redirects to packages.redhat.com, so reading\n  a chroot's repodata needs curl -L.\n- zsh treats an unquoted =0.20.23 as a command lookup, which breaks\n  cargo install --version =X.\n\nretch-cli 0.20.23 -> 0.20.24.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-14T21:54:16-07:00",
+          "tree_id": "f64169d3afb7082f9361bf45d4209abdab4e3c94",
+          "url": "https://github.com/l1a/retch/commit/c8f788c68be3548b15ce4475f37417d630f2311c"
+        },
+        "date": 1792040729420,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 354016166.70000005,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 997923779.1,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1008625420.7,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 18441950.200000003,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 375711475,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 558071721,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 349293458.40000004,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 9896687.400000002,
+            "unit": "ns",
+            "extra": "v0.20.24"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 364295181.25,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 376.12105216794345,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 117.28660794487732,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.8456700927324932,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 66.57003372026115,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4474.1171557035905,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1078.423875554945,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 342.0999977444221,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 103032.59195551526,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 327.0513433011313,
             "unit": "ns"
           }
         ]
