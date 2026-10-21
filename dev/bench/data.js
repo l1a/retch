@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792595677439,
+  "lastUpdate": 1792597877700,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -720,6 +720,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 534893590.1,
             "extra": "v0.20.24; battery"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "7b8fe2e624819a680db2e0a9d53e3c2ff5cf92a6",
+          "message": "Bump libc to 0.2.191 (consolidate #298) (#299)\n\nRolls Dependabot #298 onto a gated branch so the version bump, NOTES\nheader and man-page regeneration it skips are done. Lockfile-only: both\ncrates' \"0.2\" spec already admits libc 0.2.191, and the Cargo.lock\nlines are identical to Dependabot's.\n\nretch-sysinfo stays at 0.1.91: a lockfile change alters nothing that\ncrate publishes.\n\nretch-cli 0.20.24 -> 0.20.25.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-21T08:50:41-07:00",
+          "tree_id": "b47069d397a2fa415048399d8c3d37e546d8d089",
+          "url": "https://github.com/l1a/retch/commit/7b8fe2e624819a680db2e0a9d53e3c2ff5cf92a6"
+        },
+        "date": 1792597877700,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 4780481.899999999,
+            "extra": "v0.20.25; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 13817968.800000003,
+            "extra": "v0.20.25; battery"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 2841470.1,
+            "extra": "v0.20.25; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2047225.3000000003,
+            "extra": "v0.20.25; battery"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 248292196.69999996,
+            "extra": "v0.20.25; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 521033213.10000014,
+            "extra": "v0.20.25; battery"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 434972719.40000004,
+            "extra": "v0.20.25; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 536089376.90000004,
+            "extra": "v0.20.25; battery"
           }
         ]
       }
