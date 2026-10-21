@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792599835394,
+  "lastUpdate": 1792599835616,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -8851,6 +8851,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 380.77988112396207,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d485e1a7bed3201d40b5138243c3ea96403fb647",
+          "message": "Note that syncing main publishes a benchmark (#300)\n\nThe post-merge hook fires after any merge onto main, a fast-forward\npull included, and pushes a local benchmark point to gh-pages. Record\nthat in NOTES 7.5 with the two ways to sync without publishing\n(GIT_NO_BENCH=1, or branch from origin/main), and the --no-track trap\nin the second: a branch tracking origin/main makes just open-pr skip\nits push.\n\nDocs-only. retch-cli 0.20.25 -> 0.20.26.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-21T09:13:07-07:00",
+          "tree_id": "ee5373a58754448005eabf22e9420c2a687af91b",
+          "url": "https://github.com/l1a/retch/commit/d485e1a7bed3201d40b5138243c3ea96403fb647"
+        },
+        "date": 1792599835582,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 409119291.5,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1125465699.8999999,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1024480262.3999997,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 32740429.1,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 333937891.70000005,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 618514445.8000001,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 437270116.6,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 19099741.7,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 437359811.475,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 527.1742951803558,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 168.56913366571158,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.779254311670666,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 105.01492101836541,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6713.908707489172,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1531.7736008622412,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 445.2715302268276,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 160470.4558070426,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 476.24637440297954,
             "unit": "ns"
           }
         ]
