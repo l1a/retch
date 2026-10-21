@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792599835616,
+  "lastUpdate": 1792599836769,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10879,6 +10879,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 368139397.5,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d485e1a7bed3201d40b5138243c3ea96403fb647",
+          "message": "Note that syncing main publishes a benchmark (#300)\n\nThe post-merge hook fires after any merge onto main, a fast-forward\npull included, and pushes a local benchmark point to gh-pages. Record\nthat in NOTES 7.5 with the two ways to sync without publishing\n(GIT_NO_BENCH=1, or branch from origin/main), and the --no-track trap\nin the second: a branch tracking origin/main makes just open-pr skip\nits push.\n\nDocs-only. retch-cli 0.20.25 -> 0.20.26.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-21T09:13:07-07:00",
+          "tree_id": "ee5373a58754448005eabf22e9420c2a687af91b",
+          "url": "https://github.com/l1a/retch/commit/d485e1a7bed3201d40b5138243c3ea96403fb647"
+        },
+        "date": 1792599836736,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 29666180.000000004,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2344123490.0000005,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1306388960,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 19984340.000000007,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 33595959.99999999,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 340675380,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 231668320.00000003,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 30946230,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 259.1518916228009,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 6.269848465257219,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 135.7072568411476,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 97.80325324361182,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41862.29413661414,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 519.0679951745243,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 956.8137350084587,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 305887905,
             "unit": "ns"
           }
         ]
