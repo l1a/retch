@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792598490702,
+  "lastUpdate": 1792598490908,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10309,6 +10309,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 279331242.5,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7b8fe2e624819a680db2e0a9d53e3c2ff5cf92a6",
+          "message": "Bump libc to 0.2.191 (consolidate #298) (#299)\n\nRolls Dependabot #298 onto a gated branch so the version bump, NOTES\nheader and man-page regeneration it skips are done. Lockfile-only: both\ncrates' \"0.2\" spec already admits libc 0.2.191, and the Cargo.lock\nlines are identical to Dependabot's.\n\nretch-sysinfo stays at 0.1.91: a lockfile change alters nothing that\ncrate publishes.\n\nretch-cli 0.20.24 -> 0.20.25.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-21T08:50:41-07:00",
+          "tree_id": "b47069d397a2fa415048399d8c3d37e546d8d089",
+          "url": "https://github.com/l1a/retch/commit/7b8fe2e624819a680db2e0a9d53e3c2ff5cf92a6"
+        },
+        "date": 1792598490875,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 29058890.000000004,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2335885500,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1299868080,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 20336550,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 32567330,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 418757250.00000006,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 240472640.00000003,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 29709229.999999996,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 224.76332951735225,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 7.337735417284664,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 134.42171982173903,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 94.20577910415344,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 44305.91227304611,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 550.9561379418907,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 780.9806206989667,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 368139397.5,
             "unit": "ns"
           }
         ]
