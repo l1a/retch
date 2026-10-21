@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792598489174,
+  "lastUpdate": 1792598490456,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6185,6 +6185,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 260.682816158628,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7b8fe2e624819a680db2e0a9d53e3c2ff5cf92a6",
+          "message": "Bump libc to 0.2.191 (consolidate #298) (#299)\n\nRolls Dependabot #298 onto a gated branch so the version bump, NOTES\nheader and man-page regeneration it skips are done. Lockfile-only: both\ncrates' \"0.2\" spec already admits libc 0.2.191, and the Cargo.lock\nlines are identical to Dependabot's.\n\nretch-sysinfo stays at 0.1.91: a lockfile change alters nothing that\ncrate publishes.\n\nretch-cli 0.20.24 -> 0.20.25.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-21T08:50:41-07:00",
+          "tree_id": "b47069d397a2fa415048399d8c3d37e546d8d089",
+          "url": "https://github.com/l1a/retch/commit/7b8fe2e624819a680db2e0a9d53e3c2ff5cf92a6"
+        },
+        "date": 1792598490423,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2244835.1999999997,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 279178379.7,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252364886.8,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1378570.5,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3243582.2,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 390755024.1,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 204931812.40000007,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2299203.0000000005,
+            "unit": "ns",
+            "extra": "v0.20.25"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 352205283.925,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 989.3214768220126,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 106.75379450188811,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9472899733982296,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 46.526856739598564,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8886.205600029993,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 82937.28879323618,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 5835.687321641179,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4029.6171219834127,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 70694.20780960904,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 278.9252695435582,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 265.04594463518396,
             "unit": "ns"
           }
         ]
