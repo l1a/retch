@@ -150,9 +150,9 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.25)
+## Current State (v0.20.26)
 
-`main` carries **`retch-cli` 0.20.25** / **`retch-sysinfo` 0.1.91**. Newest released tag is
+`main` carries **`retch-cli` 0.20.26** / **`retch-sysinfo` 0.1.91**. Newest released tag is
 **`v0.20.23`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
@@ -1230,6 +1230,18 @@ nobody asked.
   The user's `Bash(just merge-pr)` allow rule matches **only the bare command**: on 2026-10-11
   `git rev-parse ... && just merge-pr | tail` was blocked while plain `just merge-pr` ran. Run
   the gated recipes on their own, not chained or piped.
+- **Bringing local `main` up to date is a merge, so it publishes a benchmark.** The `post-merge`
+  hook (`scripts/hooks/post-merge`) fires after *any* merge onto `main`, including a fast-forward
+  `git pull` or `git merge --ff-only`. It builds a release binary, runs the four hyperfine pairs
+  and pushes a point to gh-pages. On 2026-10-21 an agent updating a local `main` that was four
+  commits behind on arrakis pushed `34e8322` for `c8f788c`, which nobody had asked for. The point
+  itself was valid (that merge had happened on chani, so the Linux suite had none), but it was a
+  public push, measured on battery because that is how the laptop happened to be. To sync without
+  publishing, run `GIT_NO_BENCH=1 git pull`, or skip the merge: `git fetch`, then branch from
+  `origin/main`. **Pass `--no-track` when you do:** `git switch -c <branch> origin/main` makes
+  `origin/main` the new branch's upstream, and `just open-pr` pushes only a branch with no
+  upstream, so it skips the push and `gh pr create` has no remote branch to open from. (A bare
+  `git push` is refused under the default `push.default=simple`, since the names differ.)
 - **An unpinned tool can change what you measure, and how its output looks, under you.**
   hyperfine 2.0.0 (2026-10) switched the default to no shell, split commands POSIX-style
   (eating Windows backslashes) and replaced its JSON schema, all in one release, and CI picked
