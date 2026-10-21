@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792599224270,
+  "lastUpdate": 1792599835167,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3879,6 +3879,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 271.70068647555775,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d485e1a7bed3201d40b5138243c3ea96403fb647",
+          "message": "Note that syncing main publishes a benchmark (#300)\n\nThe post-merge hook fires after any merge onto main, a fast-forward\npull included, and pushes a local benchmark point to gh-pages. Record\nthat in NOTES 7.5 with the two ways to sync without publishing\n(GIT_NO_BENCH=1, or branch from origin/main), and the --no-track trap\nin the second: a branch tracking origin/main makes just open-pr skip\nits push.\n\nDocs-only. retch-cli 0.20.25 -> 0.20.26.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-21T09:13:07-07:00",
+          "tree_id": "ee5373a58754448005eabf22e9420c2a687af91b",
+          "url": "https://github.com/l1a/retch/commit/d485e1a7bed3201d40b5138243c3ea96403fb647"
+        },
+        "date": 1792599835130,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2742176,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 259265362.20000002,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 251961231.40000004,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1326334.5999999999,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2172913.1,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 369852676,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205239982.10000002,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1608835.2,
+            "unit": "ns",
+            "extra": "v0.20.26"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 285505803.5,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1492.5670468349049,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 61.918025419349945,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.2958832736476813,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 28.815013236346864,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 15120.75266105432,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 163978.8032674303,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 11208.098544750694,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 7564.081904187506,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 147326.83733921143,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 161.8203798329227,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 155.70206723271457,
             "unit": "ns"
           }
         ]
