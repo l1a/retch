@@ -150,15 +150,25 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.26)
+## Current State (v0.20.27)
 
-`main` carries **`retch-cli` 0.20.26** / **`retch-sysinfo` 0.1.91**. Newest released tag is
-**`v0.20.23`**.
+`main` carries **`retch-cli` 0.20.27** / **`retch-sysinfo` 0.1.92**. Newest released tag is
+**`v0.20.26`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
 (§6a). What is open is listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.27: `--full` no longer pays `temp` then `wm` after weather, and the CLI bench
+  refuses a `--long`/`--full` pair whose network modules skipped.** On Linux x64 CI
+  (d485e1a) retch `--full` is 370 ms vs `--long` 205 ms, and rust.yml's fedora-x64
+  `--full` printed `Weather: Des Moines, Iowa`. fastfetch `--full` is only 7 ms above
+  its `--long` (259 vs 252). A real wttr.in request from that runner is ~165–370 ms, so
+  that 7 ms is fail-fast, not weather. `cli_bench.py` now runs each command once before
+  hyperfine and exits if `Public IP` (and `Weather` on `--full`) is missing. `temp` and
+  `wm` start with the other borrow-nothing probes so they overlap weather instead of
+  adding ~24 ms after it.
 
 - **v0.20.22: the macOS benchmark installs fastfetch whichever archive layout it ships.**
   fastfetch 2.70.0 (2026-10-14) published only `fastfetch-macos-universal.*`, after 2.69.0
@@ -682,14 +692,15 @@ Adds over long:
 
 Live items only. Completed items are removed rather than struck through — `git log` has them.
 
-- **Clear on Linux and macOS locally and on macOS CI; behind on Linux CI `--full`; Windows
-  unexamined.** CI dashboard, read 2026-10-11:
+- **Clear on Linux and macOS locally and on macOS CI; Linux CI `--full` was an unfair
+  comparison (fastfetch weather skipped); Windows `--short` still unexamined.** Dashboard
+  read 2026-10-23 (`d485e1a`):
   - **macOS CI**: ahead in `--short`/`--long`/`--full` since v0.20.15, default about level
     (v0.20.19: 371 vs 361 ms; v0.20.15–18: 273–319 vs 317–453).
-  - **Linux x64 CI `--full` is behind on every v0.20.x point** (v0.20.19: 566 vs 278 ms; best
-    294 vs 279). fastfetch's `--full` there is only ~26 ms above its `--long`, so **first check
-    that its weather module really returned weather on the runner** (§7.1, "check it did the
-    work") rather than failing fast; on corrino fastfetch's `--full` is ~70–80 ms above its `--long`.
+  - **Linux x64 CI `--full`**: retch 370 ms vs fastfetch 259 ms. rust.yml's fedora-x64
+    `--full` printed weather; fastfetch's `--full` is only 7 ms above its `--long`, so it
+    did not. `cli_bench.py` now fails the pair instead of publishing that. A later point
+    that still has weather on both sides is the first real remaining gap.
   - **Windows x64 CI `--short`**: level to slightly behind (27–32 vs 21–30 ms).
 
   Local figures follow.
@@ -705,8 +716,7 @@ Live items only. Completed items are removed rather than struck through — `git
   - **Windows `cpu-usage` still includes retch's own CPU**: it diffs `GetSystemTimes` across the
     run without the v0.19.2 correction. Same fix via `GetProcessTimes`, and child processes.
   - **`--full`** — ahead since v0.20.10 (weather over plain HTTP). Still bound by `weather`
-    (~375 ms). After it, `temp` then `wm` run serially, ~24 ms together; running them
-    concurrently is the next small win.
+    (~375 ms). `temp` and `wm` overlap it since v0.20.27.
   - **macOS default** — was 848 vs 414 ms on CI; the cause was `phys-disk`'s serial
     `diskutil` spawns, fixed in v0.20.14 (now ahead locally, 108–126 vs 145–161 ms; CI about
     level, see above). What is left on chani (`RETCH_TIMING=1`): `phys-mem` ~80 ms, then
@@ -971,7 +981,14 @@ nobody asked.
   data: `fastfetch` and `fastfetch -c none` timed identically on every runner. **Pin the other
   tool's configuration explicitly, derive it from the same field table as ours, and check it
   did the work** — its network modules really returned a public IP and weather, rather than
-  "winning" by failing fast.
+  "winning" by failing fast. **The `--full` minus `--long` delta is not that check.** On
+  Linux x64 CI (`d485e1a`) fastfetch's `--full` is 7 ms above its `--long` while retch's is
+  165 ms above, and rust.yml's fedora-x64 `--full` printed `Weather: Des Moines, Iowa`. A
+  real wttr.in request from that runner is hundreds of milliseconds; 7 ms is fail-fast.
+  Reproduce-in-fedora-locally is also not the check: `fedora:latest` on arrakis with
+  `--network=host` prints weather for fastfetch 2.70.0, which is a different network than
+  GitHub's container NAT. `cli_bench.py` now reads the labelled lines from one run of each
+  command before hyperfine and refuses the pair if they are missing.
 - **Finding a file by name alone can pick a decoy that "works".** The fastfetch release tarball
   also ships its bash completion as `.../completions/fastfetch`; an `os.walk` that stopped at
   the first `fastfetch` chose it, and running it "succeeded" with an empty version. Only the

@@ -235,6 +235,27 @@ fn own_cpu_refresh_kind() -> sysinfo::CpuRefreshKind {
     sysinfo::CpuRefreshKind::nothing()
 }
 
+/// Display lines for every sensor that reported a positive temperature.
+fn temp_lines(components: &Components) -> Vec<String> {
+    components
+        .iter()
+        .filter_map(|c| {
+            c.temperature()
+                .and_then(|t| (t > 0.0).then(|| format!("{}: {:.0}°C", c.label(), t)))
+        })
+        .collect()
+}
+
+/// CPU and core readings first; other sensors keep their relative order after them.
+fn sort_temps_cpu_first(temps: &mut [String]) {
+    temps.sort_by_key(|a| std::cmp::Reverse(is_cpu_temp(a)));
+}
+
+fn is_cpu_temp(line: &str) -> bool {
+    let lower = line.to_lowercase();
+    lower.contains("cpu") || lower.contains("core")
+}
+
 /// The CPU name as `cpu` reports it: the first CPU's brand, or `Unknown CPU`.
 ///
 /// On Windows an empty brand falls back to the registry's `ProcessorNameString`: sysinfo
@@ -563,6 +584,26 @@ impl SystemInfo {
                 crate::timing::timed("weather", || {
                     crate::weather::detect_weather(weather_location.as_deref(), weather_unit)
                 })
+            }))
+        } else {
+            None
+        };
+        // `temp` and `wm` borrow nothing from `sys`. Until v0.20.27 they ran serially
+        // after the scope waited for weather (~24 ms together on Linux). Starting them
+        // here overlaps that cost with weather instead of adding it after.
+        let temp_handle = if should_collect("temp") {
+            Some(std::thread::spawn(|| {
+                crate::timing::timed(
+                    "temp",
+                    || temp_lines(&Components::new_with_refreshed_list()),
+                )
+            }))
+        } else {
+            None
+        };
+        let wm_handle = if should_collect("wm") || should_collect("window manager") {
+            Some(std::thread::spawn(|| {
+                crate::timing::timed("wm", crate::wm::detect_wm)
             }))
         } else {
             None
@@ -927,29 +968,10 @@ impl SystemInfo {
             String::new()
         };
 
-        let mut temps: Vec<String> = if should_collect("temp") {
-            crate::timing::timed("temp", Components::new_with_refreshed_list)
-                .iter()
-                .filter_map(|c| {
-                    c.temperature().and_then(|t| {
-                        if t > 0.0 {
-                            Some(format!("{}: {:.0}°C", c.label(), t))
-                        } else {
-                            None
-                        }
-                    })
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
-
-        // Sort so CPU temperatures appear first
-        temps.sort_by(|a, b| {
-            let a_cpu = a.to_lowercase().contains("cpu") || a.to_lowercase().contains("core");
-            let b_cpu = b.to_lowercase().contains("cpu") || b.to_lowercase().contains("core");
-            b_cpu.cmp(&a_cpu)
-        });
+        let mut temps = temp_handle
+            .map(|h| h.join().unwrap_or_default())
+            .unwrap_or_default();
+        sort_temps_cpu_first(&mut temps);
 
         let boot_timestamp = crate::timing::timed("boot-time", System::boot_time);
         let boot_dt = chrono::Local
@@ -1205,11 +1227,7 @@ impl SystemInfo {
             None
         };
 
-        let wm = if should_collect("wm") || should_collect("window manager") {
-            crate::timing::timed("wm", crate::wm::detect_wm)
-        } else {
-            None
-        };
+        let wm = wm_handle.and_then(|h| h.join().ok().flatten());
 
         let dns = if should_collect("dns") {
             crate::timing::timed("dns", crate::network::detect_dns)
@@ -2592,6 +2610,53 @@ mod tests {
         assert!(info.cpu.is_empty());
         assert_eq!(info.cpu_cores, 0);
         assert!(info.cpu_core_info.is_empty());
+    }
+
+    #[test]
+    fn sort_temps_puts_cpu_and_core_first() {
+        let mut temps = vec![
+            "nvme: 40°C".into(),
+            "CPU: 55°C".into(),
+            "wifi: 30°C".into(),
+            "Core 0: 54°C".into(),
+        ];
+        sort_temps_cpu_first(&mut temps);
+        assert!(
+            is_cpu_temp(&temps[0]) && is_cpu_temp(&temps[1]),
+            "CPU/core lines first: {temps:?}"
+        );
+        assert!(!is_cpu_temp(&temps[2]) && !is_cpu_temp(&temps[3]));
+    }
+
+    #[test]
+    fn temp_and_wm_stay_empty_when_not_requested() {
+        let info = collect_fields(&["os"]);
+        assert!(info.temps.is_empty());
+        assert!(info.wm.is_none());
+    }
+
+    /// Sensor labels only: live readings move by a degree between two hwmon walks,
+    /// and sysinfo's enumeration order is not stable, so comparing the formatted
+    /// lines would flake (seen as `mt7925` 43 vs 45 °C and a reshuffled nvme list).
+    fn temp_sensor_labels(temps: &[String]) -> std::collections::BTreeSet<&str> {
+        temps
+            .iter()
+            .map(|line| line.split_once(':').map(|(n, _)| n).unwrap_or(line))
+            .collect()
+    }
+
+    /// The concurrent `temp`/`wm` threads must still fill both fields. A join that
+    /// dropped a handle would show here as empty-when-requested or a different WM.
+    #[test]
+    fn temp_and_wm_together_match_each_field_alone() {
+        let together = collect_fields(&["temp", "wm"]);
+        let temp_only = collect_fields(&["temp"]);
+        let wm_only = collect_fields(&["wm"]);
+        assert_eq!(
+            temp_sensor_labels(&together.temps),
+            temp_sensor_labels(&temp_only.temps)
+        );
+        assert_eq!(together.wm, wm_only.wm);
     }
 
     #[test]
