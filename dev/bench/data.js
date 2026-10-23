@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792797215572,
+  "lastUpdate": 1792797215806,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13803,6 +13803,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 275405220,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d755c1b4920cd8b578b1e3a7465dae3f96e1f883",
+          "message": "Overlap temp/wm; refuse skipped weather (#301)\n\n* Overlap temp/wm; refuse skipped weather\n\n--full no longer pays temp then wm after weather\n(~21 ms). CLI benches fail if Public IP or Weather\nis missing, so Linux CI cannot win by failing fast.\n\nCo-authored-by: Ken Tobias <l1a@users.noreply.github.com>\n\n* Handle Windows bench UTF-8 I/O\n\nDecode captured stdout as UTF-8 and print via\nconsole_safe so cp1252 cannot crash on weather emoji.\n\nAssisted-By: Composer\n\nCo-authored-by: Ken Tobias <l1a@users.noreply.github.com>\n\n---------\n\nCo-authored-by: Ken Tobias <l1a@users.noreply.github.com>\nCo-authored-by: Cursor Agent <cursoragent@cursor.com>",
+          "timestamp": "2026-10-23T16:02:49-07:00",
+          "tree_id": "49b6c1563e755ad02c7fb5666baa89af24e01638",
+          "url": "https://github.com/l1a/retch/commit/d755c1b4920cd8b578b1e3a7465dae3f96e1f883"
+        },
+        "date": 1792797215769,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 42697959.99999999,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2391696490,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1311209000,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 23837950,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 35765320,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 433785420.00000006,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 227326610.00000003,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 30436619.999999996,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 181.35060483940705,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9481441312268446,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 95.20406119034459,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 76.21898888675216,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46765.52351104739,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 439.65732167124077,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 679.2315419586506,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 298064315,
             "unit": "ns"
           }
         ]
