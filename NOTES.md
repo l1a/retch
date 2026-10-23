@@ -1265,6 +1265,14 @@ nobody asked.
   it up only where a fallback ran `cargo install hyperfine` unpinned. Pass the behaviour you
   depend on as an explicit flag (`--shell=none`, which 1.13+ also accepts), read the output by
   its documented schema version, and test a parser against a real export from each version.
+- **Locale encoding bites twice on Windows CI: decode *and* print.** Weather lines carry
+  emoji. `subprocess.run(..., text=True)` raised `UnicodeDecodeError` under a single-byte
+  code page; after capturing as UTF-8 bytes, `print` of the same value raised
+  `UnicodeEncodeError` on cp1252 stdout (Windows x64/arm64 Continuous Benchmarking on
+  `460e6fb`) and aborted the job *after* the pair had already done the work. Capture bytes
+  and decode as UTF-8 (`errors="replace"`); print through a console-safe encode/decode so
+  the diagnostic line cannot take the job down. Never rely on `text=True` or bare `print`
+  for tool output that may be non-ASCII.
 - **zsh expands a word that starts with `=` as a command path**, so
   `cargo install retch-cli --version =0.20.23` fails with `0.20.23 not found` before cargo
   runs. Quote it: `--version '=0.20.23'`.
