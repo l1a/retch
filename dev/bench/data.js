@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792797215089,
+  "lastUpdate": 1792797215324,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -9309,6 +9309,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 476.24637440297954,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d755c1b4920cd8b578b1e3a7465dae3f96e1f883",
+          "message": "Overlap temp/wm; refuse skipped weather (#301)\n\n* Overlap temp/wm; refuse skipped weather\n\n--full no longer pays temp then wm after weather\n(~21 ms). CLI benches fail if Public IP or Weather\nis missing, so Linux CI cannot win by failing fast.\n\nCo-authored-by: Ken Tobias <l1a@users.noreply.github.com>\n\n* Handle Windows bench UTF-8 I/O\n\nDecode captured stdout as UTF-8 and print via\nconsole_safe so cp1252 cannot crash on weather emoji.\n\nAssisted-By: Composer\n\nCo-authored-by: Ken Tobias <l1a@users.noreply.github.com>\n\n---------\n\nCo-authored-by: Ken Tobias <l1a@users.noreply.github.com>\nCo-authored-by: Cursor Agent <cursoragent@cursor.com>",
+          "timestamp": "2026-10-23T16:02:49-07:00",
+          "tree_id": "49b6c1563e755ad02c7fb5666baa89af24e01638",
+          "url": "https://github.com/l1a/retch/commit/d755c1b4920cd8b578b1e3a7465dae3f96e1f883"
+        },
+        "date": 1792797215286,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 361150171.00000006,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1010082262.4000001,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1007488070.9000002,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 18859916.80000001,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 361079508.40000004,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 493850879.20000017,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 371438787.30000013,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 10283195.700000001,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 293458036.375,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 448.95854750918,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 168.8403269011993,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.1181999521100088,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 90.98918286023388,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5705.135913476468,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1494.3308761104213,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 438.6073255504824,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 109372.8737197014,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 433.6076749662467,
             "unit": "ns"
           }
         ]
