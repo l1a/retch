@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792796606784,
+  "lastUpdate": 1792797214852,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4083,6 +4083,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 155.70206723271457,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d755c1b4920cd8b578b1e3a7465dae3f96e1f883",
+          "message": "Overlap temp/wm; refuse skipped weather (#301)\n\n* Overlap temp/wm; refuse skipped weather\n\n--full no longer pays temp then wm after weather\n(~21 ms). CLI benches fail if Public IP or Weather\nis missing, so Linux CI cannot win by failing fast.\n\nCo-authored-by: Ken Tobias <l1a@users.noreply.github.com>\n\n* Handle Windows bench UTF-8 I/O\n\nDecode captured stdout as UTF-8 and print via\nconsole_safe so cp1252 cannot crash on weather emoji.\n\nAssisted-By: Composer\n\nCo-authored-by: Ken Tobias <l1a@users.noreply.github.com>\n\n---------\n\nCo-authored-by: Ken Tobias <l1a@users.noreply.github.com>\nCo-authored-by: Cursor Agent <cursoragent@cursor.com>",
+          "timestamp": "2026-10-23T16:02:49-07:00",
+          "tree_id": "49b6c1563e755ad02c7fb5666baa89af24e01638",
+          "url": "https://github.com/l1a/retch/commit/d755c1b4920cd8b578b1e3a7465dae3f96e1f883"
+        },
+        "date": 1792797214809,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2564054.6,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 259147566.3,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 251794316.5,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1274406.6000000003,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2095388.2000000002,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 469225349.79999995,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 204783744.7,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1563517.6,
+            "unit": "ns",
+            "extra": "v0.20.27"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 302057215.1,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1415.1890054532882,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 61.231959416063454,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.165855928252337,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 26.906666240706663,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 14040.135662612543,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 154268.0429049849,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 10672.359285730055,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 7367.631830532804,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 137162.71623698296,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 151.21878797251452,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 137.6820843910894,
             "unit": "ns"
           }
         ]
