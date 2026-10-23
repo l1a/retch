@@ -21,11 +21,17 @@ Usage (from anywhere; it runs hyperfine from the repository root):
 
 Writes `hyperfine_<mode>.json` per mode into --out-dir (default: the current directory),
 which is the glob `parse_criterion.py` collects.
+
+Before timing `--long` / `--full`, each command is run once and must print the network
+fields that mode claims to measure (Public IP; Weather too on `--full`). A module that
+fails fast is not the same work, and the CI `--full` gap against fastfetch was unreadable
+until that was checked (NOTES §5, §7.1).
 """
 
 import argparse
 import os
 import platform
+import re
 import shlex
 import shutil
 import subprocess
@@ -82,6 +88,101 @@ def export_name(mode):
 # apt, dnf, brew and choco, but 2.0 from `cargo install`). `--shell=none` exists since 1.13.
 SHELL_ARGS = ("--shell=none",)
 
+# Labels as both tools print them. `--long` already does the public-IP lookup; `--full`
+# adds weather. default/short have no network modules, so they are not checked.
+NETWORK_FIELDS = {
+    "long": ("Public IP",),
+    "full": ("Public IP", "Weather"),
+}
+
+ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+def strip_ansi(text):
+    """Remove CSI sequences so a colourised `Weather:` still matches."""
+    return ANSI.sub("", text)
+
+
+def labeled_value(text, label):
+    """Value after `Label:` on the first matching line, or None if absent or empty.
+
+    The label may be preceded by a key icon (fastfetch's default key type), so the
+    match is the first `Label:` on the line rather than a startswith.
+    """
+    prefix = label + ":"
+    for raw in strip_ansi(text).splitlines():
+        line = raw.strip()
+        idx = line.find(prefix)
+        if idx == -1:
+            continue
+        value = line[idx + len(prefix):].strip()
+        if value:
+            return value
+    return None
+
+
+def decode_captured(raw):
+    """Decode captured stdout/stderr for the did-the-work check.
+
+    retch/fastfetch emit UTF-8 (weather emoji included). `text=True` uses the
+    process locale, and on Windows CI that is often a single-byte code page, so
+    a successful weather fetch would raise UnicodeDecodeError before we could
+    accept or refuse the pair. Always decode as UTF-8; replace undecodable
+    bytes so a garbled reply still reaches labeled_value instead of crashing.
+    """
+    if raw is None:
+        return ""
+    if isinstance(raw, str):
+        return raw
+    return raw.decode("utf-8", errors="replace")
+
+
+def console_safe(text):
+    """Make text printable on the current stdout encoding.
+
+    Decode alone is not enough: Windows CI stdout is often cp1252, so printing
+    a weather value that contains emoji raises UnicodeEncodeError and aborts
+    the bench after the pair already proved it did the work (Windows x64/arm64
+    Continuous Benchmarking on 460e6fb). Replace unencodable characters so the
+    diagnostic line cannot take the job down.
+    """
+    enc = getattr(sys.stdout, "encoding", None) or "utf-8"
+    return text.encode(enc, errors="replace").decode(enc, errors="replace")
+
+
+def prove_did_the_work(mode, cmds):
+    """Run each command once; refuse to time a pair whose network modules skipped.
+
+    Pure on the extractor; this function is I/O. A `--full` whose weather line is
+    missing is not comparable to one that talked to wttr.in (NOTES §7.1).
+    """
+    labels = NETWORK_FIELDS.get(mode)
+    if not labels:
+        return
+    for cmd in cmds:
+        argv = shlex.split(cmd)
+        # Bytes + decode_captured: see that helper. Do not pass text=True here.
+        proc = subprocess.run(
+            argv, cwd=REPO_ROOT, capture_output=True, timeout=30
+        )
+        out = decode_captured(proc.stdout)
+        found = {label: labeled_value(out, label) for label in labels}
+        shown = [
+            f"{label}: {value}" if value else f"{label}: MISSING"
+            for label, value in found.items()
+        ]
+        print(
+            console_safe(f"did-the-work {mode} {cmd}: {'; '.join(shown)}"),
+            flush=True,
+        )
+        missing = [label for label, value in found.items() if not value]
+        if missing:
+            raise SystemExit(
+                f"cli_bench: {cmd} printed no {', '.join(missing)} line "
+                f"(exit {proc.returncode}, {len(out)} bytes of stdout). "
+                "A network module that fails fast is not the same work."
+            )
+
 
 def hyperfine_argv(warmup, runs, export_path, cmds):
     """The full hyperfine command line for one pair. Pure, so the self-test can pin it."""
@@ -111,6 +212,7 @@ def run(warmup, runs, out_dir, with_fastfetch=True):
     for mode, cmds in pairs(with_fastfetch=with_fastfetch):
         path = os.path.join(out_dir, export_name(mode))
         print(f"\n=== {mode}: {' vs '.join(cmds)}", flush=True)
+        prove_did_the_work(mode, cmds)
         subprocess.run(hyperfine_argv(warmup, runs, path, cmds), cwd=REPO_ROOT, check=True)
         written.append(path)
     return written
@@ -162,6 +264,47 @@ def _self_test():
     argv = hyperfine_argv(3, 10, "out.json", ["a", "b"])
     expect("hyperfine runs the commands with no shell", "--shell=none" in argv, str(argv))
     expect("the commands are hyperfine's last arguments", argv[-2:] == ["a", "b"], str(argv))
+
+    expect("long checks public IP only", NETWORK_FIELDS["long"] == ("Public IP",))
+    expect("full checks public IP and weather",
+           NETWORK_FIELDS["full"] == ("Public IP", "Weather"))
+    expect("default and short are not network-checked",
+           "default" not in NETWORK_FIELDS and "short" not in NETWORK_FIELDS)
+    expect("weather line extracted",
+           labeled_value("Weather: +68F - Sunny\nOS: Fedora", "Weather") == "+68F - Sunny")
+    expect("public IP line extracted",
+           labeled_value("Public IP: 1.2.3.4 (US)\nWeather: x", "Public IP") == "1.2.3.4 (US)")
+    esc = chr(27)
+    coloured = f"{esc}[32mWeather:{esc}[0m  x"
+    expect("ansi stripped from a labelled line", labeled_value(coloured, "Weather") == "x")
+    expect("icon before the label still matches",
+           labeled_value("xx Weather: +68F", "Weather") == "+68F")
+    expect("empty value is missing", labeled_value("Weather:\n", "Weather") is None)
+    expect("absent label is missing", labeled_value("OS: Fedora\n", "Weather") is None)
+    # Weather lines carry emoji; prove_did_the_work must not crash decoding or
+    # printing them under a Windows locale (see decode_captured / console_safe).
+    weather_emoji = "Weather: Des Moines, Iowa ☀️ +68°F\n".encode("utf-8")
+    expect("utf-8 weather bytes decode",
+           "☀️" in decode_captured(weather_emoji))
+    expect("emoji weather line still extracts",
+           labeled_value(decode_captured(weather_emoji), "Weather")
+           == "Des Moines, Iowa ☀️ +68°F")
+    expect("undecodable bytes replace, not raise",
+           decode_captured(b"Weather: x\xff\n") == "Weather: x\ufffd\n")
+    expect("None stdout is empty", decode_captured(None) == "")
+    # Simulate cp1252 stdout: console_safe must not raise on emoji.
+    class _Cp1252:
+        encoding = "cp1252"
+    real_out = sys.stdout
+    try:
+        sys.stdout = _Cp1252()
+        safe = console_safe("Weather: Des Moines, Iowa ☀️ +68°F")
+    finally:
+        sys.stdout = real_out
+    expect("console_safe does not raise on emoji under cp1252",
+           "Weather: Des Moines, Iowa" in safe)
+    expect("console_safe replaces unencodable emoji under cp1252",
+           "☀️" not in safe)
 
     if failures:
         for f in failures:
