@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793129495827,
+  "lastUpdate": 1793129496073,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14485,6 +14485,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 298064315,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b882a0d743af4260a034c8100ceb5aa927773247",
+          "message": "Single-source long-form channel text (#302)\n\nUnify README.md's top overview with packaging/copr/project-description.md\nbetween <!-- BEGIN copr-description --> / <!-- END copr-description -->\nmarkers (with all three platforms' config paths and absolute https://\nlinks, since crates.io rewrites repo-relative file links to blob/HEAD/...\nwhile COPR renders on its own domain and resolves neither relative paths\nnor #anchor fragments).\n\nReplace the manual //! crate header and ReadmeDoctests struct in\ncrates/sysinfo/src/lib.rs with #![doc = include_str!(\"../README.md\")] so\ndocs.rs and crates/sysinfo/README.md are one text and its code block\nstill compiles as a doctest.\n\nEnforce both invariants in scripts/metadata_check.py (plus --sync-copr\nand negative self-tests) and watch **/README.md in packaging.yml. Update\nNOTES.md for v0.20.28 / newest tag v0.20.27 and the d755c1b benchmark\nfigures.\n\nAssisted-By: Gemini 2.5 Pro",
+          "timestamp": "2026-10-27T12:20:41-07:00",
+          "tree_id": "5791e4ca47e7032f5bf9df305fe27a3eeea1448f",
+          "url": "https://github.com/l1a/retch/commit/b882a0d743af4260a034c8100ceb5aa927773247"
+        },
+        "date": 1793129496035,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 47023970,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2391685330,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1313597180,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 25324460,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 37145260,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 386139440.0000001,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 236997780,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 35726300,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 174.00551033329285,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9582255081146434,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 95.55380809718304,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 76.35860966561366,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46321.10607138909,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 432.9803366713103,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 682.0973692641071,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 328470740,
             "unit": "ns"
           }
         ]
