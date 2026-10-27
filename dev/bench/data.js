@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792797215806,
+  "lastUpdate": 1793128880045,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -936,6 +936,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 533239386.8000001,
             "extra": "v0.20.27; battery"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "b882a0d743af4260a034c8100ceb5aa927773247",
+          "message": "Single-source long-form channel text (#302)\n\nUnify README.md's top overview with packaging/copr/project-description.md\nbetween <!-- BEGIN copr-description --> / <!-- END copr-description -->\nmarkers (with all three platforms' config paths and absolute https://\nlinks, since crates.io rewrites repo-relative file links to blob/HEAD/...\nwhile COPR renders on its own domain and resolves neither relative paths\nnor #anchor fragments).\n\nReplace the manual //! crate header and ReadmeDoctests struct in\ncrates/sysinfo/src/lib.rs with #![doc = include_str!(\"../README.md\")] so\ndocs.rs and crates/sysinfo/README.md are one text and its code block\nstill compiles as a doctest.\n\nEnforce both invariants in scripts/metadata_check.py (plus --sync-copr\nand negative self-tests) and watch **/README.md in packaging.yml. Update\nNOTES.md for v0.20.28 / newest tag v0.20.27 and the d755c1b benchmark\nfigures.\n\nAssisted-By: Gemini 2.5 Pro",
+          "timestamp": "2026-10-27T12:20:41-07:00",
+          "tree_id": "5791e4ca47e7032f5bf9df305fe27a3eeea1448f",
+          "url": "https://github.com/l1a/retch/commit/b882a0d743af4260a034c8100ceb5aa927773247"
+        },
+        "date": 1793128880045,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 3161496.0000000005,
+            "extra": "v0.20.28; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 10984081.200000001,
+            "extra": "v0.20.28; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 2069819.1,
+            "extra": "v0.20.28; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 1866045.8,
+            "extra": "v0.20.28; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 213358798.4,
+            "extra": "v0.20.28; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 614170280.3,
+            "extra": "v0.20.28; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 380848288.70000005,
+            "extra": "v0.20.28; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 723417918.8000001,
+            "extra": "v0.20.28; AC"
           }
         ]
       }
