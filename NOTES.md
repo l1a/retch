@@ -150,15 +150,29 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.27)
+## Current State (v0.20.28)
 
-`main` carries **`retch-cli` 0.20.27** / **`retch-sysinfo` 0.1.92**. Newest released tag is
-**`v0.20.26`**.
+`main` carries **`retch-cli` 0.20.28** / **`retch-sysinfo` 0.1.93**. Newest released tag is
+**`v0.20.27`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
 (§6a). What is open is listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.28: long-form channel text has a single source.** Checked against the live
+  crates.io API (`/api/v1/crates/retch-cli/0.20.27/readme`), crates.io rewrites repo-relative
+  file and directory links in `README.md` (`packaging/aur/PKGBUILD`, `docs/retch.md`,
+  `LICENSE`, etc.) to `https://github.com/l1a/retch/blob/HEAD/<path>`, while COPR renders
+  `packaging/copr/project-description.md` on `copr.fedorainfracloud.org` and resolves neither
+  repo-relative paths nor `#anchor` fragments. `README.md`'s top overview is now marked with
+  `<!-- BEGIN copr-description -->` / `<!-- END copr-description -->`, and
+  `scripts/metadata_check.py` asserts `packaging/copr/project-description.md` equals that
+  block byte-for-byte with only `https://` links (`--sync-copr` copies it from `README.md`).
+  `crates/sysinfo/src/lib.rs` replaces its manual `//!` crate header (which had already
+  drifted by omitting `btrfs` and `zfs`) and separate `ReadmeDoctests` struct with
+  `#![doc = include_str!("../README.md")]`, so `docs.rs` and `crates/sysinfo/README.md` are
+  one text and its code block still compiles as a doctest.
 
 - **v0.20.27: `--full` no longer pays `temp` then `wm` after weather, and the CLI bench
   refuses a `--long`/`--full` pair whose network modules skipped.** On Linux x64 CI
@@ -692,16 +706,23 @@ Adds over long:
 
 Live items only. Completed items are removed rather than struck through — `git log` has them.
 
-- **Clear on Linux and macOS locally and on macOS CI; Linux CI `--full` was an unfair
-  comparison (fastfetch weather skipped); Windows `--short` still unexamined.** Dashboard
-  read 2026-10-23 (`d485e1a`):
-  - **macOS CI**: ahead in `--short`/`--long`/`--full` since v0.20.15, default about level
-    (v0.20.19: 371 vs 361 ms; v0.20.15–18: 273–319 vs 317–453).
-  - **Linux x64 CI `--full`**: retch 370 ms vs fastfetch 259 ms. rust.yml's fedora-x64
-    `--full` printed weather; fastfetch's `--full` is only 7 ms above its `--long`, so it
-    did not. `cli_bench.py` now fails the pair instead of publishing that. A later point
-    that still has weather on both sides is the first real remaining gap.
-  - **Windows x64 CI `--short`**: level to slightly behind (27–32 vs 21–30 ms).
+- **Clear on Linux and macOS locally and on macOS CI; Linux x64 CI `--full` and Windows
+  `--short` still behind.** Dashboard read 2026-10-27 (`d755c1b`, `v0.20.27`, with
+  `cli_bench.py`'s `Public IP`/`Weather` check active):
+  - **macOS arm64 CI**: ahead in `--short` (10.3 vs 18.9 ms), `--long` (371 vs 1007 ms) and
+    `--full` (494 vs 1010 ms) since v0.20.15; default level (361 vs 361 ms on v0.20.27;
+    v0.20.15–18: 273–319 vs 317–453).
+  - **Linux x64 CI `--full`**: on `d755c1b` (with both tools confirmed printing `Weather:`
+    before hyperfine), retch is 469 ms vs fastfetch 259 ms (`--long` is ahead: 205 vs
+    252 ms; default 2.1 vs 2.6 ms; `--short` 1.6 vs 1.3 ms). Meanwhile **Linux arm64 CI**
+    on the same commit is ahead in both `--long` (206 vs 252 ms) and `--full` (277 vs
+    362 ms; default 2.9 vs 2.0, `--short` 1.9 vs 1.2 ms), and **Local - Linux x64**
+    (`d755c1b`, battery) is ahead in default (4.85 vs 14.76 ms), `--long` (220 vs 518 ms)
+    and `--full` (387 vs 533 ms), level in `--short` (2.90 vs 2.75 ms).
+  - **Windows CI**: on `d755c1b`, ahead in `--long` (x64 279 vs 1294 ms; arm64 227 vs
+    1311 ms) and `--full` (x64 423 vs 2339 ms; arm64 434 vs 2392 ms), default split (x64
+    38.4 vs 32.4 ms; arm64 35.8 vs 42.7 ms), and `--short` still behind on both (x64 34.7
+    vs 24.2 ms; arm64 30.4 vs 23.8 ms; previously 27–32 vs 21–30 ms).
 
   Local figures follow.
   On arrakis (on AC) since v0.20.10 retch is ahead or level in all four matched modes: default
@@ -741,15 +762,6 @@ Live items only. Completed items are removed rather than struck through — `git
   `cargoHash = lib.fakeHash`, its CI job `if: false`, and no host in the fleet has Nix. This
   has been carried for well over a dozen PRs. **It needs a decision — track it properly or stop
   tracking it — not another carry-forward.**
-- **Investigate a single source for the long-form text each channel shows.** Only GitHub and
-  crates.io render a full README, and they already share the root `README.md`. The rest show a
-  one-liner that `packaging/metadata.toml` centralises, or the COPR project page
-  (`packaging/copr/project-description.md`). Options: generate the COPR description from a
-  marked section of `README.md` so it cannot drift; make repo-relative links absolute in that
-  section, since the COPR page will not resolve them. Keep `crates/sysinfo/README.md` separate
-  on purpose — it documents the library API — but consider
-  `#![doc = include_str!("../README.md")]` so docs.rs and that README are one text.
-  **Settle first**: whether crates.io resolves repo-relative links, checked on the live page.
 - **"Real hardware" benchmark section on the wiki.** The published numbers are CI-runner or
   local figures, which are noisy and unrepresentative. Document retch-vs-fastfetch timings from
   actual physical machines with CPU/OS context per run.

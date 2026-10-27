@@ -1,39 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ken Tobias
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! # retch-sysinfo
-//!
-//! System information gathering library for retch.
-//!
-//! Provides cross-platform hardware and OS detection, GPU identification,
-//! battery status, and environment probing. Extracted from the `retch-cli`
-//! binary to allow reuse as a standalone library.
-//!
-//! ## Modules
-//!
-//! - [`audio`] — Audio server and device detection.
-//! - [`battery`] — Cross-platform battery status detection.
-//! - [`bios`] — BIOS / firmware version detection.
-//! - [`bluetooth`] — Bluetooth controller state and connected device detection.
-//! - [`camera`] — Camera and webcam detection.
-//! - [`display`] — Display detection and EDID parsing.
-//! - [`gamepad`] — Gamepad and joystick controller detection.
-//! - [`gpu`] — GPU detection and PCI ID lookup.
-//! - [`gpu_api`] — Vulkan, OpenGL and OpenCL API version detection.
-//! - [`input`] — Keyboard and pointing-device detection.
-//! - [`io`] — Disk and network I/O throughput sampling.
-//! - [`disk`] — Physical disk model, size, and type detection.
-//! - [`media`] — Active media player and currently playing track detection.
-//! - [`memory`] — Physical memory (RAM) slot detection.
-//! - [`motherboard`] — Motherboard / system model detection.
-//! - [`network`] — Network interface detection, IP resolution, and Wi-Fi.
-//! - [`packages`] — Installed package count detection.
-//! - [`shell`] — Shell detection and version querying.
-//! - [`terminal`] — Terminal emulator detection and font configuration reading.
-//! - [`theme`] — UI theme, icon, cursor, and font detection.
-//! - [`weather`] — Weather information via wttr.in.
-//! - [`wm`] — Window manager detection.
-//! - [`fetch`] — Full system information gathering (`SystemInfo`, `CollectOptions`).
+#![doc = include_str!("../README.md")]
 
 pub mod audio;
 pub mod battery;
@@ -80,12 +48,3 @@ pub(crate) mod win_users;
 pub(crate) mod macos_ffi;
 
 pub use fetch::{CollectOptions, SystemInfo};
-
-/// The crate README's code examples, compiled as doctests.
-///
-/// The README is the crates.io page, and its example had stopped compiling without anything
-/// noticing — it borrowed `CollectOptions`, ignored the `Result`, and read plain `String`
-/// fields as `Option`s. Including it here makes `cargo test --workspace` compile it.
-#[doc = include_str!("../README.md")]
-#[cfg(doctest)]
-pub struct ReadmeDoctests;

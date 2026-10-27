@@ -8,6 +8,7 @@ on:
     paths:
       - '**/*.rs'
       - '**/Cargo.toml'
+      - '**/README.md'
       - 'Cargo.lock'
       - 'flake.nix'
       - 'flake.lock'
