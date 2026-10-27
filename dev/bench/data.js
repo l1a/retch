@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793128880045,
+  "lastUpdate": 1793129493878,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -4287,6 +4287,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 137.6820843910894,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b882a0d743af4260a034c8100ceb5aa927773247",
+          "message": "Single-source long-form channel text (#302)\n\nUnify README.md's top overview with packaging/copr/project-description.md\nbetween <!-- BEGIN copr-description --> / <!-- END copr-description -->\nmarkers (with all three platforms' config paths and absolute https://\nlinks, since crates.io rewrites repo-relative file links to blob/HEAD/...\nwhile COPR renders on its own domain and resolves neither relative paths\nnor #anchor fragments).\n\nReplace the manual //! crate header and ReadmeDoctests struct in\ncrates/sysinfo/src/lib.rs with #![doc = include_str!(\"../README.md\")] so\ndocs.rs and crates/sysinfo/README.md are one text and its code block\nstill compiles as a doctest.\n\nEnforce both invariants in scripts/metadata_check.py (plus --sync-copr\nand negative self-tests) and watch **/README.md in packaging.yml. Update\nNOTES.md for v0.20.28 / newest tag v0.20.27 and the d755c1b benchmark\nfigures.\n\nAssisted-By: Gemini 2.5 Pro",
+          "timestamp": "2026-10-27T12:20:41-07:00",
+          "tree_id": "5791e4ca47e7032f5bf9df305fe27a3eeea1448f",
+          "url": "https://github.com/l1a/retch/commit/b882a0d743af4260a034c8100ceb5aa927773247"
+        },
+        "date": 1793129493834,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 1796704.2,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 283892759.99999994,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 251674683.5,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1132212.9,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2143288.1,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 299731377.1,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 203777731.60000002,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1608256.5999999999,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 453178456,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 801.4980288823151,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 86.54337508285985,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 6.505643225183772,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 47.3583548823696,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 7383.852023892381,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 70328.23647115237,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 52459.159187914374,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 14105.154231388387,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 61853.705130706796,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 278.2866952532633,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 241.5043840866931,
             "unit": "ns"
           }
         ]
