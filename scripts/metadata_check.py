@@ -33,6 +33,14 @@ All offline, deterministic and free:
   5. The COPR project-page files exist, are non-empty and LF-only, and indent no paragraph line
      by 4+ spaces outside a code fence -- COPR renders Markdown, and such a line becomes a
      code block (the 2026-08-31 description bug).
+  6. Long-form channel text has a single source:
+     - `packaging/copr/project-description.md` equals the `<!-- BEGIN copr-description -->` ...
+       `<!-- END copr-description -->` block in `README.md`, and every Markdown link in that
+       block is an absolute `https://` URL (COPR renders on `copr.fedorainfracloud.org` and
+       does not resolve repo-relative paths or `#anchor` fragments, whereas crates.io rewrites
+       repo-relative file links in the rest of `README.md` to `blob/HEAD/...`).
+     - `crates/sysinfo/src/lib.rs` includes `../README.md` via `#![doc = include_str!(...)]`
+       so `docs.rs` and `crates/sysinfo/README.md` are one text.
 
 Files are read as BYTES and decoded, not with `read_text()`: universal-newline decoding turns
 CRLF into LF on the way in, which would make the CR check in (5) a check that cannot fail.
@@ -67,7 +75,14 @@ FILES = {
     "formula": "packaging/homebrew/retch.rb",
     "package_nix": "packaging/nixpkgs/package.nix",
     "flake_nix": "flake.nix",
+    "readme": "README.md",
+    "sysinfo_lib": "crates/sysinfo/src/lib.rs",
 }
+
+COPR_BEGIN_RE = re.compile(r"^<!-- BEGIN copr-description\b[^>]*-->[ \t]*\n", re.M)
+COPR_END_RE = re.compile(r"^<!-- END copr-description -->[ \t]*(?:\n|$)", re.M)
+MD_LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+[^)]*)?\)")
+SYSINFO_README_DOC = '#![doc = include_str!("../README.md")]'
 
 # Nix names licences by attribute rather than SPDX id. Only identifiers this project could
 # plausibly declare; an unknown one is reported rather than guessed.
@@ -127,7 +142,21 @@ def _field(text: str, pattern: str, what: str) -> str:
     return m.group(1).strip()
 
 
-def check_copr_markdown(text: str, label: str) -> list[str]:
+def extract_copr_description(readme_text: str) -> str:
+    """Return the marked COPR description block from README.md, or raise ParseError."""
+    begins = list(COPR_BEGIN_RE.finditer(readme_text))
+    ends = list(COPR_END_RE.finditer(readme_text))
+    if len(begins) != 1 or len(ends) != 1 or ends[0].start() < begins[0].end():
+        raise ParseError(
+            "README.md: expected exactly one <!-- BEGIN copr-description --> ... "
+            "<!-- END copr-description --> block"
+        )
+    return readme_text[begins[0].end() : ends[0].start()]
+
+
+def check_copr_markdown(
+    text: str, label: str, *, require_https_links: bool = False
+) -> list[str]:
     problems: list[str] = []
     if not text.strip():
         problems.append(f"{label} is empty")
@@ -143,6 +172,15 @@ def check_copr_markdown(text: str, label: str) -> list[str]:
                 f"{label} line {number} is indented 4+ spaces outside a code fence, which "
                 f"COPR's Markdown renders as a code block: {line.strip()[:60]!r}"
             )
+        if not fenced and require_https_links:
+            for match in MD_LINK_RE.finditer(line):
+                target = match.group(1)
+                if not target.startswith("https://"):
+                    problems.append(
+                        f"{label} line {number} links to {target!r}, not an absolute https:// "
+                        f"URL (COPR renders on its own domain and will not resolve relative or "
+                        f"#anchor links)"
+                    )
     return problems
 
 
@@ -228,9 +266,28 @@ def check_channels(meta: dict, texts: dict[str, str]) -> list[str]:
         if not isinstance(topic, str) or not TOPIC_RE.match(topic):
             problems.append(f"[github] topic {topic!r} is not lowercase letters, digits and hyphens")
 
-    # 5. The COPR project page.
-    problems.extend(check_copr_markdown(texts["copr_description"], "COPR description"))
+    # 5. The COPR project page and single-source long-form text invariants.
+    problems.extend(
+        check_copr_markdown(texts["copr_description"], "COPR description", require_https_links=True)
+    )
     problems.extend(check_copr_markdown(texts["copr_instructions"], "COPR instructions"))
+    try:
+        readme_copr = extract_copr_description(texts["readme"])
+        if texts["copr_description"] != readme_copr:
+            problems.append(
+                "COPR description (packaging/copr/project-description.md) differs from the "
+                "<!-- BEGIN copr-description --> block in README.md (run "
+                "`python3 scripts/metadata_check.py --sync-copr` to sync from README.md)"
+            )
+    except ParseError as exc:
+        problems.append(str(exc))
+
+    sysinfo_lines = [line.strip() for line in texts["sysinfo_lib"].splitlines()]
+    if SYSINFO_README_DOC not in sysinfo_lines:
+        problems.append(
+            f"crates/sysinfo/src/lib.rs is missing `{SYSINFO_README_DOC}` "
+            f"(keeps docs.rs and crates/sysinfo/README.md as one text)"
+        )
     return problems
 
 
@@ -304,6 +361,14 @@ description = "d.md"
 instructions = "i.md"
 """
 
+_COPR_DESC_FIXTURE = (
+    "**retch** is fast; see [repo](https://github.com/l1a/retch).\n\n"
+    "* an item\n\n"
+    "```\n"
+    "    indented code is fine inside a fence\n"
+    "```\n"
+)
+
 _TEXTS = {
     "cargo_cli": '[package]\nname = "retch-cli"\ndescription = "A fast thing written in Rust (like others)"\nlicense = "GPL-3.0-or-later"\n',
     "cargo_sysinfo": '[package]\nname = "retch-sysinfo"\ndescription = "A library"\nlicense = "GPL-3.0-or-later"\n',
@@ -312,7 +377,15 @@ _TEXTS = {
     "formula": 'class Retch < Formula\n  desc "Fast thing"\n  license "GPL-3.0-or-later"\nend\n',
     "package_nix": '  meta = with lib; {\n    description = "A fast thing written in Rust";\n    license = licenses.gpl3Plus;\n  };\n',
     "flake_nix": '{\n  description = "A fast thing written in Rust";\n  opts = {\n    description = "Configuration for retch";\n  };\n}\n',
-    "copr_description": "**retch** is fast.\n\n* an item\n\n```\n    indented code is fine inside a fence\n```\n",
+    "readme": (
+        "# retch\n\n"
+        "<!-- BEGIN copr-description -->\n"
+        + _COPR_DESC_FIXTURE
+        + "<!-- END copr-description -->\n\n"
+        "See [docs](docs/retch.md) outside the COPR block.\n"
+    ),
+    "sysinfo_lib": '#![doc = include_str!("../README.md")]\npub mod fetch;\n',
+    "copr_description": _COPR_DESC_FIXTURE,
     "copr_instructions": "Install:\n\n```\nsudo dnf install retch\n```\n",
 }
 
@@ -371,6 +444,49 @@ def _self_test() -> int:
                    'license = "MIT"', "crates/sysinfo/Cargo.toml license")
     expect_problem("CR in COPR text detected", "copr_instructions", "Install:\n", "Install:\r\n", "CR bytes")
 
+    # 6. Long-form text single-source checks: README <-> COPR description and sysinfo lib.rs.
+    expect_problem(
+        "COPR description drift from README.md detected",
+        "copr_description",
+        "* an item\n",
+        "* a different item\n",
+        "differs from the <!-- BEGIN copr-description --> block in README.md",
+    )
+    expect_problem(
+        "missing COPR marker in README.md detected",
+        "readme",
+        "<!-- BEGIN copr-description -->\n",
+        "",
+        "README.md: expected exactly one",
+    )
+    expect_problem(
+        "duplicate COPR marker in README.md detected",
+        "readme",
+        "<!-- END copr-description -->\n",
+        "<!-- END copr-description -->\n<!-- END copr-description -->\n",
+        "README.md: expected exactly one",
+    )
+    for bad_link_label, bad_target in [
+        ("relative link in COPR description detected", "docs/retch.md"),
+        ("fragment link in COPR description detected", "#configuration"),
+        ("plain http link in COPR description detected", "http://example.com"),
+    ]:
+        bad_copr = _COPR_DESC_FIXTURE.replace("https://github.com/l1a/retch", bad_target)
+        bad_texts = {
+            **_TEXTS,
+            "copr_description": bad_copr,
+            "readme": _TEXTS["readme"].replace("https://github.com/l1a/retch", bad_target),
+        }
+        probs = check_channels(meta, bad_texts)
+        check(bad_link_label, any("not an absolute https:// URL" in p for p in probs), f"got {probs}")
+    expect_problem(
+        "sysinfo lib.rs missing include_str!(\"../README.md\") detected",
+        "sysinfo_lib",
+        '#![doc = include_str!("../README.md")]',
+        "//! manual crate docs",
+        "crates/sysinfo/src/lib.rs is missing",
+    )
+
     # A missing field is reported, not treated as agreement.
     texts = dict(_TEXTS, pkgbuild="pkgname=retch\n")
     probs = check_channels(meta, texts)
@@ -407,9 +523,21 @@ def _self_test() -> int:
     return 0
 
 
+def sync_copr_description(meta: dict) -> int:
+    """Write README.md's marked copr-description block to packaging/copr/project-description.md."""
+    readme_text = _read(REPO / FILES["readme"])
+    block = extract_copr_description(readme_text)
+    dest = REPO / meta["copr"]["description"]
+    dest.write_bytes(block.encode("utf-8"))
+    print(f"[metadata-check] synced {meta['copr']['description']} from README.md")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--self-test", action="store_true", help="run the built-in assertions")
+    ap.add_argument("--sync-copr", action="store_true",
+                    help="write README.md's marked copr-description block to project-description.md")
     ap.add_argument("--sync-github", action="store_true",
                     help="after checking, set the GitHub description and topics from metadata.toml")
     ap.add_argument("--dry-run", action="store_true", help="with --sync-github: show, change nothing")
@@ -420,6 +548,8 @@ def main() -> int:
 
     try:
         meta = load_meta(_read(META))
+        if args.sync_copr:
+            sync_copr_description(meta)
         problems = check_channels(meta, read_texts(meta))
     except (ParseError, FileNotFoundError) as exc:
         print(f"[metadata-check] {exc}", file=sys.stderr)
