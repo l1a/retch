@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793129495299,
+  "lastUpdate": 1793129495574,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -9767,6 +9767,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 433.6076749662467,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b882a0d743af4260a034c8100ceb5aa927773247",
+          "message": "Single-source long-form channel text (#302)\n\nUnify README.md's top overview with packaging/copr/project-description.md\nbetween <!-- BEGIN copr-description --> / <!-- END copr-description -->\nmarkers (with all three platforms' config paths and absolute https://\nlinks, since crates.io rewrites repo-relative file links to blob/HEAD/...\nwhile COPR renders on its own domain and resolves neither relative paths\nnor #anchor fragments).\n\nReplace the manual //! crate header and ReadmeDoctests struct in\ncrates/sysinfo/src/lib.rs with #![doc = include_str!(\"../README.md\")] so\ndocs.rs and crates/sysinfo/README.md are one text and its code block\nstill compiles as a doctest.\n\nEnforce both invariants in scripts/metadata_check.py (plus --sync-copr\nand negative self-tests) and watch **/README.md in packaging.yml. Update\nNOTES.md for v0.20.28 / newest tag v0.20.27 and the d755c1b benchmark\nfigures.\n\nAssisted-By: Gemini 2.5 Pro",
+          "timestamp": "2026-10-27T12:20:41-07:00",
+          "tree_id": "5791e4ca47e7032f5bf9df305fe27a3eeea1448f",
+          "url": "https://github.com/l1a/retch/commit/b882a0d743af4260a034c8100ceb5aa927773247"
+        },
+        "date": 1793129495536,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 398011154.20000005,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1091621424.9,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1054762295.9,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 31218316.500000004,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 295196354.1000001,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 536164537.5000001,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 422386487.70000005,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 18300879,
+            "unit": "ns",
+            "extra": "v0.20.28"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 366279033.325,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 480.9365170419849,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 134.92344455386404,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.290761372979295,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 82.1023617913756,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 5950.794120569398,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1547.553488772477,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 413.9172745277862,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 99632.69138961041,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 435.47893605325197,
             "unit": "ns"
           }
         ]
