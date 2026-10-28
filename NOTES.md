@@ -150,15 +150,39 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.28)
+## Current State (v0.20.29)
 
-`main` carries **`retch-cli` 0.20.28** / **`retch-sysinfo` 0.1.93**. Newest released tag is
-**`v0.20.27`**.
+`main` carries **`retch-cli` 0.20.29** / **`retch-sysinfo` 0.1.94**. Newest released tag is
+**`v0.20.28`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
 (§6a). What is open is listed in §5, §6a and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.29: the macOS default mode no longer spawns `system_profiler`; 152/114 ms → 65 ms
+  on chani** (M3 Pro, macOS 27.2, on AC; hyperfine, 40 runs: `main` measured 152.3 ± 50.2
+  and 114.0 ± 27.2 ms as two copies of the same binary in one sitting, this build
+  64.9 ± 1.3 ms; fastfetch's matched default 216.6 ± 149.3 ms). Output is identical in all
+  four modes (rates masked, `Net:` lines sorted; see §6c for why they must be). Two causes:
+  - **`phys-mem` spawned `system_profiler SPMemoryDataType`, 87–147 ms, the whole critical
+    path.** Apple Silicon publishes the same facts on `IODeviceTree:/chosen` (`dram-size`,
+    8-byte little-endian; `dram-type`, NUL-padded), where `system_profiler` reads them: now
+    0.04–0.08 ms. Intel Macs lack those properties and still spawn it. **Assumption, not
+    verified:** Apple Silicon's `system_profiler` never prints a `Speed:` (chani's does not,
+    and `/chosen` has no speed property), so nothing is lost. The `6400 MT/s` in the
+    `test_parse_system_profiler_apple_silicon` fixture dates from the field's first commit
+    and was probably not captured from a real Mac. liet was offline to check.
+  - **`audio` waited for `sys-init`, and off Linux made it load the process table.** It took
+    `&sys` and never read it on any platform (macOS and Windows never had; Linux stopped in
+    v0.19.1), yet `needs_process_list` counted it as a consumer. The default mode selects
+    `audio` and none of `procs`/`shell`/`terminal`, so on macOS `sys-init` cost 6.6–11.8 ms
+    for nothing and CoreAudio started ~13–17 ms late. `audio` now starts with the
+    borrow-nothing probes via `detect_audio_devices()`; `detect_audio(&System)` stays as a
+    wrapper so the library API does not break. **Windows' default mode loads no process
+    table either now** (on CI it was behind, 38.4 vs 32.4 ms); not measured, no Windows host.
+  - What is left on chani: `audio` ~56 ms (CoreAudio's first HAL call) and `display`
+    ~41–46 ms (CoreGraphics' WindowServer connection), concurrent. See §5.
 
 - **v0.20.28: long-form channel text has a single source.** Checked against the live
   crates.io API (`/api/v1/crates/retch-cli/0.20.27/readme`), crates.io rewrites repo-relative
@@ -333,8 +357,10 @@ Recent work worth knowing about, beyond what `git log` says:
   `scripts/cli_bench.py`: default, short, long, full), as the workflow did before v0.19.0.
   v0.19.0's mode-order run put `--short` first, straight after the build, and the next run
   raised a macOS `--short` Performance Alert (24.4 → 52.4 ms) on a commit that changed no
-  `--short` code. **Open:** check whether macOS `--short` settles on the runs after this one.
-  If it does, the cold runner was the cause. If not, the alert was noise or has another cause.
+  `--short` code. **Closed 2026-10-28: it was runner noise.** macOS CI `--short` ranged 7–39 ms
+  across `00b400e`…`b882a0d`, and every high point coincides with fastfetch's own `--short`
+  spiking in the same run (37/33, 39/34, 19/33, 18/31 ms); retch ÷ fastfetch stayed 0.5–1.1.
+  Read the ratio, not retch's absolute, before chasing a CI alert at this scale.
 
 - **v0.20.7 — the benchmark dashboard restarted, by version, with the old history archived.**
   - **Why**: until v0.19.0 the fastfetch series measured the wrong workload (fastfetch's
@@ -740,8 +766,12 @@ Live items only. Completed items are removed rather than struck through — `git
     (~375 ms). `temp` and `wm` overlap it since v0.20.27.
   - **macOS default** — was 848 vs 414 ms on CI; the cause was `phys-disk`'s serial
     `diskutil` spawns, fixed in v0.20.14 (now ahead locally, 108–126 vs 145–161 ms; CI about
-    level, see above). What is left on chani (`RETCH_TIMING=1`): `phys-mem` ~80 ms, then
-    `audio` ~44 ms (it starts after `sys-init`, inside the scope), `display` ~33 ms.
+    level, see above). `phys-mem`'s `system_profiler` spawn and `audio`'s late start went in
+    v0.20.29 (65 ms on chani). What is left (`RETCH_TIMING=1`): `audio` ~56 ms, the first
+    CoreAudio HAL call, and `display` ~41–46 ms, CoreGraphics' WindowServer connection, run
+    concurrently. Both are framework start-up rather than our work; a cheaper source would
+    have to give the same names (CoreAudio lists Bluetooth and USB devices too). Check the
+    next macOS CI default points: it was level (361 vs 361 ms) before this.
   - **macOS `--short`** — ahead since v0.20.15 (7.0 vs 17.0 ms on chani): it was all `disk`.
   - **`--short`** — level with fastfetch since v0.20.5 on arrakis, on battery and on AC. On
     corrino (Intel + NVIDIA) it was 8.4 vs 5.8 ms until v0.20.19 (`pci.ids`, see Current
@@ -874,6 +904,16 @@ SQLite open-mode defect — see §7.3.
     it. Ruled out on chani: `/Library/Preferences/com.apple.Bluetooth.plist` has no
     `ControllerPowerState`; `system_profiler SPBluetoothDataType` knows (`State: On`, chipset
     `BCM_4388`) but costs a seconds-long spawn.
+  - **Tested 2026-10-28 on chani (macOS 27.2), with the user switching the radio off and on:
+    neither IOKit candidate tracks it.** `BluetoothTransportConnected` stayed `Yes` with the
+    radio off. The `IOBluetoothHCIController` node *did* vanish once (and
+    `AppleBluetoothModule` stayed), which suggested "node present = on"; a build that printed
+    `On`/`Off` from that was then run once a second while the radio was off and printed `On`
+    throughout, with the node present. So the node's presence is not the radio state either,
+    and the change was reverted unshipped. Two traps made the tests slow: Control Center
+    applies the toggle only when its pop-up closes, and a logger that records only retch's
+    answer cannot show whether the radio actually went off. Log an independent oracle
+    (`system_profiler`'s `State:`) beside every sample.
 
 - **An Intel Mac's internal NVMe prints `[SSD]`, not `[NVMe SSD]`** (pre-existing, kept
   as is in v0.20.14 so the IOKit port changed no output). The NVMe rule matches `pcie` or
@@ -881,6 +921,12 @@ SQLite open-mode defect — see §7.3.
   NVMe (2015–16 MacBooks used AHCI over PCIe). The IOKit device class
   (`IONVMeBlockStorageDevice` vs `IOAHCIBlockStorageDevice`) is the honest signal; it needs
   an Intel Mac to verify.
+
+- **`--long`/`--full` print the `Net:` interface lines in a different order on every run**
+  (found 2026-10-28 on chani, pre-existing: two runs of the same `main` binary differ). The
+  set of lines is stable, only the order moves, which looks like hash-map iteration order.
+  Not fixed with v0.20.29; it is why that change's output comparison had to sort them. A
+  stable order (active interface first, then by name) would make two runs diffable.
 
 **Decided — `tpm` stays absent on macOS.** Macs have a **Secure Enclave**, not a TPM. The field
 reports a TPM *specification* version (`2.0`/`1.2`) and a Secure Enclave has none; labelling one
@@ -1046,6 +1092,11 @@ nobody asked.
 - **Count invocations, not mentions.** A guard that counted `scripts/cli_bench.py` in the
   workflow also counted the new `pull_request` path filter naming it, so the totals matched by
   coincidence and a job could have dropped the call unnoticed. Match the command shape.
+- **A parameter is not a dependency.** `detect_audio(&sys)` took the `System` on every
+  platform and read it on none after v0.19.1, but the signature alone kept `audio` inside the
+  scope after `sys-init` and kept it listed in `needs_process_list`, so macOS's default mode
+  loaded a process table nobody read. When scheduling a probe, read its body on each `cfg`
+  arm, not its signature: `let _ = x;` on every arm means it borrows nothing.
 
 ### 7.2 Testing conventions
 
@@ -1136,6 +1187,11 @@ nobody asked.
   `Disk Image`, `VirtualOrPhysical = Virtual`). Synthesized APFS container disks have no
   block-storage driver, so a driver walk never sees them. Note the real internal disk reports
   `VirtualOrPhysical = Unknown`, not `Physical`.
+- **`system_profiler` is ~90–150 ms per data type even for a one-line answer**, and most of
+  what it prints on Apple Silicon is in the I/O Registry already. Before spawning it, look
+  for the source it reads: `ioreg -l -p IODeviceTree -w0 | grep -i <value>` finds it fast.
+  Unified memory is `IODeviceTree:/chosen`: `dram-size` (u64 LE bytes), `dram-type` and
+  `dram-vendor` (NUL-padded strings). Intel Macs do not publish these.
 - **`kCFURLVolumeAvailableCapacityForImportantUsageKey` costs ~9 ms per volume** on first
   query (it computes purgeable space); the browsable/local/total keys cost ~0.1 ms. A library
   that asks for it on every mount turns a free-space line into the slowest probe in `--short`.
