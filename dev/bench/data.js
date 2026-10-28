@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793219264638,
+  "lastUpdate": 1793219264987,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -8201,6 +8201,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 266.20752878858895,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6bc247458408bb750dc4cb5d9df33ab51bf929d3",
+          "message": "Bump rusqlite to 0.41 (consolidate #303) (#306)\n\nMoves Dependabot #303 (rusqlite 0.40.2 -> 0.41) onto a gated branch, as\n#299 did for #298. Dependabot skips the version bump, the NOTES header\nand the man page regeneration.\n\nThe lockfile resolves rusqlite 0.41.1, released today after #303 was\nopened with 0.41.0. Its two fixes (PRAGMA names under SQLCipher, a\nzero-argument deterministic function panic) touch nothing retch uses;\nlibsqlite3-sys and every other package match #303 exactly.\n\nretch-sysinfo's own manifest changes, so both crates bump:\nretch-cli 0.20.30 -> 0.20.31, retch-sysinfo 0.1.95 -> 0.1.96.\n\nrusqlite bundles SQLite, so per NOTES 8 the rpmdb read was checked\nunprivileged on Fedora (arrakis): `retch --fields packages` prints\nPackages: 2471, equal to `rpm -qa | wc -l`.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-28T13:19:04-07:00",
+          "tree_id": "1cc67f7daac7928dfc61879ab14019db32cef7a3",
+          "url": "https://github.com/l1a/retch/commit/6bc247458408bb750dc4cb5d9df33ab51bf929d3"
+        },
+        "date": 1793219264938,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2398812.3000000003,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 286655416.40000004,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252457827.99999994,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1482187.1,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3642817.6000000006,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 452174551.6000001,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205170207.70000002,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2331218.9000000004,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 355253854.4,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 985.6455777610587,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 102.49110046633575,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947191886373808,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 45.768569445724715,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8908.138469681839,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 83338.00232373216,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 5709.304924624301,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4050.4216836512037,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 70878.05475035611,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 276.08639109058015,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 255.24360920270925,
             "unit": "ns"
           }
         ]
