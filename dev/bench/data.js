@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793218352876,
+  "lastUpdate": 1793218353200,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15849,6 +15849,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 332938655,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "738b5c23eaba3ffa987a35d7424322bfe355583d",
+          "message": "List network interfaces in a stable order (#305)\n\nsysinfo keeps interfaces in a HashMap, whose iteration order is\nrandomised per process, and detect_networks listed them in that order.\nSo --long and --full printed the non-active Net: lines shuffled\ndifferently on every run, on every platform, and the default mode's\nfallback (the first interface that is up, used when the active one\ncannot be resolved) could print a different line each time.\n\ndetect_networks now sorts by a natural name key: the name without its\ntrailing number, that number numerically, then the full name, so en2\ncomes before en10 and utun2 before utun100. The active interface still\nleads in --long and --full. Same set of lines as before; only the order\nis now fixed.\n\nTests cover the key (including names a plain string sort gets wrong and\nWindows names with spaces) and, live, that detect_networks returns its\nlist in key order. Both were watched failing against a mutation. On\nchani three --long runs now print the same order.\n\nretch-cli 0.20.29 -> 0.20.30, retch-sysinfo 0.1.94 -> 0.1.95.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-28T13:02:55-07:00",
+          "tree_id": "f1541d237236ef21be7566dd394a99ff28ab83e9",
+          "url": "https://github.com/l1a/retch/commit/738b5c23eaba3ffa987a35d7424322bfe355583d"
+        },
+        "date": 1793218353149,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 31549900.000000007,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2387559360,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1309664550.0000002,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 21360780.000000004,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 30980949.999999996,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 336751590.00000006,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 215926940.00000003,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 29353150.000000004,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 176.6395097020963,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.958891111972556,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 94.96215923489531,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 77.97227087031008,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46606.03521582793,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 442.9179005762844,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 704.7027460205501,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 296242335,
             "unit": "ns"
           }
         ]
