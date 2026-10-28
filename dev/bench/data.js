@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793218352214,
+  "lastUpdate": 1793218352540,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10683,6 +10683,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 585.1313303337837,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "738b5c23eaba3ffa987a35d7424322bfe355583d",
+          "message": "List network interfaces in a stable order (#305)\n\nsysinfo keeps interfaces in a HashMap, whose iteration order is\nrandomised per process, and detect_networks listed them in that order.\nSo --long and --full printed the non-active Net: lines shuffled\ndifferently on every run, on every platform, and the default mode's\nfallback (the first interface that is up, used when the active one\ncannot be resolved) could print a different line each time.\n\ndetect_networks now sorts by a natural name key: the name without its\ntrailing number, that number numerically, then the full name, so en2\ncomes before en10 and utun2 before utun100. The active interface still\nleads in --long and --full. Same set of lines as before; only the order\nis now fixed.\n\nTests cover the key (including names a plain string sort gets wrong and\nWindows names with spaces) and, live, that detect_networks returns its\nlist in key order. Both were watched failing against a mutation. On\nchani three --long runs now print the same order.\n\nretch-cli 0.20.29 -> 0.20.30, retch-sysinfo 0.1.94 -> 0.1.95.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-28T13:02:55-07:00",
+          "tree_id": "f1541d237236ef21be7566dd394a99ff28ab83e9",
+          "url": "https://github.com/l1a/retch/commit/738b5c23eaba3ffa987a35d7424322bfe355583d"
+        },
+        "date": 1793218352490,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 418955637.6,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1058719670.8,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1112928816.3999999,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 31860062.499999993,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 356274666.70000005,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 527848537.5000002,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 396139696,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 30204600.000000004,
+            "unit": "ns",
+            "extra": "v0.20.30"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 376839439.575,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 601.6409277485783,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 205.51708376750102,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.1857276307853377,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 92.35454244478312,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6488.433993551813,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1681.6322229967705,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 534.3331747401458,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 129777.68564647068,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 503.30173467224256,
             "unit": "ns"
           }
         ]
