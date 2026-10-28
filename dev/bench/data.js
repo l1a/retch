@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793219265305,
+  "lastUpdate": 1793219265633,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13729,6 +13729,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 294800080,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6bc247458408bb750dc4cb5d9df33ab51bf929d3",
+          "message": "Bump rusqlite to 0.41 (consolidate #303) (#306)\n\nMoves Dependabot #303 (rusqlite 0.40.2 -> 0.41) onto a gated branch, as\n#299 did for #298. Dependabot skips the version bump, the NOTES header\nand the man page regeneration.\n\nThe lockfile resolves rusqlite 0.41.1, released today after #303 was\nopened with 0.41.0. Its two fixes (PRAGMA names under SQLCipher, a\nzero-argument deterministic function panic) touch nothing retch uses;\nlibsqlite3-sys and every other package match #303 exactly.\n\nretch-sysinfo's own manifest changes, so both crates bump:\nretch-cli 0.20.30 -> 0.20.31, retch-sysinfo 0.1.95 -> 0.1.96.\n\nrusqlite bundles SQLite, so per NOTES 8 the rpmdb read was checked\nunprivileged on Fedora (arrakis): `retch --fields packages` prints\nPackages: 2471, equal to `rpm -qa | wc -l`.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-28T13:19:04-07:00",
+          "tree_id": "1cc67f7daac7928dfc61879ab14019db32cef7a3",
+          "url": "https://github.com/l1a/retch/commit/6bc247458408bb750dc4cb5d9df33ab51bf929d3"
+        },
+        "date": 1793219265584,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 31563540.000000007,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2377523340,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1290772150,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 12331120.000000002,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 22476780,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 317825100,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 161025139.99999997,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 19955030.000000004,
+            "unit": "ns",
+            "extra": "v0.20.31"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 129.39340899361693,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.5754329940811744,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 75.4326126777805,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 54.049158417357695,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 29121.857071168244,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 294.903475588025,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 468.2437543551717,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 316137850,
             "unit": "ns"
           }
         ]
