@@ -49,7 +49,7 @@ Licensed **GPL-3.0-or-later**.
   - **Disks & Temp**: Measures active disk mounts (hiding loopback/temporary volumes) and temperature sensors.
   - **Disk & Network Throughput**: `disk-io` and `net-io` rates, measured over the run's own collection window rather than a dedicated sleep (Linux, Windows, macOS).
   - **Graphics APIs**: Vulkan, OpenGL and OpenCL versions from the installed loaders (Linux, Windows, macOS; full mode). Each is simply absent when its loader is not installed.
-  - **Physical Memory (`phys-mem`)**: Per-DIMM type, capacity, and speed via `dmidecode` (Linux, requires root), `system_profiler` (macOS), or the SMBIOS table read natively (Windows, no PowerShell and no admin). On Linux, shows the module's actual running speed alongside its rated speed when they differ (e.g. `4800 MT/s (rated 6000 MT/s)`, as when XMP/EXPO isn't enabled).
+  - **Physical Memory (`phys-mem`)**: Per-DIMM type, capacity, and speed via `dmidecode` (Linux, requires root), the IOKit device tree on Apple Silicon (`system_profiler` on Intel Macs), or the SMBIOS table read natively (Windows, no PowerShell and no admin). On Linux, shows the module's actual running speed alongside its rated speed when they differ (e.g. `4800 MT/s (rated 6000 MT/s)`, as when XMP/EXPO isn't enabled).
 - **Advanced Networking & Wireless**:
   - **Network Interfaces**: Outputs IPv4 & IPv6 addresses for active interfaces.
   - **Wi-Fi**: Details SSID, band frequency, channel, link rates (RX/TX on Linux, TX-only on macOS), adapter hardware, and Wi-Fi 7 Multi-Link Operation (MLO) bands.

@@ -201,8 +201,46 @@ fn detect_linux() -> Option<String> {
     None
 }
 
+/// Detects physical memory on macOS.
+///
+/// Apple Silicon publishes the unified memory's size and type on `IODeviceTree:/chosen`
+/// (`dram-size`, `dram-type`), which is where `system_profiler` itself reads them. Asking
+/// IOKit directly costs well under a millisecond; spawning `system_profiler` cost
+/// 87–147 ms on chani (M3 Pro) and was the whole critical path of the default mode.
+/// Intel Macs have no such properties, so they (and anything else the device tree
+/// cannot answer) still go through `system_profiler`.
 #[cfg(target_os = "macos")]
 fn detect_macos() -> Option<String> {
+    if let Some(slot) = crate::macos_ffi::get_dram_size_and_type()
+        .and_then(|(bytes, mem_type)| dimm_from_device_tree(bytes, &mem_type))
+    {
+        return format_dimm_slots(&[slot]);
+    }
+    detect_macos_system_profiler()
+}
+
+/// Builds the single unified-memory slot from Apple Silicon's device-tree properties.
+///
+/// Returns `None` unless both the size and the type are present, so a partial answer
+/// falls back to `system_profiler` instead of printing less than it would have. The size
+/// is truncated to whole MiB, matching how `system_profiler`'s `18 GB` was parsed.
+#[cfg(any(target_os = "macos", test))]
+pub fn dimm_from_device_tree(size_bytes: u64, mem_type: &str) -> Option<DimmSlot> {
+    let size_mb = size_bytes / (1024 * 1024);
+    let mem_type = mem_type.trim();
+    if size_mb == 0 || mem_type.is_empty() {
+        return None;
+    }
+    Some(DimmSlot {
+        size_mb,
+        mem_type: mem_type.to_string(),
+        speed_mt: None,
+        configured_speed_mt: None,
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn detect_macos_system_profiler() -> Option<String> {
     let output = std::process::Command::new("system_profiler")
         .args(["SPMemoryDataType", "-detailLevel", "basic"])
         .output()
@@ -697,6 +735,47 @@ Memory Device
         // Two different sizes → two groups
         assert!(summary.contains("16 GB DDR5 5600 MT/s"));
         assert!(summary.contains("32 GB DDR5 5600 MT/s"));
+    }
+
+    #[test]
+    fn device_tree_dram_formats_like_system_profiler() {
+        // chani (M3 Pro, macOS 27): `dram-size` = 0x4_8000_0000, `dram-type` = "LPDDR5",
+        // and `system_profiler` printed `Memory: 18 GB` / `Type: LPDDR5`, no speed.
+        let slot = dimm_from_device_tree(0x4_8000_0000, "LPDDR5").unwrap();
+        assert_eq!(format_dimm_slots(&[slot]), Some("18 GB LPDDR5".to_string()));
+    }
+
+    /// The same machine through the old path, captured verbatim: both must print the same.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn device_tree_and_system_profiler_agree_on_chani() {
+        let profiler = parse_system_profiler_memory(
+            "Memory:\n\n      Memory: 18 GB\n      Type: LPDDR5\n      Manufacturer: Hynix\n",
+        );
+        let tree = format_dimm_slots(&[dimm_from_device_tree(0x4_8000_0000, "LPDDR5").unwrap()]);
+        assert_eq!(profiler, tree);
+    }
+
+    #[test]
+    fn device_tree_dram_needs_both_size_and_type() {
+        // A partial answer falls back to `system_profiler` rather than printing less.
+        assert_eq!(dimm_from_device_tree(0, "LPDDR5"), None);
+        assert_eq!(
+            dimm_from_device_tree(512 * 1024, "LPDDR5"),
+            None,
+            "under 1 MiB"
+        );
+        assert_eq!(dimm_from_device_tree(16 << 30, ""), None);
+        assert_eq!(dimm_from_device_tree(16 << 30, "  "), None);
+        assert_eq!(
+            dimm_from_device_tree(16 << 30, " LPDDR4X "),
+            Some(DimmSlot {
+                size_mb: 16 * 1024,
+                mem_type: "LPDDR4X".to_string(),
+                speed_mt: None,
+                configured_speed_mt: None,
+            })
+        );
     }
 
     #[cfg(target_os = "macos")]

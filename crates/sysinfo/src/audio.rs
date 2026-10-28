@@ -4,12 +4,24 @@
 //! Audio server and device detection.
 
 /// Detects the active audio server and hardware sound cards.
+///
+/// Kept for library callers. `sys` is unused: no platform reads sysinfo's process table
+/// for this any more (Linux reads `/proc` itself, macOS and Windows never needed it), so
+/// it delegates to [`detect_audio_devices`], which takes nothing.
 pub fn detect_audio(sys: &sysinfo::System) -> Option<String> {
+    let _ = sys;
+    detect_audio_devices()
+}
+
+/// Detects the active audio server and hardware sound cards without a `sysinfo::System`.
+///
+/// Borrows nothing, so `fetch` starts it with the other early probes instead of waiting
+/// for `sys-init` (and, off Linux, for a process table nothing here reads).
+pub fn detect_audio_devices() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
-        // Read from /proc directly rather than sysinfo's process table, which `sys` no
-        // longer carries on Linux (loading it cost ~48 ms; see `crate::proc_tree`).
-        let _ = sys;
+        // Read from /proc directly rather than sysinfo's process table (loading it cost
+        // ~48 ms; see `crate::proc_tree`).
         let server_str = crate::proc_tree::audio_server();
 
         // Codec names from the HDA bus in sysfs first (v0.20.6); the old path — reading
@@ -32,7 +44,6 @@ pub fn detect_audio(sys: &sysinfo::System) -> Option<String> {
 
     #[cfg(target_os = "macos")]
     {
-        let _ = sys;
         let devices = crate::macos_ffi::get_audio_device_names();
         if !devices.is_empty() {
             Some(format!("CoreAudio ({})", devices.join(", ")))
@@ -43,7 +54,6 @@ pub fn detect_audio(sys: &sysinfo::System) -> Option<String> {
 
     #[cfg(target_os = "windows")]
     {
-        let _ = sys;
         // Read sound device names from the media device class in the registry.
         // HKLM\SYSTEM\CurrentControlSet\Control\Class\{4d36e96c-e325-11ce-bfc1-08002be10318}\<NNNN>
         use crate::win_reg;
@@ -76,7 +86,6 @@ pub fn detect_audio(sys: &sysinfo::System) -> Option<String> {
 
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     {
-        let _ = sys;
         None
     }
 }

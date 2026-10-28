@@ -295,6 +295,28 @@ pub fn get_firmware_version() -> Option<String> {
     }
 }
 
+// ─── Unified memory — IODeviceTree:/chosen ───────────────────────────────────
+
+/// Read Apple Silicon's unified-memory size in bytes and its type (e.g. `LPDDR5`) from
+/// `IODeviceTree:/chosen`'s `dram-size` (8-byte little-endian CFData) and `dram-type`
+/// (NUL-padded CFData). Intel Macs publish neither, so this returns `None` there.
+pub fn get_dram_size_and_type() -> Option<(u64, String)> {
+    // SAFETY: `path` is a NUL-terminated byte string that outlives the call; the entry is
+    // checked against MACH_PORT_NULL before use and released exactly once; the property
+    // helpers check the CF type and length before reading and release what they copy.
+    unsafe {
+        let path = b"IODeviceTree:/chosen\0";
+        let entry = IORegistryEntryFromPath(IOKIT_MAIN_PORT, path.as_ptr() as *const i8);
+        if entry == MACH_PORT_NULL {
+            return None;
+        }
+        let size = iokit_property_as_u64(entry, "dram-size");
+        let mem_type = iokit_property_as_string(entry, "dram-type");
+        IOObjectRelease(entry);
+        Some((size?, mem_type?))
+    }
+}
+
 // ─── GPU — IOPCIDevice + AGXAccelerator ──────────────────────────────────────
 
 /// Enumerate GPUs. Returns `(name, vram_bytes)` pairs.

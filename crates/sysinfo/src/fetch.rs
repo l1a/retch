@@ -363,19 +363,28 @@ fn should_probe_load(want_load: bool) -> bool {
 
 /// Whether `sys` must be built with the process list.
 ///
-/// `procs` counts processes and `audio` consults them, but `shell` and `terminal` depend
-/// on the list just as much: both identify the running program by walking the process
-/// tree up from retch's own pid, and `sys.process(pid)` finds nothing in a list that was
-/// never loaded. Keyed on `procs`/`audio` alone, that walk only worked when one of those
-/// happened to be selected as well, so `--fields shell` on its own fell through to
-/// guessing from the environment — on Windows under PowerShell 7 it reported
-/// `powershell 5.1`, the shell `PSModulePath` implies, instead of the `pwsh` running it.
+/// `procs` counts processes, and `shell` and `terminal` depend on the list just as much:
+/// both identify the running program by walking the process tree up from retch's own
+/// pid, and `sys.process(pid)` finds nothing in a list that was never loaded. Keyed on
+/// `procs`/`audio` alone, that walk only worked when one of those happened to be selected
+/// as well, so `--fields shell` on its own fell through to guessing from the environment
+/// — on Windows under PowerShell 7 it reported `powershell 5.1`, the shell `PSModulePath`
+/// implies, instead of the `pwsh` running it.
 ///
-/// **Never on Linux**: there all four read `/proc` directly through `crate::proc_tree`,
+/// **`audio` is not a consumer.** It used to be listed, but only the Linux arm ever read
+/// the table, and that moved to `/proc` in v0.19.1; macOS and Windows never read it. The
+/// default mode selects `audio` and none of the other three, so on macOS it loaded the
+/// table for nothing: 6.6–11.8 ms of `sys-init` on chani, with `audio` waiting behind it.
+///
+/// **Never on Linux**: there all three read `/proc` directly through `crate::proc_tree`,
 /// because loading the table walks every process *and thread* (~48 ms on a desktop,
 /// most of the default mode) when none of them needs more than a few entries.
-fn needs_process_list(procs: bool, audio: bool, shell: bool, terminal: bool) -> bool {
-    !cfg!(target_os = "linux") && (procs || audio || shell || terminal)
+///
+/// Takes the same field predicate `collect` uses, so the tests can hand it a real field
+/// selection (the default mode's, or `audio` alone) rather than pre-digested booleans.
+fn needs_process_list(should_collect: impl Fn(&str) -> bool) -> bool {
+    !cfg!(target_os = "linux")
+        && (should_collect("procs") || should_collect("shell") || should_collect("terminal"))
 }
 
 impl SystemInfo {
@@ -524,6 +533,16 @@ impl SystemInfo {
         } else {
             None
         };
+        // `audio` borrows nothing (it took `&sys` and never read it). Until v0.20.29 it
+        // ran inside the scope, after `sys-init`, which off Linux also loaded the process
+        // table just for it: ~13–17 ms of delay on chani before CoreAudio even started.
+        let audio_handle = if should_collect("audio") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("audio", crate::audio::detect_audio_devices)
+            }))
+        } else {
+            None
+        };
         let wifi_handle = if should_collect("wifi") {
             Some(std::thread::spawn(move || {
                 crate::timing::timed("wifi", crate::network::detect_wifi)
@@ -659,12 +678,7 @@ impl SystemInfo {
         {
             refresh_kind = refresh_kind.with_memory(sysinfo::MemoryRefreshKind::everything());
         }
-        if needs_process_list(
-            should_collect("procs"),
-            should_collect("audio"),
-            should_collect("shell"),
-            should_collect("terminal"),
-        ) {
+        if needs_process_list(should_collect) {
             refresh_kind = refresh_kind.with_processes(sysinfo::ProcessRefreshKind::nothing());
         }
 
@@ -817,7 +831,7 @@ impl SystemInfo {
 
         let arch = crate::timing::timed("arch", System::cpu_arch);
 
-        let processes = if should_collect("procs") || should_collect("audio") {
+        let processes = if should_collect("procs") {
             #[cfg(target_os = "linux")]
             {
                 crate::timing::timed("procs", crate::proc_tree::task_count)
@@ -890,18 +904,11 @@ impl SystemInfo {
                 } else {
                     None
                 };
-                let audio_handle = if should_collect("audio") {
-                    Some(s.spawn(|| {
-                        crate::timing::timed("audio", || crate::audio::detect_audio(&sys))
-                    }))
-                } else {
-                    None
-                };
                 // `shell` reports the running shell's version by spawning the shell to ask it,
                 // which on Windows means starting PowerShell — measured at ~570 ms on arrakis.
                 // Until v0.17.6 that ran serially after this scope and was the largest single
                 // cost in `--long` and `--full`; here it overlaps the other probes instead. It
-                // only reads `sys`, as `audio` does.
+                // only reads `sys`.
                 let shell_handle = if should_collect("shell") {
                     Some(s.spawn(|| {
                         crate::timing::timed("shell", || crate::shell::detect_shell(&sys))
@@ -2680,33 +2687,57 @@ mod tests {
         // Both walk the process tree from retch's own pid. Before v0.17.6 only `procs` and
         // `audio` loaded the list, so `--fields shell` alone found no tree to walk and
         // reported the shell the environment implied rather than the one running retch.
-        // On Linux none of the four uses the list any more (they read /proc through
+        // On Linux none of the three uses the list any more (they read /proc through
         // `proc_tree`, whose live test proves the walk works with no list at all), so
         // there the rule inverts: the list must never be loaded.
         let expected = !cfg!(target_os = "linux");
+        let only = |field: &'static str| move |f: &str| f == field;
+        assert_eq!(needs_process_list(only("shell")), expected, "shell alone");
         assert_eq!(
-            needs_process_list(false, false, true, false),
-            expected,
-            "shell alone"
-        );
-        assert_eq!(
-            needs_process_list(false, false, false, true),
+            needs_process_list(only("terminal")),
             expected,
             "terminal alone"
         );
-        assert_eq!(
-            needs_process_list(true, false, false, false),
-            expected,
-            "procs alone"
-        );
-        assert_eq!(
-            needs_process_list(false, true, false, false),
-            expected,
-            "audio alone"
-        );
+        assert_eq!(needs_process_list(only("procs")), expected, "procs alone");
         assert!(
-            !needs_process_list(false, false, false, false),
+            !needs_process_list(|_: &str| false),
             "no consumer selected: the list must not be loaded"
+        );
+    }
+
+    #[test]
+    fn audio_and_the_default_mode_never_load_the_process_list() {
+        // `audio` was listed as a consumer until v0.20.29 although no platform read the
+        // table for it, so the default mode (which selects `audio` but not `procs`,
+        // `shell` or `terminal`) paid 6.6–11.8 ms of `sys-init` on macOS for nothing.
+        assert!(
+            !needs_process_list(|f: &str| f == "audio"),
+            "audio alone must not load the process list"
+        );
+        // The default mode's field set, as `src/fields.rs` defines it.
+        const DEFAULT_MODE: &[&str] = &[
+            "os",
+            "kernel",
+            "host",
+            "cpu",
+            "cpu-cache",
+            "motherboard",
+            "gpu",
+            "display",
+            "audio",
+            "camera",
+            "memory",
+            "phys-mem",
+            "swap",
+            "load",
+            "disk",
+            "phys-disk",
+            "net",
+            "uptime",
+        ];
+        assert!(
+            !needs_process_list(|f: &str| DEFAULT_MODE.contains(&f)),
+            "the default mode must not load the process list"
         );
     }
 
