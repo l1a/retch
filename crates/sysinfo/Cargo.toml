@@ -1,6 +1,6 @@
 [package]
 name = "retch-sysinfo"
-version = "0.1.95"
+version = "0.1.96"
 edition = "2021"
 authors = ["Ken Tobias"]
 description = "Cross-platform system and hardware information library (Linux, macOS, Windows) behind the retch fetcher"
@@ -16,5 +16,5 @@ dirs = "7.0"
 chrono = "0.4"
 anyhow = "1.0"
 owo-colors = "4.0"
-rusqlite = { version = "0.40", features = ["bundled"] }
+rusqlite = { version = "0.41", features = ["bundled"] }
 libc = "0.2"
