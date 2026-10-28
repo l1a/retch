@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793218353200,
+  "lastUpdate": 1793218795574,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1658,6 +1658,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 922741745.8000001,
             "extra": "v0.20.30; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "6bc247458408bb750dc4cb5d9df33ab51bf929d3",
+          "message": "Bump rusqlite to 0.41 (consolidate #303) (#306)\n\nMoves Dependabot #303 (rusqlite 0.40.2 -> 0.41) onto a gated branch, as\n#299 did for #298. Dependabot skips the version bump, the NOTES header\nand the man page regeneration.\n\nThe lockfile resolves rusqlite 0.41.1, released today after #303 was\nopened with 0.41.0. Its two fixes (PRAGMA names under SQLCipher, a\nzero-argument deterministic function panic) touch nothing retch uses;\nlibsqlite3-sys and every other package match #303 exactly.\n\nretch-sysinfo's own manifest changes, so both crates bump:\nretch-cli 0.20.30 -> 0.20.31, retch-sysinfo 0.1.95 -> 0.1.96.\n\nrusqlite bundles SQLite, so per NOTES 8 the rpmdb read was checked\nunprivileged on Fedora (arrakis): `retch --fields packages` prints\nPackages: 2471, equal to `rpm -qa | wc -l`.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-28T13:19:04-07:00",
+          "tree_id": "1cc67f7daac7928dfc61879ab14019db32cef7a3",
+          "url": "https://github.com/l1a/retch/commit/6bc247458408bb750dc4cb5d9df33ab51bf929d3"
+        },
+        "date": 1793218795574,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 62992545.70000001,
+            "extra": "v0.20.31; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 167265454.2,
+            "extra": "v0.20.31; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 7072583.3,
+            "extra": "v0.20.31; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 15306662.300000004,
+            "extra": "v0.20.31; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 241241504.50000003,
+            "extra": "v0.20.31; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 898763774.9,
+            "extra": "v0.20.31; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 422920341.7,
+            "extra": "v0.20.31; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 908613958.4000001,
+            "extra": "v0.20.31; AC"
           }
         ]
       }
