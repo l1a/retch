@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793217615271,
+  "lastUpdate": 1793217616664,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7529,6 +7529,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 255.25415333126256,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ce116b5ad3e75019fb185c440d6df11db27fa6a3",
+          "message": "Speed up the macOS default mode (#304)\n\nOn an M3 Pro (macOS 27.2, on AC) the default mode drops from 114-152 ms\nto 65 ms (hyperfine, 40 runs; main measured 152.3 and 114.0 ms as two\ncopies of one binary in the same sitting, this build 64.9 +/- 1.3 ms).\nOutput is unchanged in all four modes. Two causes:\n\n- phys-mem spawned `system_profiler SPMemoryDataType`, 87-147 ms and the\n  whole critical path. Apple Silicon publishes the same size and type on\n  IODeviceTree:/chosen (dram-size, dram-type), which now answers in\n  under 0.1 ms. Intel Macs, which lack them, still spawn it.\n- audio took &System and read it on no platform, yet it ran after\n  sys-init and needs_process_list counted it, so off Linux the default\n  mode loaded a process table nobody used (6.6-11.8 ms) and CoreAudio\n  started late. It now starts with the borrow-nothing probes via\n  detect_audio_devices(); detect_audio(&System) stays as a wrapper so\n  retch-sysinfo's API does not break. Windows' default mode stops\n  loading the table too (not measured: no Windows host).\n\nneeds_process_list now takes the field predicate, so a test can feed it\nthe default mode's real field set. Both new guards were watched failing\nagainst a mutation.\n\nNOTES also closes the v0.20.8 macOS --short alert (runner noise: retch\nand fastfetch spiked in the same runs) and records two open macOS items:\nno IOKit source tracks the Bluetooth radio (tested by hand), and the\nNet: lines print in a different order on every run.\n\nretch-cli 0.20.28 -> 0.20.29, retch-sysinfo 0.1.93 -> 0.1.94.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-28T12:49:42-07:00",
+          "tree_id": "33ac12268c4fabd03f7a0ff1db01333a8eb84eeb",
+          "url": "https://github.com/l1a/retch/commit/ce116b5ad3e75019fb185c440d6df11db27fa6a3"
+        },
+        "date": 1793217616616,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2380276.9999999995,
+            "unit": "ns",
+            "extra": "v0.20.29"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 252493269.40000007,
+            "unit": "ns",
+            "extra": "v0.20.29"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252458255.80000004,
+            "unit": "ns",
+            "extra": "v0.20.29"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1388816.0000000002,
+            "unit": "ns",
+            "extra": "v0.20.29"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3235982.900000001,
+            "unit": "ns",
+            "extra": "v0.20.29"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 210774774.90000004,
+            "unit": "ns",
+            "extra": "v0.20.29"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 204817460.4,
+            "unit": "ns",
+            "extra": "v0.20.29"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2192579.3000000003,
+            "unit": "ns",
+            "extra": "v0.20.29"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 252986326.8,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 993.5993731090408,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 106.0175681813384,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.949130297750077,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 50.87332546349896,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8903.542331338922,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 84227.86627206193,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 5756.601167327062,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4084.4083240318105,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 71487.50456954053,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 275.88887927686267,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 263.7032146913226,
             "unit": "ns"
           }
         ]
