@@ -150,9 +150,9 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.29)
+## Current State (v0.20.30)
 
-`main` carries **`retch-cli` 0.20.29** / **`retch-sysinfo` 0.1.94**. Newest released tag is
+`main` carries **`retch-cli` 0.20.30** / **`retch-sysinfo` 0.1.95**. Newest released tag is
 **`v0.20.28`**.
 
 The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
@@ -160,11 +160,21 @@ The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lack
 
 Recent work worth knowing about, beyond what `git log` says:
 
+- **v0.20.30: `Net:` lines come out in the same order on every run, on every platform.**
+  sysinfo keeps interfaces in a `HashMap`, whose iteration order is randomised per process,
+  and `detect_networks` listed them in that order. So `--long`/`--full` printed the
+  non-active interfaces shuffled differently each run, and the default mode's fallback (the
+  first interface that is up, used only when the active one cannot be resolved) could pick a
+  different line each time. Found on chani while diffing two builds' output, where it had to
+  be sorted away; two runs of the *same* binary differed. Now sorted by a natural name key:
+  `en2` before `en10`, `utun2` before `utun100`; the active interface still leads in
+  `--long`/`--full`.
+
 - **v0.20.29: the macOS default mode no longer spawns `system_profiler`; 152/114 ms → 65 ms
   on chani** (M3 Pro, macOS 27.2, on AC; hyperfine, 40 runs: `main` measured 152.3 ± 50.2
   and 114.0 ± 27.2 ms as two copies of the same binary in one sitting, this build
   64.9 ± 1.3 ms; fastfetch's matched default 216.6 ± 149.3 ms). Output is identical in all
-  four modes (rates masked, `Net:` lines sorted; see §6c for why they must be). Two causes:
+  four modes (rates masked, `Net:` lines sorted; until v0.20.30 their order changed every run). Two causes:
   - **`phys-mem` spawned `system_profiler SPMemoryDataType`, 87–147 ms, the whole critical
     path.** Apple Silicon publishes the same facts on `IODeviceTree:/chosen` (`dram-size`,
     8-byte little-endian; `dram-type`, NUL-padded), where `system_profiler` reads them: now
@@ -922,12 +932,6 @@ SQLite open-mode defect — see §7.3.
   (`IONVMeBlockStorageDevice` vs `IOAHCIBlockStorageDevice`) is the honest signal; it needs
   an Intel Mac to verify.
 
-- **`--long`/`--full` print the `Net:` interface lines in a different order on every run**
-  (found 2026-10-28 on chani, pre-existing: two runs of the same `main` binary differ). The
-  set of lines is stable, only the order moves, which looks like hash-map iteration order.
-  Not fixed with v0.20.29; it is why that change's output comparison had to sort them. A
-  stable order (active interface first, then by name) would make two runs diffable.
-
 **Decided — `tpm` stays absent on macOS.** Macs have a **Secure Enclave**, not a TPM. The field
 reports a TPM *specification* version (`2.0`/`1.2`) and a Secure Enclave has none; labelling one
 as the other would be an approximate-but-wrong answer. fastfetch reports no TPM on macOS either.
@@ -1092,6 +1096,11 @@ nobody asked.
 - **Count invocations, not mentions.** A guard that counted `scripts/cli_bench.py` in the
   workflow also counted the new `pull_request` path filter naming it, so the totals matched by
   coincidence and a job could have dropped the call unnoticed. Match the command shape.
+- **An order a library hands you may be a hash map's.** sysinfo's `Networks` iterates a
+  `HashMap`, randomised per process, so the `Net:` lines reshuffled on every run for as long
+  as retch printed them in that order. Nobody noticed because each run looks plausible on its
+  own; it surfaced only when two runs of the same binary were diffed. Sort anything shown to
+  a user, or compared between runs, by a key you chose.
 - **A parameter is not a dependency.** `detect_audio(&sys)` took the `System` on every
   platform and read it on none after v0.19.1, but the signature alone kept `audio` inside the
   scope after `sys-init` and kept it listed in `needs_process_list`, so macOS's default mode
