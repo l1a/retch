@@ -164,7 +164,7 @@ pub fn detect_networks(
     #[cfg(target_os = "windows")]
     let excluded = crate::win_iftable::excluded_interface_names();
 
-    Networks::new_with_refreshed_list()
+    let mut interfaces: Vec<NetworkInterface> = Networks::new_with_refreshed_list()
         .iter()
         .filter(|(name, _)| {
             #[cfg(target_os = "windows")]
@@ -242,7 +242,22 @@ pub fn detect_networks(
                 line: format!("{}{} [{}] RX: {} TX: {}", name, ip_str, status, rx, tx),
             }
         })
-        .collect()
+        .collect();
+    // sysinfo keeps interfaces in a HashMap, whose iteration order is randomised per process,
+    // so until v0.20.30 the `Net:` lines came out in a different order on every run, and the
+    // default mode's "first interface that is up" fallback picked a different one each time.
+    interfaces.sort_by(|a, b| interface_sort_key(&a.name).cmp(&interface_sort_key(&b.name)));
+    interfaces
+}
+
+/// Natural sort key for an interface name: the name without its trailing number, then that
+/// number as a number, then the whole name. `en2` sorts before `en10`, `utun2` before
+/// `utun100`, and a bare `lo` before `lo0`. The whole name breaks the remaining ties
+/// (`en01` vs `en1`), so the order is total.
+fn interface_sort_key(name: &str) -> (&str, Option<u64>, &str) {
+    let prefix = name.trim_end_matches(|c: char| c.is_ascii_digit());
+    let number = name[prefix.len()..].parse::<u64>().ok();
+    (prefix, number, name)
 }
 
 /// Formats a byte count into human-readable form (KB, MB, GB, etc.)
@@ -1509,6 +1524,57 @@ mod macos_dns_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── interface_sort_key ────────────────────────────────────────────────────
+
+    fn sorted(names: &[&'static str]) -> Vec<&'static str> {
+        let mut v = names.to_vec();
+        v.sort_by(|a, b| interface_sort_key(a).cmp(&interface_sort_key(b)));
+        v
+    }
+
+    #[test]
+    fn interfaces_sort_by_name_with_numbers_in_numeric_order() {
+        // Names from chani's `--long` (macOS 27), deliberately out of order, plus the
+        // cases a plain string sort gets wrong: en10 before en2, utun100 before utun2.
+        let input = [
+            "utun100", "en10", "en2", "lo0", "bridge0", "utun2", "awdl0", "en0", "anpi1", "gif0",
+        ];
+        assert_eq!(
+            sorted(&input),
+            [
+                "anpi1", "awdl0", "bridge0", "en0", "en2", "en10", "gif0", "lo0", "utun2",
+                "utun100"
+            ]
+        );
+    }
+
+    #[test]
+    fn interface_order_is_total_and_handles_odd_names() {
+        // No number sorts before a number; equal prefix+number falls back to the full name;
+        // Windows names with spaces and an all-digit name still get a defined place.
+        assert_eq!(sorted(&["lo0", "lo"]), ["lo", "lo0"]);
+        assert_eq!(sorted(&["en1", "en01"]), ["en01", "en1"]);
+        assert_eq!(
+            sorted(&["Wi-Fi 2", "Ethernet", "Wi-Fi", "42"]),
+            ["42", "Ethernet", "Wi-Fi", "Wi-Fi 2"]
+        );
+        // Same input in two different orders gives the same output.
+        assert_eq!(sorted(&["b1", "a2", "a1"]), sorted(&["a1", "b1", "a2"]));
+    }
+
+    #[test]
+    fn detect_networks_returns_interfaces_in_key_order() {
+        // Live: whatever this host has, the list must already be sorted, not in sysinfo's
+        // HashMap order. With fewer than two interfaces it holds trivially; CI hosts have more.
+        let names: Vec<String> = detect_networks(None, None)
+            .into_iter()
+            .map(|n| n.name)
+            .collect();
+        let mut expected = names.clone();
+        expected.sort_by(|a, b| interface_sort_key(a).cmp(&interface_sort_key(b)));
+        assert_eq!(names, expected);
+    }
 
     // ── parse_public_ip ───────────────────────────────────────────────────────
 
