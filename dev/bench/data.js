@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793217617592,
+  "lastUpdate": 1793217826654,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1586,6 +1586,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 851614399.9000001,
             "extra": "v0.20.29; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "738b5c23eaba3ffa987a35d7424322bfe355583d",
+          "message": "List network interfaces in a stable order (#305)\n\nsysinfo keeps interfaces in a HashMap, whose iteration order is\nrandomised per process, and detect_networks listed them in that order.\nSo --long and --full printed the non-active Net: lines shuffled\ndifferently on every run, on every platform, and the default mode's\nfallback (the first interface that is up, used when the active one\ncannot be resolved) could print a different line each time.\n\ndetect_networks now sorts by a natural name key: the name without its\ntrailing number, that number numerically, then the full name, so en2\ncomes before en10 and utun2 before utun100. The active interface still\nleads in --long and --full. Same set of lines as before; only the order\nis now fixed.\n\nTests cover the key (including names a plain string sort gets wrong and\nWindows names with spaces) and, live, that detect_networks returns its\nlist in key order. Both were watched failing against a mutation. On\nchani three --long runs now print the same order.\n\nretch-cli 0.20.29 -> 0.20.30, retch-sysinfo 0.1.94 -> 0.1.95.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-28T13:02:55-07:00",
+          "tree_id": "f1541d237236ef21be7566dd394a99ff28ab83e9",
+          "url": "https://github.com/l1a/retch/commit/738b5c23eaba3ffa987a35d7424322bfe355583d"
+        },
+        "date": 1793217826654,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 62310278.9,
+            "extra": "v0.20.30; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 166179041.60000002,
+            "extra": "v0.20.30; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 7159633.400000001,
+            "extra": "v0.20.30; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 14618854.3,
+            "extra": "v0.20.30; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 243019312.8,
+            "extra": "v0.20.30; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 889205504.3,
+            "extra": "v0.20.30; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 430963958.2000001,
+            "extra": "v0.20.30; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 922741745.8000001,
+            "extra": "v0.20.30; AC"
           }
         ]
       }
