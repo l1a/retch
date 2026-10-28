@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793129496073,
+  "lastUpdate": 1793217032033,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1514,6 +1514,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 885916062.3000001,
             "extra": "v0.20.24; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "ce116b5ad3e75019fb185c440d6df11db27fa6a3",
+          "message": "Speed up the macOS default mode (#304)\n\nOn an M3 Pro (macOS 27.2, on AC) the default mode drops from 114-152 ms\nto 65 ms (hyperfine, 40 runs; main measured 152.3 and 114.0 ms as two\ncopies of one binary in the same sitting, this build 64.9 +/- 1.3 ms).\nOutput is unchanged in all four modes. Two causes:\n\n- phys-mem spawned `system_profiler SPMemoryDataType`, 87-147 ms and the\n  whole critical path. Apple Silicon publishes the same size and type on\n  IODeviceTree:/chosen (dram-size, dram-type), which now answers in\n  under 0.1 ms. Intel Macs, which lack them, still spawn it.\n- audio took &System and read it on no platform, yet it ran after\n  sys-init and needs_process_list counted it, so off Linux the default\n  mode loaded a process table nobody used (6.6-11.8 ms) and CoreAudio\n  started late. It now starts with the borrow-nothing probes via\n  detect_audio_devices(); detect_audio(&System) stays as a wrapper so\n  retch-sysinfo's API does not break. Windows' default mode stops\n  loading the table too (not measured: no Windows host).\n\nneeds_process_list now takes the field predicate, so a test can feed it\nthe default mode's real field set. Both new guards were watched failing\nagainst a mutation.\n\nNOTES also closes the v0.20.8 macOS --short alert (runner noise: retch\nand fastfetch spiked in the same runs) and records two open macOS items:\nno IOKit source tracks the Bluetooth radio (tested by hand), and the\nNet: lines print in a different order on every run.\n\nretch-cli 0.20.28 -> 0.20.29, retch-sysinfo 0.1.93 -> 0.1.94.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-10-28T12:49:42-07:00",
+          "tree_id": "33ac12268c4fabd03f7a0ff1db01333a8eb84eeb",
+          "url": "https://github.com/l1a/retch/commit/ce116b5ad3e75019fb185c440d6df11db27fa6a3"
+        },
+        "date": 1793217032033,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 68355395.7,
+            "extra": "v0.20.29; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 171393512.49999997,
+            "extra": "v0.20.29; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 7280841.8,
+            "extra": "v0.20.29; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 16613304.299999999,
+            "extra": "v0.20.29; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 235763112.5,
+            "extra": "v0.20.29; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 862333987.6000001,
+            "extra": "v0.20.29; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 408192850.1999999,
+            "extra": "v0.20.29; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 851614399.9000001,
+            "extra": "v0.20.29; AC"
           }
         ]
       }
