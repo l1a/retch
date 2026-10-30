@@ -41,6 +41,45 @@ pub(crate) struct IfRow {
     pub out_octets: u64,
 }
 
+/// One reportable interface from `GetIfTable2` joined with its unicast IP addresses from
+/// `GetUnicastIpAddressTable`.
+///
+/// Querying both tables directly (~2.5 ms combined) avoids calling
+/// `sysinfo::Networks::new_with_refreshed_list()`, which invokes `GetAdaptersAddresses` plus
+/// a per-adapter `GetIfEntry2` loop across every NDIS filter row (~15–25 ms per call).
+#[cfg(target_os = "windows")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct IfRowWithIps {
+    /// The adapter's friendly name (`MIB_IF_ROW2.Alias`), e.g. `Wi-Fi`.
+    pub name: String,
+    /// Whether `MIB_IF_ROW2.OperStatus == IfOperStatusUp` (`1`).
+    pub is_up: bool,
+    /// Cumulative bytes received (`InOctets`).
+    pub in_octets: u64,
+    /// Cumulative bytes transmitted (`OutOctets`).
+    pub out_octets: u64,
+    /// Unicast IPv4 and IPv6 addresses assigned to this interface.
+    pub ips: Vec<std::net::IpAddr>,
+}
+
+/// Decodes a 28-byte Windows `SOCKADDR_INET` union (`AF_INET = 2`, `AF_INET6 = 23`) into an
+/// [`std::net::IpAddr`].
+#[cfg(any(target_os = "windows", test))]
+pub(crate) fn decode_sockaddr_inet(raw: &[u8; 28]) -> Option<std::net::IpAddr> {
+    let family = u16::from_le_bytes([raw[0], raw[1]]);
+    match family {
+        2 => Some(std::net::IpAddr::V4(std::net::Ipv4Addr::new(
+            raw[4], raw[5], raw[6], raw[7],
+        ))),
+        23 => {
+            let mut octets = [0u8; 16];
+            octets.copy_from_slice(&raw[8..24]);
+            Some(std::net::IpAddr::V6(std::net::Ipv6Addr::from(octets)))
+        }
+        _ => None,
+    }
+}
+
 /// Decides whether a `GetIfTable2` row is a real interface worth reporting.
 ///
 /// **This is the Windows equivalent of excluding partitions, and it is not cosmetic.**
@@ -73,6 +112,13 @@ pub(crate) fn interfaces() -> Vec<IfRow> {
     ffi::enumerate()
 }
 
+/// Enumerates the real network interfaces joined with their unicast IP addresses from
+/// `GetUnicastIpAddressTable(AF_UNSPEC)`.
+#[cfg(target_os = "windows")]
+pub(crate) fn interfaces_with_ips() -> Vec<IfRowWithIps> {
+    ffi::enumerate_with_ips()
+}
+
 /// The names of rows that are **not** real interfaces — NDIS filter instances and
 /// loopback.
 ///
@@ -81,15 +127,21 @@ pub(crate) fn interfaces() -> Vec<IfRow> {
 /// set rather than the inclusion set deliberately: an interface that `GetIfTable2` does not
 /// list at all must still be reported by the caller, not silently removed.
 #[cfg(target_os = "windows")]
+#[allow(dead_code)]
 pub(crate) fn excluded_interface_names() -> Vec<String> {
     ffi::enumerate_excluded()
 }
 
 #[cfg(target_os = "windows")]
 mod ffi {
-    use super::{is_reportable_interface, IfRow};
+    use super::{decode_sockaddr_inet, is_reportable_interface, IfRow, IfRowWithIps};
+    use std::collections::HashMap;
     use std::ffi::c_void;
+    use std::net::IpAddr;
     use std::ptr;
+
+    /// `IfOperStatusUp` from `IF_OPER_STATUS` (`ifdef.h`).
+    const IF_OPER_STATUS_UP: u32 = 1;
 
     /// `MIB_IF_ROW2`. Every field is declared because the ones that matter sit 1208 and
     /// 1280 bytes in — the offsets are only correct if everything ahead of them is.
@@ -146,9 +198,34 @@ mod ffi {
         table: [MibIfRow2; 1],
     }
 
+    /// `MIB_UNICASTIPADDRESS_ROW` (`netioapi.h`, 80 bytes).
+    #[repr(C)]
+    pub(super) struct MibUnicastIpAddressRow {
+        address: [u8; 28],
+        interface_luid: u64,
+        interface_index: u32,
+        prefix_origin: i32,
+        suffix_origin: i32,
+        valid_lifetime: u32,
+        preferred_lifetime: u32,
+        on_link_prefix_length: u8,
+        skip_as_source: u8,
+        dad_state: i32,
+        scope_id: u32,
+        creation_time_stamp: i64,
+    }
+
+    /// `MIB_UNICASTIPADDRESS_TABLE` (`netioapi.h`).
+    #[repr(C)]
+    pub(super) struct MibUnicastIpAddressTable {
+        num_entries: u32,
+        table: [MibUnicastIpAddressRow; 1],
+    }
+
     #[link(name = "iphlpapi")]
     extern "system" {
         fn GetIfTable2(table: *mut *mut MibIfTable2) -> u32;
+        fn GetUnicastIpAddressTable(family: u16, table: *mut *mut MibUnicastIpAddressTable) -> u32;
         fn FreeMibTable(memory: *mut c_void);
     }
 
@@ -178,6 +255,33 @@ mod ffi {
         out
     }
 
+    /// Queries `GetUnicastIpAddressTable(AF_UNSPEC)` and groups unicast IP addresses by
+    /// `InterfaceLuid`.
+    fn unicast_ips_by_luid() -> HashMap<u64, Vec<IpAddr>> {
+        let mut table: *mut MibUnicastIpAddressTable = ptr::null_mut();
+        // SAFETY: GetUnicastIpAddressTable allocates the table when returning 0.
+        let rc = unsafe { GetUnicastIpAddressTable(0, &mut table) };
+        if rc != 0 || table.is_null() {
+            return HashMap::new();
+        }
+
+        let mut by_luid: HashMap<u64, Vec<IpAddr>> = HashMap::new();
+        // SAFETY: `table` is valid for `num_entries` contiguous `MibUnicastIpAddressRow`
+        // elements when `rc == 0`.
+        unsafe {
+            let count = (*table).num_entries as usize;
+            let rows = ptr::addr_of!((*table).table) as *const MibUnicastIpAddressRow;
+            for i in 0..count {
+                let row = &*rows.add(i);
+                if let Some(ip) = decode_sockaddr_inet(&row.address) {
+                    by_luid.entry(row.interface_luid).or_default().push(ip);
+                }
+            }
+            FreeMibTable(table as *mut c_void);
+        }
+        by_luid
+    }
+
     /// Real interfaces with their counters, sorted by name for stable output.
     pub(super) fn enumerate() -> Vec<IfRow> {
         let mut out = with_rows(|row| {
@@ -192,6 +296,31 @@ mod ffi {
                 name,
                 in_octets: row.in_octets,
                 out_octets: row.out_octets,
+            })
+        });
+        out.sort_by(|a, b| a.name.cmp(&b.name));
+        out
+    }
+
+    /// Real interfaces with their operational status, byte counters, and unicast IPs,
+    /// sorted by name for stable output.
+    pub(super) fn enumerate_with_ips() -> Vec<IfRowWithIps> {
+        let mut ips_by_luid = unicast_ips_by_luid();
+        let mut out = with_rows(|row| {
+            if !is_reportable_interface(row.if_type, row.interface_and_oper_status_flags) {
+                return None;
+            }
+            let name = wide_to_string(&row.alias);
+            if name.is_empty() {
+                return None;
+            }
+            let ips = ips_by_luid.remove(&row.interface_luid).unwrap_or_default();
+            Some(IfRowWithIps {
+                name,
+                is_up: row.oper_status == IF_OPER_STATUS_UP,
+                in_octets: row.in_octets,
+                out_octets: row.out_octets,
+                ips,
             })
         });
         out.sort_by(|a, b| a.name.cmp(&b.name));
@@ -253,6 +382,22 @@ mod ffi {
             // 8-byte alignment pads it out. Reading them at offset 4 would shear every
             // field by four bytes.
             assert_eq!(offset_of!(super::MibIfTable2, table), 8);
+
+            assert_eq!(size_of::<super::MibUnicastIpAddressRow>(), 80);
+            assert_eq!(
+                offset_of!(super::MibUnicastIpAddressRow, interface_luid),
+                32
+            );
+            assert_eq!(
+                offset_of!(super::MibUnicastIpAddressRow, interface_index),
+                40
+            );
+            assert_eq!(
+                offset_of!(super::MibUnicastIpAddressRow, on_link_prefix_length),
+                60
+            );
+            assert_eq!(offset_of!(super::MibUnicastIpAddressRow, dad_state), 64);
+            assert_eq!(offset_of!(super::MibUnicastIpAddressTable, table), 8);
         }
     }
 }
@@ -260,6 +405,30 @@ mod ffi {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_decode_sockaddr_inet_v4_and_v6() {
+        let mut raw_v4 = [0u8; 28];
+        raw_v4[0..2].copy_from_slice(&2u16.to_le_bytes()); // AF_INET
+        raw_v4[4..8].copy_from_slice(&[10, 10, 1, 64]);
+        assert_eq!(
+            decode_sockaddr_inet(&raw_v4),
+            Some(std::net::IpAddr::V4(std::net::Ipv4Addr::new(10, 10, 1, 64)))
+        );
+
+        let mut raw_v6 = [0u8; 28];
+        raw_v6[0..2].copy_from_slice(&23u16.to_le_bytes()); // AF_INET6
+        raw_v6[8..24].copy_from_slice(&[
+            0xfd, 0x5f, 0x56, 0x5d, 0x81, 0xeb, 0x3c, 0x2b, 0, 0, 0, 0, 0, 0, 0, 1,
+        ]);
+        assert_eq!(
+            decode_sockaddr_inet(&raw_v6),
+            Some("fd5f:565d:81eb:3c2b::1".parse().unwrap())
+        );
+
+        let raw_unknown = [0u8; 28];
+        assert_eq!(decode_sockaddr_inet(&raw_unknown), None);
+    }
 
     /// Verbatim `GetIfTable2` rows from a Windows 11 host (arrakis), as
     /// `(alias, Type, InterfaceAndOperStatusFlags)`. Kept as data rather than reading the

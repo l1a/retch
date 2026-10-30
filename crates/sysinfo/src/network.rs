@@ -4,7 +4,22 @@
 //! Network interface detection, IP resolution, Wi-Fi, and related helpers.
 
 use owo_colors::OwoColorize;
+#[cfg(not(target_os = "windows"))]
 use sysinfo::Networks;
+
+#[cfg(target_os = "windows")]
+std::thread_local! {
+    /// One-shot per-thread handoff of `win_iftable::interfaces_with_ips()` from
+    /// [`detect_active_interface_and_local_ip`] to [`detect_networks`].
+    ///
+    /// In `SystemInfo::collect`, `net` (`detect_active_interface_and_local_ip`) and `net-detail`
+    /// (`detect_networks`) run back-to-back on the same worker thread. Handing the snapshot from
+    /// the first call to the second avoids a second `GetIfTable2` + `GetUnicastIpAddressTable`
+    /// round-trip while ensuring a subsequent `collect()` call in benchmarks or tests still
+    /// queries fresh kernel counters because `.take()` consumes the cached entry immediately.
+    static PENDING_WIN_IF_ROWS: std::cell::RefCell<Option<Vec<crate::win_iftable::IfRowWithIps>>> =
+        const { std::cell::RefCell::new(None) };
+}
 
 /// Detects the local IP address and active network interface name.
 pub fn detect_active_interface_and_local_ip() -> (Option<String>, Option<String>) {
@@ -54,25 +69,24 @@ pub fn detect_active_interface_and_local_ip() -> (Option<String>, Option<String>
         {
             // Identify the active (default-route) interface as the adapter whose
             // assigned IPs include the outbound `local_ip` we just resolved via the
-            // UDP-connect trick. This avoids spawning PowerShell `Get-NetRoute`,
-            // which costs ~1s of startup on Windows and dominated `--short` runtime.
-            // sysinfo already exposes per-interface IPs on Windows (see
-            // `detect_networks`), so no process spawn or extra API call is needed.
-            local_ip
+            // UDP-connect trick. We query `GetIfTable2` + `GetUnicastIpAddressTable`
+            // directly (~2.5 ms) and stash the snapshot for `detect_networks` on the
+            // same thread, avoiding two `sysinfo::Networks::new_with_refreshed_list()`
+            // calls (~27–35 ms combined).
+            let rows = crate::win_iftable::interfaces_with_ips();
+            let matched = local_ip
                 .as_deref()
                 .and_then(|ip| ip.parse::<std::net::IpAddr>().ok())
                 .and_then(|target| {
-                    let networks = Networks::new_with_refreshed_list();
                     match_active_interface(
-                        networks.iter().map(|(name, data)| {
-                            (
-                                name.to_string(),
-                                data.ip_networks().iter().map(|n| n.addr).collect(),
-                            )
-                        }),
+                        rows.iter().map(|r| (r.name.clone(), r.ips.clone())),
                         target,
                     )
-                })
+                });
+            PENDING_WIN_IF_ROWS.with(|cell| {
+                *cell.borrow_mut() = Some(rows);
+            });
+            matched
         }
         #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
         {
@@ -152,102 +166,132 @@ pub struct NetworkInterface {
     pub line: String,
 }
 
+/// Formats a single [`NetworkInterface`] from its raw counters and assigned addresses.
+fn build_network_interface(
+    name: &str,
+    oper_up: bool,
+    total_rx: u64,
+    total_tx: u64,
+    ips: impl Iterator<Item = std::net::IpAddr>,
+    active_interface: Option<&str>,
+    local_ip: Option<&str>,
+) -> NetworkInterface {
+    let rx = format_bytes(total_rx);
+    let tx = format_bytes(total_tx);
+    let is_up = oper_up || total_rx > 0 || total_tx > 0;
+    let status = if is_up {
+        "Up".green().to_string()
+    } else {
+        "Down".red().to_string()
+    };
+
+    let mut ipv4_addresses = Vec::new();
+    let mut ipv6_addresses = Vec::new();
+
+    if is_up {
+        let name_lower = name.to_lowercase();
+        let is_loopback_iface = name_lower.starts_with("lo") || name_lower.contains("loopback");
+        for ip in ips {
+            if ip.is_loopback() && !is_loopback_iface {
+                continue;
+            }
+            match ip {
+                std::net::IpAddr::V4(v4) => {
+                    // Disconnected Windows adapters retain tentative APIPA 169.254.x.x
+                    // entries in the unicast table; skip link-local IPv4 when the link is
+                    // operationally down.
+                    if !oper_up && v4.is_link_local() {
+                        continue;
+                    }
+                    ipv4_addresses.push(v4.to_string());
+                }
+                std::net::IpAddr::V6(v6) => {
+                    if !v6.is_unicast_link_local() {
+                        ipv6_addresses.push(v6.to_string());
+                    }
+                }
+            }
+        }
+
+        // Fallback to active interface UDP-resolved local IP if no IPs detected
+        if ipv4_addresses.is_empty() && ipv6_addresses.is_empty() {
+            if let (Some(active), Some(ip)) = (active_interface, local_ip) {
+                if name == active {
+                    ipv4_addresses.push(ip.to_string());
+                }
+            }
+        }
+    }
+
+    let ip_str = if !ipv4_addresses.is_empty() || !ipv6_addresses.is_empty() {
+        let mut combined = Vec::new();
+        if !ipv4_addresses.is_empty() {
+            combined.push(ipv4_addresses.join(", "));
+        }
+        if !ipv6_addresses.is_empty() {
+            combined.push(ipv6_addresses.join(", "));
+        }
+        format!(" ({})", combined.join(", "))
+    } else {
+        String::new()
+    };
+
+    NetworkInterface {
+        name: name.to_string(),
+        is_up,
+        line: format!("{}{} [{}] RX: {} TX: {}", name, ip_str, status, rx, tx),
+    }
+}
+
 pub fn detect_networks(
     active_interface: Option<&str>,
     local_ip: Option<&str>,
 ) -> Vec<NetworkInterface> {
-    // On Windows, NDIS lightweight filters bound to an adapter are reported as interfaces
-    // in their own right, each carrying a copy of that adapter's counters — so a single
-    // Wi-Fi card shows up as `Wi-Fi` plus several `Wi-Fi-<filter>-0000` entries with
-    // identical RX/TX. Drop them, on the same rule `net-io` uses, so an adapter is listed
-    // once. Computed before the loop because it is one table read, not one per interface.
     #[cfg(target_os = "windows")]
-    let excluded = crate::win_iftable::excluded_interface_names();
+    {
+        let rows = PENDING_WIN_IF_ROWS
+            .with(|cell| cell.borrow_mut().take())
+            .unwrap_or_else(crate::win_iftable::interfaces_with_ips);
+        let mut interfaces: Vec<NetworkInterface> = rows
+            .into_iter()
+            .map(|row| {
+                build_network_interface(
+                    &row.name,
+                    row.is_up,
+                    row.in_octets,
+                    row.out_octets,
+                    row.ips.into_iter(),
+                    active_interface,
+                    local_ip,
+                )
+            })
+            .collect();
+        interfaces.sort_by(|a, b| interface_sort_key(&a.name).cmp(&interface_sort_key(&b.name)));
+        interfaces
+    }
 
-    let mut interfaces: Vec<NetworkInterface> = Networks::new_with_refreshed_list()
-        .iter()
-        .filter(|(name, _)| {
-            #[cfg(target_os = "windows")]
-            {
-                !excluded.iter().any(|e| e == *name)
-            }
-            #[cfg(not(target_os = "windows"))]
-            {
-                let _ = name;
-                true
-            }
-        })
-        .map(|(name, data)| {
-            let rx = format_bytes(data.total_received());
-            let tx = format_bytes(data.total_transmitted());
-            let is_up = data.operational_state() == sysinfo::InterfaceOperationalState::Up
-                || data.total_received() > 0
-                || data.total_transmitted() > 0;
-            let status = if is_up {
-                "Up".green().to_string()
-            } else {
-                "Down".red().to_string()
-            };
-
-            let mut ipv4_addresses = Vec::new();
-            let mut ipv6_addresses = Vec::new();
-
-            if is_up {
-                for ip_net in data.ip_networks() {
-                    let ip = ip_net.addr;
-                    let name_lower = name.to_lowercase();
-                    let is_loopback_iface =
-                        name_lower.starts_with("lo") || name_lower.contains("loopback");
-                    if ip.is_loopback() && !is_loopback_iface {
-                        continue;
-                    }
-                    match ip {
-                        std::net::IpAddr::V4(v4) => {
-                            ipv4_addresses.push(v4.to_string());
-                        }
-                        std::net::IpAddr::V6(v6) => {
-                            if !v6.is_unicast_link_local() {
-                                ipv6_addresses.push(v6.to_string());
-                            }
-                        }
-                    }
-                }
-
-                // Fallback to active interface UDP-resolved local IP if no IPs detected by sysinfo
-                if ipv4_addresses.is_empty() && ipv6_addresses.is_empty() {
-                    if let (Some(active), Some(ip)) = (active_interface, local_ip) {
-                        if name == active {
-                            ipv4_addresses.push(ip.to_string());
-                        }
-                    }
-                }
-            }
-
-            let ip_str = if !ipv4_addresses.is_empty() || !ipv6_addresses.is_empty() {
-                let mut combined = Vec::new();
-                if !ipv4_addresses.is_empty() {
-                    combined.push(ipv4_addresses.join(", "));
-                }
-                if !ipv6_addresses.is_empty() {
-                    combined.push(ipv6_addresses.join(", "));
-                }
-                format!(" ({})", combined.join(", "))
-            } else {
-                String::new()
-            };
-
-            NetworkInterface {
-                name: name.to_string(),
-                is_up,
-                line: format!("{}{} [{}] RX: {} TX: {}", name, ip_str, status, rx, tx),
-            }
-        })
-        .collect();
-    // sysinfo keeps interfaces in a HashMap, whose iteration order is randomised per process,
-    // so until v0.20.30 the `Net:` lines came out in a different order on every run, and the
-    // default mode's "first interface that is up" fallback picked a different one each time.
-    interfaces.sort_by(|a, b| interface_sort_key(&a.name).cmp(&interface_sort_key(&b.name)));
-    interfaces
+    #[cfg(not(target_os = "windows"))]
+    {
+        let mut interfaces: Vec<NetworkInterface> = Networks::new_with_refreshed_list()
+            .iter()
+            .map(|(name, data)| {
+                build_network_interface(
+                    name,
+                    data.operational_state() == sysinfo::InterfaceOperationalState::Up,
+                    data.total_received(),
+                    data.total_transmitted(),
+                    data.ip_networks().iter().map(|n| n.addr),
+                    active_interface,
+                    local_ip,
+                )
+            })
+            .collect();
+        // sysinfo keeps interfaces in a HashMap, whose iteration order is randomised per process,
+        // so until v0.20.30 the `Net:` lines came out in a different order on every run, and the
+        // default mode's "first interface that is up" fallback picked a different one each time.
+        interfaces.sort_by(|a, b| interface_sort_key(&a.name).cmp(&interface_sort_key(&b.name)));
+        interfaces
+    }
 }
 
 /// Natural sort key for an interface name: the name without its trailing number, then that
@@ -755,14 +799,28 @@ pub fn parse_resolv_conf(content: &str) -> Vec<String> {
 /// Returns `None` when no domain is configured (e.g. a workgroup machine, or a default-route
 /// link with no DNS domain of its own) or the source is unavailable.
 pub fn detect_domain() -> Option<String> {
+    detect_domain_with_active_iface(None)
+}
+
+/// Returns the configured DNS domain name, reusing `active_iface` when the caller has
+/// already resolved the default-route interface.
+pub fn detect_domain_with_active_iface(active_iface: Option<&str>) -> Option<String> {
     #[cfg(target_os = "linux")]
     {
+        let resolved_iface;
+        let iface = match active_iface {
+            Some(i) => Some(i),
+            None => {
+                resolved_iface = default_route_interface();
+                resolved_iface.as_deref()
+            }
+        };
         // Ask systemd-resolved what the *default-route* link's domain is. When it manages
         // that link its answer is authoritative — including "no domain" — so we must not
         // fall through to resolv.conf's merged list, which is what leaks a VPN's domain.
-        if let (Some(iface), Some(status)) = (default_route_interface(), resolvectl_status()) {
+        if let (Some(iface), Some(status)) = (iface, resolvectl_status()) {
             if let DefaultRouteDomain::Managed(domain) =
-                resolve_default_route_domain(&parse_resolvectl_domains(status), &iface)
+                resolve_default_route_domain(&parse_resolvectl_domains(status), iface)
             {
                 return domain;
             }
@@ -771,6 +829,7 @@ pub fn detect_domain() -> Option<String> {
     }
     #[cfg(target_os = "macos")]
     {
+        let _ = active_iface;
         // Same reasoning as `detect_dns`, and the same v0.6.11 shape: report the default
         // route's own domain, not the merged list that a split-tunnel VPN dominates.
         // `Some(config)` means the primary service resolved, so its answer stands even
@@ -782,10 +841,11 @@ pub fn detect_domain() -> Option<String> {
     }
     #[cfg(target_os = "windows")]
     {
-        detect_domain_windows()
+        detect_domain_windows(active_iface)
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     {
+        let _ = active_iface;
         None
     }
 }
@@ -893,11 +953,25 @@ fn parse_sockaddr(bytes: &[u8]) -> Option<std::net::IpAddr> {
 /// Sorted as strings and de-duplicated, reproducing `Sort-Object -Unique`: that is a
 /// lexicographic sort, so `10.10.1.1` precedes `100.101.255.254`. Preserved for parity
 /// rather than because a numeric sort would be worse.
+/// Cached `GetAdaptersAddresses` DNS configuration snapshot on Windows.
+///
+/// `dns`, `domain`, and `domain-search` all read the same adapter DNS list; caching it
+/// avoids calling `GetAdaptersAddresses` + per-adapter registry lookups three times in
+/// `--long` and `--full`.
+#[cfg(target_os = "windows")]
+static WINDOWS_ADAPTERS_DNS_INFO: std::sync::OnceLock<Vec<WinAdapterDnsInfo>> =
+    std::sync::OnceLock::new();
+
+#[cfg(target_os = "windows")]
+fn windows_adapters_dns_info() -> &'static [WinAdapterDnsInfo] {
+    WINDOWS_ADAPTERS_DNS_INFO.get_or_init(get_windows_adapters_dns_info)
+}
+
 #[cfg(target_os = "windows")]
 fn windows_dns_servers() -> Vec<String> {
-    let mut servers: Vec<String> = get_windows_adapters_dns_info()
-        .into_iter()
-        .flat_map(|adapter| adapter.dns_servers)
+    let mut servers: Vec<String> = windows_adapters_dns_info()
+        .iter()
+        .flat_map(|adapter| adapter.dns_servers.iter().copied())
         .filter(|ip| ip.is_ipv4())
         .map(|ip| ip.to_string())
         .collect();
@@ -966,15 +1040,22 @@ fn parse_windows_domain_search(
 
 /// Windows: returns the active adapter's DNS domain via `GetAdaptersAddresses`.
 #[cfg(target_os = "windows")]
-fn detect_domain_windows() -> Option<String> {
-    let (_, active_iface) = detect_active_interface_and_local_ip();
-    let adapters = get_windows_adapters_dns_info();
+fn detect_domain_windows(active_iface: Option<&str>) -> Option<String> {
+    let resolved_iface;
+    let iface = match active_iface {
+        Some(i) => Some(i),
+        None => {
+            resolved_iface = detect_active_interface_and_local_ip().1;
+            resolved_iface.as_deref()
+        }
+    };
+    let adapters = windows_adapters_dns_info();
     let global_domain = crate::win_reg::get_reg_string(
         crate::win_reg::HKEY_LOCAL_MACHINE,
         "SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters",
         "Domain",
     );
-    resolve_windows_default_domain(active_iface.as_deref(), &adapters, global_domain.as_deref())
+    resolve_windows_default_domain(iface, adapters, global_domain.as_deref())
 }
 
 /// Queries `GetAdaptersAddresses` for per-adapter DNS suffix and status info.
@@ -1028,14 +1109,16 @@ fn get_windows_adapters_dns_info() -> Vec<WinAdapterDnsInfo> {
     }
 
     const AF_UNSPEC: u32 = 0;
-    /// `GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST`.
+    /// `GAA_FLAG_SKIP_UNICAST | GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST`.
     ///
     /// **`GAA_FLAG_SKIP_DNS_SERVER` (0x08) used to be set here, and removing it is what
     /// makes the native `dns` field possible.** With it, Windows leaves
     /// `FirstDnsServerAddress` null — the field was declared in the struct below but could
     /// never contain anything, which is why `detect_dns` had to spawn PowerShell instead.
-    /// Unicast is deliberately still requested (0x01 unset): `detect_domain` needs it.
-    const GAA_FLAGS: u32 = 0x06;
+    /// Unicast, anycast, and multicast address lists are skipped (`0x07`) because only
+    /// `FriendlyName`, `AdapterName`, `DnsSuffix`, `OperStatus`, `IfType`, and
+    /// `FirstDnsServerAddress` are read from this struct.
+    const GAA_FLAGS: u32 = 0x07;
     const IF_TYPE_SOFTWARE_LOOPBACK: u32 = 24;
     const IF_OPER_STATUS_UP: u32 = 1;
 
@@ -1225,13 +1308,13 @@ pub fn detect_domain_search() -> Vec<String> {
     }
     #[cfg(target_os = "windows")]
     {
-        let adapters = get_windows_adapters_dns_info();
+        let adapters = windows_adapters_dns_info();
         let global_search_list = crate::win_reg::get_reg_string(
             crate::win_reg::HKEY_LOCAL_MACHINE,
             "SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters",
             "SearchList",
         );
-        let results = parse_windows_domain_search(global_search_list.as_deref(), &adapters);
+        let results = parse_windows_domain_search(global_search_list.as_deref(), adapters);
         if !results.is_empty() {
             return results;
         }

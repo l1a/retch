@@ -51,6 +51,22 @@ pub const GUID_DEVCLASS_BLUETOOTH: Guid = Guid {
     data4: [0xbb, 0x8a, 0x26, 0x3b, 0x43, 0xf0, 0xf9, 0x74],
 };
 
+/// `GUID_DEVCLASS_KEYBOARD` = {4d36e96b-e325-11ce-bfc1-08002be10318}
+pub const GUID_DEVCLASS_KEYBOARD: Guid = Guid {
+    data1: 0x4d36_e96b,
+    data2: 0xe325,
+    data3: 0x11ce,
+    data4: [0xbf, 0xc1, 0x08, 0x00, 0x2b, 0xe1, 0x03, 0x18],
+};
+
+/// `GUID_DEVCLASS_MOUSE` = {4d36e96f-e325-11ce-bfc1-08002be10318}
+pub const GUID_DEVCLASS_MOUSE: Guid = Guid {
+    data1: 0x4d36_e96f,
+    data2: 0xe325,
+    data3: 0x11ce,
+    data4: [0xbf, 0xc1, 0x08, 0x00, 0x2b, 0xe1, 0x03, 0x18],
+};
+
 /// `KSCATEGORY_VIDEO_CAMERA` device *interface* class =
 /// {e5323777-f976-4f5b-9b55-b94699c46e44}.
 ///
@@ -95,8 +111,25 @@ pub const DEVPKEY_DEVICE_CONNECTED: DevPropKey = DevPropKey {
     pid: 15,
 };
 
+/// `DEVPKEY_Device_BusReportedDeviceDesc` = {540B947E-8B40-45BC-A8A2-6A0B894CBDA2}, PID 4.
+///
+/// USB and Bluetooth HID devices often register under the generic Windows class driver
+/// description (`"HID Keyboard Device"`, `"HID-compliant mouse"`), while the bus driver
+/// records the actual hardware product string here.
+pub const DEVPKEY_DEVICE_BUS_REPORTED_DEVICE_DESC: DevPropKey = DevPropKey {
+    fmtid: Guid {
+        data1: 0x540b_947e,
+        data2: 0x8b40,
+        data3: 0x45bc,
+        data4: [0xa8, 0xa2, 0x6a, 0x0b, 0x89, 0x4c, 0xbd, 0xa2],
+    },
+    pid: 4,
+};
+
 /// `DEVPROP_TYPE_BOOLEAN`. Its `TRUE` is `0xFF` (-1), not `1`.
 const DEVPROP_TYPE_BOOLEAN: u32 = 0x0000_0011;
+/// `DEVPROP_TYPE_STRING` (null-terminated UTF-16 string).
+const DEVPROP_TYPE_STRING: u32 = 0x0000_0012;
 
 /// A present device node: its instance id, friendly name, and connection state.
 pub struct PresentDevice {
@@ -190,7 +223,59 @@ fn wide_to_string(buf: &[u16]) -> Option<String> {
     }
 }
 
-/// Reads a device's friendly name, falling back to its device description.
+/// Reads `DEVPKEY_Device_BusReportedDeviceDesc` (`DEVPROP_TYPE_STRING`) for a device node.
+fn bus_reported_device_desc(dev_info: Handle, data: &SpDevinfoData) -> Option<String> {
+    let mut prop_type = 0u32;
+    let mut buf = [0u16; 512];
+    let mut required = 0u32;
+    // SAFETY: `buf` is writable with its byte capacity passed; `data` is a valid
+    // `SP_DEVINFO_DATA` for `dev_info`.
+    let ok = unsafe {
+        SetupDiGetDevicePropertyW(
+            dev_info,
+            data,
+            &DEVPKEY_DEVICE_BUS_REPORTED_DEVICE_DESC,
+            &mut prop_type,
+            buf.as_mut_ptr() as *mut u8,
+            (buf.len() * 2) as u32,
+            &mut required,
+            0,
+        )
+    };
+    if ok != 0 && prop_type == DEVPROP_TYPE_STRING {
+        wide_to_string(&buf)
+    } else {
+        None
+    }
+}
+
+/// Replaces generic Windows HID class driver descriptions (`"HID Keyboard Device"`,
+/// `"HID-compliant mouse"`, `"USB Input Device"`) with the hardware's bus-reported product
+/// string when the bus provides a non-generic one.
+pub(crate) fn prefer_bus_reported_name(reg_name: String, bus_desc: Option<&str>) -> String {
+    fn is_generic_hid_label(s: &str) -> bool {
+        let lower = s.trim().to_ascii_lowercase();
+        matches!(
+            lower.as_str(),
+            "hid keyboard device"
+                | "hid-compliant mouse"
+                | "usb input device"
+                | "hid-compliant consumer control device"
+                | "hid-compliant system controller"
+        )
+    }
+    if is_generic_hid_label(&reg_name) {
+        if let Some(bus) = bus_desc.map(str::trim).filter(|b| !b.is_empty()) {
+            if !is_generic_hid_label(bus) {
+                return bus.to_string();
+            }
+        }
+    }
+    reg_name
+}
+
+/// Reads a device's friendly name, falling back to its device description, and upgrades
+/// generic HID class driver labels using `DEVPKEY_Device_BusReportedDeviceDesc`.
 fn device_name(dev_info: Handle, data: &SpDevinfoData) -> Option<String> {
     for prop in [SPDRP_FRIENDLYNAME, SPDRP_DEVICEDESC] {
         let mut buf = [0u16; 512];
@@ -209,7 +294,8 @@ fn device_name(dev_info: Handle, data: &SpDevinfoData) -> Option<String> {
         };
         if ok != 0 {
             if let Some(name) = wide_to_string(&buf) {
-                return Some(name);
+                let bus_desc = bus_reported_device_desc(dev_info, data);
+                return Some(prefer_bus_reported_name(name, bus_desc.as_deref()));
             }
         }
     }
@@ -605,5 +691,25 @@ mod tests {
         // regression would silently query the wrong property rather than fail loudly:
         // 16 (GUID) + 4 (PID) = 20, with no tail padding.
         assert_eq!(size_of::<DevPropKey>(), 20);
+    }
+
+    #[test]
+    fn test_prefer_bus_reported_name() {
+        assert_eq!(
+            prefer_bus_reported_name("HID Keyboard Device".to_string(), Some("Keychron Q1")),
+            "Keychron Q1"
+        );
+        assert_eq!(
+            prefer_bus_reported_name("HID-compliant mouse".to_string(), Some("MX Master 3S")),
+            "MX Master 3S"
+        );
+        assert_eq!(
+            prefer_bus_reported_name("Standard PS/2 Keyboard".to_string(), Some("Ignored")),
+            "Standard PS/2 Keyboard"
+        );
+        assert_eq!(
+            prefer_bus_reported_name("HID-compliant mouse".to_string(), None),
+            "HID-compliant mouse"
+        );
     }
 }

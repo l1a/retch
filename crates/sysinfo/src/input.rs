@@ -271,12 +271,41 @@ pub fn classify_hid_interfaces(interfaces: &[(String, i64, i64)]) -> (Vec<String
     (keyboards, mice)
 }
 
+/// Filters a list of Windows SetupAPI input device names, removing virtual/remote-desktop
+/// pseudo-devices (`Remote Desktop Keyboard Device`, `Remote Desktop Mouse Device`,
+/// `Hyper-V Virtual Keyboard`, etc.) and de-duplicating case-insensitively while preserving
+/// discovery order.
+pub fn filter_windows_input_names(raw: Vec<String>) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for name in raw {
+        let trimmed = name.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let lower = trimmed.to_ascii_lowercase();
+        if lower.contains("remote desktop")
+            || lower.contains("terminal server")
+            || lower.starts_with("hyper-v ")
+        {
+            continue;
+        }
+        if !out
+            .iter()
+            .any(|existing| existing.eq_ignore_ascii_case(trimmed))
+        {
+            out.push(trimmed.to_string());
+        }
+    }
+    out
+}
+
 /// Detects connected keyboards and pointing devices as `(keyboards, mice)`.
 ///
 /// Linux reads `/proc/bus/input/devices` plus, only for ambiguous devices, a small sysfs
 /// lookup. macOS enumerates IOKit `IOHIDDevice` interfaces and reads their primary usage.
-/// Returns two empty vectors elsewhere, so both fields simply do not render. No subprocess
-/// and no elevation on either platform.
+/// Windows enumerates present devices in `GUID_DEVCLASS_KEYBOARD` and `GUID_DEVCLASS_MOUSE`
+/// via SetupAPI (`setupapi.dll`), upgrading generic HID class labels with
+/// `DEVPKEY_Device_BusReportedDeviceDesc`. No subprocess and no elevation on any platform.
 pub fn detect_input_devices() -> (Vec<String>, Vec<String>) {
     #[cfg(target_os = "linux")]
     {
@@ -290,7 +319,17 @@ pub fn detect_input_devices() -> (Vec<String>, Vec<String>) {
     {
         classify_hid_interfaces(&crate::macos_ffi::get_hid_interfaces())
     }
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(target_os = "windows")]
+    {
+        let keyboards = filter_windows_input_names(crate::win_setupapi::present_device_names(
+            &crate::win_setupapi::GUID_DEVCLASS_KEYBOARD,
+        ));
+        let mice = filter_windows_input_names(crate::win_setupapi::present_device_names(
+            &crate::win_setupapi::GUID_DEVCLASS_MOUSE,
+        ));
+        (keyboards, mice)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     {
         (Vec::new(), Vec::new())
     }
@@ -665,5 +704,20 @@ B: KEY=3f00733fff 0 0 483ffff17aff32d bfd4444600000000 ffff0001 130ff38b17d007 f
         assert!(parse_input_devices("H: Handlers=kbd event0\nB: EV=3\n").is_empty());
         let (k, m) = classify_input_devices_with(&[], fixture_model_name);
         assert!(k.is_empty() && m.is_empty());
+    }
+
+    #[test]
+    fn test_filter_windows_input_names_drops_virtual_and_deduplicates() {
+        let raw = vec![
+            "Standard PS/2 Keyboard".to_string(),
+            "Remote Desktop Keyboard Device".to_string(),
+            "standard ps/2 keyboard".to_string(),
+            "Hyper-V Virtual Keyboard".to_string(),
+            "Keychron Q1".to_string(),
+        ];
+        assert_eq!(
+            filter_windows_input_names(raw),
+            vec!["Standard PS/2 Keyboard", "Keychron Q1"]
+        );
     }
 }
