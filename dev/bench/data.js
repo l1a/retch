@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793386394627,
+  "lastUpdate": 1793389521033,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1804,6 +1804,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 3037223660,
             "extra": "v0.20.32; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "54a7a9960827f9bb307b8831b6acb08cad9f717b",
+          "message": "Add Windows CPU cache, freq range, and hybrid cores (#308)\n\nImplement native Windows CPU cache size detection (`cpu-cache`), base and\nboost frequency range detection (`cpu-freq`), hybrid P/E core topology\ndetection (`cpu`), and x86 CPUID brand trimming:\n\n- `crates/sysinfo/src/memory.rs`: Cache `read_smbios_table()` in a\n  `OnceLock` (`cached_smbios_table()`) so `phys-mem` (Type 17) and\n  `cpu-freq` (Type 4) share a single `GetSystemFirmwareTable('RSMB')`\n  call, and add `parse_smbios_type4_speeds()` to read `CurrentSpeed`\n  (base MHz) and `MaxSpeed` (boost MHz) from populated processor sockets.\n- `crates/sysinfo/src/fetch.rs`:\n  - Implement Windows `detect_cpu_cache()` via\n    `GetLogicalProcessorInformationEx(RelationCache, ...)` and share\n    `format_cpu_cache_entries()` with Linux.\n  - Implement Windows `detect_cpu_freq_range()` combining SMBIOS Type 4\n    speeds and per-core `CallNtPowerInformation(ProcessorInformation)`\n    `MaxMhz` values.\n  - Implement Windows `hybrid_cores()` via\n    `GetLogicalProcessorInformationEx(RelationProcessorCore, ...)`,\n    grouping logical processor bitmask popcounts by `EfficiencyClass`.\n  - Trim x86 `CPUID` brand strings in `cpu_brand()` so padded 48-byte\n    strings do not render extra spaces before `(8C / 16T)`.\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-10-30T12:43:34-07:00",
+          "tree_id": "cae0fcbe3459e5c24023fe4fc0903cd7768e8923",
+          "url": "https://github.com/l1a/retch/commit/54a7a9960827f9bb307b8831b6acb08cad9f717b"
+        },
+        "date": 1793389521033,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 27231139.999999996,
+            "extra": "v0.20.33; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 295554580.0,
+            "extra": "v0.20.33; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 25122720.000000004,
+            "extra": "v0.20.33; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 50100800.0,
+            "extra": "v0.20.33; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 141794049.99999997,
+            "extra": "v0.20.33; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 1812184720.0,
+            "extra": "v0.20.33; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 479840570.0,
+            "extra": "v0.20.33; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 3037196609.9999995,
+            "extra": "v0.20.33; AC"
           }
         ]
       }
