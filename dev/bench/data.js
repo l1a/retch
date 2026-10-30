@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793399844087,
+  "lastUpdate": 1793399844402,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -12445,6 +12445,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 424.4644194418678,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b1b47a194a52b307dd78675ddf64541b85ebf315",
+          "message": "Fix Intel cache unit and V4L2 IPU6 camera list (#309)\n\n- Fix `format_cpu_cache_entries` in `crates/sysinfo/src/fetch.rs` where\n  fractional MiB cache sizes (`kb >= 1024 && !kb.is_multiple_of(1024)`)\n  formatted `\"{:.2}M\"` before `.trim_end_matches('0')` and then appended\n  `+ \"M\"`, producing `\"1.25MM\"` on Intel Golden Cove / Raptor Cove / Lion\n  Cove P-cores (`1280` KB = 1.25 MiB).\n- Filter V4L2 ISP DMA capture queues (`Intel IPU6 ISYS Capture 0..31`),\n  CSI-2 receivers (`Intel IPU6 CSI2 0..3`), and MEI CSI bridges\n  (`Intel IVSC CSI`, `ipu3-*`) in `is_real_camera()`, expand V4L2 I2C\n  sensor names (`\"<model> <bus>-<4-hex-addr>\"`) to `\"<Vendor> <MODEL>\"`\n  (`\"ov01a10 17-0036\"` -> `\"OmniVision OV01A10\"`), append panel location\n  (`(Front)` / `(Back)`) from `device/physical_location/panel`, and sort\n  `/sys/class/video4linux` entries deterministically in `detect_camera()`.\n- Bump `retch-cli` to 0.20.34 and `retch-sysinfo` to 0.1.99, regenerate\n  `docs/retch.1`, and update `NOTES.md`.\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-10-30T15:25:27-07:00",
+          "tree_id": "a63fa52ea6b34f624b0d7923d943b798ebaf5301",
+          "url": "https://github.com/l1a/retch/commit/b1b47a194a52b307dd78675ddf64541b85ebf315"
+        },
+        "date": 1793399844352,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 376260679.2,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1042024616.8000002,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1037985470.8000003,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 28630841.700000003,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 334737383.50000006,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 414507299.9000001,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 399186362.5,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 18252345.7,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 320179345.825,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 713.4450547960109,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 193.70589635945666,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.634487421152374,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 97.81872228004215,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 6655.331167490568,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1852.0678246036914,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 385.6858773353937,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 115060.92004933611,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 476.46014263345415,
             "unit": "ns"
           }
         ]
