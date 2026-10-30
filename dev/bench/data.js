@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793390171552,
+  "lastUpdate": 1793390171771,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14871,6 +14871,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 340487435,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "54a7a9960827f9bb307b8831b6acb08cad9f717b",
+          "message": "Add Windows CPU cache, freq range, and hybrid cores (#308)\n\nImplement native Windows CPU cache size detection (`cpu-cache`), base and\nboost frequency range detection (`cpu-freq`), hybrid P/E core topology\ndetection (`cpu`), and x86 CPUID brand trimming:\n\n- `crates/sysinfo/src/memory.rs`: Cache `read_smbios_table()` in a\n  `OnceLock` (`cached_smbios_table()`) so `phys-mem` (Type 17) and\n  `cpu-freq` (Type 4) share a single `GetSystemFirmwareTable('RSMB')`\n  call, and add `parse_smbios_type4_speeds()` to read `CurrentSpeed`\n  (base MHz) and `MaxSpeed` (boost MHz) from populated processor sockets.\n- `crates/sysinfo/src/fetch.rs`:\n  - Implement Windows `detect_cpu_cache()` via\n    `GetLogicalProcessorInformationEx(RelationCache, ...)` and share\n    `format_cpu_cache_entries()` with Linux.\n  - Implement Windows `detect_cpu_freq_range()` combining SMBIOS Type 4\n    speeds and per-core `CallNtPowerInformation(ProcessorInformation)`\n    `MaxMhz` values.\n  - Implement Windows `hybrid_cores()` via\n    `GetLogicalProcessorInformationEx(RelationProcessorCore, ...)`,\n    grouping logical processor bitmask popcounts by `EfficiencyClass`.\n  - Trim x86 `CPUID` brand strings in `cpu_brand()` so padded 48-byte\n    strings do not render extra spaces before `(8C / 16T)`.\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-10-30T12:43:34-07:00",
+          "tree_id": "cae0fcbe3459e5c24023fe4fc0903cd7768e8923",
+          "url": "https://github.com/l1a/retch/commit/54a7a9960827f9bb307b8831b6acb08cad9f717b"
+        },
+        "date": 1793390171735,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 26832070.000000004,
+            "unit": "ns",
+            "extra": "v0.20.33"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2340579820,
+            "unit": "ns",
+            "extra": "v0.20.33"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1296301270.0000002,
+            "unit": "ns",
+            "extra": "v0.20.33"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 18620389.999999996,
+            "unit": "ns",
+            "extra": "v0.20.33"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 23515010.000000004,
+            "unit": "ns",
+            "extra": "v0.20.33"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 399620900.00000006,
+            "unit": "ns",
+            "extra": "v0.20.33"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 223414130.00000003,
+            "unit": "ns",
+            "extra": "v0.20.33"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 20146100.000000004,
+            "unit": "ns",
+            "extra": "v0.20.33"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 221.30935299428228,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.4924214585053495,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 123.66823159683754,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1348.071447633535,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41412.46614036018,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 530.8076493881306,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 813.7277748546346,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 375648205,
             "unit": "ns"
           }
         ]
