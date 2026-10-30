@@ -349,6 +349,16 @@ pub fn parse_system_profiler_memory(text: &str) -> Option<String> {
     format_dimm_slots(&slots)
 }
 
+/// Returns the cached raw SMBIOS structure table (`SMBIOSTableData`, 8-byte header stripped).
+///
+/// Shared between `phys-mem` (Type 17) and `cpu-freq` (Type 4) so `GetSystemFirmwareTable`
+/// is called at most once per process.
+#[cfg(target_os = "windows")]
+pub(crate) fn cached_smbios_table() -> Option<&'static [u8]> {
+    static TABLE: std::sync::OnceLock<Option<Vec<u8>>> = std::sync::OnceLock::new();
+    TABLE.get_or_init(win_ffi::read_smbios_table).as_deref()
+}
+
 /// Detects physical memory on Windows via the raw SMBIOS table.
 ///
 /// Replaces the previous `Get-CimInstance Win32_PhysicalMemory` PowerShell spawns
@@ -358,8 +368,8 @@ pub fn parse_system_profiler_memory(text: &str) -> Option<String> {
 /// the Linux dmidecode output (e.g. "4800 MT/s (rated 6000 MT/s)").
 #[cfg(target_os = "windows")]
 fn detect_windows() -> Option<String> {
-    if let Some(table) = win_ffi::read_smbios_table() {
-        let slots = parse_smbios_type17(&table);
+    if let Some(table) = cached_smbios_table() {
+        let slots = parse_smbios_type17(table);
         if let Some(result) = format_dimm_slots(&slots) {
             return Some(result);
         }
@@ -373,6 +383,71 @@ fn detect_windows() -> Option<String> {
     }
     let gb = total_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
     Some(format!("{:.0} GB (VM — DIMM info unavailable)", gb))
+}
+
+/// Parses SMBIOS Type 4 (Processor Information) structures from `SMBIOSTableData` and
+/// returns `(low_mhz, high_mhz)` across populated CPU sockets.
+///
+/// In Type 4 (SMBIOS 2.0+):
+/// - `MaxSpeed` (WORD @ `0x14`, in MHz) is the maximum processor speed (boost/turbo clock
+///   on modern AMD/Intel firmware, e.g. `5125` MHz on Ryzen 7 PRO 7840U).
+/// - `CurrentSpeed` (WORD @ `0x16`, in MHz) is the processor's base speed at boot
+///   (e.g. `3300` MHz on Ryzen 7 PRO 7840U).
+/// - `Status` (BYTE @ `0x18`): bit 6 (`0x40`) is `1` when the CPU socket is populated and
+///   `0` when unpopulated.
+#[cfg(any(target_os = "windows", test))]
+pub fn parse_smbios_type4_speeds(data: &[u8]) -> Option<(u64, u64)> {
+    fn u16_at(s: &[u8], off: usize) -> Option<u16> {
+        s.get(off..off + 2)
+            .map(|b| u16::from_le_bytes([b[0], b[1]]))
+    }
+
+    let mut min_mhz: Option<u64> = None;
+    let mut max_mhz: Option<u64> = None;
+    let mut i = 0usize;
+    while i + 4 <= data.len() {
+        let typ = data[i];
+        let slen = data[i + 1] as usize;
+        if slen < 4 || i + slen > data.len() {
+            break;
+        }
+        if typ == 127 {
+            break;
+        }
+        if typ == 4 && slen >= 0x18 {
+            let s = &data[i..i + slen];
+            // If Status byte @ 0x18 is present, bit 6 (0x40) must be set (CPU Socket Populated).
+            let populated = s.get(0x18).is_none_or(|&status| (status & 0x40) != 0);
+            if populated {
+                let max_speed = u16_at(s, 0x14).unwrap_or(0) as u64;
+                let cur_speed = u16_at(s, 0x16).unwrap_or(0) as u64;
+                for speed in [cur_speed, max_speed] {
+                    if speed > 0 && speed < 0xFFFF {
+                        min_mhz = Some(min_mhz.map_or(speed, |m| m.min(speed)));
+                        max_mhz = Some(max_mhz.map_or(speed, |m| m.max(speed)));
+                    }
+                }
+            }
+        }
+        let mut j = i + slen;
+        loop {
+            if j + 1 >= data.len() {
+                j = data.len();
+                break;
+            }
+            if data[j] == 0 && data[j + 1] == 0 {
+                j += 2;
+                break;
+            }
+            j += 1;
+        }
+        i = j;
+    }
+
+    match (min_mhz, max_mhz) {
+        (Some(low), Some(high)) if low > 0 && low <= high => Some((low, high)),
+        _ => None,
+    }
 }
 
 /// Parses the SMBIOS structure table (the `SMBIOSTableData` portion of `RawSMBIOSData`,
@@ -925,5 +1000,47 @@ Memory:
     fn test_parse_smbios_type17_empty_table() {
         assert!(parse_smbios_type17(&end_marker()).is_empty());
         assert!(parse_smbios_type17(&[]).is_empty());
+    }
+
+    /// Builds an SMBIOS Type 4 (Processor Information) structure with `max_speed` (@ `0x14`),
+    /// `current_speed` (@ `0x16`), and `status` (@ `0x18`), plus a double-null terminator.
+    fn make_type4(max_speed: u16, current_speed: u16, status: u8) -> Vec<u8> {
+        let mut s = vec![0u8; 0x1A];
+        s[0] = 4; // Type = Processor Information
+        s[1] = 0x1A; // Length = 26
+        s[2] = 0x04;
+        s[3] = 0x00;
+        s[0x14..0x16].copy_from_slice(&max_speed.to_le_bytes());
+        s[0x16..0x18].copy_from_slice(&current_speed.to_le_bytes());
+        s[0x18] = status;
+        s.push(0);
+        s.push(0);
+        s
+    }
+
+    #[test]
+    fn test_parse_smbios_type4_speeds_populated_socket() {
+        // irulan (AMD Ryzen 7 PRO 7840U): MaxSpeed = 5125 MHz, CurrentSpeed = 3300 MHz,
+        // Status = 0x41 (bit 6 set = socket populated, bit 0 = CPU enabled).
+        let mut data = make_type4(5125, 3300, 0x41);
+        data.extend([127, 4, 0, 0x7F, 0, 0]);
+        assert_eq!(parse_smbios_type4_speeds(&data), Some((3300, 5125)));
+    }
+
+    #[test]
+    fn test_parse_smbios_type4_speeds_skips_unpopulated_socket() {
+        // First socket unpopulated (Status bit 6 = 0) with bogus speeds, second populated.
+        let mut data = make_type4(9999, 1000, 0x00);
+        data.extend(make_type4(5125, 3300, 0x41));
+        data.extend([127, 4, 0, 0x7F, 0, 0]);
+        assert_eq!(parse_smbios_type4_speeds(&data), Some((3300, 5125)));
+    }
+
+    #[test]
+    fn test_parse_smbios_type4_speeds_empty_or_zero() {
+        let mut zero_speeds = make_type4(0, 0, 0x41);
+        zero_speeds.extend([127, 4, 0, 0x7F, 0, 0]);
+        assert_eq!(parse_smbios_type4_speeds(&zero_speeds), None);
+        assert_eq!(parse_smbios_type4_speeds(&[]), None);
     }
 }

@@ -256,23 +256,30 @@ fn is_cpu_temp(line: &str) -> bool {
     lower.contains("cpu") || lower.contains("core")
 }
 
+/// Trims leading and trailing whitespace from a CPU brand string, returning `None` if empty.
+///
+/// x86 `CPUID` brand strings are fixed 48-byte fields often padded with trailing spaces
+/// (e.g. `"AMD Ryzen 7 PRO 7840U w/ Radeon 780M Graphics  "`), which otherwise render extra
+/// spaces before `(8C / 16T)`.
+fn trim_cpu_brand(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_string())
+}
+
 /// The CPU name as `cpu` reports it: the first CPU's brand, or `Unknown CPU`.
 ///
 /// On Windows an empty brand falls back to the registry's `ProcessorNameString`: sysinfo
 /// reads the brand only through the x86 `CPUID` instruction, so on Windows on ARM it is
 /// always empty, and until v0.20.4 the field rendered as `CPU:  (12 cores)`.
 fn cpu_brand(cpus: &[sysinfo::Cpu]) -> String {
-    let brand = cpus
-        .first()
-        .map(|c| c.brand().to_string())
-        .unwrap_or_else(|| "Unknown CPU".to_string());
-    #[cfg(target_os = "windows")]
-    if brand.trim().is_empty() {
-        if let Some(name) = windows_cpu_name() {
-            return name;
-        }
+    if let Some(brand) = cpus.first().and_then(|c| trim_cpu_brand(c.brand())) {
+        return brand;
     }
-    brand
+    #[cfg(target_os = "windows")]
+    if let Some(name) = windows_cpu_name() {
+        return name;
+    }
+    "Unknown CPU".to_string()
 }
 
 /// `HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0\ProcessorNameString`, trimmed —
@@ -1450,11 +1457,237 @@ impl SystemInfo {
     }
 }
 
+/// Formats a list of `(level, kind, size_kb)` CPU cache entries into `"L1d: 32K, L1i: 32K, L2: 1M, L3: 16M"`.
+///
+/// Sorts by `(level, kind)` (`"Data"` before `"Instruction"` before `"Unified"`), deduplicates
+/// by label so multi-core cache tables report the per-level cache size once, and formats
+/// exact MiB multiples as `NM`, fractional MiB as `N.XXM`, and smaller sizes as `NK`.
+#[cfg_attr(target_os = "macos", allow(dead_code))]
+fn format_cpu_cache_entries(entries: &[(u32, &str, u64)]) -> Option<String> {
+    let mut filtered: Vec<(u32, &str, u64)> = entries
+        .iter()
+        .copied()
+        .filter(|&(level, kind, size_kb)| {
+            level > 0 && size_kb > 0 && matches!(kind, "Data" | "Instruction" | "Unified")
+        })
+        .collect();
+    if filtered.is_empty() {
+        return None;
+    }
+    filtered.sort_by_key(|&(level, kind, _)| (level, kind));
+
+    let fmt_size = |kb: u64| -> String {
+        if kb >= 1024 && kb.is_multiple_of(1024) {
+            format!("{}M", kb / 1024)
+        } else if kb >= 1024 {
+            format!("{:.2}M", kb as f64 / 1024.0)
+                .trim_end_matches('0')
+                .trim_end_matches('.')
+                .to_string()
+                + "M"
+        } else {
+            format!("{}K", kb)
+        }
+    };
+
+    let mut seen = std::collections::HashSet::new();
+    let mut parts: Vec<String> = Vec::new();
+    for (level, kind, size_kb) in filtered {
+        let label = match (level, kind) {
+            (1, "Data") => "L1d".to_string(),
+            (1, "Instruction") => "L1i".to_string(),
+            (1, "Unified") => "L1".to_string(),
+            (n, _) => format!("L{}", n),
+        };
+        if seen.insert(label.clone()) {
+            parts.push(format!("{}: {}", label, fmt_size(size_kb)));
+        }
+    }
+
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join(", "))
+    }
+}
+
+/// Parses raw `SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX` records returned by
+/// `GetLogicalProcessorInformationEx(RelationCache, ...)` into a formatted CPU cache string.
+///
+/// Each variable-length record starts with `(relationship: u32, size: u32)`. For
+/// `RelationCache` (`2`), `CACHE_RELATIONSHIP` begins at byte offset 8:
+/// - `level: u8` at offset 8
+/// - `associativity: u8` at offset 9
+/// - `line_size: u16` at offset 10..12
+/// - `cache_size: u32` (in bytes) at offset 12..16
+/// - `cache_type: u32` (`PROCESSOR_CACHE_TYPE`) at offset 16..20 (`0` = Unified,
+///   `1` = Instruction, `2` = Data, `3` = Trace)
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+fn parse_windows_cache_records(buf: &[u8]) -> Option<String> {
+    const RELATION_CACHE: u32 = 2;
+    const MIN_CACHE_RECORD_LEN: usize = 20;
+
+    let mut entries: Vec<(u32, &'static str, u64)> = Vec::new();
+    let mut offset = 0usize;
+    while offset + 8 <= buf.len() {
+        let rel = u32::from_le_bytes([
+            buf[offset],
+            buf[offset + 1],
+            buf[offset + 2],
+            buf[offset + 3],
+        ]);
+        let size = u32::from_le_bytes([
+            buf[offset + 4],
+            buf[offset + 5],
+            buf[offset + 6],
+            buf[offset + 7],
+        ]) as usize;
+        if size < 8 || offset + size > buf.len() {
+            break;
+        }
+        if rel == RELATION_CACHE && size >= MIN_CACHE_RECORD_LEN {
+            let rec = &buf[offset..offset + size];
+            let level = u32::from(rec[8]);
+            let cache_size_bytes = u32::from_le_bytes([rec[12], rec[13], rec[14], rec[15]]) as u64;
+            let cache_type = u32::from_le_bytes([rec[16], rec[17], rec[18], rec[19]]);
+            let kind = match cache_type {
+                0 => Some("Unified"),
+                1 => Some("Instruction"),
+                2 => Some("Data"),
+                _ => None,
+            };
+            if let Some(k) = kind {
+                if cache_size_bytes >= 1024 {
+                    entries.push((level, k, cache_size_bytes / 1024));
+                }
+            }
+        }
+        offset += size;
+    }
+
+    format_cpu_cache_entries(&entries)
+}
+
+/// Parses raw `SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX` records returned by
+/// `GetLogicalProcessorInformationEx(RelationProcessorCore, ...)` into a hybrid `"NP + NE / NT"`
+/// string when the CPU has two distinct `EfficiencyClass` tiers.
+///
+/// For `RelationProcessorCore` (`0`), `PROCESSOR_RELATIONSHIP` begins at byte offset 8:
+/// - `flags: u8` at offset 8
+/// - `efficiency_class: u8` at offset 9 (higher value = higher performance / P-core)
+/// - `reserved: [u8; 20]` at offset 10..30
+/// - `group_count: u16` at offset 30..32
+/// - `group_mask: [GROUP_AFFINITY; group_count]` starting at offset 32, where each
+///   `GROUP_AFFINITY` starts with `mask: usize` (`KAFFINITY` bitmask of logical processors
+///   in that core) followed by `group: u16` and `reserved: [u16; 3]`.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+fn parse_windows_processor_core_classes(buf: &[u8], logical: usize) -> Option<String> {
+    const RELATION_PROCESSOR_CORE: u32 = 0;
+    const GROUP_MASK_OFFSET: usize = 32;
+    const GROUP_AFFINITY_SIZE: usize = std::mem::size_of::<usize>() + 8;
+    const MASK_BYTES: usize = std::mem::size_of::<usize>();
+
+    let mut class_to_count: std::collections::HashMap<u64, usize> =
+        std::collections::HashMap::new();
+    let mut total_accounted = 0usize;
+    let mut offset = 0usize;
+
+    while offset + 8 <= buf.len() {
+        let rel = u32::from_le_bytes([
+            buf[offset],
+            buf[offset + 1],
+            buf[offset + 2],
+            buf[offset + 3],
+        ]);
+        let size = u32::from_le_bytes([
+            buf[offset + 4],
+            buf[offset + 5],
+            buf[offset + 6],
+            buf[offset + 7],
+        ]) as usize;
+        if size < 8 || offset + size > buf.len() {
+            break;
+        }
+        if rel == RELATION_PROCESSOR_CORE && size >= GROUP_MASK_OFFSET + GROUP_AFFINITY_SIZE {
+            let rec = &buf[offset..offset + size];
+            let efficiency_class = u64::from(rec[9]);
+            let group_count = usize::from(u16::from_le_bytes([rec[30], rec[31]]));
+            let mut core_threads = 0usize;
+            for g in 0..group_count {
+                let goff = GROUP_MASK_OFFSET + g * GROUP_AFFINITY_SIZE;
+                if goff + MASK_BYTES > rec.len() {
+                    break;
+                }
+                let mut mask_arr = [0u8; MASK_BYTES];
+                mask_arr.copy_from_slice(&rec[goff..goff + MASK_BYTES]);
+                let mask = usize::from_ne_bytes(mask_arr);
+                core_threads += mask.count_ones() as usize;
+            }
+            if core_threads > 0 {
+                *class_to_count.entry(efficiency_class).or_insert(0) += core_threads;
+                total_accounted += core_threads;
+                if class_to_count.len() > 2 {
+                    return None;
+                }
+            }
+        }
+        offset += size;
+    }
+
+    hybrid_label(&class_to_count, total_accounted, logical)
+}
+
+/// Combines SMBIOS Type 4 `(low_mhz, high_mhz)` speeds and per-core `CallNtPowerInformation`
+/// `MaxMhz` readings into a `(min_khz, max_khz)` pair for [`detect_cpu_freq_range`].
+///
+/// - On modern AMD/Intel Windows systems, SMBIOS Type 4 reports base speed in `CurrentSpeed`
+///   (e.g. `3300` MHz) and boost/turbo speed in `MaxSpeed` (e.g. `5125` MHz).
+/// - On hybrid CPUs where `CallNtPowerInformation` reports distinct nominal `MaxMhz` per core
+///   cluster (e.g. E-core base `2600` MHz, P-core base `3400` MHz), those bounds widen the
+///   range if SMBIOS only reported one cluster's base speed.
+/// - When SMBIOS is unavailable (e.g. inside a sandbox or stripped VM) and `core_max_mhz`
+///   has only a single uniform value (`min == max`), returns `None` rather than repeating
+///   the current nominal frequency as a fake range.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+fn windows_freq_range_khz(
+    smbios_mhz: Option<(u64, u64)>,
+    core_max_mhz: &[u32],
+) -> Option<(u64, u64)> {
+    let mut min_mhz: Option<u64> = None;
+    let mut max_mhz: Option<u64> = None;
+
+    if let Some((s_low, s_high)) = smbios_mhz {
+        if s_low > 0 {
+            min_mhz = Some(s_low);
+        }
+        if s_high > 0 {
+            max_mhz = Some(s_high);
+        }
+    }
+
+    for &m in core_max_mhz {
+        let m = u64::from(m);
+        if m > 0 {
+            min_mhz = Some(min_mhz.map_or(m, |cur| cur.min(m)));
+            max_mhz = Some(max_mhz.map_or(m, |cur| cur.max(m)));
+        }
+    }
+
+    let (low, high) = (min_mhz?, max_mhz?);
+    if low == 0 || low > high {
+        return None;
+    }
+    if smbios_mhz.is_none() && low == high {
+        return None;
+    }
+    Some((low * 1000, high * 1000))
+}
+
 /// Detects CPU cache sizes.
 ///
 /// Linux: reads from `/sys/devices/system/cpu/cpu0/cache/` sysfs entries.
 /// macOS: reads `hw.l1dcachesize`, `hw.l1icachesize`, `hw.l2cachesize`, `hw.l3cachesize` via sysctlbyname.
-/// Returns `None` on Windows or if data is unavailable.
+/// Windows: queries `GetLogicalProcessorInformationEx(RelationCache, ...)`.
 pub fn detect_cpu_cache() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
@@ -1464,13 +1697,7 @@ pub fn detect_cpu_cache() -> Option<String> {
             return None;
         }
 
-        struct CacheEntry {
-            level: u32,
-            kind: String,
-            size_kb: u64,
-        }
-
-        let mut entries: Vec<CacheEntry> = Vec::new();
+        let mut owned: Vec<(u32, String, u64)> = Vec::new();
 
         let Ok(indices) = fs::read_dir(cache_dir) else {
             return None;
@@ -1516,57 +1743,12 @@ pub fn detect_cpu_cache() -> Option<String> {
                 }
             };
 
-            if kind != "Instruction" && kind != "Data" && kind != "Unified" {
-                continue;
-            }
-
-            entries.push(CacheEntry {
-                level,
-                kind,
-                size_kb,
-            });
+            owned.push((level, kind, size_kb));
         }
 
-        if entries.is_empty() {
-            return None;
-        }
-
-        entries.sort_by_key(|e| (e.level, e.kind.clone()));
-
-        let fmt_size = |kb: u64| -> String {
-            if kb >= 1024 && kb.is_multiple_of(1024) {
-                format!("{}M", kb / 1024)
-            } else if kb >= 1024 {
-                format!("{:.2}M", kb as f64 / 1024.0)
-                    .trim_end_matches('0')
-                    .trim_end_matches('.')
-                    .to_string()
-                    + "M"
-            } else {
-                format!("{}K", kb)
-            }
-        };
-
-        // Deduplicate by label (cpu0 cache dir lists each index separately)
-        let mut seen = std::collections::HashSet::new();
-        let mut parts: Vec<String> = Vec::new();
-        for e in &entries {
-            let label = match (e.level, e.kind.as_str()) {
-                (1, "Data") => "L1d".to_string(),
-                (1, "Instruction") => "L1i".to_string(),
-                (1, "Unified") => "L1".to_string(),
-                (n, _) => format!("L{}", n),
-            };
-            if seen.insert(label.clone()) {
-                parts.push(format!("{}: {}", label, fmt_size(e.size_kb)));
-            }
-        }
-
-        if parts.is_empty() {
-            None
-        } else {
-            Some(parts.join(", "))
-        }
+        let refs: Vec<(u32, &str, u64)> =
+            owned.iter().map(|(l, k, s)| (*l, k.as_str(), *s)).collect();
+        format_cpu_cache_entries(&refs)
     }
     #[cfg(target_os = "macos")]
     {
@@ -1628,7 +1810,12 @@ pub fn detect_cpu_cache() -> Option<String> {
             Some(parts.join(", "))
         }
     }
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(target_os = "windows")]
+    {
+        let buf = win_cpu::query_logical_processor_info_ex(win_cpu::RELATION_CACHE)?;
+        parse_windows_cache_records(&buf)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     {
         None
     }
@@ -1643,7 +1830,8 @@ pub fn format_cpu_cores(logical: usize, physical: Option<usize>) -> String {
 }
 
 /// The host's hybrid P/E string, if it is a hybrid CPU: cpufreq max-frequency tiers on
-/// Linux, `hw.perflevel*` sysctls on macOS, `None` elsewhere. Split out of
+/// Linux, `hw.perflevel*` sysctls on macOS, `GetLogicalProcessorInformationEx`
+/// `EfficiencyClass` tiers on Windows, `None` elsewhere. Split out of
 /// [`format_cpu_cores`] so `collect` can run it on a different thread from the
 /// physical-core count (v0.20.4); the two together are exactly `format_cpu_cores`.
 fn hybrid_cores(logical: usize) -> Option<String> {
@@ -1655,7 +1843,12 @@ fn hybrid_cores(logical: usize) -> Option<String> {
     {
         detect_macos_hybrid_cores(logical)
     }
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(target_os = "windows")]
+    {
+        let buf = win_cpu::query_logical_processor_info_ex(win_cpu::RELATION_PROCESSOR_CORE)?;
+        parse_windows_processor_core_classes(&buf, logical)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     {
         let _ = logical;
         None
@@ -1738,7 +1931,7 @@ fn hybrid_cores_in(cpufreq: &std::path::Path, logical: usize) -> Option<String> 
 
 /// `"NP + ME / KT"` when exactly two frequency tiers account for every logical CPU; the
 /// higher tier is the performance cores.
-#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+#[cfg_attr(not(any(target_os = "linux", target_os = "windows")), allow(dead_code))]
 fn hybrid_label(
     freq_to_count: &std::collections::HashMap<u64, usize>,
     total_accounted: usize,
@@ -1802,8 +1995,10 @@ fn detect_macos_hybrid_cores(logical: usize) -> Option<String> {
     Some(format!("{}P + {}E / {}T", p_cores, e_cores, logical))
 }
 
-/// Returns the overall (min_khz, max_khz) CPU frequency range from sysfs cpufreq policies.
-/// min is the smallest `cpuinfo_min_freq` across all policies; max is the largest `cpuinfo_max_freq`.
+/// Returns the overall `(min_khz, max_khz)` CPU frequency range.
+///
+/// - Linux: smallest `cpuinfo_min_freq` and largest `cpuinfo_max_freq` across `/sys/devices/system/cpu/cpufreq` policies.
+/// - Windows: combines SMBIOS Type 4 (`CurrentSpeed` base and `MaxSpeed` boost) with per-core `MaxMhz` from `CallNtPowerInformation(ProcessorInformation)`.
 pub fn detect_cpu_freq_range() -> Option<(u64, u64)> {
     #[cfg(target_os = "linux")]
     {
@@ -1838,7 +2033,14 @@ pub fn detect_cpu_freq_range() -> Option<(u64, u64)> {
             _ => None,
         }
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "windows")]
+    {
+        let smbios_mhz =
+            crate::memory::cached_smbios_table().and_then(crate::memory::parse_smbios_type4_speeds);
+        let core_max_mhz = win_cpu::query_processor_max_mhz();
+        windows_freq_range_khz(smbios_mhz, &core_max_mhz)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     {
         None
     }
@@ -2699,6 +2901,21 @@ mod win_cpu {
     }
 
     const JOB_OBJECT_BASIC_ACCOUNTING_INFORMATION_CLASS: i32 = 1;
+    pub const RELATION_PROCESSOR_CORE: u32 = 0;
+    pub const RELATION_CACHE: u32 = 2;
+    const PROCESSOR_INFORMATION_LEVEL: i32 = 11;
+
+    /// `PROCESSOR_POWER_INFORMATION` (`ntpoapi.h`, 24 bytes per logical processor).
+    #[repr(C)]
+    #[derive(Clone, Copy, Default)]
+    struct ProcessorPowerInformation {
+        number: u32,
+        max_mhz: u32,
+        current_mhz: u32,
+        mhz_limit: u32,
+        max_idle_state: u32,
+        current_idle_state: u32,
+    }
 
     extern "system" {
         fn GetSystemTimes(idle: *mut FileTime, kernel: *mut FileTime, user: *mut FileTime) -> i32;
@@ -2720,6 +2937,74 @@ mod win_cpu {
             return_length: *mut u32,
         ) -> i32;
         fn CloseHandle(object: *mut c_void) -> i32;
+        fn GetLogicalProcessorInformationEx(
+            relationship_type: u32,
+            buffer: *mut u8,
+            returned_length: *mut u32,
+        ) -> i32;
+    }
+
+    #[link(name = "powrprof")]
+    extern "system" {
+        fn CallNtPowerInformation(
+            information_level: i32,
+            input_buffer: *const c_void,
+            input_buffer_length: u32,
+            output_buffer: *mut c_void,
+            output_buffer_length: u32,
+        ) -> i32;
+    }
+
+    /// Queries `GetLogicalProcessorInformationEx` for `relationship_type` (`RELATION_PROCESSOR_CORE`
+    /// or `RELATION_CACHE`) and returns the raw variable-length record buffer.
+    pub fn query_logical_processor_info_ex(relationship_type: u32) -> Option<Vec<u8>> {
+        let mut len: u32 = 0;
+        // SAFETY: passing a null buffer and zero length queries the required buffer size in `len`.
+        unsafe {
+            GetLogicalProcessorInformationEx(relationship_type, ptr::null_mut(), &mut len);
+        }
+        if len == 0 {
+            return None;
+        }
+        let mut buf = vec![0u8; len as usize];
+        // SAFETY: `buf` is allocated to `len` bytes and writable for the duration of the call.
+        let ok = unsafe {
+            GetLogicalProcessorInformationEx(relationship_type, buf.as_mut_ptr(), &mut len)
+        };
+        if ok == 0 || (len as usize) > buf.len() {
+            return None;
+        }
+        buf.truncate(len as usize);
+        Some(buf)
+    }
+
+    /// Queries per-logical-processor nominal `MaxMhz` values via
+    /// `CallNtPowerInformation(ProcessorInformation)`.
+    pub fn query_processor_max_mhz() -> Vec<u32> {
+        let count = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1)
+            .max(64);
+        let mut infos = vec![ProcessorPowerInformation::default(); count];
+        let out_bytes = (infos.len() * std::mem::size_of::<ProcessorPowerInformation>()) as u32;
+        // SAFETY: `infos` is a contiguous writable buffer of `out_bytes` bytes.
+        let status = unsafe {
+            CallNtPowerInformation(
+                PROCESSOR_INFORMATION_LEVEL,
+                ptr::null(),
+                0,
+                infos.as_mut_ptr() as *mut c_void,
+                out_bytes,
+            )
+        };
+        if status != 0 {
+            return Vec::new();
+        }
+        infos
+            .into_iter()
+            .map(|p| p.max_mhz)
+            .filter(|&m| m > 0)
+            .collect()
     }
 
     static SELF_JOB: OnceLock<Option<usize>> = OnceLock::new();
@@ -2840,6 +3125,7 @@ mod win_cpu {
         fn filetime_size() {
             assert_eq!(size_of::<super::FileTime>(), 8);
             assert_eq!(size_of::<super::JobObjectBasicAccountingInformation>(), 48);
+            assert_eq!(size_of::<super::ProcessorPowerInformation>(), 24);
         }
     }
 }
@@ -3523,5 +3809,114 @@ mod tests {
                 assert!(min > 0, "min freq should be positive");
             }
         }
+    }
+
+    #[test]
+    fn test_trim_cpu_brand_strips_cpuid_padding() {
+        assert_eq!(
+            trim_cpu_brand("AMD Ryzen 7 PRO 7840U w/ Radeon 780M Graphics  ").as_deref(),
+            Some("AMD Ryzen 7 PRO 7840U w/ Radeon 780M Graphics")
+        );
+        assert_eq!(trim_cpu_brand("   "), None);
+        assert_eq!(trim_cpu_brand(""), None);
+    }
+
+    #[test]
+    fn test_parse_windows_cache_records_formats_and_deduplicates() {
+        fn make_cache_record(level: u8, cache_type: u32, size_bytes: u32) -> Vec<u8> {
+            let mut rec = vec![0u8; 48];
+            rec[0..4].copy_from_slice(&2u32.to_le_bytes()); // RelationCache = 2
+            rec[4..8].copy_from_slice(&48u32.to_le_bytes());
+            rec[8] = level;
+            rec[9] = 8; // associativity
+            rec[10..12].copy_from_slice(&64u16.to_le_bytes()); // line size
+            rec[12..16].copy_from_slice(&size_bytes.to_le_bytes());
+            rec[16..20].copy_from_slice(&cache_type.to_le_bytes());
+            rec
+        }
+
+        // Simulate two cores with identical L1d (32 KB), L1i (32 KB), L2 (1 MB), and a
+        // shared L3 (16 MB), deliberately out of level/type order to test sorting & dedup.
+        let mut buf = Vec::new();
+        buf.extend(make_cache_record(3, 0, 16 * 1024 * 1024)); // L3 Unified 16M
+        buf.extend(make_cache_record(1, 1, 32 * 1024)); // L1i 32K (core 0)
+        buf.extend(make_cache_record(1, 2, 32 * 1024)); // L1d 32K (core 0)
+        buf.extend(make_cache_record(2, 0, 1024 * 1024)); // L2 Unified 1M (core 0)
+        buf.extend(make_cache_record(1, 2, 32 * 1024)); // L1d 32K (core 1, duplicate)
+        buf.extend(make_cache_record(1, 1, 32 * 1024)); // L1i 32K (core 1, duplicate)
+        buf.extend(make_cache_record(2, 0, 1024 * 1024)); // L2 Unified 1M (core 1, duplicate)
+
+        assert_eq!(
+            parse_windows_cache_records(&buf).as_deref(),
+            Some("L1d: 32K, L1i: 32K, L2: 1M, L3: 16M")
+        );
+        assert_eq!(parse_windows_cache_records(&[]), None);
+    }
+
+    #[test]
+    fn test_parse_windows_processor_core_classes_hybrid_and_homogeneous() {
+        fn make_core_record(efficiency_class: u8, mask: usize) -> Vec<u8> {
+            let group_affinity_size = std::mem::size_of::<usize>() + 8;
+            let rec_size = 32 + group_affinity_size;
+            let mut rec = vec![0u8; rec_size];
+            rec[0..4].copy_from_slice(&0u32.to_le_bytes()); // RelationProcessorCore = 0
+            rec[4..8].copy_from_slice(&(rec_size as u32).to_le_bytes());
+            rec[9] = efficiency_class;
+            rec[30..32].copy_from_slice(&1u16.to_le_bytes()); // GroupCount = 1
+            rec[32..32 + std::mem::size_of::<usize>()].copy_from_slice(&mask.to_ne_bytes());
+            rec
+        }
+
+        // Hybrid CPU: 4 P-cores with SMT (2 threads each = 8T, class 1) + 8 E-cores
+        // without SMT (1 thread each = 8T, class 0) => "8P + 8E / 16T".
+        let mut hybrid_buf = Vec::new();
+        for i in 0..4 {
+            hybrid_buf.extend(make_core_record(1, 0b11 << (i * 2)));
+        }
+        for i in 0..8 {
+            hybrid_buf.extend(make_core_record(0, 1usize << (8 + i)));
+        }
+        assert_eq!(
+            parse_windows_processor_core_classes(&hybrid_buf, 16).as_deref(),
+            Some("8P + 8E / 16T")
+        );
+
+        // Homogeneous CPU (all class 0, 8 cores × 2 threads = 16T) => None.
+        let mut homo_buf = Vec::new();
+        for i in 0..8 {
+            homo_buf.extend(make_core_record(0, 0b11 << (i * 2)));
+        }
+        assert_eq!(parse_windows_processor_core_classes(&homo_buf, 16), None);
+    }
+
+    #[test]
+    fn test_windows_freq_range_khz() {
+        // SMBIOS Type 4 present (3300 MHz base, 5125 MHz boost) + power info at 3300 MHz.
+        assert_eq!(
+            windows_freq_range_khz(Some((3300, 5125)), &[3300, 3300]),
+            Some((3_300_000, 5_125_000))
+        );
+        // Hybrid power info with E-cores at 2600 MHz and P-cores at 3400 MHz widens the lower bound.
+        assert_eq!(
+            windows_freq_range_khz(Some((3400, 5200)), &[3400, 2600]),
+            Some((2_600_000, 5_200_000))
+        );
+        // No SMBIOS (e.g. sandbox) and uniform nominal power speed => None (avoid fake equal range).
+        assert_eq!(windows_freq_range_khz(None, &[3300, 3300]), None);
+        // No SMBIOS, but hybrid power info has two distinct nominal speeds => Some.
+        assert_eq!(
+            windows_freq_range_khz(None, &[2600, 3400]),
+            Some((2_600_000, 3_400_000))
+        );
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_detect_cpu_cache_returns_some_on_windows() {
+        let s = detect_cpu_cache().expect("expected CPU cache info on Windows");
+        assert!(
+            s.contains("L1") || s.contains("L2") || s.contains("L3"),
+            "expected cache level labels, got: {s}"
+        );
     }
 }
