@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793386393993,
+  "lastUpdate": 1793386394310,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14301,6 +14301,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 316137850,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ce8f3c0dcbf8cc39bbb996eb33224847ed5abec0",
+          "message": "Close Windows field parity and --short net gap (#307)\n\nRETCH_TIMING=1 on irulan (Windows 11 Pro x86_64) showed net (17.65–24.69 ms)\nand net-detail (9.88–10.69 ms) taking 89% of both --short (27.53 of 30.93 ms)\nand default mode (35.38 of 39.70 ms), because each called\nsysinfo::Networks::new_with_refreshed_list() independently. Replace both with\na single GetIfTable2 + GetUnicastIpAddressTable(AF_UNSPEC) pass (~2.5 ms) in\nwin_iftable::interfaces_with_ips(), hand the rows from\ndetect_active_interface_and_local_ip to detect_networks on the same thread,\nand cache GetAdaptersAddresses (with GAA_FLAG_SKIP_UNICAST) in a OnceLock\nwarmed concurrently for dns/domain/domain-search.\n\nOn irulan (AC), collect-done drops 30.93 -> 5.39 ms (--short) and\n39.70 -> 7.09 ms (default); hyperfine (--shell=none vs fastfetch 2.70.0)\nmeasures --short 27.8 vs 49.5 ms (1.8x), default 30.9 vs 501.3 ms (16.2x),\n--long 152.5 vs 2044.6 ms (13.4x), and --full 544.3 vs 3362.0 ms (6.2x).\n\nAlso implement the 6 remaining Windows fields natively (no PowerShell):\n- keyboard and mouse via SetupAPI GUID_DEVCLASS_KEYBOARD / GUID_DEVCLASS_MOUSE,\n  preferring DEVPKEY_Device_BusReportedDeviceDesc when non-generic\n- brightness via \\\\.\\LCD IOCTL_VIDEO_QUERY_DISPLAY_BRIGHTNESS\n- power-adapter via GetSystemPowerStatus\n- login-manager via LogonUI.exe's VS_FIXEDFILEINFO product version (version.dll)\n- tpm via Tbsi_GetDeviceInfo (tbs.dll)\nplus Windows Terminal terminal-font (settings.json) and standalone\n--fields terminal-font / terminal-theme process-tree detection.\n\nFinally, subtract retch's own and child-process CPU time from Windows\ncpu-usage via an anonymous Win32 Job Object + GetProcessTimes, and sanitize ':'\nin scripts/bench_meta.py's self-test temp directory names on Windows NTFS.\n\nretch-cli 0.20.31 -> 0.20.32, retch-sysinfo 0.1.96 -> 0.1.97.\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-10-30T11:36:31-07:00",
+          "tree_id": "ef9988b328033dbc532eebfbd93269bc2f7fc134",
+          "url": "https://github.com/l1a/retch/commit/ce8f3c0dcbf8cc39bbb996eb33224847ed5abec0"
+        },
+        "date": 1793386394257,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 25383390.000000007,
+            "unit": "ns",
+            "extra": "v0.20.32"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2342140580,
+            "unit": "ns",
+            "extra": "v0.20.32"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1294713419.9999998,
+            "unit": "ns",
+            "extra": "v0.20.32"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 17536550,
+            "unit": "ns",
+            "extra": "v0.20.32"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 22356130,
+            "unit": "ns",
+            "extra": "v0.20.32"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 359276660,
+            "unit": "ns",
+            "extra": "v0.20.32"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 220719050.00000003,
+            "unit": "ns",
+            "extra": "v0.20.32"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 19652390.000000004,
+            "unit": "ns",
+            "extra": "v0.20.32"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 223.81825328710642,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.369134465525311,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 118.55957737562467,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 100.81160190707395,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41174.61876835205,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 510.7838450680747,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 795.4226705047776,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 340487435,
             "unit": "ns"
           }
         ]
