@@ -1480,7 +1480,7 @@ fn format_cpu_cache_entries(entries: &[(u32, &str, u64)]) -> Option<String> {
         if kb >= 1024 && kb.is_multiple_of(1024) {
             format!("{}M", kb / 1024)
         } else if kb >= 1024 {
-            format!("{:.2}M", kb as f64 / 1024.0)
+            format!("{:.2}", kb as f64 / 1024.0)
                 .trim_end_matches('0')
                 .trim_end_matches('.')
                 .to_string()
@@ -3851,6 +3851,30 @@ mod tests {
             Some("L1d: 32K, L1i: 32K, L2: 1M, L3: 16M")
         );
         assert_eq!(parse_windows_cache_records(&[]), None);
+    }
+
+    #[test]
+    fn test_format_cpu_cache_entries_fractional_mib() {
+        // Verbatim cache hierarchy from Intel Core i7-1260P (Alder Lake P-core, `rabban`):
+        // L1d = 48K, L1i = 32K, L2 = 1280K (1.25 MiB), L3 = 18432K (18 MiB).
+        // Regression test: fractional MiB caches must format with a single "M" unit
+        // ("1.25M") and strip trailing decimal zeros ("1.5M", not "1.50M" or "1.50MM").
+        let alder_lake = [
+            (1, "Data", 48),
+            (1, "Instruction", 32),
+            (2, "Unified", 1280),
+            (3, "Unified", 18432),
+        ];
+        assert_eq!(
+            format_cpu_cache_entries(&alder_lake).as_deref(),
+            Some("L1d: 48K, L1i: 32K, L2: 1.25M, L3: 18M")
+        );
+
+        let single_decimal = [(2, "Unified", 1536), (3, "Unified", 2560)];
+        assert_eq!(
+            format_cpu_cache_entries(&single_decimal).as_deref(),
+            Some("L2: 1.5M, L3: 2.5M")
+        );
     }
 
     #[test]

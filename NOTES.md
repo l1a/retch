@@ -150,9 +150,9 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.33)
+## Current State (v0.20.34)
 
-`main` carries **`retch-cli` 0.20.33** / **`retch-sysinfo` 0.1.98**. Newest released tag is
+`main` carries **`retch-cli` 0.20.34** / **`retch-sysinfo` 0.1.99**. Newest released tag is
 **`v0.20.28`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
@@ -160,6 +160,25 @@ deliberately omitted platform-specific items in §6a and §6c). What is open is 
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.34: Intel fractional MiB `cpu-cache` unit fix (`1.25M`, not `1.25MM`) and V4L2 MIPI
+  ISP/CSI pipeline filtering (`camera`).** Verified on `rabban` (Dell XPS 13 Plus 9320, 12th Gen
+  Intel Core i7-1260P, Fedora 44):
+  - **`cpu-cache` (`CPU Cache:`):** `format_cpu_cache_entries()` formatted fractional MiB cache
+    sizes (`kb >= 1024 && !kb.is_multiple_of(1024)`) with `format!("{:.2}M", ...)` and then
+    appended `+ "M"`, which both prevented `.trim_end_matches('0')` from ever trimming trailing
+    decimal zeros and emitted a duplicate unit (`L2: 1.25MM` on Intel Golden Cove / Raptor Cove /
+    Lion Cove P-cores with 1280 KB or 2560 KB L2 caches). Fixed to format the numeric value first,
+    strip trailing zeros/dot, and append `"M"` once (`L2: 1.25M`, `1536K` -> `1.5M`).
+  - **`camera` (`Camera:`) on Intel MIPI IPU6 systems:** `/sys/class/video4linux` on Intel IPU6
+    laptops exposes 32 ISP DMA multiplex capture queues (`Intel IPU6 ISYS Capture 0..31`), 4
+    CSI-2 receiver subdevices (`Intel IPU6 CSI2 0..3`), and 1 MEI CSI bridge (`Intel IVSC CSI`)
+    alongside the actual I2C camera sensor (`ov01a10 17-0036`). `is_real_camera()` now excludes
+    ISP/CSI pipeline plumbing (`isys capture`, ` csi2`, `ivsc csi`, `ipu3-`), `clean_camera_name()`
+    expands `v4l2_i2c_subdev_set_name` strings (`"<model> <bus>-<4-hex-addr>"`) to
+    `"<Vendor> <MODEL>"` (`OmniVision OV01A10`, `Sony IMX258`, `SK Hynix HI556`, etc.), and Linux
+    `detect_camera()` reads `device/physical_location/panel` (`front`/`back`) and delegates to
+    pure `collect_v4l2_cameras_with_panel()` (`Camera: OmniVision OV01A10 (Front)` on `rabban`).
 
 - **v0.20.33: Windows CPU parity (`cpu-cache`, `cpu-freq` base/boost range, hybrid P/E topology,
   and CPUID brand trimming).** Verified on `irulan` (AMD Ryzen 7 PRO 7840U, Windows 11 Pro build
