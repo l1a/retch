@@ -150,15 +150,52 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.31)
+## Current State (v0.20.32)
 
-`main` carries **`retch-cli` 0.20.31** / **`retch-sysinfo` 0.1.96**. Newest released tag is
+`main` carries **`retch-cli` 0.20.32** / **`retch-sysinfo` 0.1.97**. Newest released tag is
 **`v0.20.28`**.
 
-The fastfetch feature gap (§6) is closed on Linux and macOS; Windows still lacks six fields
-(§6a). What is open is listed in §5, §6a and §6c.
+The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
+deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
+and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.32: Windows closes the `--short` / default-mode network gap, implements the 6 missing
+  fields natively, and subtracts retch's own CPU time from Windows `cpu-usage`.** Verified on
+  `irulan` (Lenovo ThinkPad P14s Gen 4, AMD Ryzen 7 PRO 7840U, Windows 11 Pro build 26300):
+  - **`net` + `net-detail` replaced two `sysinfo::Networks::new_with_refreshed_list()` calls
+    with one `GetIfTable2` + `GetUnicastIpAddressTable(AF_UNSPEC)` pass.** `RETCH_TIMING=1` on
+    `irulan` showed `net` (17.65–24.69 ms) + `net-detail` (9.88–10.69 ms) taking **89%** of both
+    `--short` (27.53 of 30.93 ms) and default mode (35.38 of 39.70 ms), because each built a
+    full `sysinfo::Networks` table (`GetAdaptersAddresses` + per-row `GetIfEntry2` across every
+    NDIS lightweight filter). `win_iftable::interfaces_with_ips()` reads `GetIfTable2` (~2.1 ms)
+    plus `GetUnicastIpAddressTable(AF_UNSPEC)` (~0.4 ms) once and hands the filtered rows from
+    `detect_active_interface_and_local_ip` to `detect_networks` on the same thread. `collect-done`
+    dropped **30.93 → 5.39 ms** (`--short`) and **39.70 → 7.09 ms** (default). `hyperfine`
+    (`just bench-compare` on `irulan`, AC): `--short` **27.8 ± 1.4 ms vs fastfetch 49.5 ± 3.0 ms
+    (1.8×)**, default **30.9 ± 1.3 ms vs 501.3 ± 5.0 ms (16.2×)**, `--long` **152.5 ± 5.2 ms vs
+    2044.6 ± 85.4 ms (13.4×)**, `--full` **544.3 ± 26.6 ms vs 3362.0 ± 31.7 ms (6.2×)**.
+    `GetAdaptersAddresses` for `dns`/`domain`/`domain-search` now sets `GAA_FLAG_SKIP_UNICAST`
+    (`0x07`), caches its result in a `OnceLock`, and runs concurrently with the other probes.
+  - **Six Windows fields implemented natively (no PowerShell):** `keyboard` and `mouse` via
+    SetupAPI (`GUID_DEVCLASS_KEYBOARD` / `GUID_DEVCLASS_MOUSE`, preferring
+    `DEVPKEY_Device_BusReportedDeviceDesc` over generic `HID Keyboard Device` /
+    `HID-compliant mouse` strings when non-generic); `brightness` via `\\.\LCD`
+    `IOCTL_VIDEO_QUERY_DISPLAY_BRIGHTNESS`; `power-adapter` via `GetSystemPowerStatus`;
+    `login-manager` via `LogonUI.exe`'s `VS_FIXEDFILEINFO` product version (`version.dll`);
+    `tpm` via `Tbsi_GetDeviceInfo` (`tbs.dll`). Also added Windows Terminal `terminal-font`
+    (`settings.json` `profiles.defaults.font` with `Cascadia Mono (12)` fallback), and fixed
+    standalone `--fields terminal-font` / `--fields terminal-theme` so `detect_terminal(&sys)`
+    and `needs_process_list` run even when `terminal` itself is not in `--fields`.
+  - **Windows `cpu-usage` subtracts retch's own and child-process CPU time:** attaches the
+    current process to an anonymous Win32 Job Object (`CreateJobObjectW` +
+    `AssignProcessToJobObject`) and queries `JobObjectBasicAccountingInformation` (with
+    `GetProcessTimes` fallback), feeding `exclude_own_usage` just like Unix's `getrusage`
+    (`RUSAGE_SELF + RUSAGE_CHILDREN`).
+  - **Fixed on the way:** `scripts/bench_meta.py`'s `_self_test()` created a temp directory
+    named `hid-0018:04F3:4631.0002-battery-7`, which fails with `WinError 123` on NTFS because
+    `:` is reserved for alternate data streams; sanitized to `_` on Windows.
 
 - **v0.20.30: `Net:` lines come out in the same order on every run, on every platform.**
   sysinfo keeps interfaces in a `HashMap`, whose iteration order is randomised per process,
@@ -500,8 +537,7 @@ Recent work worth knowing about, beyond what `git log` says:
     own CPU time (`getrusage` SELF + CHILDREN) over the window. Checked against `/proc/stat`
     sampled with retch not running, interleaved 15×: outside 1.01% median, new build 1.20%,
     **old build 2.10%** — the old reading was already ~1 point high, just diluted.
-  - Windows still diffs `GetSystemTimes` across the run **without** that correction, so it
-    carries the same bias. Open in §5.
+  - Windows gained the same correction in v0.20.32 via a Win32 Job Object + `GetProcessTimes`.
 
 - **v0.19.1 — `RETCH_TIMING`, and Linux no longer loads the process table.**
   - **`RETCH_TIMING=1 retch [...]`** prints each probe's start offset and duration to stderr
@@ -742,9 +778,9 @@ Adds over long:
 
 Live items only. Completed items are removed rather than struck through — `git log` has them.
 
-- **Clear on Linux and macOS locally and on macOS CI; Linux x64 CI `--full` and Windows
-  `--short` still behind.** Dashboard read 2026-10-27 (`d755c1b`, `v0.20.27`, with
-  `cli_bench.py`'s `Public IP`/`Weather` check active):
+- **Clear on Linux, macOS and Windows locally and on macOS CI; Linux x64 CI `--full` still
+  behind.** Dashboard read 2026-10-27 (`d755c1b`, `v0.20.27`, with `cli_bench.py`'s
+  `Public IP`/`Weather` check active) plus `irulan` (v0.20.32):
   - **macOS arm64 CI**: ahead in `--short` (10.3 vs 18.9 ms), `--long` (371 vs 1007 ms) and
     `--full` (494 vs 1010 ms) since v0.20.15; default level (361 vs 361 ms on v0.20.27;
     v0.20.15–18: 273–319 vs 317–453).
@@ -755,23 +791,24 @@ Live items only. Completed items are removed rather than struck through — `git
     362 ms; default 2.9 vs 2.0, `--short` 1.9 vs 1.2 ms), and **Local - Linux x64**
     (`d755c1b`, battery) is ahead in default (4.85 vs 14.76 ms), `--long` (220 vs 518 ms)
     and `--full` (387 vs 533 ms), level in `--short` (2.90 vs 2.75 ms).
-  - **Windows CI**: on `d755c1b`, ahead in `--long` (x64 279 vs 1294 ms; arm64 227 vs
-    1311 ms) and `--full` (x64 423 vs 2339 ms; arm64 434 vs 2392 ms), default split (x64
-    38.4 vs 32.4 ms; arm64 35.8 vs 42.7 ms), and `--short` still behind on both (x64 34.7
-    vs 24.2 ms; arm64 30.4 vs 23.8 ms; previously 27–32 vs 21–30 ms).
+  - **Windows (`irulan`, v0.20.32, AC)**: ahead in all four modes (`--short` 27.8 vs 49.5 ms,
+    default 30.9 vs 501.3 ms, `--long` 152.5 vs 2044.6 ms, `--full` 544.3 vs 3362.0 ms) after
+    replacing the two `sysinfo::Networks::new_with_refreshed_list()` calls in `net` + `net-detail`
+    with one `GetIfTable2` + `GetUnicastIpAddressTable` query. Check the next Windows CI points
+    after v0.20.32 lands.
 
   Local figures follow.
   On arrakis (on AC) since v0.20.10 retch is ahead or level in all four matched modes: default
   3.8 vs 14.9 ms, `--short` 2.4 vs 2.7, `--long` 228 vs 510, `--full` 425 vs 519 ms. On chani
   (M3 Pro, battery) since v0.20.15: `--short` 7.0 vs 17.0, default 109 vs 134, `--long` 231 vs
-  674, `--full` 500 vs 751 ms. Leads:
+  674, `--full` 500 vs 751 ms. On irulan (Ryzen 7 PRO 7840U, Windows 11 Pro, AC) since v0.20.32:
+  `--short` 27.8 vs 49.5, default 30.9 vs 501.3, `--long` 152.5 vs 2044.6, `--full` 544.3 vs
+  3362.0 ms. Leads:
   - **default, real hardware only** — 35–57 ms on arrakis at times, ~9 ms at others (ahead of
     fastfetch's 14.8), on the same binary; level in a container. The slow state made
     `procs`/`audio`/`shell`/`terminal` ~50 ms each. Cause unknown; v0.19.1 removed the process
     table on Linux anyway. **Capture it with `RETCH_TIMING=1` when it recurs** (§7.5).
   - **`--long`** — now ahead (~218 vs 512 ms), at its ~200 ms `cpu-usage` floor (v0.20.2).
-  - **Windows `cpu-usage` still includes retch's own CPU**: it diffs `GetSystemTimes` across the
-    run without the v0.19.2 correction. Same fix via `GetProcessTimes`, and child processes.
   - **`--full`** — ahead since v0.20.10 (weather over plain HTTP). Still bound by `weather`
     (~375 ms). `temp` and `wm` overlap it since v0.20.27.
   - **macOS default** — was 848 vs 414 ms on CI; the cause was `phys-disk`'s serial
@@ -790,7 +827,6 @@ Live items only. Completed items are removed rather than struck through — `git
   - **default: `phys-mem` is the long pole, ~1.4–2.2 ms** since v0.20.6 (retch ~4x ahead of
     fastfetch there anyway). On Linux it needs `dmidecode`, which is root-only, so an
     unprivileged run probably pays for a process spawn that then fails — check first.
-  - macOS and Windows have not been looked at under the matched configs at all.
 
 - **CI automation of the publish steps.** A tag still does not, by itself, publish to crates.io
   or push to the AUR and the tap. Since v0.17.5 this is a genuine port rather than a redesign —
@@ -818,13 +854,12 @@ Live items only. Completed items are removed rather than struck through — `git
 
 ## 6. Feature Gap with Fastfetch
 
-**Every field-level gap is closed on Linux; macOS lacks only `tpm` (deliberately, §6c); Windows
-lacks six fields (§6a).** Hardware (`brightness`, `keyboard`, `mouse`, `power-adapter`, `tpm`),
-GPU APIs (`vulkan`, `opengl`, `opencl`), storage (`btrfs`, `zpool`, `disk-io`), network
-(`net-io`), desktop/UI (`wm-theme`, `login-manager`, `wallpaper`, `terminal-theme`) and media
-(`player`, `media`) all report on Linux. Until v0.20.11 this line said "on all three
-platforms", which the code never supported: check a platform claim against the detector's
-`cfg` arms, not against this file.
+**Every field-level gap is closed on Linux, macOS and Windows** (except for the deliberately
+omitted platform-specific items in §6a and §6c). Hardware (`brightness`, `keyboard`, `mouse`,
+`power-adapter`, `tpm`), GPU APIs (`vulkan`, `opengl`, `opencl`), storage (`btrfs`, `zpool`,
+`disk-io`), network (`net-io`), desktop/UI (`wm-theme`, `login-manager`, `wallpaper`,
+`terminal-theme`) and media (`player`, `media`) all report natively. Check a platform claim
+against the detector's `cfg` arms, not against prose alone.
 
 Where retch deliberately reports **more** than fastfetch: `opencl` (fastfetch prints a platform
 version even when the platform exposes no device), Windows Bluetooth (fastfetch misses LE
@@ -834,31 +869,11 @@ peripherals), macOS `keyboard` (finds a connected Bluetooth keyboard fastfetch m
 Where retch deliberately reports **less**: any case where the honest answer is unknown. See
 §7.2's under-reporting rule.
 
-Remaining platform-specific defects are in §6a and §6c.
+Remaining platform-specific exclusions are in §6a and §6c.
 
 ---
 
-## 6a. Windows cross-platform parity — open items
-
-- **Six fields are not implemented on Windows**, so they are simply absent there:
-  - `keyboard`, `mouse`: `input.rs` has Linux and macOS arms only.
-  - `brightness`, `power-adapter`, `login-manager`: `fetch.rs` detectors have Linux and macOS
-    arms only.
-  - `tpm`: Linux only.
-
-  Each needs a native Windows source (no PowerShell, per the rest of the Windows work) and a
-  Windows machine to verify on.
-- **Logo renders above the text, not beside it (upper-right)** on Windows Terminal
-  (CLI/rendering, `retch-cli` `src/`). Likely terminal-detection or cursor-positioning specific
-  to Windows Terminal. Do **not** conflate this with the v0.9.2 flush-right fix, which was
-  "beside, but not on the margin".
-- **`chafa` mode is ignored on Windows even when requested on the CLI.** Investigate PATH
-  resolution, protocol-detection override, and Windows spawn/path handling.
-
-Both need a TTY, so both need a real Windows machine; a piped run cannot distinguish the
-chafa case from the documented v0.6.6 behaviour. **The fleet has had no Windows host since
-2026-09-16**, when arrakis went back to Fedora, so every Windows item here currently has
-only CI to verify against.
+## 6a. Windows cross-platform parity
 
 **Deliberately not implemented on Windows** (no faithful native source): `load` (no load-average
 equivalent), `editor` (env-only `$VISUAL`/`$EDITOR`), conhost `terminal-font` (only Windows

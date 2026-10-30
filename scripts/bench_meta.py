@@ -164,9 +164,13 @@ def _self_test():
     def supplies(entries):
         root = tempfile.mkdtemp()
         for name, files in entries.items():
-            os.makedirs(os.path.join(root, name))
+            # NTFS forbids `:` in directory names (reserved for alternate data streams),
+            # and `_linux_power` only inspects child files (`type`, `scope`, `online`),
+            # never the directory name itself.
+            safe = name.replace(":", "_") if os.name == "nt" else name
+            os.makedirs(os.path.join(root, safe))
             for f, v in files.items():
-                with open(os.path.join(root, name, f), "w", encoding="utf-8") as fh:
+                with open(os.path.join(root, safe, f), "w", encoding="utf-8") as fh:
                     fh.write(v + "\n")
         return root
 

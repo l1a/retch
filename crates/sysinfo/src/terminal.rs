@@ -601,6 +601,27 @@ pub(crate) fn detect_terminal_font(terminal: Option<&str>) -> Option<String> {
         return crate::theme::get_default_monospace_font();
     }
 
+    #[cfg(target_os = "windows")]
+    if term_lower.contains("windowsterminal")
+        || term_lower.contains("windows terminal")
+        || term_lower.contains("wt")
+    {
+        if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+            let pkg_dir = std::path::Path::new(&local_app_data)
+                .join("Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json");
+            let unpkg_dir = std::path::Path::new(&local_app_data)
+                .join("Microsoft/Windows Terminal/settings.json");
+            for path in &[pkg_dir, unpkg_dir] {
+                if let Ok(content) = std::fs::read_to_string(path) {
+                    if let Some(font) = parse_windows_terminal_font(&content) {
+                        return Some(font);
+                    }
+                }
+            }
+        }
+        return Some("Cascadia Mono (12)".to_string());
+    }
+
     #[cfg(target_os = "macos")]
     if term_lower == "iterm.app" || term_lower.contains("iterm2") {
         if let Ok(output) = std::process::Command::new("defaults")
@@ -819,6 +840,78 @@ pub(crate) fn parse_foot_theme(content: &str) -> Option<String> {
         (Some(b), Some(f)) => Some(format!("BG: #{}, FG: #{}", b, f)),
         (Some(b), None) => Some(format!("BG: #{}", b)),
         (None, Some(f)) => Some(format!("FG: #{}", f)),
+        (None, None) => None,
+    }
+}
+
+#[allow(dead_code)]
+pub(crate) fn parse_windows_terminal_font(settings_json: &str) -> Option<String> {
+    let mut face: Option<String> = None;
+    let mut size: Option<String> = None;
+    let mut in_font_block = false;
+
+    for line in settings_json.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("\"font\"") && trimmed.contains('{') {
+            in_font_block = true;
+            continue;
+        }
+        if in_font_block {
+            if let Some(pos) = trimmed.find("\"face\"") {
+                if let Some(colon) = trimmed[pos + 6..].find(':') {
+                    let val = trimmed[pos + 6 + colon + 1..]
+                        .trim()
+                        .trim_end_matches(',')
+                        .trim_matches('"')
+                        .trim();
+                    if !val.is_empty() && face.is_none() {
+                        face = Some(val.to_string());
+                    }
+                }
+            } else if let Some(pos) = trimmed.find("\"size\"") {
+                if let Some(colon) = trimmed[pos + 6..].find(':') {
+                    let val = trimmed[pos + 6 + colon + 1..]
+                        .trim()
+                        .trim_end_matches(',')
+                        .trim_matches('"')
+                        .trim();
+                    if !val.is_empty() && size.is_none() {
+                        size = Some(val.to_string());
+                    }
+                }
+            }
+            if trimmed.contains('}') {
+                in_font_block = false;
+            }
+        } else if let Some(pos) = trimmed.find("\"fontFace\"") {
+            if let Some(colon) = trimmed[pos + 10..].find(':') {
+                let val = trimmed[pos + 10 + colon + 1..]
+                    .trim()
+                    .trim_end_matches(',')
+                    .trim_matches('"')
+                    .trim();
+                if !val.is_empty() && face.is_none() {
+                    face = Some(val.to_string());
+                }
+            }
+        } else if let Some(pos) = trimmed.find("\"fontSize\"") {
+            if let Some(colon) = trimmed[pos + 10..].find(':') {
+                let val = trimmed[pos + 10 + colon + 1..]
+                    .trim()
+                    .trim_end_matches(',')
+                    .trim_matches('"')
+                    .trim();
+                if !val.is_empty() && size.is_none() {
+                    size = Some(val.to_string());
+                }
+            }
+        }
+    }
+
+    match (face, size) {
+        (Some(f), Some(s)) => Some(format!("{f} ({s})")),
+        (Some(f), None) => Some(f),
+        (None, Some(s)) => Some(format!("Cascadia Mono ({s})")),
         (None, None) => None,
     }
 }
@@ -1279,6 +1372,40 @@ return config
         assert_eq!(
             parse_windows_terminal_theme(json),
             Some("Campbell".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_windows_terminal_font() {
+        let json_both = r#"{
+    "profiles": {
+        "defaults": {
+            "font": {
+                "face": "JetBrainsMono Nerd Font",
+                "size": 13
+            }
+        }
+    }
+}"#;
+        assert_eq!(
+            parse_windows_terminal_font(json_both),
+            Some("JetBrainsMono Nerd Font (13)".to_string())
+        );
+
+        let json_size_only = r#"{
+    "profiles": {
+        "list": [
+            {
+                "font": {
+                    "size": 13
+                }
+            }
+        ]
+    }
+}"#;
+        assert_eq!(
+            parse_windows_terminal_font(json_size_only),
+            Some("Cascadia Mono (13)".to_string())
         );
     }
 

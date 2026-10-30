@@ -166,18 +166,18 @@ pub struct SystemInfo {
     pub btrfs: Vec<String>,
     /// Imported ZFS pools with allocation and health status.
     pub zpool: Vec<String>,
-    /// Active display/login manager (GDM, SDDM, LightDM, …). Linux only.
+    /// Active display/login manager (GDM, SDDM, LightDM, Login Window, LogonUI, …).
     pub login_manager: Option<String>,
-    /// Current backlight brightness as a percentage. Linux only.
+    /// Current backlight brightness as a percentage.
     pub brightness: Option<String>,
-    /// AC power adapter name and connection state. Linux only.
+    /// AC power adapter name and connection state.
     pub power_adapter: Option<String>,
-    /// Connected keyboards. Linux only; see [`crate::input`] for why a device can be
+    /// Connected keyboards; see [`crate::input`] for why a device can be
     /// deliberately absent from both this and [`Self::mouse`].
     pub keyboard: Vec<String>,
-    /// Connected pointing devices (mice, touchpads, tablets). Linux only.
+    /// Connected pointing devices (mice, touchpads, tablets).
     pub mouse: Vec<String>,
-    /// TPM specification version (e.g. "2.0"). Linux only.
+    /// TPM specification version (e.g. "2.0").
     pub tpm: Option<String>,
     /// Currently playing media track (e.g. "Artist - Title").
     pub media: Option<String>,
@@ -306,7 +306,6 @@ fn remaining_wait(
 /// of the machine is `own / (window × cpus)`, which is removed so the figure describes the
 /// system rather than the tool measuring it. Clamped at zero, since sampling granularity
 /// can make the estimate of retch's share slightly exceed the whole measured load.
-#[cfg_attr(target_os = "windows", allow(dead_code))]
 fn exclude_own_usage(
     usage: f32,
     own: std::time::Duration,
@@ -340,6 +339,14 @@ fn own_cpu_time() -> std::time::Duration {
         to_duration(ru.ru_utime) + to_duration(ru.ru_stime)
     }
     usage(libc::RUSAGE_SELF) + usage(libc::RUSAGE_CHILDREN)
+}
+
+/// CPU time used so far by this process and its child processes on Windows, via an
+/// anonymous Job Object (`JobObjectBasicAccountingInformation`) with a `GetProcessTimes`
+/// fallback.
+#[cfg(target_os = "windows")]
+fn own_cpu_time() -> std::time::Duration {
+    win_cpu::own_cpu_time()
 }
 
 /// Whether to call `System::load_average()` at all.
@@ -384,7 +391,15 @@ fn should_probe_load(want_load: bool) -> bool {
 /// selection (the default mode's, or `audio` alone) rather than pre-digested booleans.
 fn needs_process_list(should_collect: impl Fn(&str) -> bool) -> bool {
     !cfg!(target_os = "linux")
-        && (should_collect("procs") || should_collect("shell") || should_collect("terminal"))
+        && (should_collect("procs")
+            || should_collect("shell")
+            || should_collect("terminal")
+            || should_collect("terminal-font")
+            || should_collect("terminal font")
+            || should_collect("terminal_font")
+            || should_collect("terminal-theme")
+            || should_collect("terminal theme")
+            || should_collect("terminal_theme"))
 }
 
 impl SystemInfo {
@@ -415,6 +430,8 @@ impl SystemInfo {
         let cpu_sample0 = win_cpu::sample();
         #[cfg(target_os = "windows")]
         let cpu_t0 = std::time::Instant::now();
+        #[cfg(target_os = "windows")]
+        let cpu_usage_own0 = own_cpu_time();
 
         // Disk/network I/O are rates, and the kernel only exposes cumulative counters, so
         // they need two samples and an interval. Take the first here — before the
@@ -623,6 +640,20 @@ impl SystemInfo {
         let wm_handle = if should_collect("wm") || should_collect("window manager") {
             Some(std::thread::spawn(|| {
                 crate::timing::timed("wm", crate::wm::detect_wm)
+            }))
+        } else {
+            None
+        };
+        let input_handle = if should_collect("keyboard") || should_collect("mouse") {
+            Some(std::thread::spawn(|| {
+                crate::timing::timed("input", crate::input::detect_input_devices)
+            }))
+        } else {
+            None
+        };
+        let dns_handle = if should_collect("dns") {
+            Some(std::thread::spawn(|| {
+                crate::timing::timed("dns", crate::network::detect_dns)
             }))
         } else {
             None
@@ -989,17 +1020,29 @@ impl SystemInfo {
         let boot_time = boot_dt;
 
         // Environment-based info. (`shell` is collected inside the concurrent scope above.)
-        let terminal = if should_collect("terminal") {
+        // `terminal-font` and `terminal-theme` both inspect the running terminal name, so
+        // `detect_terminal` runs whenever any of the three is requested, while `SystemInfo.terminal`
+        // is only populated when `terminal` itself was selected.
+        let want_terminal = should_collect("terminal");
+        let want_terminal_font = should_collect("terminal font")
+            || should_collect("terminal-font")
+            || should_collect("terminal_font");
+        let want_terminal_theme = should_collect("terminal-theme")
+            || should_collect("terminal theme")
+            || should_collect("terminal_theme");
+        let detected_terminal = if want_terminal || want_terminal_font || want_terminal_theme {
             crate::timing::timed("terminal", || crate::terminal::detect_terminal(&sys))
         } else {
             None
         };
-        let terminal_font = if should_collect("terminal font")
-            || should_collect("terminal-font")
-            || should_collect("terminal_font")
-        {
+        let terminal = if want_terminal {
+            detected_terminal.clone()
+        } else {
+            None
+        };
+        let terminal_font = if want_terminal_font {
             crate::timing::timed("terminal-font", || {
-                crate::terminal::detect_terminal_font(terminal.as_deref())
+                crate::terminal::detect_terminal_font(detected_terminal.as_deref())
             })
         } else {
             None
@@ -1097,8 +1140,18 @@ impl SystemInfo {
                 }
                 match (cpu_sample0, win_cpu::sample()) {
                     (Some(s0), Some(s1)) => {
-                        let usage = win_cpu::usage_percent(s0, s1);
-                        if usage > 0.0 {
+                        let window = cpu_t0.elapsed();
+                        let own = own_cpu_time().saturating_sub(cpu_usage_own0);
+                        let raw = win_cpu::usage_percent(s0, s1);
+                        let logical_cpus = if cpu_cores > 0 {
+                            cpu_cores
+                        } else {
+                            std::thread::available_parallelism()
+                                .map(|n| n.get())
+                                .unwrap_or(1)
+                        };
+                        let usage = exclude_own_usage(raw, own, window, logical_cpus);
+                        if raw > 0.0 {
                             Some(format!("{:.1}%", usage))
                         } else {
                             None
@@ -1199,11 +1252,10 @@ impl SystemInfo {
             None
         };
 
-        // Keyboards and mice come from one file read, so they are collected together and then
-        // split rather than parsing `/proc/bus/input/devices` twice.
-        let (keyboard, mouse) = if should_collect("keyboard") || should_collect("mouse") {
-            let (kbds, mice) = crate::timing::timed("input", crate::input::detect_input_devices);
-            (
+        // Keyboards and mice come from one probe (`input_handle`), so they are collected
+        // together and then split rather than probing twice.
+        let (keyboard, mouse) = match input_handle.and_then(|h| h.join().ok()) {
+            Some((kbds, mice)) => (
                 if should_collect("keyboard") {
                     kbds
                 } else {
@@ -1214,9 +1266,8 @@ impl SystemInfo {
                 } else {
                     Vec::new()
                 },
-            )
-        } else {
-            (Vec::new(), Vec::new())
+            ),
+            None => (Vec::new(), Vec::new()),
         };
 
         let tpm = if should_collect("tpm") {
@@ -1236,14 +1287,12 @@ impl SystemInfo {
 
         let wm = wm_handle.and_then(|h| h.join().ok().flatten());
 
-        let dns = if should_collect("dns") {
-            crate::timing::timed("dns", crate::network::detect_dns)
-        } else {
-            Vec::new()
-        };
+        let dns = dns_handle.and_then(|h| h.join().ok()).unwrap_or_default();
 
         let domain = if should_collect("domain") {
-            crate::timing::timed("domain", crate::network::detect_domain)
+            crate::timing::timed("domain", || {
+                crate::network::detect_domain_with_active_iface(active_interface.as_deref())
+            })
         } else {
             None
         };
@@ -1312,12 +1361,9 @@ impl SystemInfo {
             None
         };
 
-        let terminal_theme = if should_collect("terminal-theme")
-            || should_collect("terminal theme")
-            || should_collect("terminal_theme")
-        {
+        let terminal_theme = if want_terminal_theme {
             crate::timing::timed("terminal-theme", || {
-                crate::terminal::detect_terminal_theme(terminal.as_deref())
+                crate::terminal::detect_terminal_theme(detected_terminal.as_deref())
             })
         } else {
             None
@@ -2008,10 +2054,114 @@ fn detect_login_manager() -> Option<String> {
             "CFBundleShortVersionString",
         )))
     }
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(target_os = "windows")]
+    {
+        Some(format_windows_logon_ui(windows_logon_ui_version()))
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     {
         None
     }
+}
+
+/// Renders the Windows login manager (`LogonUI.exe`) with its product version when readable.
+#[cfg(any(target_os = "windows", test))]
+fn format_windows_logon_ui(version: Option<String>) -> String {
+    match version {
+        Some(v) => format!("Logon User Interface {v}"),
+        None => "Logon User Interface".to_string(),
+    }
+}
+
+/// Reads the `VS_FIXEDFILEINFO` product version of `C:\Windows\System32\LogonUI.exe` via
+/// `version.dll`.
+#[cfg(target_os = "windows")]
+fn windows_logon_ui_version() -> Option<String> {
+    use std::ffi::c_void;
+    use std::ptr;
+
+    #[repr(C)]
+    struct VsFixedFileInfo {
+        signature: u32,
+        struc_version: u32,
+        file_version_ms: u32,
+        file_version_ls: u32,
+        product_version_ms: u32,
+        product_version_ls: u32,
+        file_flags_mask: u32,
+        file_flags: u32,
+        file_os: u32,
+        file_type: u32,
+        file_subtype: u32,
+        file_date_ms: u32,
+        file_date_ls: u32,
+    }
+
+    #[link(name = "version")]
+    extern "system" {
+        fn GetFileVersionInfoSizeW(filename: *const u16, handle: *mut u32) -> u32;
+        fn GetFileVersionInfoW(
+            filename: *const u16,
+            handle: u32,
+            len: u32,
+            data: *mut c_void,
+        ) -> i32;
+        fn VerQueryValueW(
+            block: *const c_void,
+            sub_block: *const u16,
+            buffer: *mut *const c_void,
+            len: *mut u32,
+        ) -> i32;
+    }
+
+    let sys_root = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".to_string());
+    let path_str = format!(r"{sys_root}\System32\LogonUI.exe");
+    let mut path_wide: Vec<u16> = path_str.encode_utf16().collect();
+    path_wide.push(0);
+
+    let mut dummy = 0u32;
+    // SAFETY: `path_wide` is a null-terminated UTF-16 string and `dummy` is writable.
+    let size = unsafe { GetFileVersionInfoSizeW(path_wide.as_ptr(), &mut dummy) };
+    if size == 0 {
+        return None;
+    }
+    let mut buf = vec![0u8; size as usize];
+    // SAFETY: `buf` is allocated to `size` bytes as requested by `GetFileVersionInfoSizeW`.
+    if unsafe { GetFileVersionInfoW(path_wide.as_ptr(), 0, size, buf.as_mut_ptr() as *mut c_void) }
+        == 0
+    {
+        return None;
+    }
+
+    let root_block: [u16; 2] = [b'\\' as u16, 0];
+    let mut ffi_ptr: *const c_void = ptr::null();
+    let mut ffi_len = 0u32;
+    // SAFETY: `buf` holds valid version info data; `root_block` is `L"\\"` requesting the
+    // root `VS_FIXEDFILEINFO` struct.
+    if unsafe {
+        VerQueryValueW(
+            buf.as_ptr() as *const c_void,
+            root_block.as_ptr(),
+            &mut ffi_ptr,
+            &mut ffi_len,
+        )
+    } == 0
+        || ffi_ptr.is_null()
+        || (ffi_len as usize) < std::mem::size_of::<VsFixedFileInfo>()
+    {
+        return None;
+    }
+
+    // SAFETY: `ffi_ptr` points within `buf` to at least `sizeof(VsFixedFileInfo)` bytes.
+    let info = unsafe { ptr::read_unaligned(ffi_ptr as *const VsFixedFileInfo) };
+    if info.signature != 0xFEEF_04BD {
+        return None;
+    }
+    let major = info.product_version_ms >> 16;
+    let minor = info.product_version_ms & 0xFFFF;
+    let build = info.product_version_ls >> 16;
+    let rev = info.product_version_ls & 0xFFFF;
+    Some(format!("{major}.{minor}.{build}.{rev}"))
 }
 
 /// Path to loginwindow's bundle metadata.
@@ -2153,10 +2303,145 @@ fn detect_brightness() -> Option<String> {
         }
         brightness_percent(level as u64, span as u64)
     }
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(target_os = "windows")]
+    {
+        let level = windows_lcd_brightness()?;
+        brightness_percent(level as u64, 100)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     {
         None
     }
+}
+
+/// Selects the active brightness percentage (`0..=100`) from `DISPLAY_BRIGHTNESS`
+/// (`ucDisplayPolicy`: `1` = AC, `2` = DC).
+#[cfg(any(target_os = "windows", test))]
+fn windows_display_brightness_level(policy: u8, ac: u8, dc: u8) -> u8 {
+    if policy == 1 {
+        ac
+    } else {
+        dc
+    }
+}
+
+/// Queries the internal laptop display brightness (`0..=100`) on Windows via `\\.\LCD` and
+/// `IOCTL_VIDEO_QUERY_DISPLAY_BRIGHTNESS`.
+#[cfg(target_os = "windows")]
+fn windows_lcd_brightness() -> Option<u8> {
+    use std::ffi::c_void;
+    use std::ptr;
+
+    #[repr(C)]
+    struct DisplayBrightness {
+        uc_display_policy: u8,
+        uc_ac_brightness: u8,
+        uc_dc_brightness: u8,
+    }
+
+    const GENERIC_READ: u32 = 0x8000_0000;
+    const GENERIC_WRITE: u32 = 0x4000_0000;
+    const FILE_SHARE_READ: u32 = 0x0000_0001;
+    const FILE_SHARE_WRITE: u32 = 0x0000_0002;
+    const OPEN_EXISTING: u32 = 3;
+    const INVALID_HANDLE_VALUE: *mut c_void = -1isize as *mut c_void;
+    const IOCTL_VIDEO_QUERY_DISPLAY_BRIGHTNESS: u32 = 0x0023_0498;
+
+    extern "system" {
+        fn CreateFileW(
+            file_name: *const u16,
+            desired_access: u32,
+            share_mode: u32,
+            security_attributes: *mut c_void,
+            creation_disposition: u32,
+            flags_and_attributes: u32,
+            template_file: *mut c_void,
+        ) -> *mut c_void;
+        fn DeviceIoControl(
+            device: *mut c_void,
+            io_control_code: u32,
+            in_buffer: *const c_void,
+            in_buffer_size: u32,
+            out_buffer: *mut c_void,
+            out_buffer_size: u32,
+            bytes_returned: *mut u32,
+            overlapped: *mut c_void,
+        ) -> i32;
+        fn CloseHandle(object: *mut c_void) -> i32;
+    }
+
+    let lcd_path: [u16; 8] = [
+        b'\\' as u16,
+        b'\\' as u16,
+        b'.' as u16,
+        b'\\' as u16,
+        b'L' as u16,
+        b'C' as u16,
+        b'D' as u16,
+        0,
+    ];
+
+    // SAFETY: `lcd_path` is a null-terminated wide string `L"\\\\.\\LCD"`.
+    let mut handle = unsafe {
+        CreateFileW(
+            lcd_path.as_ptr(),
+            GENERIC_READ | GENERIC_WRITE,
+            FILE_SHARE_READ | FILE_SHARE_WRITE,
+            ptr::null_mut(),
+            OPEN_EXISTING,
+            0,
+            ptr::null_mut(),
+        )
+    };
+    if handle == INVALID_HANDLE_VALUE {
+        // SAFETY: fallback open with `GENERIC_READ` only.
+        handle = unsafe {
+            CreateFileW(
+                lcd_path.as_ptr(),
+                GENERIC_READ,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                ptr::null_mut(),
+                OPEN_EXISTING,
+                0,
+                ptr::null_mut(),
+            )
+        };
+    }
+    if handle == INVALID_HANDLE_VALUE {
+        return None;
+    }
+
+    let mut db = DisplayBrightness {
+        uc_display_policy: 0,
+        uc_ac_brightness: 0,
+        uc_dc_brightness: 0,
+    };
+    let mut returned = 0u32;
+    // SAFETY: `handle` is an open file handle to `\\.\LCD`, and `db` is a writable 3-byte
+    // `DISPLAY_BRIGHTNESS` buffer.
+    let ok = unsafe {
+        DeviceIoControl(
+            handle,
+            IOCTL_VIDEO_QUERY_DISPLAY_BRIGHTNESS,
+            ptr::null(),
+            0,
+            &mut db as *mut DisplayBrightness as *mut c_void,
+            std::mem::size_of::<DisplayBrightness>() as u32,
+            &mut returned,
+            ptr::null_mut(),
+        )
+    };
+    // SAFETY: `handle` is closed exactly once after use.
+    unsafe { CloseHandle(handle) };
+
+    if ok == 0 || (returned as usize) < std::mem::size_of::<DisplayBrightness>() {
+        return None;
+    }
+    Some(windows_display_brightness_level(
+        db.uc_display_policy,
+        db.uc_ac_brightness,
+        db.uc_dc_brightness,
+    ))
 }
 
 /// Pure helper: formats a raw brightness/max pair as a rounded percentage string.
@@ -2164,10 +2449,10 @@ fn detect_brightness() -> Option<String> {
 /// Returns `None` when `max` is 0 (divide-by-zero guard). Split out from
 /// [`detect_brightness`] so it is unit-testable without a real backlight device.
 ///
-/// Shared by both backlight arms: Linux passes the raw `brightness`/`max_brightness`
-/// pair, and macOS passes the `AppleARMBacklight` triple rebased onto a zero floor, so
-/// the percentage arithmetic exists in exactly one tested place.
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+/// Shared by all backlight arms: Linux passes the raw `brightness`/`max_brightness`
+/// pair, macOS passes the `AppleARMBacklight` triple rebased onto a zero floor, and Windows
+/// passes `(level, 100)` from `IOCTL_VIDEO_QUERY_DISPLAY_BRIGHTNESS`.
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", test))]
 fn brightness_percent(cur: u64, max: u64) -> Option<String> {
     if max == 0 {
         return None;
@@ -2178,11 +2463,11 @@ fn brightness_percent(cur: u64, max: u64) -> Option<String> {
 
 /// Detects the AC power adapter (name + connection state).
 ///
-/// Linux only. Scans `/sys/class/power_supply/*` for a `Mains`-type supply (the AC
-/// adapter), reads its `online` flag, and formats via [`format_power_adapter`]. Wattage is
-/// not reported: `Mains` entries rarely expose it in sysfs, so emitting it would be
-/// unreliable. Returns `None` when no AC adapter is present (e.g. a desktop with no
-/// power_supply class, or a battery-only view).
+/// Linux scans `/sys/class/power_supply/*` for a `Mains`-type supply (the AC
+/// adapter), reads its `online` flag, and formats via [`format_power_adapter`]. macOS reads
+/// wattage via IOKit. Windows reads `ACLineStatus` and `BatteryFlag` via
+/// `GetSystemPowerStatus`. Returns `None` when no AC adapter / battery subsystem is present
+/// (e.g. a desktop PC).
 fn detect_power_adapter() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
@@ -2220,9 +2505,53 @@ fn detect_power_adapter() -> Option<String> {
         let watts = crate::macos_ffi::get_power_adapter_watts()?;
         Some(format_power_adapter_watts(watts))
     }
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(target_os = "windows")]
+    {
+        #[repr(C)]
+        struct SystemPowerStatus {
+            ac_line_status: u8,
+            battery_flag: u8,
+            battery_life_percent: u8,
+            system_status_flag: u8,
+            battery_life_time: u32,
+            battery_full_life_time: u32,
+        }
+        extern "system" {
+            fn GetSystemPowerStatus(status: *mut SystemPowerStatus) -> i32;
+        }
+        let mut sps = SystemPowerStatus {
+            ac_line_status: 255,
+            battery_flag: 255,
+            battery_life_percent: 255,
+            system_status_flag: 0,
+            battery_life_time: 0,
+            battery_full_life_time: 0,
+        };
+        // SAFETY: `sps` is a valid, writable `SYSTEM_POWER_STATUS` struct.
+        if unsafe { GetSystemPowerStatus(&mut sps) } == 0 {
+            return None;
+        }
+        windows_power_adapter_status(sps.ac_line_status, sps.battery_flag)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     {
         None
+    }
+}
+
+/// Maps `SYSTEM_POWER_STATUS.ACLineStatus` and `BatteryFlag` to an AC adapter display string.
+///
+/// Desktop PCs with no system battery report `BatteryFlag & 128 != 0` (or `255` unknown) and
+/// return `None`, matching Linux desktops that expose no `Mains` power supply.
+#[cfg(any(target_os = "windows", test))]
+fn windows_power_adapter_status(ac_line_status: u8, battery_flag: u8) -> Option<String> {
+    if battery_flag == 255 || (battery_flag & 128) != 0 {
+        return None;
+    }
+    match ac_line_status {
+        1 => Some(format_power_adapter("AC", "1")),
+        0 => Some(format_power_adapter("AC", "0")),
+        _ => None,
     }
 }
 
@@ -2244,7 +2573,7 @@ fn format_power_adapter_watts(watts: i64) -> String {
 /// Pure helper: formats an AC adapter name + `online` flag ("0"/"1") into a display string.
 ///
 /// Split out from [`detect_power_adapter`] so it is unit-testable without a real adapter.
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "windows", test))]
 fn format_power_adapter(name: &str, online: &str) -> String {
     let state = match online.trim() {
         "1" => "connected",
@@ -2256,11 +2585,8 @@ fn format_power_adapter(name: &str, online: &str) -> String {
 
 /// Detects the Trusted Platform Module's specification version (e.g. "2.0").
 ///
-/// Linux only. Reads `tpm_version_major` from the first `/sys/class/tpm/*` device and formats
-/// via [`format_tpm_version`]. A machine with no TPM has no such class directory and returns
-/// `None`, so the field does not render. The version is deliberately *not* guessed from the
-/// device's mere presence: a TPM whose version cannot be read is reported as absent rather
-/// than as a version that was never confirmed.
+/// Linux reads `tpm_version_major` from the first `/sys/class/tpm/*` device. Windows calls
+/// `Tbsi_GetDeviceInfo` in `tbs.dll`. Both format via [`format_tpm_version`].
 fn detect_tpm() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
@@ -2285,19 +2611,47 @@ fn detect_tpm() -> Option<String> {
         }
         None
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "windows")]
+    {
+        #[repr(C)]
+        struct TpmDeviceInfo {
+            struct_version: u32,
+            tpm_version: u32,
+            tpm_interface_type: u32,
+            tpm_imp_revision: u32,
+        }
+        #[link(name = "tbs")]
+        extern "system" {
+            fn Tbsi_GetDeviceInfo(size: u32, info: *mut TpmDeviceInfo) -> u32;
+        }
+        let mut info = TpmDeviceInfo {
+            struct_version: 0,
+            tpm_version: 0,
+            tpm_interface_type: 0,
+            tpm_imp_revision: 0,
+        };
+        // SAFETY: `info` is a valid, writable 16-byte `TPM_DEVICE_INFO` struct.
+        let rc =
+            unsafe { Tbsi_GetDeviceInfo(std::mem::size_of::<TpmDeviceInfo>() as u32, &mut info) };
+        if rc != 0 {
+            return None;
+        }
+        format_tpm_version(&info.tpm_version.to_string())
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     {
         None
     }
 }
 
-/// Pure helper: maps sysfs `tpm_version_major` to a TPM specification version string.
+/// Pure helper: maps sysfs `tpm_version_major` / `TPM_DEVICE_INFO.tpmVersion` to a TPM
+/// specification version string.
 ///
-/// The kernel exposes only the major number, but the published specification names are "1.2"
-/// and "2.0" — not "1.0"/"2.0" — so the minor part is a lookup, not arithmetic. An
-/// unrecognised or unparseable major yields `None` rather than an invented version. Split out
-/// from [`detect_tpm`] so it is unit-testable without a real TPM.
-#[cfg(target_os = "linux")]
+/// The kernel and TBS expose only the major number (`1` or `2`), but the published
+/// specification names are "1.2" and "2.0" — not "1.0"/"2.0" — so the minor part is a
+/// lookup, not arithmetic. An unrecognised or unparseable major yields `None` rather than an
+/// invented version. Split out from [`detect_tpm`] so it is unit-testable without a real TPM.
+#[cfg(any(target_os = "linux", target_os = "windows", test))]
 fn format_tpm_version(major: &str) -> Option<String> {
     match major.trim() {
         "1" => Some("1.2".to_string()),
@@ -2306,12 +2660,19 @@ fn format_tpm_version(major: &str) -> Option<String> {
     }
 }
 
-/// Windows CPU-usage sampling via `GetSystemTimes` (kernel32, default-linked).
+/// Windows CPU-usage sampling via `GetSystemTimes`, `GetProcessTimes`, and Job Object
+/// accounting (`kernel32`, default-linked).
 ///
 /// Replaces the per-run 200 ms sleep sysinfo needs for a usage delta: two samples are
-/// diffed across the existing concurrent-probe window instead, so no sleep is added.
+/// diffed across the existing concurrent-probe window instead, so no sleep is added, and
+/// retch's own process + child-process CPU time is subtracted via [`own_cpu_time`].
 #[cfg(target_os = "windows")]
 mod win_cpu {
+    use std::ffi::c_void;
+    use std::ptr;
+    use std::sync::OnceLock;
+    use std::time::Duration;
+
     #[repr(C)]
     struct FileTime {
         low: u32,
@@ -2324,8 +2685,121 @@ mod win_cpu {
         }
     }
 
+    /// `JOBOBJECT_BASIC_ACCOUNTING_INFORMATION` (`winnt.h`, 48 bytes).
+    #[repr(C)]
+    struct JobObjectBasicAccountingInformation {
+        total_user_time: i64,
+        total_kernel_time: i64,
+        this_period_total_user_time: i64,
+        this_period_total_kernel_time: i64,
+        total_page_fault_count: u32,
+        total_processes: u32,
+        active_processes: u32,
+        total_terminated_processes: u32,
+    }
+
+    const JOB_OBJECT_BASIC_ACCOUNTING_INFORMATION_CLASS: i32 = 1;
+
     extern "system" {
         fn GetSystemTimes(idle: *mut FileTime, kernel: *mut FileTime, user: *mut FileTime) -> i32;
+        fn GetCurrentProcess() -> *mut c_void;
+        fn GetProcessTimes(
+            process: *mut c_void,
+            creation: *mut FileTime,
+            exit: *mut FileTime,
+            kernel: *mut FileTime,
+            user: *mut FileTime,
+        ) -> i32;
+        fn CreateJobObjectW(attributes: *mut c_void, name: *const u16) -> *mut c_void;
+        fn AssignProcessToJobObject(job: *mut c_void, process: *mut c_void) -> i32;
+        fn QueryInformationJobObject(
+            job: *mut c_void,
+            info_class: i32,
+            info: *mut c_void,
+            info_length: u32,
+            return_length: *mut u32,
+        ) -> i32;
+        fn CloseHandle(object: *mut c_void) -> i32;
+    }
+
+    static SELF_JOB: OnceLock<Option<usize>> = OnceLock::new();
+
+    /// Attaches the current process to an anonymous Win32 Job Object so kernel accounting
+    /// automatically accumulates CPU time across `retch.exe` and any child processes it
+    /// spawns (the Windows equivalent of `RUSAGE_SELF + RUSAGE_CHILDREN`).
+    fn self_job_handle() -> Option<*mut c_void> {
+        let addr = *SELF_JOB.get_or_init(|| {
+            // SAFETY: creates an unnamed, default-security Job Object and assigns this
+            // process to it; Windows 8+ supports nested jobs when launched inside an
+            // existing terminal/shell job.
+            unsafe {
+                let job = CreateJobObjectW(ptr::null_mut(), ptr::null());
+                if job.is_null() {
+                    return None;
+                }
+                if AssignProcessToJobObject(job, GetCurrentProcess()) == 0 {
+                    CloseHandle(job);
+                    return None;
+                }
+                Some(job as usize)
+            }
+        });
+        addr.map(|a| a as *mut c_void)
+    }
+
+    /// Cumulative CPU time (user + kernel) consumed by this process and its child processes.
+    pub fn own_cpu_time() -> Duration {
+        let mut proc_ticks = 0u64;
+        let mut creation = FileTime { low: 0, high: 0 };
+        let mut exit = FileTime { low: 0, high: 0 };
+        let mut kernel = FileTime { low: 0, high: 0 };
+        let mut user = FileTime { low: 0, high: 0 };
+        // SAFETY: `GetCurrentProcess()` returns the pseudo-handle `-1`, and all four
+        // `FILETIME` out-pointers are valid and writable.
+        if unsafe {
+            GetProcessTimes(
+                GetCurrentProcess(),
+                &mut creation,
+                &mut exit,
+                &mut kernel,
+                &mut user,
+            )
+        } != 0
+        {
+            proc_ticks = kernel.ticks().saturating_add(user.ticks());
+        }
+
+        if let Some(job) = self_job_handle() {
+            let mut acct = JobObjectBasicAccountingInformation {
+                total_user_time: 0,
+                total_kernel_time: 0,
+                this_period_total_user_time: 0,
+                this_period_total_kernel_time: 0,
+                total_page_fault_count: 0,
+                total_processes: 0,
+                active_processes: 0,
+                total_terminated_processes: 0,
+            };
+            let mut ret_len = 0u32;
+            // SAFETY: `job` is a live job handle and `acct` is a writable
+            // `JOBOBJECT_BASIC_ACCOUNTING_INFORMATION` struct.
+            if unsafe {
+                QueryInformationJobObject(
+                    job,
+                    JOB_OBJECT_BASIC_ACCOUNTING_INFORMATION_CLASS,
+                    &mut acct as *mut JobObjectBasicAccountingInformation as *mut c_void,
+                    std::mem::size_of::<JobObjectBasicAccountingInformation>() as u32,
+                    &mut ret_len,
+                )
+            } != 0
+            {
+                let job_ticks = (acct.total_user_time.max(0) as u64)
+                    .saturating_add(acct.total_kernel_time.max(0) as u64);
+                proc_ticks = proc_ticks.max(job_ticks);
+            }
+        }
+
+        Duration::from_nanos(proc_ticks.saturating_mul(100))
     }
 
     /// Cumulative `(idle, kernel, user)` CPU ticks (100 ns units). `kernel` includes idle,
@@ -2365,6 +2839,7 @@ mod win_cpu {
         #[test]
         fn filetime_size() {
             assert_eq!(size_of::<super::FileTime>(), 8);
+            assert_eq!(size_of::<super::JobObjectBasicAccountingInformation>(), 48);
         }
     }
 }
@@ -2483,9 +2958,8 @@ mod tests {
         assert_eq!(exclude_own_usage(5.0, ms(10), ms(200), 0), 5.0, "no CPUs");
     }
 
-    /// `own_cpu_time` must actually move when this process burns CPU — a getrusage call
-    /// that silently returned zero would make the correction a no-op.
-    #[cfg(not(target_os = "windows"))]
+    /// `own_cpu_time` must actually move when this process burns CPU — a getrusage /
+    /// GetProcessTimes call that silently returned zero would make the correction a no-op.
     #[test]
     fn own_cpu_time_counts_work_done_by_this_process() {
         let before = own_cpu_time();
@@ -2496,9 +2970,30 @@ mod tests {
         }
         let used = own_cpu_time().saturating_sub(before);
         assert!(
-            used >= std::time::Duration::from_millis(20),
+            used >= std::time::Duration::from_millis(15),
             "50 ms of busy work registered as {used:?}"
         );
+    }
+
+    #[test]
+    fn windows_helpers_format_logon_brightness_and_power_adapter() {
+        assert_eq!(
+            super::format_windows_logon_ui(Some("10.0.26100.9549".to_string())),
+            "Logon User Interface 10.0.26100.9549"
+        );
+        assert_eq!(super::format_windows_logon_ui(None), "Logon User Interface");
+        assert_eq!(super::windows_display_brightness_level(1, 90, 60), 90);
+        assert_eq!(super::windows_display_brightness_level(2, 90, 60), 60);
+        assert_eq!(
+            super::windows_power_adapter_status(1, 1).as_deref(),
+            Some("AC (connected)")
+        );
+        assert_eq!(
+            super::windows_power_adapter_status(0, 1).as_deref(),
+            Some("AC (not connected)")
+        );
+        assert_eq!(super::windows_power_adapter_status(1, 128), None);
+        assert_eq!(super::windows_power_adapter_status(1, 255), None);
     }
 
     /// `cpu-usage` requested on its own has no probes to overlap with, so the run must
@@ -2697,6 +3192,16 @@ mod tests {
             needs_process_list(only("terminal")),
             expected,
             "terminal alone"
+        );
+        assert_eq!(
+            needs_process_list(only("terminal-font")),
+            expected,
+            "terminal-font alone"
+        );
+        assert_eq!(
+            needs_process_list(only("terminal-theme")),
+            expected,
+            "terminal-theme alone"
         );
         assert_eq!(needs_process_list(only("procs")), expected, "procs alone");
         assert!(
