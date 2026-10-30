@@ -150,9 +150,9 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.32)
+## Current State (v0.20.33)
 
-`main` carries **`retch-cli` 0.20.32** / **`retch-sysinfo` 0.1.97**. Newest released tag is
+`main` carries **`retch-cli` 0.20.33** / **`retch-sysinfo` 0.1.98**. Newest released tag is
 **`v0.20.28`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
@@ -160,6 +160,27 @@ deliberately omitted platform-specific items in §6a and §6c). What is open is 
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.33: Windows CPU parity (`cpu-cache`, `cpu-freq` base/boost range, hybrid P/E topology,
+  and CPUID brand trimming).** Verified on `irulan` (AMD Ryzen 7 PRO 7840U, Windows 11 Pro build
+  26300):
+  - **`cpu-cache` (`CPU Cache:`):** `detect_cpu_cache()` on Windows now queries
+    `GetLogicalProcessorInformationEx(RelationCache, ...)` (~0.04 ms) and shares the
+    level/kind sorting and deduplication helper (`format_cpu_cache_entries`) with Linux,
+    rendering `CPU Cache: L1d: 32K, L1i: 32K, L2: 1M, L3: 16M` in default, `--long`, and
+    `--full` modes.
+  - **`cpu-freq` (`CPU Freq:`) base and boost speed range:** `detect_cpu_freq_range()` on Windows
+    reads SMBIOS Type 4 (`Processor Information`, sharing the cached `GetSystemFirmwareTable('RSMB')`
+    buffer in `memory.rs`: `CurrentSpeed` @ `0x16` = base MHz, `MaxSpeed` @ `0x14` = max boost
+    MHz on populated sockets where `Status` @ `0x18` has bit 6 set) combined with per-core
+    nominal `MaxMhz` from `CallNtPowerInformation(ProcessorInformation)` (`powrprof.dll`),
+    rendering `CPU Freq: 2.65 GHz (3.30 – 5.13 GHz)` on `irulan`.
+  - **`cpu` (`CPU:`) hybrid P/E core counts and brand trimming:** `hybrid_cores()` on Windows
+    queries `GetLogicalProcessorInformationEx(RelationProcessorCore, ...)` and groups each
+    core's logical processor bitmask popcount by `EfficiencyClass` into `hybrid_label()`
+    (`"NP + NE / NT"` on two-tier hybrid CPUs, `None` on homogeneous CPUs). `cpu_brand()` now
+    trims `c.brand()` so 48-byte x86 `CPUID` strings padded with trailing spaces do not leave
+    extra spaces before `(8C / 16T)`.
 
 - **v0.20.32: Windows closes the `--short` / default-mode network gap, implements the 6 missing
   fields natively, and subtracts retch's own CPU time from Windows `cpu-usage`.** Verified on
