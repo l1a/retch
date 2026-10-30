@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793399844402,
+  "lastUpdate": 1793399844728,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15369,6 +15369,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 375648205,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b1b47a194a52b307dd78675ddf64541b85ebf315",
+          "message": "Fix Intel cache unit and V4L2 IPU6 camera list (#309)\n\n- Fix `format_cpu_cache_entries` in `crates/sysinfo/src/fetch.rs` where\n  fractional MiB cache sizes (`kb >= 1024 && !kb.is_multiple_of(1024)`)\n  formatted `\"{:.2}M\"` before `.trim_end_matches('0')` and then appended\n  `+ \"M\"`, producing `\"1.25MM\"` on Intel Golden Cove / Raptor Cove / Lion\n  Cove P-cores (`1280` KB = 1.25 MiB).\n- Filter V4L2 ISP DMA capture queues (`Intel IPU6 ISYS Capture 0..31`),\n  CSI-2 receivers (`Intel IPU6 CSI2 0..3`), and MEI CSI bridges\n  (`Intel IVSC CSI`, `ipu3-*`) in `is_real_camera()`, expand V4L2 I2C\n  sensor names (`\"<model> <bus>-<4-hex-addr>\"`) to `\"<Vendor> <MODEL>\"`\n  (`\"ov01a10 17-0036\"` -> `\"OmniVision OV01A10\"`), append panel location\n  (`(Front)` / `(Back)`) from `device/physical_location/panel`, and sort\n  `/sys/class/video4linux` entries deterministically in `detect_camera()`.\n- Bump `retch-cli` to 0.20.34 and `retch-sysinfo` to 0.1.99, regenerate\n  `docs/retch.1`, and update `NOTES.md`.\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-10-30T15:25:27-07:00",
+          "tree_id": "a63fa52ea6b34f624b0d7923d943b798ebaf5301",
+          "url": "https://github.com/l1a/retch/commit/b1b47a194a52b307dd78675ddf64541b85ebf315"
+        },
+        "date": 1793399844676,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 24331090,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2345986080.0000005,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1294784859.9999998,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 18621460,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 21667390,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 279538040.0000001,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 217181950,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 19164060,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 215.63182137357904,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.376300001023537,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 115.91205636469974,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1430.3054477474334,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 49564.92952702987,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 526.5822373141564,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 785.311217909633,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 275245800,
             "unit": "ns"
           }
         ]
