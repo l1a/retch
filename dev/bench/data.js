@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793390172923,
+  "lastUpdate": 1793399842360,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -5441,6 +5441,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 268.8239117062375,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b1b47a194a52b307dd78675ddf64541b85ebf315",
+          "message": "Fix Intel cache unit and V4L2 IPU6 camera list (#309)\n\n- Fix `format_cpu_cache_entries` in `crates/sysinfo/src/fetch.rs` where\n  fractional MiB cache sizes (`kb >= 1024 && !kb.is_multiple_of(1024)`)\n  formatted `\"{:.2}M\"` before `.trim_end_matches('0')` and then appended\n  `+ \"M\"`, producing `\"1.25MM\"` on Intel Golden Cove / Raptor Cove / Lion\n  Cove P-cores (`1280` KB = 1.25 MiB).\n- Filter V4L2 ISP DMA capture queues (`Intel IPU6 ISYS Capture 0..31`),\n  CSI-2 receivers (`Intel IPU6 CSI2 0..3`), and MEI CSI bridges\n  (`Intel IVSC CSI`, `ipu3-*`) in `is_real_camera()`, expand V4L2 I2C\n  sensor names (`\"<model> <bus>-<4-hex-addr>\"`) to `\"<Vendor> <MODEL>\"`\n  (`\"ov01a10 17-0036\"` -> `\"OmniVision OV01A10\"`), append panel location\n  (`(Front)` / `(Back)`) from `device/physical_location/panel`, and sort\n  `/sys/class/video4linux` entries deterministically in `detect_camera()`.\n- Bump `retch-cli` to 0.20.34 and `retch-sysinfo` to 0.1.99, regenerate\n  `docs/retch.1`, and update `NOTES.md`.\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-10-30T15:25:27-07:00",
+          "tree_id": "a63fa52ea6b34f624b0d7923d943b798ebaf5301",
+          "url": "https://github.com/l1a/retch/commit/b1b47a194a52b307dd78675ddf64541b85ebf315"
+        },
+        "date": 1793399842302,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2483309.8000000003,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 284963707.3,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252371666.6,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1302559.9000000004,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2170221.7,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 625196053.9,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205231544.60000002,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1566397.9000000001,
+            "unit": "ns",
+            "extra": "v0.20.34"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 480353217.9,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1390.5728272791823,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 58.47264968963939,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.101173660394193,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 27.336262991629305,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 13458.112079731907,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 140609.15062525435,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 9993.932327450759,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 6781.060287628871,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 121867.72939232134,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 161.20974834076497,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 137.00035226208837,
             "unit": "ns"
           }
         ]
