@@ -600,6 +600,426 @@ pub(crate) fn parse_nitrogen_wallpaper(content: &str) -> Option<String> {
     None
 }
 
+/// Deduplicates non-empty wallpaper paths while preserving first-seen order and joins them
+/// with `", "`.
+#[allow(dead_code)]
+pub(crate) fn dedup_join_wallpapers(paths: impl IntoIterator<Item = String>) -> Option<String> {
+    let mut unique: Vec<String> = Vec::new();
+    for p in paths {
+        if !p.is_empty() && !unique.contains(&p) {
+            unique.push(p);
+        }
+    }
+    if unique.is_empty() {
+        None
+    } else {
+        Some(unique.join(", "))
+    }
+}
+
+/// Returns the sorted list of connected DRM connector names (e.g. `["DP-1", "eDP-1"]`) inside
+/// `drm_dir` (typically `/sys/class/drm`) by checking `<card>-<connector>/status == "connected"`.
+#[allow(dead_code)]
+pub(crate) fn connected_drm_outputs_in(drm_dir: &std::path::Path) -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(drm_dir) else {
+        return Vec::new();
+    };
+    let mut outputs: Vec<String> = Vec::new();
+    for entry in entries.flatten() {
+        let file_name = entry.file_name();
+        let Some(name) = file_name.to_str() else {
+            continue;
+        };
+        let Some(rest) = name.strip_prefix("card") else {
+            continue;
+        };
+        let Some(dash_idx) = rest.find('-') else {
+            continue;
+        };
+        if dash_idx == 0 || !rest[..dash_idx].bytes().all(|b| b.is_ascii_digit()) {
+            continue;
+        }
+        let connector = &rest[dash_idx + 1..];
+        if connector.is_empty() {
+            continue;
+        }
+        let status_path = entry.path().join("status");
+        if let Ok(status) = std::fs::read_to_string(status_path) {
+            if status.trim() == "connected" {
+                outputs.push(connector.to_string());
+            }
+        }
+    }
+    outputs.sort();
+    outputs.dedup();
+    outputs
+}
+
+#[cfg(target_os = "linux")]
+fn connected_drm_outputs() -> Vec<String> {
+    connected_drm_outputs_in(std::path::Path::new("/sys/class/drm"))
+}
+
+/// Parses Noctalia Shell's state file (`$XDG_STATE_HOME/noctalia/settings.toml`).
+///
+/// Prefers `[wallpaper.monitors.<output>].path` for outputs present in `connected_outputs`
+/// (deduplicated in monitor order), falling back to `[wallpaper.last].path` and then
+/// `[wallpaper.default].path` when no connected monitor matches.
+#[allow(dead_code)]
+pub(crate) fn parse_noctalia_wallpaper(
+    content: &str,
+    connected_outputs: &[String],
+) -> Option<String> {
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    enum Section<'a> {
+        Other,
+        Default,
+        Last,
+        Monitor(&'a str),
+    }
+
+    let mut section = Section::Other;
+    let mut default_path: Option<String> = None;
+    let mut last_path: Option<String> = None;
+    let mut monitors: Vec<(String, String)> = Vec::new();
+
+    for raw_line in content.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if let Some(header) = line.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
+            let header = header.trim();
+            if header == "wallpaper.default" {
+                section = Section::Default;
+            } else if header == "wallpaper.last" {
+                section = Section::Last;
+            } else if let Some(mon) = header.strip_prefix("wallpaper.monitors.") {
+                let mon = mon.trim().trim_matches('"').trim_matches('\'');
+                section = if mon.is_empty() {
+                    Section::Other
+                } else {
+                    Section::Monitor(mon)
+                };
+            } else {
+                section = Section::Other;
+            }
+            continue;
+        }
+
+        if section == Section::Other {
+            continue;
+        }
+
+        if let Some(rest) = line.strip_prefix("path") {
+            let rest = rest.trim_start();
+            if let Some(val) = rest.strip_prefix('=') {
+                if let Some(cleaned) = clean_wallpaper_uri(val.trim()) {
+                    match section {
+                        Section::Default => default_path = Some(cleaned),
+                        Section::Last => last_path = Some(cleaned),
+                        Section::Monitor(mon) => monitors.push((mon.to_string(), cleaned)),
+                        Section::Other => {}
+                    }
+                }
+            }
+        }
+    }
+
+    if !connected_outputs.is_empty() {
+        let active_paths: Vec<String> = monitors
+            .into_iter()
+            .filter(|(mon, _)| {
+                connected_outputs
+                    .iter()
+                    .any(|c| c.eq_ignore_ascii_case(mon))
+            })
+            .map(|(_, path)| path)
+            .collect();
+        if let Some(joined) = dedup_join_wallpapers(active_paths) {
+            return Some(joined);
+        }
+    }
+
+    last_path.or(default_path)
+}
+
+/// Parses a single `swww` / `awww` per-output cache file.
+///
+/// `swww` v0.8+ writes NUL-delimited fields (`<filter>\0<path>`); older versions wrote
+/// newline-separated text.
+#[allow(dead_code)]
+pub(crate) fn parse_swww_cache_bytes(bytes: &[u8]) -> Option<String> {
+    for segment in bytes.split(|&b| b == 0 || b == b'\n').rev() {
+        let Ok(s) = std::str::from_utf8(segment) else {
+            continue;
+        };
+        let s = s.trim();
+        if s.starts_with('/') || s.starts_with("file://") {
+            if let Some(cleaned) = clean_wallpaper_uri(s) {
+                return Some(cleaned);
+            }
+        }
+    }
+    None
+}
+
+/// Collects active wallpaper paths from an `swww` or `awww` cache directory, filtering to
+/// `connected_outputs` when any file matches a connected output.
+#[allow(dead_code)]
+pub(crate) fn collect_swww_wallpapers_in(
+    cache_dir: &std::path::Path,
+    connected_outputs: &[String],
+) -> Option<String> {
+    let Ok(entries) = std::fs::read_dir(cache_dir) else {
+        return None;
+    };
+    let mut files: Vec<(String, std::path::PathBuf)> = entries
+        .flatten()
+        .filter_map(|e| {
+            let path = e.path();
+            if !path.is_file() {
+                return None;
+            }
+            let name = e.file_name().to_str()?.to_string();
+            Some((name, path))
+        })
+        .collect();
+    files.sort_by(|a, b| a.0.cmp(&b.0));
+
+    let read_paths = |subset: &[(String, std::path::PathBuf)]| -> Vec<String> {
+        subset
+            .iter()
+            .filter_map(|(_, path)| {
+                let bytes = std::fs::read(path).ok()?;
+                parse_swww_cache_bytes(&bytes)
+            })
+            .collect()
+    };
+
+    if !connected_outputs.is_empty() {
+        let connected_subset: Vec<(String, std::path::PathBuf)> = files
+            .iter()
+            .filter(|(name, _)| {
+                connected_outputs
+                    .iter()
+                    .any(|c| c.eq_ignore_ascii_case(name))
+            })
+            .cloned()
+            .collect();
+        if let Some(joined) = dedup_join_wallpapers(read_paths(&connected_subset)) {
+            return Some(joined);
+        }
+    }
+
+    dedup_join_wallpapers(read_paths(&files))
+}
+
+/// Extracts wallpaper path(s) from a NUL-separated `/proc/<pid>/cmdline` buffer for
+/// `swaybg`, `wbg`, or `mpvpaper`.
+#[allow(dead_code)]
+pub(crate) fn parse_wallpaper_from_cmdline(comm: &str, cmdline_bytes: &[u8]) -> Option<String> {
+    let args: Vec<&str> = cmdline_bytes
+        .split(|&b| b == 0)
+        .filter_map(|s| std::str::from_utf8(s).ok())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if args.len() < 2 {
+        return None;
+    }
+
+    match comm {
+        "swaybg" => {
+            let mut paths = Vec::new();
+            let mut i = 1;
+            while i < args.len() {
+                let arg = args[i];
+                if (arg == "-i" || arg == "--image") && i + 1 < args.len() {
+                    if let Some(p) = clean_wallpaper_uri(args[i + 1]) {
+                        paths.push(p);
+                    }
+                    i += 2;
+                    continue;
+                } else if let Some(rest) = arg.strip_prefix("--image=") {
+                    if let Some(p) = clean_wallpaper_uri(rest) {
+                        paths.push(p);
+                    }
+                } else if let Some(rest) = arg.strip_prefix("-i") {
+                    if !rest.is_empty() {
+                        if let Some(p) = clean_wallpaper_uri(rest) {
+                            paths.push(p);
+                        }
+                    }
+                }
+                i += 1;
+            }
+            dedup_join_wallpapers(paths)
+        }
+        "wbg" | "mpvpaper" => {
+            for &arg in args[1..].iter().rev() {
+                if !arg.starts_with('-') {
+                    return clean_wallpaper_uri(arg);
+                }
+            }
+            None
+        }
+        _ => None,
+    }
+}
+
+/// Parses COSMIC's background configuration (`~/.config/cosmic/com.system76.CosmicBackground/v1/all`).
+#[allow(dead_code)]
+pub(crate) fn parse_cosmic_wallpaper(content: &str) -> Option<String> {
+    if let Some(idx) = content.find("Path(") {
+        let rest = &content[idx + 5..];
+        if let Some(end) = rest.find(')') {
+            return clean_wallpaper_uri(&rest[..end]);
+        }
+    }
+    for line in content.lines() {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix("source:") {
+            let val = rest.trim().trim_end_matches(',');
+            if let Some(inner) = val.strip_prefix("Path(").and_then(|s| s.strip_suffix(')')) {
+                return clean_wallpaper_uri(inner);
+            }
+        }
+    }
+    None
+}
+
+/// Parses `wpaperd` TOML configuration (`wallpaper.toml` / `config.toml`), preferring
+/// connected outputs before `[default]` / `[any]`.
+#[allow(dead_code)]
+pub(crate) fn parse_wpaperd_wallpaper(
+    content: &str,
+    connected_outputs: &[String],
+) -> Option<String> {
+    let mut section = String::new();
+    let mut fallback_path: Option<String> = None;
+    let mut output_paths: Vec<(String, String)> = Vec::new();
+
+    for raw_line in content.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if let Some(h) = line.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
+            section = h.trim().trim_matches('"').trim_matches('\'').to_string();
+            continue;
+        }
+        if let Some(rest) = line.strip_prefix("path") {
+            let rest = rest.trim_start();
+            if let Some(val) = rest.strip_prefix('=') {
+                if let Some(cleaned) = clean_wallpaper_uri(val.trim()) {
+                    if section == "default" || section == "any" {
+                        if fallback_path.is_none() {
+                            fallback_path = Some(cleaned);
+                        }
+                    } else if !section.is_empty() {
+                        output_paths.push((section.clone(), cleaned));
+                    }
+                }
+            }
+        }
+    }
+
+    if !connected_outputs.is_empty() {
+        let matched: Vec<String> = output_paths
+            .iter()
+            .filter(|(out, _)| {
+                connected_outputs
+                    .iter()
+                    .any(|c| c.eq_ignore_ascii_case(out))
+            })
+            .map(|(_, p)| p.clone())
+            .collect();
+        if let Some(joined) = dedup_join_wallpapers(matched) {
+            return Some(joined);
+        }
+    }
+
+    dedup_join_wallpapers(output_paths.into_iter().map(|(_, p)| p)).or(fallback_path)
+}
+
+/// Parses LXQt's `pcmanfm-qt` settings (`~/.config/pcmanfm-qt/lxqt/settings.conf`).
+#[allow(dead_code)]
+pub(crate) fn parse_lxqt_wallpaper(content: &str) -> Option<String> {
+    parse_ini_key(content, "Wallpaper").and_then(|v| clean_wallpaper_uri(&v))
+}
+
+/// Parses LXDE's `pcmanfm` settings (`~/.config/pcmanfm/LXDE/desktop-items-0.conf`).
+#[allow(dead_code)]
+pub(crate) fn parse_lxde_wallpaper(content: &str) -> Option<String> {
+    parse_ini_key(content, "wallpaper").and_then(|v| clean_wallpaper_uri(&v))
+}
+
+#[cfg(target_os = "linux")]
+#[derive(Default)]
+struct RunningWallpaperDaemons {
+    noctalia: bool,
+    swww: bool,
+    awww: bool,
+    hyprpaper: bool,
+    wpaperd: bool,
+    cmdline_wallpaper: Option<String>,
+}
+
+#[cfg(target_os = "linux")]
+fn scan_proc_wallpaper_daemons() -> RunningWallpaperDaemons {
+    let mut state = RunningWallpaperDaemons::default();
+    let Ok(entries) = std::fs::read_dir("/proc") else {
+        return state;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        if !name.bytes().all(|b| b.is_ascii_digit()) {
+            continue;
+        }
+        let Ok(comm) = std::fs::read_to_string(path.join("comm")) else {
+            continue;
+        };
+        let comm = comm.trim().to_lowercase();
+        match comm.as_str() {
+            c if c == "noctalia" || c.starts_with("noctalia") => state.noctalia = true,
+            "swww-daemon" | "swww" => state.swww = true,
+            "awww-daemon" | "awww" => state.awww = true,
+            "hyprpaper" => state.hyprpaper = true,
+            "wpaperd" => state.wpaperd = true,
+            "swaybg" | "wbg" | "mpvpaper" if state.cmdline_wallpaper.is_none() => {
+                if let Ok(cmdline) = std::fs::read(path.join("cmdline")) {
+                    state.cmdline_wallpaper = parse_wallpaper_from_cmdline(&comm, &cmdline);
+                }
+            }
+            _ => {}
+        }
+    }
+    state
+}
+
+#[cfg(target_os = "linux")]
+fn detect_gnome_wallpaper() -> Option<String> {
+    let prefer_dark = query_gsettings("org.gnome.desktop.interface", "color-scheme")
+        .map(|s| s.contains("prefer-dark"))
+        .unwrap_or(false);
+    let (primary, secondary) = if prefer_dark {
+        ("picture-uri-dark", "picture-uri")
+    } else {
+        ("picture-uri", "picture-uri-dark")
+    };
+    query_gsettings("org.gnome.desktop.background", primary)
+        .and_then(|u| clean_wallpaper_uri(&u))
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            query_gsettings("org.gnome.desktop.background", secondary)
+                .and_then(|u| clean_wallpaper_uri(&u))
+                .filter(|s| !s.is_empty())
+        })
+}
+
 #[allow(dead_code)]
 pub(crate) fn parse_windows_theme_name(theme_path: &str) -> Option<String> {
     let clean = theme_path.trim().trim_matches('"').trim_matches('\'');
@@ -796,25 +1216,27 @@ pub(crate) fn detect_wallpaper(desktop: Option<&str>, wm: Option<&str>) -> Optio
         let de_name = desktop.map(|d| d.to_lowercase()).unwrap_or_default();
         let wm_name = wm.map(|w| w.to_lowercase()).unwrap_or_default();
         let home = dirs::home_dir();
+        let config_dir = std::env::var_os("XDG_CONFIG_HOME")
+            .map(std::path::PathBuf::from)
+            .or_else(|| home.as_ref().map(|h| h.join(".config")));
+        let state_dir = std::env::var_os("XDG_STATE_HOME")
+            .map(std::path::PathBuf::from)
+            .or_else(|| home.as_ref().map(|h| h.join(".local/state")));
+        let cache_dir = std::env::var_os("XDG_CACHE_HOME")
+            .map(std::path::PathBuf::from)
+            .or_else(|| home.as_ref().map(|h| h.join(".cache")));
 
-        // 1. GNOME / Cinnamon / Budgie / Unity / Niri
+        // 1. Major full-featured Desktop Environments when explicitly active
         if de_name.contains("gnome")
             || de_name.contains("budgie")
             || de_name.contains("unity")
             || wm_name.contains("mutter")
-            || wm_name.contains("niri")
         {
-            if let Some(uri) = query_gsettings("org.gnome.desktop.background", "picture-uri-dark")
-                .or_else(|| query_gsettings("org.gnome.desktop.background", "picture-uri"))
-            {
-                if let Some(cleaned) = clean_wallpaper_uri(&uri) {
-                    if !cleaned.is_empty() {
-                        return Some(cleaned);
-                    }
-                }
+            if let Some(wp) = detect_gnome_wallpaper() {
+                return Some(wp);
             }
         }
-        if de_name.contains("cinnamon") {
+        if de_name.contains("cinnamon") || wm_name.contains("muffin") {
             if let Some(uri) = query_gsettings("org.cinnamon.desktop.background", "picture-uri") {
                 if let Some(cleaned) = clean_wallpaper_uri(&uri) {
                     if !cleaned.is_empty() {
@@ -823,8 +1245,6 @@ pub(crate) fn detect_wallpaper(desktop: Option<&str>, wm: Option<&str>) -> Optio
                 }
             }
         }
-
-        // 2. MATE
         if de_name.contains("mate") || wm_name.contains("marco") {
             if let Some(file) = query_gsettings("org.mate.background", "picture-filename") {
                 if let Some(cleaned) = clean_wallpaper_uri(&file) {
@@ -834,11 +1254,9 @@ pub(crate) fn detect_wallpaper(desktop: Option<&str>, wm: Option<&str>) -> Optio
                 }
             }
         }
-
-        // 3. KDE Plasma
         if de_name.contains("kde") || de_name.contains("plasma") || wm_name.contains("kwin") {
-            if let Some(ref h) = home {
-                let appletsrc = h.join(".config/plasma-org.kde.plasma.desktop-appletsrc");
+            if let Some(ref cfg) = config_dir {
+                let appletsrc = cfg.join("plasma-org.kde.plasma.desktop-appletsrc");
                 if let Ok(content) = std::fs::read_to_string(&appletsrc) {
                     if let Some(wp) = parse_plasma_wallpaper(&content) {
                         return Some(wp);
@@ -846,11 +1264,9 @@ pub(crate) fn detect_wallpaper(desktop: Option<&str>, wm: Option<&str>) -> Optio
                 }
             }
         }
-
-        // 4. XFCE
         if de_name.contains("xfce") || wm_name.contains("xfwm") {
-            if let Some(ref h) = home {
-                let xfce_xml = h.join(".config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml");
+            if let Some(ref cfg) = config_dir {
+                let xfce_xml = cfg.join("xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml");
                 if let Ok(content) = std::fs::read_to_string(&xfce_xml) {
                     if let Some(wp) = parse_xfce_wallpaper(&content) {
                         return Some(wp);
@@ -858,55 +1274,130 @@ pub(crate) fn detect_wallpaper(desktop: Option<&str>, wm: Option<&str>) -> Optio
                 }
             }
         }
-
-        // 5. Hyprpaper
-        if let Some(ref h) = home {
-            let conf = h.join(".config/hypr/hyprpaper.conf");
-            if let Ok(content) = std::fs::read_to_string(&conf) {
-                if let Some(wp) = parse_hyprpaper_wallpaper(&content) {
-                    return Some(wp);
+        if de_name.contains("cosmic") || wm_name.contains("cosmic") {
+            if let Some(ref cfg) = config_dir {
+                let cosmic_all = cfg.join("cosmic/com.system76.CosmicBackground/v1/all");
+                if let Ok(content) = std::fs::read_to_string(&cosmic_all) {
+                    if let Some(wp) = parse_cosmic_wallpaper(&content) {
+                        return Some(wp);
+                    }
                 }
             }
         }
-
-        // 6. Sway config
-        if let Some(ref h) = home {
-            for conf_path in &[h.join(".config/sway/config"), h.join(".sway/config")] {
-                if let Ok(content) = std::fs::read_to_string(conf_path) {
-                    if let Some(wp) = parse_sway_wallpaper(&content) {
+        if de_name.contains("lxqt") {
+            if let Some(ref cfg) = config_dir {
+                let lxqt_cfg = cfg.join("pcmanfm-qt/lxqt/settings.conf");
+                if let Ok(content) = std::fs::read_to_string(&lxqt_cfg) {
+                    if let Some(wp) = parse_lxqt_wallpaper(&content) {
+                        return Some(wp);
+                    }
+                }
+            }
+        }
+        if de_name.contains("lxde") {
+            if let Some(ref cfg) = config_dir {
+                let lxde_cfg = cfg.join("pcmanfm/LXDE/desktop-items-0.conf");
+                if let Ok(content) = std::fs::read_to_string(&lxde_cfg) {
+                    if let Some(wp) = parse_lxde_wallpaper(&content) {
                         return Some(wp);
                     }
                 }
             }
         }
 
-        // 7. Feh
-        if let Some(ref h) = home {
-            let fehbg = h.join(".fehbg");
-            if let Ok(content) = std::fs::read_to_string(&fehbg) {
-                if let Some(wp) = parse_feh_wallpaper(&content) {
-                    return Some(wp);
-                }
-            }
-        }
+        // 2. Live Wayland / compositor wallpaper daemons & shells (via single /proc pass)
+        let daemons = scan_proc_wallpaper_daemons();
+        let connected = connected_drm_outputs();
 
-        // 8. Nitrogen
-        if let Some(ref h) = home {
-            let n_cfg = h.join(".config/nitrogen/bg-saved.cfg");
-            if let Ok(content) = std::fs::read_to_string(&n_cfg) {
-                if let Some(wp) = parse_nitrogen_wallpaper(&content) {
-                    return Some(wp);
-                }
-            }
-        }
-
-        // 9. Generic gsettings fallback
-        if let Some(uri) = query_gsettings("org.gnome.desktop.background", "picture-uri-dark")
-            .or_else(|| query_gsettings("org.gnome.desktop.background", "picture-uri"))
+        if daemons.noctalia
+            || de_name.contains("umbriel")
+            || wm_name.contains("umbriel")
+            || de_name.contains("noctalia")
         {
-            if let Some(cleaned) = clean_wallpaper_uri(&uri) {
-                if !cleaned.is_empty() {
-                    return Some(cleaned);
+            if let Some(ref st) = state_dir {
+                let settings_path = st.join("noctalia/settings.toml");
+                if let Ok(content) = std::fs::read_to_string(&settings_path) {
+                    if let Some(wp) = parse_noctalia_wallpaper(&content, &connected) {
+                        return Some(wp);
+                    }
+                }
+            }
+        }
+
+        if daemons.swww {
+            if let Some(ref cache) = cache_dir {
+                if let Some(wp) = collect_swww_wallpapers_in(&cache.join("swww"), &connected) {
+                    return Some(wp);
+                }
+            }
+        }
+        if daemons.awww {
+            if let Some(ref cache) = cache_dir {
+                if let Some(wp) = collect_swww_wallpapers_in(&cache.join("awww"), &connected) {
+                    return Some(wp);
+                }
+            }
+        }
+
+        if let Some(wp) = daemons.cmdline_wallpaper {
+            return Some(wp);
+        }
+
+        if daemons.hyprpaper || de_name.contains("hyprland") || wm_name.contains("hyprland") {
+            if let Some(ref cfg) = config_dir {
+                let conf = cfg.join("hypr/hyprpaper.conf");
+                if let Ok(content) = std::fs::read_to_string(&conf) {
+                    if let Some(wp) = parse_hyprpaper_wallpaper(&content) {
+                        return Some(wp);
+                    }
+                }
+            }
+        }
+
+        if daemons.wpaperd {
+            if let Some(ref cfg) = config_dir {
+                for name in &["wpaperd/wallpaper.toml", "wpaperd/config.toml"] {
+                    let path = cfg.join(name);
+                    if let Ok(content) = std::fs::read_to_string(&path) {
+                        if let Some(wp) = parse_wpaperd_wallpaper(&content, &connected) {
+                            return Some(wp);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Sway config (only when Sway is the active DE/WM)
+        if de_name.contains("sway") || wm_name.contains("sway") {
+            if let Some(ref h) = home {
+                for conf_path in &[h.join(".config/sway/config"), h.join(".sway/config")] {
+                    if let Ok(content) = std::fs::read_to_string(conf_path) {
+                        if let Some(wp) = parse_sway_wallpaper(&content) {
+                            return Some(wp);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. X11 standalone WM wallpaper tools (feh / nitrogen), only on non-Wayland sessions
+        let is_wayland = std::env::var_os("WAYLAND_DISPLAY").is_some()
+            || std::env::var("XDG_SESSION_TYPE")
+                .map(|s| s.eq_ignore_ascii_case("wayland"))
+                .unwrap_or(false);
+        if !is_wayland {
+            if let Some(ref h) = home {
+                let fehbg = h.join(".fehbg");
+                if let Ok(content) = std::fs::read_to_string(&fehbg) {
+                    if let Some(wp) = parse_feh_wallpaper(&content) {
+                        return Some(wp);
+                    }
+                }
+                let n_cfg = h.join(".config/nitrogen/bg-saved.cfg");
+                if let Ok(content) = std::fs::read_to_string(&n_cfg) {
+                    if let Some(wp) = parse_nitrogen_wallpaper(&content) {
+                        return Some(wp);
+                    }
                 }
             }
         }
@@ -1165,6 +1656,202 @@ output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
                 r"C:\Users\User\AppData\Local\Microsoft\Windows\Themes\Custom.theme"
             ),
             Some("Custom".to_string())
+        );
+    }
+
+    #[test]
+    fn test_connected_drm_outputs_in() {
+        let dir = std::env::temp_dir().join(format!("retch_test_drm_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("card1-eDP-1")).unwrap();
+        std::fs::create_dir_all(dir.join("card1-DP-1")).unwrap();
+        std::fs::create_dir_all(dir.join("card1-DP-2")).unwrap();
+        std::fs::create_dir_all(dir.join("card1-HDMI-A-1")).unwrap();
+        std::fs::create_dir_all(dir.join("card1")).unwrap();
+
+        std::fs::write(dir.join("card1-eDP-1/status"), "connected\n").unwrap();
+        std::fs::write(dir.join("card1-DP-1/status"), "disconnected\n").unwrap();
+        std::fs::write(dir.join("card1-DP-2/status"), "connected\n").unwrap();
+        std::fs::write(dir.join("card1-HDMI-A-1/status"), "disconnected\n").unwrap();
+
+        let connected = connected_drm_outputs_in(&dir);
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(connected, vec!["DP-2".to_string(), "eDP-1".to_string()]);
+    }
+
+    #[test]
+    fn test_parse_noctalia_wallpaper() {
+        // Verbatim [wallpaper] section from corrino's ~/.local/state/noctalia/settings.toml
+        let settings = r#"
+[theme]
+builtin = "Noctalia"
+source = "wallpaper"
+
+[wallpaper]
+directory = "/home/ktobias/Pictures/Wallpapers"
+per_monitor_directories = true
+transition = [ "fade" ]
+transition_duration = 2000
+
+    [wallpaper.automation]
+    enabled = true
+    interval_seconds = 300
+
+    [wallpaper.default]
+    path = "/home/ktobias/Pictures/Wallpapers/19808_en_1.jpg"
+
+    [wallpaper.last]
+    path = "/home/ktobias/Pictures/Wallpapers/wallhaven_0jjpw5.jpg"
+
+    [wallpaper.monitors.DP-1]
+    path = "/home/ktobias/Pictures/Wallpapers/wallhaven_497p6k.jpg"
+
+    [wallpaper.monitors.DP-2]
+    path = "/home/ktobias/Pictures/Wallpapers/pod-27-02-2021.jpg"
+
+    [wallpaper.monitors.eDP-1]
+    path = "/home/ktobias/Pictures/Wallpapers/wallhaven_0jjpw5.jpg"
+
+[weather]
+unit = "imperial"
+"#;
+
+        // Undocked: only eDP-1 is connected
+        assert_eq!(
+            parse_noctalia_wallpaper(settings, &["eDP-1".to_string()]),
+            Some("/home/ktobias/Pictures/Wallpapers/wallhaven_0jjpw5.jpg".to_string())
+        );
+
+        // Docked: DP-1, DP-2, eDP-1 all connected -> deduplicated list in monitor order
+        assert_eq!(
+            parse_noctalia_wallpaper(
+                settings,
+                &[
+                    "DP-1".to_string(),
+                    "DP-2".to_string(),
+                    "eDP-1".to_string()
+                ]
+            ),
+            Some(
+                "/home/ktobias/Pictures/Wallpapers/wallhaven_497p6k.jpg, /home/ktobias/Pictures/Wallpapers/pod-27-02-2021.jpg, /home/ktobias/Pictures/Wallpapers/wallhaven_0jjpw5.jpg".to_string()
+            )
+        );
+
+        // No connected outputs match monitors -> falls back to [wallpaper.last]
+        assert_eq!(
+            parse_noctalia_wallpaper(settings, &["HDMI-A-1".to_string()]),
+            Some("/home/ktobias/Pictures/Wallpapers/wallhaven_0jjpw5.jpg".to_string())
+        );
+
+        // Empty connected outputs -> falls back to [wallpaper.last]
+        assert_eq!(
+            parse_noctalia_wallpaper(settings, &[]),
+            Some("/home/ktobias/Pictures/Wallpapers/wallhaven_0jjpw5.jpg".to_string())
+        );
+
+        // Without [wallpaper.last], falls back to [wallpaper.default]
+        let default_only = r#"
+[wallpaper.default]
+path = "/home/ktobias/Pictures/Wallpapers/19808_en_1.jpg"
+"#;
+        assert_eq!(
+            parse_noctalia_wallpaper(default_only, &["eDP-1".to_string()]),
+            Some("/home/ktobias/Pictures/Wallpapers/19808_en_1.jpg".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_swww_cache_bytes_and_dir() {
+        // swww v0.8+ NUL-delimited cache file: "\0Lanczos3\0/home/user/wall.png\0"
+        let bytes = b"\0Lanczos3\0/home/user/Pictures/swww_wall.png\0";
+        assert_eq!(
+            parse_swww_cache_bytes(bytes),
+            Some("/home/user/Pictures/swww_wall.png".to_string())
+        );
+
+        let dir = std::env::temp_dir().join(format!("retch_test_swww_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("eDP-1"),
+            b"Lanczos3\0/home/user/Pictures/edp.png\0",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("DP-1"),
+            b"Lanczos3\0/home/user/Pictures/stale_dp1.png\0",
+        )
+        .unwrap();
+
+        assert_eq!(
+            collect_swww_wallpapers_in(&dir, &["eDP-1".to_string()]),
+            Some("/home/user/Pictures/edp.png".to_string())
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_parse_wallpaper_from_cmdline() {
+        let swaybg_cmd = b"swaybg\0-o\0*\0-i\0/home/user/Pictures/swaybg.png\0-m\0fill\0";
+        assert_eq!(
+            parse_wallpaper_from_cmdline("swaybg", swaybg_cmd),
+            Some("/home/user/Pictures/swaybg.png".to_string())
+        );
+
+        let wbg_cmd = b"wbg\0-s\0/home/user/Pictures/wbg.jpg\0";
+        assert_eq!(
+            parse_wallpaper_from_cmdline("wbg", wbg_cmd),
+            Some("/home/user/Pictures/wbg.jpg".to_string())
+        );
+
+        let mpvpaper_cmd = b"mpvpaper\0-o\0loop\0DP-1\0/home/user/Videos/live.mp4\0";
+        assert_eq!(
+            parse_wallpaper_from_cmdline("mpvpaper", mpvpaper_cmd),
+            Some("/home/user/Videos/live.mp4".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_cosmic_wpaperd_lxqt_lxde_wallpaper() {
+        let cosmic_ron = r#"(
+    output: "all",
+    source: Path("/usr/share/backgrounds/cosmic/orion_nebula_nasa.jpg"),
+    filter_by_theme: true,
+)"#;
+        assert_eq!(
+            parse_cosmic_wallpaper(cosmic_ron),
+            Some("/usr/share/backgrounds/cosmic/orion_nebula_nasa.jpg".to_string())
+        );
+
+        let wpaperd_toml = r#"
+[default]
+path = "/home/user/Pictures/default.jpg"
+
+[DP-1]
+path = "/home/user/Pictures/dock.jpg"
+
+[eDP-1]
+path = "/home/user/Pictures/laptop.jpg"
+"#;
+        assert_eq!(
+            parse_wpaperd_wallpaper(wpaperd_toml, &["eDP-1".to_string()]),
+            Some("/home/user/Pictures/laptop.jpg".to_string())
+        );
+        assert_eq!(
+            parse_wpaperd_wallpaper(wpaperd_toml, &["HDMI-A-1".to_string()]),
+            Some("/home/user/Pictures/dock.jpg, /home/user/Pictures/laptop.jpg".to_string())
+        );
+
+        let lxqt_ini = "[Desktop]\nWallpaper=/usr/share/lxqt/themes/frost/lxqt-origami-light.png\n";
+        assert_eq!(
+            parse_lxqt_wallpaper(lxqt_ini),
+            Some("/usr/share/lxqt/themes/frost/lxqt-origami-light.png".to_string())
+        );
+
+        let lxde_ini = "[*]\nwallpaper=/usr/share/lxde/wallpapers/lxde_blue.jpg\n";
+        assert_eq!(
+            parse_lxde_wallpaper(lxde_ini),
+            Some("/usr/share/lxde/wallpapers/lxde_blue.jpg".to_string())
         );
     }
 }

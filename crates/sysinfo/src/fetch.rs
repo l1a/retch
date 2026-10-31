@@ -644,7 +644,12 @@ impl SystemInfo {
         } else {
             None
         };
-        let wm_handle = if should_collect("wm") || should_collect("window manager") {
+        let want_wm = should_collect("wm") || should_collect("window manager");
+        let want_desktop = should_collect("desktop");
+        let want_wm_theme =
+            should_collect("wm-theme") || should_collect("wm theme") || should_collect("wm_theme");
+        let want_wallpaper = should_collect("wallpaper");
+        let wm_handle = if want_wm || want_wm_theme || want_wallpaper {
             Some(std::thread::spawn(|| {
                 crate::timing::timed("wm", crate::wm::detect_wm)
             }))
@@ -1054,7 +1059,7 @@ impl SystemInfo {
         } else {
             None
         };
-        let desktop = if should_collect("desktop") {
+        let detected_desktop = if want_desktop || want_wm_theme || want_wallpaper {
             std::env::var("XDG_CURRENT_DESKTOP")
                 .or_else(|_| std::env::var("DESKTOP_SESSION"))
                 .or_else(|_| std::env::var("XDG_SESSION_DESKTOP"))
@@ -1063,6 +1068,11 @@ impl SystemInfo {
                 .map(|s| normalize_desktop_name(&s))
                 .filter(|s| !s.is_empty())
                 .or_else(|| crate::timing::timed("desktop-proc", detect_desktop_from_proc))
+        } else {
+            None
+        };
+        let desktop = if want_desktop {
+            detected_desktop.clone()
         } else {
             None
         };
@@ -1292,7 +1302,8 @@ impl SystemInfo {
             None
         };
 
-        let wm = wm_handle.and_then(|h| h.join().ok().flatten());
+        let detected_wm = wm_handle.and_then(|h| h.join().ok().flatten());
+        let wm = if want_wm { detected_wm.clone() } else { None };
 
         let dns = dns_handle.and_then(|h| h.join().ok()).unwrap_or_default();
 
@@ -1349,20 +1360,17 @@ impl SystemInfo {
             0
         };
 
-        let wm_theme = if should_collect("wm-theme")
-            || should_collect("wm theme")
-            || should_collect("wm_theme")
-        {
+        let wm_theme = if want_wm_theme {
             crate::timing::timed("wm-theme", || {
-                crate::theme::detect_wm_theme(wm.as_deref(), desktop.as_deref())
+                crate::theme::detect_wm_theme(detected_wm.as_deref(), detected_desktop.as_deref())
             })
         } else {
             None
         };
 
-        let wallpaper = if should_collect("wallpaper") {
+        let wallpaper = if want_wallpaper {
             crate::timing::timed("wallpaper", || {
-                crate::theme::detect_wallpaper(desktop.as_deref(), wm.as_deref())
+                crate::theme::detect_wallpaper(detected_desktop.as_deref(), detected_wm.as_deref())
             })
         } else {
             None
@@ -2067,6 +2075,8 @@ fn detect_desktop_from_proc() -> Option<String> {
         ("dde-session-daemon", "Deepin"),
         ("gala", "Pantheon"),
         ("enlightenment", "Enlightenment"),
+        ("cosmic-comp", "COSMIC"),
+        ("umbriel", "Umbriel"),
     ];
     let Ok(entries) = std::fs::read_dir("/proc") else {
         return None;
@@ -2104,6 +2114,7 @@ fn normalize_desktop_name(raw: &str) -> String {
         "deepin" => "Deepin".to_string(),
         "pantheon" => "Pantheon".to_string(),
         "unity" => "Unity".to_string(),
+        "cosmic" => "COSMIC".to_string(),
         "enlightenment" | "e" => "Enlightenment".to_string(),
         _ => {
             // Title-case if it's all lowercase; otherwise preserve as-is
