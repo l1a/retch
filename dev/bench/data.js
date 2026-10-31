@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793412730286,
+  "lastUpdate": 1793412730606,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15939,6 +15939,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 275245800,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e0b7c5075ab577c209942f3bf94b325aec2ba1dc",
+          "message": "Detect Linux DE and daemon wallpapers dynamically (#310)\n\n- Remove the unconditional Step 9 GNOME `gsettings` fallback and `niri`\n  GNOME routing in `crates/sysinfo/src/theme.rs` so non-GNOME desktops\n  never report GNOME's stale wallpaper.\n- Add single-pass `/proc` wallpaper daemon detection (`noctalia`,\n  `swww-daemon`/`awww-daemon`, `swaybg`/`wbg`/`mpvpaper`, `hyprpaper`,\n  `wpaperd`) and pure parsers for Noctalia's `settings.toml`, `swww`\n  cache files, `/proc/<pid>/cmdline`, COSMIC, `wpaperd`, LXQt, and LXDE.\n- Filter multi-monitor state files (`noctalia`, `swww`/`awww`,\n  `wpaperd`) by connected DRM outputs (`/sys/class/drm/card*-*/status`)\n  and deduplicate wallpaper paths in monitor order.\n- Respect `org.gnome.desktop.interface color-scheme` (`prefer-dark`) on\n  GNOME/Budgie/Unity/Mutter and scope `sway/config` to Sway and\n  `.fehbg`/`nitrogen` to non-Wayland sessions.\n- Probe `detected_desktop` and `detected_wm` in `fetch.rs` whenever\n  `wallpaper` or `wm-theme` is requested, and add `Umbriel`, `COSMIC`,\n  and `Mango` to compositor/DE detection.\n\nAssisted-By: Gemini 2.5 Pro",
+          "timestamp": "2026-10-30T19:03:51-07:00",
+          "tree_id": "8f3621e63bad1a13ea973721d556f4078ee05000",
+          "url": "https://github.com/l1a/retch/commit/e0b7c5075ab577c209942f3bf94b325aec2ba1dc"
+        },
+        "date": 1793412730557,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 31401369.999999996,
+            "unit": "ns",
+            "extra": "v0.20.35"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2357651309.9999995,
+            "unit": "ns",
+            "extra": "v0.20.35"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1298589080,
+            "unit": "ns",
+            "extra": "v0.20.35"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 15562840,
+            "unit": "ns",
+            "extra": "v0.20.35"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 18987910.000000004,
+            "unit": "ns",
+            "extra": "v0.20.35"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 314475370.00000006,
+            "unit": "ns",
+            "extra": "v0.20.35"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 165633970,
+            "unit": "ns",
+            "extra": "v0.20.35"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 17872450,
+            "unit": "ns",
+            "extra": "v0.20.35"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 130.53842144152975,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.2506263477146726,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 73.80117185601213,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 747.9356005130545,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 26934.807634605655,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 284.51965553865836,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 506.6579283030495,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 288147370,
             "unit": "ns"
           }
         ]
