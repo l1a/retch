@@ -25,7 +25,8 @@ WHAT IT CHECKS
 All offline, deterministic and free:
 
   1. retch-cli's Cargo.toml `description` BEGINS with `summary`; the PKGBUILD `pkgdesc`, the
-     spec's `Summary:`, the Nix derivation's and the flake's descriptions EQUAL it.
+     spec's `Summary:`, the Scoop manifest's `description`, the Nix derivation's and the
+     flake's descriptions EQUAL it.
   2. The Homebrew formula's `desc` equals `brew_desc`, and `brew_desc` obeys `brew audit`'s
      rules (no leading article, no formula name, no trailing full stop, at most 80 chars).
   3. Every licence field names `license`, in its channel's vocabulary.
@@ -73,6 +74,7 @@ FILES = {
     "pkgbuild": "packaging/aur/PKGBUILD",
     "spec": "packaging/copr/retch.spec",
     "formula": "packaging/homebrew/retch.rb",
+    "scoop": "packaging/scoop/retch.json",
     "package_nix": "packaging/nixpkgs/package.nix",
     "flake_nix": "flake.nix",
     "readme": "README.md",
@@ -228,6 +230,14 @@ def check_channels(meta: dict, texts: dict[str, str]) -> list[str]:
         except ParseError as exc:
             problems.append(str(exc))
 
+    try:
+        scoop = json.loads(texts["scoop"])
+    except json.JSONDecodeError as exc:
+        problems.append(f"could not parse packaging/scoop/retch.json: {exc}")
+    else:
+        expect("scoop description", scoop.get("description"), summary)
+        expect("scoop license", scoop.get("license"), licence)
+
     nix_licence = NIX_LICENSE.get(licence)
     if nix_licence is None:
         problems.append(f"no Nix licence attribute is known for {licence!r}; add it to NIX_LICENSE")
@@ -375,6 +385,7 @@ _TEXTS = {
     "pkgbuild": "pkgname=retch\npkgdesc=\"A fast thing written in Rust\"\nlicense=('GPL-3.0-or-later')\n",
     "spec": "Name:           retch\nSummary:        A fast thing written in Rust\nLicense:        GPL-3.0-or-later\n",
     "formula": 'class Retch < Formula\n  desc "Fast thing"\n  license "GPL-3.0-or-later"\nend\n',
+    "scoop": '{\n  "description": "A fast thing written in Rust",\n  "license": "GPL-3.0-or-later"\n}\n',
     "package_nix": '  meta = with lib; {\n    description = "A fast thing written in Rust";\n    license = licenses.gpl3Plus;\n  };\n',
     "flake_nix": '{\n  description = "A fast thing written in Rust";\n  opts = {\n    description = "Configuration for retch";\n  };\n}\n',
     "readme": (
@@ -438,6 +449,8 @@ def _self_test() -> int:
     expect_problem("spec Summary drift detected", "spec", "Summary:        A fast", "Summary:        A slow", "spec Summary")
     expect_problem("spec License drift detected", "spec", "License:        GPL-3.0-or-later", "License:        MIT", "spec License")
     expect_problem("formula desc drift detected", "formula", 'desc "Fast thing"', 'desc "Slow thing"', "formula desc")
+    expect_problem("scoop description drift detected", "scoop", '"A fast thing written in Rust"', '"A slow thing"', "scoop description")
+    expect_problem("scoop license drift detected", "scoop", '"GPL-3.0-or-later"', '"MIT"', "scoop license")
     expect_problem("Cargo description drift detected", "cargo_cli", '"A fast thing written in Rust (like others)"',
                    '"A fetcher"', "does not begin with the summary")
     expect_problem("sysinfo licence drift detected", "cargo_sysinfo", 'license = "GPL-3.0-or-later"',

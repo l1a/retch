@@ -127,7 +127,7 @@ fmt:
 lint:
     cargo clippy --workspace -- -D warnings
 
-# The renderer is the single implementation behind all three packaging targets, so its
+# The renderer is the single implementation behind all four packaging targets, so its
 # self-test is a `check` dependency like theirs. It is the piece that must refuse: a
 # substitution matching nothing, a sentinel surviving, a placeholder checksum.
 #
@@ -136,7 +136,7 @@ render-check:
     @{{PY}} scripts/render_packaging.py --self-test
 
 # Run strict checks (formatting and linting) as done in CI
-check: standard-check render-check aur-check copr-check brew-check metadata-check text-check wip-check bench-check
+check: standard-check render-check aur-check copr-check brew-check scoop-check metadata-check text-check wip-check bench-check
     cargo fmt -- --check
     cargo clippy --workspace -- -D warnings
     # Also lint retch-cli WITHOUT its default `graphics` feature (base64/image/icy_sixel).
@@ -585,6 +585,18 @@ brew-check:
     @{{PY}} scripts/brew_check.py --self-test
     @{{PY}} scripts/brew_check.py
 
+# ===== SCOOP =====
+#
+# packaging/scoop/retch.json is the SOURCE for the Windows Scoop bucket at l1a/scoop-retch.
+# Like the AUR PKGBUILD, COPR spec and Homebrew formula, it is a template carrying
+# @VERSION@, @SHA256_X86_64@ and @SHA256_ARM64@; scripts/render_packaging.py fills them in
+# at publish time from the released GitHub Release .exe assets.
+
+# Verify the Scoop manifest is still a template recording no version (offline)
+scoop-check:
+    @{{PY}} scripts/scoop_check.py --self-test
+    @{{PY}} scripts/scoop_check.py
+
 # Every channel's description and licence agrees with packaging/metadata.toml (offline)
 metadata-check:
     @{{PY}} scripts/metadata_check.py --self-test
@@ -789,6 +801,90 @@ brew-publish VERSION:
     pass "pushed retch $VER to $TAP_REPO"
     echo "Verify: brew tap l1a/retch && brew install retch"
 
+#
+# Takes the version for the same reason `aur-publish` and `brew-publish` do: the manifest is a
+# template, and this is the moment the released version and its two binary checksums come into
+# existence.
+#
+# Render the Scoop manifest for a released tag and push it to the bucket at l1a/scoop-retch
+scoop-publish VERSION:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    BOLD='\033[1m'; GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
+    pass() { echo -e "${GREEN}[✓]${NC} $1"; }
+    fail() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
+    info() { echo -e "${YELLOW}[→]${NC} $1"; }
+
+    BUCKET_REPO="git@github.com:l1a/scoop-retch.git"
+    VER="{{VERSION}}"; VER="${VER#v}"
+    [ -n "$VER" ] || fail "scoop-publish needs a version, e.g. just scoop-publish 0.20.28"
+
+    {{PY}} scripts/scoop_check.py || fail "packaging/scoop/retch.json is not a valid template"
+    pass "Scoop manifest template is valid"
+
+    # Both Windows architecture binaries are downloaded from the GitHub Release for v$VER
+    # and checksummed before rendering -- never copied from a committed field.
+    WORK=$(mktemp -d)
+    trap 'rm -rf "$WORK"' EXIT
+    BASE_URL="https://github.com/l1a/retch/releases/download/v${VER}"
+    info "Downloading and checksumming the v$VER Windows release binaries..."
+    curl -sfL -o "$WORK/retch-windows-x86_64.exe" "$BASE_URL/retch-windows-x86_64.exe" \
+        || fail "no x86_64 binary at $BASE_URL/retch-windows-x86_64.exe — tag and wait for the v$VER release build first"
+    curl -sfL -o "$WORK/retch-windows-arm64.exe" "$BASE_URL/retch-windows-arm64.exe" \
+        || fail "no arm64 binary at $BASE_URL/retch-windows-arm64.exe — tag and wait for the v$VER release build first"
+    SHA_X64=$({{PY}} -c "import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$WORK/retch-windows-x86_64.exe")
+    SHA_ARM=$({{PY}} -c "import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$WORK/retch-windows-arm64.exe")
+    pass "v$VER x86_64: $(wc -c < "$WORK/retch-windows-x86_64.exe" | tr -d ' ') bytes, sha256 $SHA_X64"
+    pass "v$VER arm64:  $(wc -c < "$WORK/retch-windows-arm64.exe" | tr -d ' ') bytes, sha256 $SHA_ARM"
+
+    {{PY}} scripts/render_packaging.py --target scoop --version "$VER" \
+        --sha256-x86-64 "$SHA_X64" --sha256-arm64 "$SHA_ARM" \
+        --out "$WORK/retch.json"
+    MANIFEST="$WORK/retch.json"
+    pass "rendered Scoop manifest for v$VER"
+
+    echo
+    echo -e "${BOLD}About to publish retch $VER to the Scoop bucket.${NC}"
+    echo "This is public and immediate: $BUCKET_REPO"
+    echo ""
+    if [ -n "${SCOOP_CONFIRM:-}" ]; then
+        CONFIRM="$SCOOP_CONFIRM"
+        echo "Type 'yes' to continue: $CONFIRM   (answered by SCOOP_CONFIRM)"
+    elif [ -t 0 ]; then
+        echo -n "Type 'yes' (or 'y') to continue: "; read -r CONFIRM
+    else
+        read -r -t 10 CONFIRM || CONFIRM=""
+        echo "$CONFIRM"
+        [ -n "$CONFIRM" ] || fail "no terminal and nothing on stdin. Re-run with SCOOP_CONFIRM=yes"
+    fi
+    case "$CONFIRM" in
+        y|Y|yes|YES) ;;
+        *) echo -e "${RED}Aborted.${NC}"; exit 1 ;;
+    esac
+
+    info "Cloning the bucket..."
+    git clone -q "$BUCKET_REPO" "$WORK/bucket" || fail "could not clone $BUCKET_REPO — does the repo exist, and is the SSH key registered?"
+    mkdir -p "$WORK/bucket/bucket"
+    cp "$MANIFEST" "$WORK/bucket/bucket/retch.json"
+
+    if ! git -C "$WORK/bucket" rev-parse --verify -q HEAD >/dev/null 2>&1; then
+        git -C "$WORK/bucket" symbolic-ref HEAD refs/heads/main
+        info "empty bucket: default branch pinned to main"
+    fi
+
+    git -C "$WORK/bucket" config user.name  "$(git -C "{{justfile_directory()}}" config user.name)"
+    git -C "$WORK/bucket" config user.email "$(git -C "{{justfile_directory()}}" config user.email)"
+
+    git -C "$WORK/bucket" add bucket/retch.json
+    if git -C "$WORK/bucket" diff --cached --quiet; then
+        pass "bucket already has this exact manifest — nothing to push"
+        exit 0
+    fi
+    git -C "$WORK/bucket" commit -q -m "retch $VER"
+    git -C "$WORK/bucket" push -q -u origin HEAD
+    pass "pushed retch $VER to $BUCKET_REPO"
+    echo "Verify: scoop bucket add l1a https://github.com/l1a/scoop-retch && scoop install retch"
+
 # ===== RELEASING =====
 #
 # A release needs NO VERSION BUMP, and that is the point of the shape below.
@@ -819,16 +915,17 @@ brew-publish VERSION:
 #   3. just publish              # crates.io; refuses unless HEAD is the tag for X
 #   4. just aur-publish X        # renders + pushes to the AUR      (needs podman)
 #      just brew-publish X       # renders + pushes to the tap
+#      just scoop-publish X      # renders + pushes to the Scoop bucket
 #   5. just github-metadata      # the repo's About box, from packaging/metadata.toml
 #
 # There is no step that edits a file, and therefore nothing to commit afterwards. Steps 3
 # and 4 still ask before acting: they are public and irreversible.
 #
-# CHANNEL TEXT TRAVELS WITH EACH STEP. crates.io, the AUR, COPR's RPM and the tap read their
-# description from the files they publish, and `just check` (metadata-check) keeps those in
-# step with packaging/metadata.toml. Only the COPR project page and GitHub's About box live on
-# the service rather than in a published file -- nothing ever updated them, which is how both
-# went stale -- so they get steps of their own (2 and 5).
+# CHANNEL TEXT TRAVELS WITH EACH STEP. crates.io, the AUR, COPR's RPM, the tap and the Scoop
+# bucket read their description from the files they publish, and `just check` (metadata-check)
+# keeps those in step with packaging/metadata.toml. Only the COPR project page and GitHub's
+# About box live on the service rather than in a published file -- nothing ever updated them,
+# which is how both went stale -- so they get steps of their own (2 and 5).
 
 # Merge the active PR, switch to main, pull, delete the branch, and update WIP.md (requires gh)
 #

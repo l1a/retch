@@ -519,3 +519,82 @@ jobs:
             exit 1
           fi
           echo "payload verified: binary, man page, three completion files"
+
+  # The Windows half of packaging verification. Exercises the Scoop manifest template,
+  # renders it against the last released tag's real GitHub Release .exe assets, and
+  # installs it through a local Scoop bucket on windows-latest.
+  scoop:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Scoop manifest template is valid (offline)
+        shell: bash
+        run: python scripts/scoop_check.py --self-test && python scripts/scoop_check.py
+
+      - name: Render the Scoop manifest for the last released tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -z "$TAG" ]; then
+            echo "::error::no tags in this checkout — cannot render a Scoop manifest to install"
+            exit 1
+          fi
+          VER="${TAG#v}"
+          BASE_URL="https://github.com/l1a/retch/releases/download/${TAG}"
+          echo "last released tag: $TAG"
+          WORK="$(mktemp -d)"
+          curl -sfL --retry 3 -o "$WORK/retch-windows-x86_64.exe" "$BASE_URL/retch-windows-x86_64.exe" \
+            || { echo "::error::cannot fetch $BASE_URL/retch-windows-x86_64.exe"; exit 1; }
+          curl -sfL --retry 3 -o "$WORK/retch-windows-arm64.exe" "$BASE_URL/retch-windows-arm64.exe" \
+            || { echo "::error::cannot fetch $BASE_URL/retch-windows-arm64.exe"; exit 1; }
+          SHA_X64=$(python -c "import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$WORK/retch-windows-x86_64.exe")
+          SHA_ARM=$(python -c "import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "$WORK/retch-windows-arm64.exe")
+          echo "computed x86_64 sha256: $SHA_X64"
+          echo "computed arm64  sha256: $SHA_ARM"
+          python scripts/render_packaging.py --target scoop --version "$VER" \
+            --sha256-x86-64 "$SHA_X64" --sha256-arm64 "$SHA_ARM" \
+            --out "$RUNNER_TEMP/retch.json"
+          python - "$RUNNER_TEMP/retch.json" "$VER" "$SHA_X64" "$SHA_ARM" <<'PY'
+          import json, pathlib, sys
+          path, ver, sha_x64, sha_arm = sys.argv[1:]
+          data = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+          assert data["version"] == ver, f"version {data['version']!r} != {ver!r}"
+          assert data["architecture"]["64bit"]["hash"] == sha_x64
+          assert data["architecture"]["arm64"]["hash"] == sha_arm
+          assert data["architecture"]["64bit"]["url"].endswith(f"/v{ver}/retch-windows-x86_64.exe#/retch.exe")
+          assert data["architecture"]["arm64"]["url"].endswith(f"/v{ver}/retch-windows-arm64.exe#/retch.exe")
+          PY
+          echo "RENDERED_VER=$VER" >> "$GITHUB_ENV"
+          rm -rf "$WORK"
+          echo "render verified against the real $TAG Windows release binaries"
+
+      - name: Install via Scoop from a staged local bucket and verify binary
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
+          if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+            Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+            $env:PATH = "$HOME\scoop\shims;$env:PATH"
+          }
+          # Scoop resolves `<bucket>/<app>` from `~\scoop\buckets\<bucket>\bucket\<app>.json`
+          # (see `Find-BucketDirectory` in Scoop's `lib/buckets.ps1`), whereas `scoop bucket add`
+          # rejects a Windows drive-letter path in `Convert-RepositoryUri`. Staging directly
+          # under `~\scoop\buckets\local-test\bucket\` mirrors the `brew` job's `brew tap-new --no-git`.
+          $bucketDir = Join-Path $HOME "scoop\buckets\local-test\bucket"
+          New-Item -ItemType Directory -Force -Path $bucketDir | Out-Null
+          Copy-Item "$env:RUNNER_TEMP\retch.json" (Join-Path $bucketDir "retch.json")
+          scoop install local-test/retch
+          if ($LASTEXITCODE -ne 0) {
+            throw "scoop install local-test/retch failed with exit code $LASTEXITCODE"
+          }
+          $verOut = & retch --version
+          Write-Host "retch --version: $verOut"
+          if ($verOut -notmatch [regex]::Escape($env:RENDERED_VER)) {
+            throw "Expected retch --version to contain $($env:RENDERED_VER), got: $verOut"
+          }
+          & retch --fields os,cpu --no-logo

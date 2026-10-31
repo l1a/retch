@@ -309,31 +309,34 @@ Clone `https://github.com/l1a/retch.wiki.git`, edit the relevant pages, and push
 
 ### 4.9 Packaging
 - [ ] **There is no post-release packaging PR, and a release requires no version bump.**
-      `packaging/aur/PKGBUILD`, `packaging/copr/retch.spec` and
-      `packaging/homebrew/retch.rb` are **templates** carrying `@VERSION@` / `@SHA256@`;
+      `packaging/aur/PKGBUILD`, `packaging/copr/retch.spec`,
+      `packaging/homebrew/retch.rb` and `packaging/scoop/retch.json` are **templates**
+      carrying `@VERSION@` / `@SHA256@` (or `@SHA256_X86_64@` / `@SHA256_ARM64@`);
       `scripts/render_packaging.py` fills those in at publish time, from the tag. So a
       release is: tag → `just publish` → `just aur-publish <version>` →
-      `just brew-publish <version>` (COPR rebuilds itself off the tag), and nothing is
-      committed afterwards. `main` sits **at** the released version until the next feature
-      PR bumps it — which is what makes `just publish` on `main` correct, and its
-      HEAD-is-the-tag guard is what enforces that rather than trusting it.
+      `just brew-publish <version>` → `just scoop-publish <version>` (COPR rebuilds
+      itself off the tag), and nothing is committed afterwards. `main` sits **at** the
+      released version until the next feature PR bumps it — which is what makes
+      `just publish` on `main` correct, and its HEAD-is-the-tag guard is what enforces
+      that rather than trusting it.
 - [ ] If you are touching packaging, the guards run offline in `just check`
-      (`render-check`, `aur-check`, `copr-check`, `brew-check`) and assert the templates
-      still record nothing. Do not "fix" one by writing a version back into a template.
+      (`render-check`, `aur-check`, `copr-check`, `brew-check`, `scoop-check`) and assert
+      the templates still record nothing. Do not "fix" one by writing a version back into a
+      template.
 - [ ] `packaging/nixpkgs/package.nix` is the one target still pinned by hand, deliberately:
       that channel is undecided and its CI job is `if: false`. Check whether it needs
       `just nix-update` only if a nixpkgs submission is actually happening.
 - [ ] **Channel text is part of publishing each channel.** `packaging/metadata.toml` holds the
       one-line summary, the Homebrew `desc`, the licence, the GitHub description and topics,
       and the COPR project-page files; `just check` (`metadata-check`) fails when
-      `Cargo.toml`, the PKGBUILD, the spec, the formula or the Nix files drift from it. Text
-      an artifact carries (crates.io description and README, AUR `pkgdesc`, RPM
-      `%description`, the tap's `desc`) ships with that channel's publish step. The COPR
-      project page is pushed by `copr.yml` on the tag, and GitHub's About box by
-      `just github-metadata` after it. **Before tagging, read the READMEs and those files
-      for claims that are no longer true** — the guard proves the copies agree, not that
-      they are right; the v0.17.9 review found a README flag that does not exist and a
-      crates.io example that did not compile.
+      `Cargo.toml`, the PKGBUILD, the spec, the formula, the Scoop manifest or the Nix files
+      drift from it. Text an artifact carries (crates.io description and README, AUR `pkgdesc`,
+      RPM `%description`, the tap's `desc`, the Scoop bucket's `description`) ships with that
+      channel's publish step. The COPR project page is pushed by `copr.yml` on the tag, and
+      GitHub's About box by `just github-metadata` after it. **Before tagging, read the
+      READMEs and those files for claims that are no longer true** — the guard proves the
+      copies agree, not that they are right; the v0.17.9 review found a README flag that does
+      not exist and a crates.io example that did not compile.
 - [ ] History, for anyone reading an old commit: releases up to v0.9.10 committed the
       packaging bump straight to `main` believing the gate made a PR impossible (it did
       not); v0.9.12 turned it into a gated PR via `just post-release`; and the bump itself
