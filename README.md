@@ -147,6 +147,17 @@ sudo dnf install retch
 
 *(The RPM spec file is available in [packaging/copr](packaging/copr/retch.spec)).*
 
+### On Windows (Scoop)
+
+`retch` is available for Windows (`x86_64` and `arm64`) from a [Scoop](https://scoop.sh) bucket:
+
+```powershell
+scoop bucket add l1a https://github.com/l1a/scoop-retch
+scoop install retch
+```
+
+*(The Scoop manifest is maintained in [packaging/scoop](packaging/scoop/retch.json) as a template and pushed to the bucket by `just scoop-publish` — the bucket is never hand-edited.)*
+
 ### From crates.io
 
 ```sh

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 l1a
-"""Render packaging/{aur,copr,homebrew} for a released version.
+"""Render packaging/{aur,copr,homebrew,scoop} for a released version.
 
 WHY THIS EXISTS
 ---------------
@@ -86,13 +86,15 @@ class RenderError(Exception):
 class Target:
     path: str
     needs_sha: bool
+    needs_arch_shas: bool
     what: str
 
 
 TARGETS = {
-    "aur": Target("packaging/aur/PKGBUILD", True, "AUR PKGBUILD"),
-    "copr": Target("packaging/copr/retch.spec", False, "COPR spec"),
-    "brew": Target("packaging/homebrew/retch.rb", True, "Homebrew formula"),
+    "aur": Target("packaging/aur/PKGBUILD", True, False, "AUR PKGBUILD"),
+    "copr": Target("packaging/copr/retch.spec", False, False, "COPR spec"),
+    "brew": Target("packaging/homebrew/retch.rb", True, False, "Homebrew formula"),
+    "scoop": Target("packaging/scoop/retch.json", False, True, "Scoop manifest"),
 }
 
 
@@ -191,6 +193,8 @@ def render(
     version: str,
     sha256: str | None = None,
     *,
+    sha256_x86_64: str | None = None,
+    sha256_arm64: str | None = None,
     root: Path = REPO_ROOT,
     stamp: str | None = None,
 ) -> str:
@@ -205,9 +209,22 @@ def render(
     if spec.needs_sha:
         if sha256 is None:
             raise RenderError(f"{spec.what} pins a checksum: --sha256 is required")
+        if sha256_x86_64 is not None or sha256_arm64 is not None:
+            raise RenderError(f"{spec.what} takes --sha256, not per-arch sha256 flags")
         values["SHA256"] = validate_sha256(sha256)
-    elif sha256 is not None:
-        raise RenderError(f"{spec.what} pins no checksum: --sha256 is not accepted")
+    elif spec.needs_arch_shas:
+        if sha256 is not None:
+            raise RenderError(
+                f"{spec.what} pins per-architecture checksums: use --sha256-x86-64 and --sha256-arm64"
+            )
+        if sha256_x86_64 is None or sha256_arm64 is None:
+            raise RenderError(
+                f"{spec.what} pins per-architecture checksums: --sha256-x86-64 and --sha256-arm64 are required"
+            )
+        values["SHA256_X86_64"] = validate_sha256(sha256_x86_64)
+        values["SHA256_ARM64"] = validate_sha256(sha256_arm64)
+    elif sha256 is not None or sha256_x86_64 is not None or sha256_arm64 is not None:
+        raise RenderError(f"{spec.what} pins no checksum: sha256 flags are not accepted")
 
     text = template
     if target == "copr":
@@ -222,6 +239,7 @@ def render(
 # --------------------------------------------------------------------------------------
 
 _SHA = "77ccf85843d24ac3216ab31d2584ff4a95869266c59ddb8bc83819425cfc2033"
+_SHA_ARM = "88ddf96954e35bd4327bc42e3695005b06970377d60eec9cd94920536dfd3144"
 
 
 def _self_test() -> int:
@@ -248,6 +266,20 @@ def _self_test() -> int:
     check("brew url", "/refs/tags/v1.2.3.tar.gz" in brew, "rendered formula has no versioned url")
     check("brew sha", f'sha256 "{_SHA}"' in brew, "rendered formula has no sha256")
     check("brew no sentinel", not SENTINEL_RE.search(brew), "sentinel survived")
+
+    scoop = render("scoop", "1.2.3", sha256_x86_64=_SHA, sha256_arm64=_SHA_ARM)
+    check("scoop version", '"version": "1.2.3"' in scoop, "rendered manifest has no version 1.2.3")
+    check(
+        "scoop x86_64 url",
+        "/releases/download/v1.2.3/retch-windows-x86_64.exe#/retch.exe" in scoop,
+        "rendered manifest has no versioned x86_64 url",
+    )
+    check("scoop x86_64 sha", f'"hash": "{_SHA}"' in scoop, "rendered manifest has no x86_64 hash")
+    check("scoop arm64 sha", f'"hash": "{_SHA_ARM}"' in scoop, "rendered manifest has no arm64 hash")
+    check("scoop no sentinel", not SENTINEL_RE.search(scoop), "sentinel survived")
+    # Also ensure the autoupdate $version literal was kept intact.
+    check("scoop autoupdate kept", "v$version/retch-windows-x86_64.exe#/retch.exe" in scoop,
+          "autoupdate $version was lost")
 
     copr = render("copr", "1.2.3", stamp="Mon Jan 05 2026")
     check("copr version", "\nVersion:        1.2.3\n" in copr, "rendered spec has no Version: 1.2.3")
@@ -277,6 +309,9 @@ def _self_test() -> int:
     refuses("placeholder sha", lambda: render("aur", "1.2.3", "0" * 64))
     refuses("sha for copr", lambda: render("copr", "1.2.3", _SHA))
     refuses("missing sha", lambda: render("brew", "1.2.3"))
+    refuses("single sha for scoop", lambda: render("scoop", "1.2.3", _SHA))
+    refuses("missing arm64 sha for scoop", lambda: render("scoop", "1.2.3", sha256_x86_64=_SHA))
+    refuses("arch sha for brew", lambda: render("brew", "1.2.3", _SHA, sha256_x86_64=_SHA))
     refuses("unknown target", lambda: render("nope", "1.2.3"))
 
     # A template that has LOST its sentinel must fail rather than render unchanged -- the
@@ -317,6 +352,8 @@ def main() -> int:
     ap.add_argument("--target", choices=sorted(TARGETS), help="which packaging file to render")
     ap.add_argument("--version", help="released version (default: Cargo.toml's)")
     ap.add_argument("--sha256", help="sha256 of the release tarball (aur and brew only)")
+    ap.add_argument("--sha256-x86-64", help="sha256 of retch-windows-x86_64.exe (scoop only)")
+    ap.add_argument("--sha256-arm64", help="sha256 of retch-windows-arm64.exe (scoop only)")
     ap.add_argument("--out", help="write here instead of stdout")
     args = ap.parse_args()
 
@@ -329,7 +366,13 @@ def main() -> int:
             return 0
         if not args.target:
             ap.error("--target is required (or use --print-version / --self-test)")
-        text = render(args.target, args.version or repo_version(), args.sha256)
+        text = render(
+            args.target,
+            args.version or repo_version(),
+            args.sha256,
+            sha256_x86_64=args.sha256_x86_64,
+            sha256_arm64=args.sha256_arm64,
+        )
     except RenderError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

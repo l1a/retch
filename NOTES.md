@@ -140,6 +140,7 @@ information gathering without any dependency on `clap` or the CLI.
   just publish                # crates.io. Refuses unless HEAD is the tag.
   just aur-publish X          # renders + pushes to the AUR (needs podman; see §7.4). AUR_CONFIRM=y
   just brew-publish X         # renders + pushes to the tap. BREW_CONFIRM=y
+  just scoop-publish X        # renders + pushes to the Scoop bucket. SCOOP_CONFIRM=y
   just github-metadata        # About box from packaging/metadata.toml
   ```
   `retch-sysinfo` publishes before `retch-cli`, which pins `=0.1.x`; `just publish` orders them
@@ -150,9 +151,9 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.35)
+## Current State (v0.20.36)
 
-`main` carries **`retch-cli` 0.20.35** / **`retch-sysinfo` 0.1.100**. Newest released tag is
+`main` carries **`retch-cli` 0.20.36** / **`retch-sysinfo` 0.1.100**. Newest released tag is
 **`v0.20.34`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
@@ -160,6 +161,27 @@ deliberately omitted platform-specific items in §6a and §6c). What is open is 
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.36: Windows Scoop packaging (`packaging/scoop/retch.json`, `scripts/scoop_check.py`,
+  `just scoop-publish <version>`, and `l1a/scoop-retch` bucket).**
+  - **Template manifest (`packaging/scoop/retch.json`):** Follows the same zero-drift template
+    architecture as `packaging/aur/PKGBUILD`, `packaging/copr/retch.spec`, and
+    `packaging/homebrew/retch.rb`. Records `@VERSION@`, `@SHA256_X86_64@`, and `@SHA256_ARM64@`
+    sentinels in-repo; both `64bit` (`retch-windows-x86_64.exe`) and `arm64`
+    (`retch-windows-arm64.exe`) asset URLs append `#/retch.exe` so Scoop renames the downloaded
+    binary to `retch.exe` on install and exposes it through a single `"bin": "retch.exe"` shim.
+  - **Renderer & guards (`scripts/render_packaging.py`, `scripts/scoop_check.py`,
+    `scripts/metadata_check.py`):** Extended `render_packaging.py --target scoop` with
+    `--sha256-x86-64` and `--sha256-arm64`, added offline guard `scoop_check.py` (wired into
+    `just check` via `scoop-check`), and extended `metadata_check.py` to enforce that the
+    manifest's `description` and `license` match `packaging/metadata.toml`.
+  - **Publishing & CI (`just scoop-publish <version>`, `.github/workflows/packaging.yml`):**
+    `just scoop-publish <version>` downloads both `.exe` assets from the GitHub Release for
+    `v<version>`, computes their SHA-256 digests, renders `bucket/retch.json`, and pushes to
+    `git@github.com:l1a/scoop-retch.git` (gated by `SCOOP_CONFIRM`). The `scoop` job in
+    `packaging.yml` runs `scoop_check.py`, renders the manifest against the latest released tag's
+    real GitHub Release `.exe` assets on `windows-latest`, stages a local bucket, and verifies
+    `scoop install` + `retch --version`.
 
 - **v0.20.35: Dynamic Linux DE/compositor/daemon `wallpaper` detection and removal of stale
   cross-DE GNOME fallback.** Verified on `corrino` (Dell Inspiron 16 7630 2-in-1, Fedora 44,
