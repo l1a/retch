@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793483478054,
+  "lastUpdate": 1793483479165,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -9811,6 +9811,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 267.8616830816312,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "134ac3e90ebf75f3056f9bc2e33028ee303c3e48",
+          "message": "Add Windows Scoop packaging and publish recipe (#311)\n\n- Add template manifest `packaging/scoop/retch.json` carrying `@VERSION@`,\n  `@SHA256_X86_64@`, and `@SHA256_ARM64@` sentinels, with `#/retch.exe`\n  URL fragments for both `64bit` (`retch-windows-x86_64.exe`) and `arm64`\n  (`retch-windows-arm64.exe`), `\"bin\": \"retch.exe\"`, `\"checkver\": \"github\"`,\n  and `\"autoupdate\"`.\n- Extend `scripts/render_packaging.py` with `--target scoop`,\n  `--sha256-x86-64`, and `--sha256-arm64` flags plus self-tests.\n- Add offline template guard `scripts/scoop_check.py` (wired into\n  `just check` via `scoop-check`) and extend `scripts/metadata_check.py`\n  to check `packaging/scoop/retch.json`'s `description` and `license`\n  against `packaging/metadata.toml`.\n- Add `just scoop-publish VERSION` to `Justfile` to download both\n  GitHub Release `.exe` assets, compute their SHA-256 digests, render\n  `bucket/retch.json`, and push to `l1a/scoop-retch` (gated by\n  `SCOOP_CONFIRM`).\n- Add a `scoop` CI verification job on `windows-latest` in\n  `.github/workflows/packaging.yml`.\n- Bump `retch-cli` to `0.20.36`, regenerate `docs/retch.1`, and update\n  `README.md`, `AGENTS.md`, and `NOTES.md`.\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-10-31T14:40:35-07:00",
+          "tree_id": "d9461d9b5b387ab7c879c38e83c1a70541899e9b",
+          "url": "https://github.com/l1a/retch/commit/134ac3e90ebf75f3056f9bc2e33028ee303c3e48"
+        },
+        "date": 1793483479110,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2263458.9000000004,
+            "unit": "ns",
+            "extra": "v0.20.36"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 278046489,
+            "unit": "ns",
+            "extra": "v0.20.36"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252400988.8,
+            "unit": "ns",
+            "extra": "v0.20.36"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1346694.5,
+            "unit": "ns",
+            "extra": "v0.20.36"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3150634.3,
+            "unit": "ns",
+            "extra": "v0.20.36"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 628257988.1,
+            "unit": "ns",
+            "extra": "v0.20.36"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205582043.10000002,
+            "unit": "ns",
+            "extra": "v0.20.36"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2209538.4000000004,
+            "unit": "ns",
+            "extra": "v0.20.36"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 446794966.25,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 998.9029752725216,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 105.62678865765243,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9474470397243993,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 49.90270901480484,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8955.774367108317,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 83042.92976309154,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 5683.516701720487,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4038.285624078993,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 71350.83150384654,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 281.60390854630964,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 250.04163368703993,
             "unit": "ns"
           }
         ]
