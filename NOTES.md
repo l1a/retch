@@ -150,16 +150,43 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.34)
+## Current State (v0.20.35)
 
-`main` carries **`retch-cli` 0.20.34** / **`retch-sysinfo` 0.1.99**. Newest released tag is
-**`v0.20.28`**.
+`main` carries **`retch-cli` 0.20.35** / **`retch-sysinfo` 0.1.100**. Newest released tag is
+**`v0.20.34`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.35: Dynamic Linux DE/compositor/daemon `wallpaper` detection and removal of stale
+  cross-DE GNOME fallback.** Verified on `corrino` (Dell Inspiron 16 7630 2-in-1, Fedora 44,
+  Umbriel + Noctalia Shell):
+  - **Root cause (`crates/sysinfo/src/theme.rs`):** Linux `detect_wallpaper()` previously had an
+    unconditional Step 9 `gsettings` fallback (`org.gnome.desktop.background picture-uri-dark`),
+    routed `Niri` to GNOME `gsettings`, and checked `~/.config/hypr/hyprpaper.conf`,
+    `~/.config/sway/config`, `~/.fehbg`, and `~/.config/nitrogen/bg-saved.cfg` unconditionally on
+    disk regardless of the active desktop/compositor. On any Fedora Workstation host where GNOME's
+    schema exists on disk, running a Wayland compositor/shell like Umbriel + Noctalia fell through
+    to GNOME's stale wallpaper (`/usr/share/backgrounds/gnome/tubes-d.jxl`).
+  - **Dynamic DE & live wallpaper daemon detection:** `detect_wallpaper()` now checks active DE
+    configurations strictly when that DE/WM is active (GNOME/Budgie/Unity/Mutter respecting
+    `org.gnome.desktop.interface color-scheme` `prefer-dark` vs default, Cinnamon/Muffin,
+    MATE/Marco, KDE Plasma/KWin, XFCE/Xfwm, COSMIC, LXQt, LXDE), scans `/proc` in a single pass
+    (`scan_proc_wallpaper_daemons`) for live Wayland wallpaper daemons/shells (`noctalia` state
+    file `$XDG_STATE_HOME/noctalia/settings.toml`, `swww-daemon`/`awww-daemon` cache files in
+    `$XDG_CACHE_HOME/{swww,awww}/<output>`, `swaybg`/`wbg`/`mpvpaper` `/proc/<pid>/cmdline`,
+    `hyprpaper`, and `wpaperd`), gates `sway/config` to Sway and `.fehbg`/`nitrogen` to non-Wayland
+    sessions, and drops the unconditional GNOME `gsettings` fallback. Multi-monitor state files
+    (Noctalia `[wallpaper.monitors.<output>]`, `swww`/`awww`, `wpaperd`) filter configured outputs
+    against connected DRM connectors (`/sys/class/drm/card*-<output>/status == "connected"`) and
+    deduplicate paths in order.
+  - **Isolated `--fields wallpaper` / `--fields wm-theme` (`crates/sysinfo/src/fetch.rs`):**
+    `detected_desktop` and `detected_wm` are now probed whenever `desktop`, `wm`, `wm-theme`, or
+    `wallpaper` is requested (while only populating `SystemInfo.desktop` / `SystemInfo.wm` when
+    requested), and `Umbriel`, `COSMIC`, and `Mango` are added to `wm.rs` / `fetch.rs`.
 
 - **v0.20.34: Intel fractional MiB `cpu-cache` unit fix (`1.25M`, not `1.25MM`) and V4L2 MIPI
   ISP/CSI pipeline filtering (`camera`).** Verified on `rabban` (Dell XPS 13 Plus 9320, 12th Gen
