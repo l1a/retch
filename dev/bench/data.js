@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793552129365,
+  "lastUpdate": 1793552129685,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17055,6 +17055,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 247739212.5,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0a499c29e9b371ac0f8d3b219b745699f673adbc",
+          "message": "Fix wallpaper daemon detection (#312)\n\n* Fix wallpaper daemon detection\n\nwpaperd unmatched outputs used leftover named paths,\nextra per-output daemons were ignored, and leftover\nwallpaper.toml won after a 1.0 upgrade.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n* Don't fall through to leftover wpaperd config\n\nA readable config.toml with no path for connected\noutputs must not take wallpaper.toml's leftover path.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n---------\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+          "timestamp": "2026-11-01T08:44:25-08:00",
+          "tree_id": "3285c6cd853e1153d4e4e02c393f5f5a88b4a9ab",
+          "url": "https://github.com/l1a/retch/commit/0a499c29e9b371ac0f8d3b219b745699f673adbc"
+        },
+        "date": 1793552129635,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 30480800.000000004,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2341052910,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1296946800,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 20320900,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 26249079.999999996,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 275041840,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 259158560.00000003,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 22381710.000000004,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 221.07177410028845,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.800226459457289,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 118.48133850553404,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1469.0712425739905,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46749.4936098017,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 613.9918124322985,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 925.3770629612451,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 242923960,
             "unit": "ns"
           }
         ]
