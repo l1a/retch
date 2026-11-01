@@ -151,16 +151,30 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.36)
+## Current State (v0.20.37)
 
-`main` carries **`retch-cli` 0.20.36** / **`retch-sysinfo` 0.1.100**. Newest released tag is
-**`v0.20.34`**.
+`main` carries **`retch-cli` 0.20.37** / **`retch-sysinfo` 0.1.101**. Newest released tag is
+**`v0.20.36`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.37: Linux wallpaper detection follows live `wpaperd` fallbacks, every per-output
+  daemon process, and `wpaperd` 1.0's `config.toml`.** Three bugs in the v0.20.35 probe:
+  - `parse_wpaperd_wallpaper` joined every named per-output `path` when no connected DRM
+    connector matched a section, instead of `[default]` / `[any]`. `wpaperd` applies those
+    fallbacks to unmatched displays, so an undocked laptop reported dock wallpapers.
+    Unmatched connected outputs now take the fallback; leftover named sections for
+    disconnected outputs are ignored.
+  - `scan_proc_wallpaper_daemons` kept only the first parsed `swaybg` / `wbg` / `mpvpaper`
+    cmdline. Multi-monitor setups that launch one daemon per display now join every
+    process's path (`collect_cmdline_wallpapers`).
+  - Detection tried `wpaperd/wallpaper.toml` (pre-1.0) before `wpaperd/config.toml` (1.0).
+    After an upgrade both files can exist, so a leftover pre-1.0 file won. `config.toml`
+    is tried first; `wallpaper.toml` remains the fallback when 1.0's file is absent.
 
 - **v0.20.36: Windows Scoop packaging (`packaging/scoop/retch.json`, `scripts/scoop_check.py`,
   `just scoop-publish <version>`, and `l1a/scoop-retch` bucket).**
@@ -1343,6 +1357,9 @@ nobody asked.
 - **SQLite `Connection::open` is read-write**, so the root-owned `0644` rpmdb fails on **every
   query** (not on `open()`) with "attempt to write a readonly database" — which is why a guard
   around the open never fired. `mode=ro` does not help either; `immutable=1` does.
+- **A leftover config file from a rename wins if you try the old name first.** `wpaperd` 1.0
+  reads `config.toml`; pre-1.0 used `wallpaper.toml`. After an upgrade both can exist, and
+  checking the old path first reports the stale wallpaper. Prefer the current filename.
 
 **Cross-platform**
 - **Percent-encode the UTF-8 bytes, never the code point.** `format!("%{:02X}", c as u32)`
