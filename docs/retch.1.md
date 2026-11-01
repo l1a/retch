@@ -174,7 +174,7 @@ default path with:
   - `player`: Active media player name and playback status (e.g. Spotify (Playing), VLC media player). Long mode and above.
   - `media`: Currently playing song/track title and artist. Long mode and above.
   - `wm-theme`: Window manager frame / decoration theme (e.g. Breeze, Adwaita, Yaru, Greybird, Aqua, Aero). Full mode only by default.
-  - `wallpaper`: Current desktop background wallpaper file path or URI. Full mode only by default.
+  - `wallpaper`: Current desktop background wallpaper file path or URI. Full mode only by default. On Linux, prefers the active DE (GNOME, KDE Plasma, XFCE, COSMIC, LXQt, LXDE) and live wallpaper daemons (Noctalia, `swww`/`awww`, `hyprpaper`, `wpaperd`, per-output `swaybg`/`wbg`/`mpvpaper`) over leftover files from another session. `wpaperd` 1.0 is read from `config.toml`; a leftover pre-1.0 `wallpaper.toml` is used only when that file is absent.
   - `terminal-theme`: Terminal emulator color scheme or palette name (Kitty, Alacritty, WezTerm, Foot, Windows Terminal, Konsole, Ptyxis, iTerm2, Apple Terminal). Full mode only by default.
   - `theme`: UI Theme settings.
   - `icons`: UI icon pack.

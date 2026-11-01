@@ -173,8 +173,10 @@ Recent work worth knowing about, beyond what `git log` says:
     cmdline. Multi-monitor setups that launch one daemon per display now join every
     process's path (`collect_cmdline_wallpapers`).
   - Detection tried `wpaperd/wallpaper.toml` (pre-1.0) before `wpaperd/config.toml` (1.0).
-    After an upgrade both files can exist, so a leftover pre-1.0 file won. `config.toml`
-    is tried first; `wallpaper.toml` remains the fallback when 1.0's file is absent.
+    After an upgrade both files can exist, so a leftover pre-1.0 file won. The first
+    readable file is the only one consulted: `config.toml` when it exists, even if it
+    yields no path for the connected outputs; `wallpaper.toml` only when 1.0's file is
+    absent.
 
 - **v0.20.36: Windows Scoop packaging (`packaging/scoop/retch.json`, `scripts/scoop_check.py`,
   `just scoop-publish <version>`, and `l1a/scoop-retch` bucket).**
@@ -1360,6 +1362,9 @@ nobody asked.
 - **A leftover config file from a rename wins if you try the old name first.** `wpaperd` 1.0
   reads `config.toml`; pre-1.0 used `wallpaper.toml`. After an upgrade both can exist, and
   checking the old path first reports the stale wallpaper. Prefer the current filename.
+  Preferring it is not enough if you keep scanning when parse returns none: a readable
+  live file with no extractable path must still win (as `None`) over a leftover that has
+  one. `wpaperd` itself does not read both.
 
 **Cross-platform**
 - **Percent-encode the UTF-8 bytes, never the code point.** `format!("%{:02X}", c as u32)`

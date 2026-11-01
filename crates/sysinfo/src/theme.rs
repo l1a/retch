@@ -981,6 +981,10 @@ pub(crate) fn parse_wpaperd_wallpaper(
 const WPAPERD_CONFIG_FILES: &[&str] = &["wpaperd/config.toml", "wpaperd/wallpaper.toml"];
 
 /// Reads `wpaperd` config from `config_dir`, preferring `config.toml` over `wallpaper.toml`.
+///
+/// The first file that exists and is readable is the one `wpaperd` itself would use.
+/// A leftover pre-1.0 `wallpaper.toml` must not fill in when live `config.toml` is
+/// present but has no extractable path for the connected outputs.
 #[allow(dead_code)]
 pub(crate) fn parse_wpaperd_from_config_dir(
     config_dir: &std::path::Path,
@@ -989,9 +993,7 @@ pub(crate) fn parse_wpaperd_from_config_dir(
     for name in WPAPERD_CONFIG_FILES {
         let path = config_dir.join(name);
         if let Ok(content) = std::fs::read_to_string(&path) {
-            if let Some(wp) = parse_wpaperd_wallpaper(&content, connected_outputs) {
-                return Some(wp);
-            }
+            return parse_wpaperd_wallpaper(&content, connected_outputs);
         }
     }
     None
@@ -1994,6 +1996,16 @@ path = "/home/user/Pictures/laptop.jpg"
         assert_eq!(
             parse_wpaperd_from_config_dir(&dir, &["eDP-1".to_string()]),
             Some("/home/user/Pictures/live.jpg".to_string())
+        );
+        // Live config.toml with no path for this output must not fall through to leftover wallpaper.toml.
+        std::fs::write(
+            dir.join("wpaperd/config.toml"),
+            "[DP-1]\npath = \"/home/user/Pictures/dock.jpg\"\n",
+        )
+        .unwrap();
+        assert_eq!(
+            parse_wpaperd_from_config_dir(&dir, &["eDP-1".to_string()]),
+            None
         );
         // Pre-1.0 only: wallpaper.toml is still used.
         std::fs::remove_file(dir.join("wpaperd/config.toml")).unwrap();
