@@ -151,9 +151,9 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.37)
+## Current State (v0.20.38)
 
-`main` carries **`retch-cli` 0.20.37** / **`retch-sysinfo` 0.1.101**. Newest released tag is
+`main` carries **`retch-cli` 0.20.38** / **`retch-sysinfo` 0.1.102**. Newest released tag is
 **`v0.20.36`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
@@ -161,6 +161,11 @@ deliberately omitted platform-specific items in §6a and §6c). What is open is 
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.38: Windows `cpu-usage` own-time subtraction uses the Job Object clock
+  alone.** Mixing `GetProcessTimes` (process lifetime) with job accounting (starts at
+  `AssignProcessToJobObject`) via `max` at each snapshot dropped child-process CPU from
+  the later delta. `combine_own_cpu_ticks` prefers a job reading when one exists.
 
 - **v0.20.37: Linux wallpaper detection follows live `wpaperd` fallbacks, every per-output
   daemon process, and `wpaperd` 1.0's `config.toml`.** Three bugs in the v0.20.35 probe:
