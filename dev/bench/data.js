@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793553291977,
+  "lastUpdate": 1793554036296,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2139,6 +2139,78 @@ window.BENCHMARK_DATA = {
             "name": "CLI execution - fastfetch (full)",
             "unit": "ns",
             "value": 3265200749.9999995,
+            "extra": "v0.20.38; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "aef07dc8011ab7c47f9398b91896ad0e4fe8438b",
+          "message": "Don't mix Windows process and job CPU clocks (#313)\n\n* Don't mix Windows process and job CPU clocks\n\nmax() of GetProcessTimes and job accounting at each\nsnapshot is not max of the deltas, so child CPU in\nthe cpu-usage window can vanish.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n* Bump to 0.20.38 for the job CPU clock fix\n\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n---------\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+          "timestamp": "2026-11-01T09:25:33-08:00",
+          "tree_id": "0ae73d15afc657e0fcaebe54c4ef5c17668e22c5",
+          "url": "https://github.com/l1a/retch/commit/aef07dc8011ab7c47f9398b91896ad0e4fe8438b"
+        },
+        "date": 1793554036295,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 31024900.0,
+            "extra": "v0.20.38; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 284499870.0,
+            "extra": "v0.20.38; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 27630230.0,
+            "extra": "v0.20.38; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 28648100.000000004,
+            "extra": "v0.20.38; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 151848990.00000003,
+            "extra": "v0.20.38; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 1786695849.9999998,
+            "extra": "v0.20.38; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 485434090.0000002,
+            "extra": "v0.20.38; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 3044602289.9999995,
             "extra": "v0.20.38; AC"
           }
         ]
