@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793551500666,
+  "lastUpdate": 1793552127852,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6029,6 +6029,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 194.62415052681453,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0a499c29e9b371ac0f8d3b219b745699f673adbc",
+          "message": "Fix wallpaper daemon detection (#312)\n\n* Fix wallpaper daemon detection\n\nwpaperd unmatched outputs used leftover named paths,\nextra per-output daemons were ignored, and leftover\nwallpaper.toml won after a 1.0 upgrade.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n* Don't fall through to leftover wpaperd config\n\nA readable config.toml with no path for connected\noutputs must not take wallpaper.toml's leftover path.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n---------\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+          "timestamp": "2026-11-01T08:44:25-08:00",
+          "tree_id": "3285c6cd853e1153d4e4e02c393f5f5a88b4a9ab",
+          "url": "https://github.com/l1a/retch/commit/0a499c29e9b371ac0f8d3b219b745699f673adbc"
+        },
+        "date": 1793552127780,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 3189610.8000000007,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 252640976.70000002,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252593801.99999997,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1656428.9000000001,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2999610.6,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 215775633.49999997,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 229440010.29999998,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2185545.3000000003,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 271674431.05,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1887.99424834998,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 111.1502533423782,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.852861196333729,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 55.35062364892595,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 17009.238006235617,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 173756.41748612162,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 11795.888543877958,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 8106.681374416648,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 145577.70759503852,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 338.5786669589062,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 262.3261124676782,
             "unit": "ns"
           }
         ]
