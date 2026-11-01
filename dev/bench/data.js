@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793554036296,
+  "lastUpdate": 1793554567953,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2108,19 +2108,19 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch --short",
             "unit": "ns",
-            "value": 26629490.0,
+            "value": 26629490,
             "extra": "v0.20.38; AC"
           },
           {
             "name": "CLI execution - fastfetch (short)",
             "unit": "ns",
-            "value": 26688860.0,
+            "value": 26688860,
             "extra": "v0.20.38; AC"
           },
           {
             "name": "CLI execution - retch --long",
             "unit": "ns",
-            "value": 141670850.0,
+            "value": 141670850,
             "extra": "v0.20.38; AC"
           },
           {
@@ -2168,19 +2168,19 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch",
             "unit": "ns",
-            "value": 31024900.0,
+            "value": 31024900,
             "extra": "v0.20.38; AC"
           },
           {
             "name": "CLI execution - fastfetch (default)",
             "unit": "ns",
-            "value": 284499870.0,
+            "value": 284499870,
             "extra": "v0.20.38; AC"
           },
           {
             "name": "CLI execution - retch --short",
             "unit": "ns",
-            "value": 27630230.0,
+            "value": 27630230,
             "extra": "v0.20.38; AC"
           },
           {
@@ -6305,6 +6305,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 262.3261124676782,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aef07dc8011ab7c47f9398b91896ad0e4fe8438b",
+          "message": "Don't mix Windows process and job CPU clocks (#313)\n\n* Don't mix Windows process and job CPU clocks\n\nmax() of GetProcessTimes and job accounting at each\nsnapshot is not max of the deltas, so child CPU in\nthe cpu-usage window can vanish.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n* Bump to 0.20.38 for the job CPU clock fix\n\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n---------\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+          "timestamp": "2026-11-01T09:25:33-08:00",
+          "tree_id": "0ae73d15afc657e0fcaebe54c4ef5c17668e22c5",
+          "url": "https://github.com/l1a/retch/commit/aef07dc8011ab7c47f9398b91896ad0e4fe8438b"
+        },
+        "date": 1793554567894,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 3255471.3,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 314964088.6,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252725780.30000004,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1667641.9000000001,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2932811.0000000005,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 434179216.2999999,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 206030254.7,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2109297.5,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 357771972.325,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2015.4572323475495,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 112.79386435212234,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.813079288338362,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 55.12423249791273,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 17270.306003762253,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 174324.9083538638,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12038.217114470459,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 8162.46498587713,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 146153.94948336697,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 365.9928180037086,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 307.14715746607226,
             "unit": "ns"
           }
         ]
