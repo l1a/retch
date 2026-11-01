@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793554567953,
+  "lastUpdate": 1793554569383,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -10531,6 +10531,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 265.8575298939671,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aef07dc8011ab7c47f9398b91896ad0e4fe8438b",
+          "message": "Don't mix Windows process and job CPU clocks (#313)\n\n* Don't mix Windows process and job CPU clocks\n\nmax() of GetProcessTimes and job accounting at each\nsnapshot is not max of the deltas, so child CPU in\nthe cpu-usage window can vanish.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n* Bump to 0.20.38 for the job CPU clock fix\n\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n---------\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+          "timestamp": "2026-11-01T09:25:33-08:00",
+          "tree_id": "0ae73d15afc657e0fcaebe54c4ef5c17668e22c5",
+          "url": "https://github.com/l1a/retch/commit/aef07dc8011ab7c47f9398b91896ad0e4fe8438b"
+        },
+        "date": 1793554569324,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2714350.7,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 270808105.20000005,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252518939.10000005,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1593124.6999999997,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3803074.5000000005,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 269746495.9,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205537490.10000005,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2472676.0000000005,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 309341783.55,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1012.2978044086092,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 105.74994776845851,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9476151856308124,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 48.2900392314908,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8967.38749536205,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 85599.80054168486,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 5736.323491450429,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4055.3348297599973,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 72236.47522179977,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 273.87603117575946,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 271.96554476993555,
             "unit": "ns"
           }
         ]
