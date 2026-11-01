@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793483480148,
+  "lastUpdate": 1793551500666,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2020,6 +2020,54 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 3203630380.000001,
             "extra": "v0.20.36; battery"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "0a499c29e9b371ac0f8d3b219b745699f673adbc",
+          "message": "Fix wallpaper daemon detection (#312)\n\n* Fix wallpaper daemon detection\n\nwpaperd unmatched outputs used leftover named paths,\nextra per-output daemons were ignored, and leftover\nwallpaper.toml won after a 1.0 upgrade.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n* Don't fall through to leftover wpaperd config\n\nA readable config.toml with no path for connected\noutputs must not take wallpaper.toml's leftover path.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n---------\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+          "timestamp": "2026-11-01T08:44:25-08:00",
+          "tree_id": "3285c6cd853e1153d4e4e02c393f5f5a88b4a9ab",
+          "url": "https://github.com/l1a/retch/commit/0a499c29e9b371ac0f8d3b219b745699f673adbc"
+        },
+        "date": 1793551500666,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 27913700.000000004,
+            "extra": "v0.20.37; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 26929450.000000004,
+            "extra": "v0.20.37; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 150889380.00000003,
+            "extra": "v0.20.37; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 479297380.00000006,
+            "extra": "v0.20.37; AC"
           }
         ]
       }
