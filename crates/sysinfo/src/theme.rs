@@ -815,17 +815,17 @@ pub(crate) fn collect_swww_wallpapers_in(
     dedup_join_wallpapers(read_paths(&files))
 }
 
-/// Extracts wallpaper path(s) from a NUL-separated `/proc/<pid>/cmdline` buffer for
+/// Extracts wallpaper paths from a NUL-separated `/proc/<pid>/cmdline` buffer for
 /// `swaybg`, `wbg`, or `mpvpaper`.
 #[allow(dead_code)]
-pub(crate) fn parse_wallpaper_from_cmdline(comm: &str, cmdline_bytes: &[u8]) -> Option<String> {
+pub(crate) fn parse_wallpaper_paths_from_cmdline(comm: &str, cmdline_bytes: &[u8]) -> Vec<String> {
     let args: Vec<&str> = cmdline_bytes
         .split(|&b| b == 0)
         .filter_map(|s| std::str::from_utf8(s).ok())
         .filter(|s| !s.is_empty())
         .collect();
     if args.len() < 2 {
-        return None;
+        return Vec::new();
     }
 
     match comm {
@@ -853,18 +853,39 @@ pub(crate) fn parse_wallpaper_from_cmdline(comm: &str, cmdline_bytes: &[u8]) -> 
                 }
                 i += 1;
             }
-            dedup_join_wallpapers(paths)
+            paths
         }
         "wbg" | "mpvpaper" => {
             for &arg in args[1..].iter().rev() {
                 if !arg.starts_with('-') {
-                    return clean_wallpaper_uri(arg);
+                    return clean_wallpaper_uri(arg).into_iter().collect();
                 }
             }
-            None
+            Vec::new()
         }
-        _ => None,
+        _ => Vec::new(),
     }
+}
+
+/// Extracts wallpaper path(s) from a NUL-separated `/proc/<pid>/cmdline` buffer for
+/// `swaybg`, `wbg`, or `mpvpaper`.
+#[allow(dead_code)]
+pub(crate) fn parse_wallpaper_from_cmdline(comm: &str, cmdline_bytes: &[u8]) -> Option<String> {
+    dedup_join_wallpapers(parse_wallpaper_paths_from_cmdline(comm, cmdline_bytes))
+}
+
+/// Joins wallpaper paths parsed from one or more `swaybg` / `wbg` / `mpvpaper` cmdline
+/// buffers, preserving first-seen order. Multi-monitor setups often launch one daemon
+/// process per output; each process must contribute.
+#[allow(dead_code)]
+pub(crate) fn collect_cmdline_wallpapers<'a>(
+    entries: impl IntoIterator<Item = (&'a str, &'a [u8])>,
+) -> Option<String> {
+    let mut paths = Vec::new();
+    for (comm, cmdline) in entries {
+        paths.extend(parse_wallpaper_paths_from_cmdline(comm, cmdline));
+    }
+    dedup_join_wallpapers(paths)
 }
 
 /// Parses COSMIC's background configuration (`~/.config/cosmic/com.system76.CosmicBackground/v1/all`).
@@ -888,15 +909,20 @@ pub(crate) fn parse_cosmic_wallpaper(content: &str) -> Option<String> {
     None
 }
 
-/// Parses `wpaperd` TOML configuration (`wallpaper.toml` / `config.toml`), preferring
-/// connected outputs before `[default]` / `[any]`.
+/// Parses `wpaperd` TOML configuration (`config.toml` / `wallpaper.toml`).
+///
+/// For each connected output, uses a matching named section when present, otherwise
+/// `[default]` (then `[any]`). Named sections for disconnected outputs are ignored:
+/// `wpaperd` applies those fallbacks to unmatched displays, so joining leftover
+/// per-output `path`s would report stale wallpapers on an undocked machine.
 #[allow(dead_code)]
 pub(crate) fn parse_wpaperd_wallpaper(
     content: &str,
     connected_outputs: &[String],
 ) -> Option<String> {
     let mut section = String::new();
-    let mut fallback_path: Option<String> = None;
+    let mut default_path: Option<String> = None;
+    let mut any_path: Option<String> = None;
     let mut output_paths: Vec<(String, String)> = Vec::new();
 
     for raw_line in content.lines() {
@@ -912,9 +938,13 @@ pub(crate) fn parse_wpaperd_wallpaper(
             let rest = rest.trim_start();
             if let Some(val) = rest.strip_prefix('=') {
                 if let Some(cleaned) = clean_wallpaper_uri(val.trim()) {
-                    if section == "default" || section == "any" {
-                        if fallback_path.is_none() {
-                            fallback_path = Some(cleaned);
+                    if section == "default" {
+                        if default_path.is_none() {
+                            default_path = Some(cleaned);
+                        }
+                    } else if section == "any" {
+                        if any_path.is_none() {
+                            any_path = Some(cleaned);
                         }
                     } else if !section.is_empty() {
                         output_paths.push((section.clone(), cleaned));
@@ -924,22 +954,49 @@ pub(crate) fn parse_wpaperd_wallpaper(
         }
     }
 
+    let fallback_path = default_path.or(any_path);
+
     if !connected_outputs.is_empty() {
-        let matched: Vec<String> = output_paths
-            .iter()
-            .filter(|(out, _)| {
-                connected_outputs
-                    .iter()
-                    .any(|c| c.eq_ignore_ascii_case(out))
-            })
-            .map(|(_, p)| p.clone())
-            .collect();
-        if let Some(joined) = dedup_join_wallpapers(matched) {
+        let mut paths = Vec::new();
+        for connected in connected_outputs {
+            if let Some((_, path)) = output_paths
+                .iter()
+                .find(|(out, _)| connected.eq_ignore_ascii_case(out))
+            {
+                paths.push(path.clone());
+            } else if let Some(ref fallback) = fallback_path {
+                paths.push(fallback.clone());
+            }
+        }
+        if let Some(joined) = dedup_join_wallpapers(paths) {
             return Some(joined);
         }
     }
 
-    dedup_join_wallpapers(output_paths.into_iter().map(|(_, p)| p)).or(fallback_path)
+    fallback_path
+}
+
+/// `wpaperd` 1.0 reads `config.toml`; pre-1.0 used `wallpaper.toml`. Prefer the 1.0
+/// file so a leftover pre-1.0 config cannot win after an upgrade when both exist.
+const WPAPERD_CONFIG_FILES: &[&str] = &["wpaperd/config.toml", "wpaperd/wallpaper.toml"];
+
+/// Reads `wpaperd` config from `config_dir`, preferring `config.toml` over `wallpaper.toml`.
+///
+/// The first file that exists and is readable is the one `wpaperd` itself would use.
+/// A leftover pre-1.0 `wallpaper.toml` must not fill in when live `config.toml` is
+/// present but has no extractable path for the connected outputs.
+#[allow(dead_code)]
+pub(crate) fn parse_wpaperd_from_config_dir(
+    config_dir: &std::path::Path,
+    connected_outputs: &[String],
+) -> Option<String> {
+    for name in WPAPERD_CONFIG_FILES {
+        let path = config_dir.join(name);
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            return parse_wpaperd_wallpaper(&content, connected_outputs);
+        }
+    }
+    None
 }
 
 /// Parses LXQt's `pcmanfm-qt` settings (`~/.config/pcmanfm-qt/lxqt/settings.conf`).
@@ -968,6 +1025,7 @@ struct RunningWallpaperDaemons {
 #[cfg(target_os = "linux")]
 fn scan_proc_wallpaper_daemons() -> RunningWallpaperDaemons {
     let mut state = RunningWallpaperDaemons::default();
+    let mut cmdline_paths = Vec::new();
     let Ok(entries) = std::fs::read_dir("/proc") else {
         return state;
     };
@@ -989,14 +1047,15 @@ fn scan_proc_wallpaper_daemons() -> RunningWallpaperDaemons {
             "awww-daemon" | "awww" => state.awww = true,
             "hyprpaper" => state.hyprpaper = true,
             "wpaperd" => state.wpaperd = true,
-            "swaybg" | "wbg" | "mpvpaper" if state.cmdline_wallpaper.is_none() => {
+            "swaybg" | "wbg" | "mpvpaper" => {
                 if let Ok(cmdline) = std::fs::read(path.join("cmdline")) {
-                    state.cmdline_wallpaper = parse_wallpaper_from_cmdline(&comm, &cmdline);
+                    cmdline_paths.extend(parse_wallpaper_paths_from_cmdline(&comm, &cmdline));
                 }
             }
             _ => {}
         }
     }
+    state.cmdline_wallpaper = dedup_join_wallpapers(cmdline_paths);
     state
 }
 
@@ -1356,13 +1415,8 @@ pub(crate) fn detect_wallpaper(desktop: Option<&str>, wm: Option<&str>) -> Optio
 
         if daemons.wpaperd {
             if let Some(ref cfg) = config_dir {
-                for name in &["wpaperd/wallpaper.toml", "wpaperd/config.toml"] {
-                    let path = cfg.join(name);
-                    if let Ok(content) = std::fs::read_to_string(&path) {
-                        if let Some(wp) = parse_wpaperd_wallpaper(&content, &connected) {
-                            return Some(wp);
-                        }
-                    }
+                if let Some(wp) = parse_wpaperd_from_config_dir(cfg, &connected) {
+                    return Some(wp);
                 }
             }
         }
@@ -1809,6 +1863,30 @@ path = "/home/ktobias/Pictures/Wallpapers/19808_en_1.jpg"
             parse_wallpaper_from_cmdline("mpvpaper", mpvpaper_cmd),
             Some("/home/user/Videos/live.mp4".to_string())
         );
+
+        // One daemon process per output: all parsed cmdlines contribute.
+        let swaybg_edp = b"swaybg\0-o\0eDP-1\0-i\0/home/user/Pictures/laptop.jpg\0-m\0fill\0";
+        let swaybg_dp = b"swaybg\0-o\0DP-1\0-i\0/home/user/Pictures/dock.jpg\0-m\0fill\0";
+        let wbg_hdmi = b"wbg\0/home/user/Pictures/hdmi.jpg\0";
+        assert_eq!(
+            collect_cmdline_wallpapers([
+                ("swaybg", swaybg_edp.as_slice()),
+                ("swaybg", swaybg_dp.as_slice()),
+                ("wbg", wbg_hdmi.as_slice()),
+            ]),
+            Some(
+                "/home/user/Pictures/laptop.jpg, /home/user/Pictures/dock.jpg, /home/user/Pictures/hdmi.jpg"
+                    .to_string()
+            )
+        );
+        // Duplicate paths across processes are collapsed.
+        assert_eq!(
+            collect_cmdline_wallpapers([
+                ("swaybg", swaybg_edp.as_slice()),
+                ("swaybg", swaybg_edp.as_slice()),
+            ]),
+            Some("/home/user/Pictures/laptop.jpg".to_string())
+        );
     }
 
     #[test]
@@ -1837,9 +1915,56 @@ path = "/home/user/Pictures/laptop.jpg"
             parse_wpaperd_wallpaper(wpaperd_toml, &["eDP-1".to_string()]),
             Some("/home/user/Pictures/laptop.jpg".to_string())
         );
+        // Unmatched connected output uses [default], not leftover per-output paths.
         assert_eq!(
             parse_wpaperd_wallpaper(wpaperd_toml, &["HDMI-A-1".to_string()]),
-            Some("/home/user/Pictures/dock.jpg, /home/user/Pictures/laptop.jpg".to_string())
+            Some("/home/user/Pictures/default.jpg".to_string())
+        );
+        // Mixed: named match plus fallback for the unmatched display.
+        assert_eq!(
+            parse_wpaperd_wallpaper(wpaperd_toml, &["eDP-1".to_string(), "HDMI-A-1".to_string()]),
+            Some("/home/user/Pictures/laptop.jpg, /home/user/Pictures/default.jpg".to_string())
+        );
+        // Empty connected list: fallback only (do not join stale named sections).
+        assert_eq!(
+            parse_wpaperd_wallpaper(wpaperd_toml, &[]),
+            Some("/home/user/Pictures/default.jpg".to_string())
+        );
+
+        let any_only = r#"
+[any]
+path = "/home/user/Pictures/any.jpg"
+
+[DP-1]
+path = "/home/user/Pictures/dock.jpg"
+"#;
+        assert_eq!(
+            parse_wpaperd_wallpaper(any_only, &["HDMI-A-1".to_string()]),
+            Some("/home/user/Pictures/any.jpg".to_string())
+        );
+
+        let default_and_any = r#"
+[any]
+path = "/home/user/Pictures/any.jpg"
+
+[default]
+path = "/home/user/Pictures/default.jpg"
+"#;
+        assert_eq!(
+            parse_wpaperd_wallpaper(default_and_any, &["HDMI-A-1".to_string()]),
+            Some("/home/user/Pictures/default.jpg".to_string())
+        );
+
+        let no_fallback = r#"
+[DP-1]
+path = "/home/user/Pictures/dock.jpg"
+
+[eDP-1]
+path = "/home/user/Pictures/laptop.jpg"
+"#;
+        assert_eq!(
+            parse_wpaperd_wallpaper(no_fallback, &["HDMI-A-1".to_string()]),
+            None
         );
 
         let lxqt_ini = "[Desktop]\nWallpaper=/usr/share/lxqt/themes/frost/lxqt-origami-light.png\n";
@@ -1853,5 +1978,41 @@ path = "/home/user/Pictures/laptop.jpg"
             parse_lxde_wallpaper(lxde_ini),
             Some("/usr/share/lxde/wallpapers/lxde_blue.jpg".to_string())
         );
+
+        // After a 1.0 upgrade both files can exist; leftover wallpaper.toml must not win.
+        let dir = std::env::temp_dir().join(format!("retch_test_wpaperd_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("wpaperd")).unwrap();
+        std::fs::write(
+            dir.join("wpaperd/wallpaper.toml"),
+            "[default]\npath = \"/home/user/Pictures/stale.jpg\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("wpaperd/config.toml"),
+            "[default]\npath = \"/home/user/Pictures/live.jpg\"\n",
+        )
+        .unwrap();
+        assert_eq!(
+            parse_wpaperd_from_config_dir(&dir, &["eDP-1".to_string()]),
+            Some("/home/user/Pictures/live.jpg".to_string())
+        );
+        // Live config.toml with no path for this output must not fall through to leftover wallpaper.toml.
+        std::fs::write(
+            dir.join("wpaperd/config.toml"),
+            "[DP-1]\npath = \"/home/user/Pictures/dock.jpg\"\n",
+        )
+        .unwrap();
+        assert_eq!(
+            parse_wpaperd_from_config_dir(&dir, &["eDP-1".to_string()]),
+            None
+        );
+        // Pre-1.0 only: wallpaper.toml is still used.
+        std::fs::remove_file(dir.join("wpaperd/config.toml")).unwrap();
+        assert_eq!(
+            parse_wpaperd_from_config_dir(&dir, &["eDP-1".to_string()]),
+            Some("/home/user/Pictures/stale.jpg".to_string())
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
