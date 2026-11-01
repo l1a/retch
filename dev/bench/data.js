@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793552129023,
+  "lastUpdate": 1793552129365,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13795,6 +13795,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 372.0259082387035,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0a499c29e9b371ac0f8d3b219b745699f673adbc",
+          "message": "Fix wallpaper daemon detection (#312)\n\n* Fix wallpaper daemon detection\n\nwpaperd unmatched outputs used leftover named paths,\nextra per-output daemons were ignored, and leftover\nwallpaper.toml won after a 1.0 upgrade.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n* Don't fall through to leftover wpaperd config\n\nA readable config.toml with no path for connected\noutputs must not take wallpaper.toml's leftover path.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n---------\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+          "timestamp": "2026-11-01T08:44:25-08:00",
+          "tree_id": "3285c6cd853e1153d4e4e02c393f5f5a88b4a9ab",
+          "url": "https://github.com/l1a/retch/commit/0a499c29e9b371ac0f8d3b219b745699f673adbc"
+        },
+        "date": 1793552129314,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 418119145.6000001,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1040302800.0999999,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 995217495.7,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 26836883.400000002,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 276995474.90000004,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 466254821,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 451915479.40000004,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 22245804.1,
+            "unit": "ns",
+            "extra": "v0.20.37"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 453689058.35,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 654.9486109657842,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 165.76755447634514,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.455853786949295,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 81.26040987657879,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 7084.653851716193,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1467.6153118620955,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 429.90815646766015,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 204193.48458004594,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 411.9880783555744,
             "unit": "ns"
           }
         ]
