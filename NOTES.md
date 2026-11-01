@@ -1278,6 +1278,12 @@ nobody asked.
   which drops tunnel interfaces like WireGuard that carry real traffic.
 - **Use `GetIfTable2`, not `GetIfTable`**: the older `MIB_IFROW` has 32-bit octet counters that
   wrap every 4 GB.
+- **`max()` of two clocks that start at different times is not a valid delta.** Windows
+  `own_cpu_time` mixed `GetProcessTimes` (process lifetime) with Job Object accounting
+  (starts at `AssignProcessToJobObject`) via `max` at each snapshot. Subtracting two of
+  those mixed values is not `max(process Δ, job Δ)`, so child-process CPU in the window
+  could vanish whenever the process already had more accumulated time than the job.
+  Once a job reading exists, use it alone; `GetProcessTimes` is only the fallback.
 - **`GAA_FLAG_SKIP_DNS_SERVER` was set**, so `FirstDnsServerAddress` was declared and guaranteed
   null. Check the flags before claiming a struct field is populated.
 - **Access rights differ per IOCTL family**: the storage IOCTLs are `FILE_ANY_ACCESS` and answer

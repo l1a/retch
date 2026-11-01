@@ -356,6 +356,19 @@ fn own_cpu_time() -> std::time::Duration {
     win_cpu::own_cpu_time()
 }
 
+/// Pick the clock for one Windows `own_cpu_time` snapshot.
+///
+/// `GetProcessTimes` covers the process lifetime. Job Object accounting starts at
+/// `AssignProcessToJobObject`. `max(process, job)` at each sample is **not**
+/// `max(process Δ, job Δ)`: if the process had already accumulated more CPU than the
+/// job window, subtracting two mixed snapshots ignores child-process time. Once a job
+/// reading is available, use it alone (it already includes this process and its
+/// children from assignment onward).
+#[cfg(any(target_os = "windows", test))]
+fn combine_own_cpu_ticks(proc_ticks: u64, job_ticks: Option<u64>) -> u64 {
+    job_ticks.unwrap_or(proc_ticks)
+}
+
 /// Whether to call `System::load_average()` at all.
 ///
 /// Two reasons to skip it, and the second is Windows-only:
@@ -3091,7 +3104,7 @@ mod win_cpu {
             {
                 let job_ticks = (acct.total_user_time.max(0) as u64)
                     .saturating_add(acct.total_kernel_time.max(0) as u64);
-                proc_ticks = proc_ticks.max(job_ticks);
+                proc_ticks = super::combine_own_cpu_ticks(proc_ticks, Some(job_ticks));
             }
         }
 
@@ -3253,6 +3266,25 @@ mod tests {
             "empty window"
         );
         assert_eq!(exclude_own_usage(5.0, ms(10), ms(200), 0), 5.0, "no CPUs");
+    }
+
+    /// Mixing process-lifetime ticks with job ticks via `max` at each snapshot drops
+    /// child-process CPU from the later delta. A job reading, even zero, must win.
+    #[test]
+    fn combine_own_cpu_ticks_uses_job_clock_alone() {
+        assert_eq!(super::combine_own_cpu_ticks(1000, None), 1000);
+        assert_eq!(super::combine_own_cpu_ticks(1000, Some(0)), 0);
+        assert_eq!(super::combine_own_cpu_ticks(1050, Some(250)), 250);
+        let t0 = super::combine_own_cpu_ticks(1000, Some(0));
+        let t1 = super::combine_own_cpu_ticks(1050, Some(250));
+        assert_eq!(t1.saturating_sub(t0), 250, "job delta includes children");
+        let old0 = 1000u64.max(0);
+        let old1 = 1050u64.max(250);
+        assert_eq!(
+            old1.saturating_sub(old0),
+            50,
+            "the max() mix that Bugbot caught"
+        );
     }
 
     /// `own_cpu_time` must actually move when this process burns CPU — a getrusage /
