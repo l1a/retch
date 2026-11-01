@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793554569722,
+  "lastUpdate": 1793554570044,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17697,6 +17697,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 242923960,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aef07dc8011ab7c47f9398b91896ad0e4fe8438b",
+          "message": "Don't mix Windows process and job CPU clocks (#313)\n\n* Don't mix Windows process and job CPU clocks\n\nmax() of GetProcessTimes and job accounting at each\nsnapshot is not max of the deltas, so child CPU in\nthe cpu-usage window can vanish.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n* Bump to 0.20.38 for the job CPU clock fix\n\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n---------\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+          "timestamp": "2026-11-01T09:25:33-08:00",
+          "tree_id": "0ae73d15afc657e0fcaebe54c4ef5c17668e22c5",
+          "url": "https://github.com/l1a/retch/commit/aef07dc8011ab7c47f9398b91896ad0e4fe8438b"
+        },
+        "date": 1793554569988,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 33561370,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2343691520,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1295260109.9999998,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 21812680,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 23985070.000000004,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 317297810.00000006,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 234546140,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 24777860.000000007,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 228.2565944512358,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.940160359798039,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 141.06434275812126,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1436.2772277999634,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 44686.21124737873,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 508.8793384263715,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 802.1277000402154,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 283272660,
             "unit": "ns"
           }
         ]
