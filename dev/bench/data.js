@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793554569383,
+  "lastUpdate": 1793554569722,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14325,6 +14325,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 411.9880783555744,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "aef07dc8011ab7c47f9398b91896ad0e4fe8438b",
+          "message": "Don't mix Windows process and job CPU clocks (#313)\n\n* Don't mix Windows process and job CPU clocks\n\nmax() of GetProcessTimes and job accounting at each\nsnapshot is not max of the deltas, so child CPU in\nthe cpu-usage window can vanish.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n* Bump to 0.20.38 for the job CPU clock fix\n\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n---------\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+          "timestamp": "2026-11-01T09:25:33-08:00",
+          "tree_id": "0ae73d15afc657e0fcaebe54c4ef5c17668e22c5",
+          "url": "https://github.com/l1a/retch/commit/aef07dc8011ab7c47f9398b91896ad0e4fe8438b"
+        },
+        "date": 1793554569670,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 331460866.6000001,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 917798099.9000001,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 869597008.4000001,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 14998558.299999997,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 270651400.00000006,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 315498179.4000001,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 355720658.4,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 9785691.599999998,
+            "unit": "ns",
+            "extra": "v0.20.38"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 248909959.375,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 522.4896265918958,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 118.88066661647531,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.8569093924923128,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 65.36548046503529,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 4934.428865601755,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1098.5804348863585,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 422.1549788941828,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 81798.74261909982,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 331.35203290583235,
             "unit": "ns"
           }
         ]
