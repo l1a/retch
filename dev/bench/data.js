@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793600265502,
+  "lastUpdate": 1793600265705,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18195,6 +18195,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 283272660,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "797c1d0da50ff6c54bb13be7d1ae77784387089b",
+          "message": "Update scripts/text_check.py to template v2 (#314)\n\nPropagate `scripts/text_check.py` (`TEMPLATE_VERSION = 2`) verbatim across\n`etr`, `retch`, and `rusticprofile`:\n- Add the measured `git 2.55.0` `eol=lf` CRLF worktree normalization\n  docstring and `WIP.md` scope note.\n- Include the cross-repo control-byte (`0x07`, `0x08`, `0x0d`, `0x1b`)\n  self-test fixtures and unified diagnostic output.\n- Bump `retch-cli` to `0.20.39`, regenerate `docs/retch.1`, and update\n  `NOTES.md` (`## Current State (v0.20.39)` and `Newest released tag is\n  v0.20.38`).\n\nAssisted-By: Gemini 4 Argon",
+          "timestamp": "2026-11-01T22:06:29-08:00",
+          "tree_id": "8779c142ac373810c420c8947f5ee801ee90e8e7",
+          "url": "https://github.com/l1a/retch/commit/797c1d0da50ff6c54bb13be7d1ae77784387089b"
+        },
+        "date": 1793600265669,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 24802660.000000004,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2346710420,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1294594580.0000002,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 17169950.000000004,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 21958150.000000004,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 281360340.00000006,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 219267440.00000003,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 19719259.999999996,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 217.4966549440894,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.365659051179707,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 123.51322168028878,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1328.7000522356216,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 43173.93362877692,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 525.1460600050709,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 802.5673260052912,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 255503735,
             "unit": "ns"
           }
         ]
