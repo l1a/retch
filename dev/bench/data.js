@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793554570376,
+  "lastUpdate": 1793600265062,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -6437,6 +6437,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 307.14715746607226,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "797c1d0da50ff6c54bb13be7d1ae77784387089b",
+          "message": "Update scripts/text_check.py to template v2 (#314)\n\nPropagate `scripts/text_check.py` (`TEMPLATE_VERSION = 2`) verbatim across\n`etr`, `retch`, and `rusticprofile`:\n- Add the measured `git 2.55.0` `eol=lf` CRLF worktree normalization\n  docstring and `WIP.md` scope note.\n- Include the cross-repo control-byte (`0x07`, `0x08`, `0x0d`, `0x1b`)\n  self-test fixtures and unified diagnostic output.\n- Bump `retch-cli` to `0.20.39`, regenerate `docs/retch.1`, and update\n  `NOTES.md` (`## Current State (v0.20.39)` and `Newest released tag is\n  v0.20.38`).\n\nAssisted-By: Gemini 4 Argon",
+          "timestamp": "2026-11-01T22:06:29-08:00",
+          "tree_id": "8779c142ac373810c420c8947f5ee801ee90e8e7",
+          "url": "https://github.com/l1a/retch/commit/797c1d0da50ff6c54bb13be7d1ae77784387089b"
+        },
+        "date": 1793600265022,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 3622238.1,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 291902059.70000005,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252753399.20000005,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1802798.4000000001,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3090550.5999999996,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 571340481.1999999,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205994760.4,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2258527.0000000005,
+            "unit": "ns",
+            "extra": "v0.20.39"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 302731769.6,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 2052.470916526111,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 108.76017084601683,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.032858550061816,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 58.925273559383676,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 20143.699203317417,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 195828.48176195924,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 14079.486259948924,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 9733.0900317496,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 161918.3591064405,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 327.22287867917953,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 281.8427082769245,
             "unit": "ns"
           }
         ]
