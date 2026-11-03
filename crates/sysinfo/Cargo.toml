@@ -11,7 +11,7 @@ keywords = ["system", "sysinfo", "hardware", "fetch"]
 categories = ["os", "hardware-support"]
 
 [dependencies]
-sysinfo = { version = "0.39", features = ["component"] }
+sysinfo = { version = "0.40", features = ["component"] }
 dirs = "7.0"
 chrono = "0.4"
 anyhow = "1.0"
