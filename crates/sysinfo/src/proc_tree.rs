@@ -391,7 +391,7 @@ mod tests {
     #[cfg(target_os = "linux")]
     #[test]
     fn live_ancestors_start_at_this_process() {
-        let sys = System::new();
+        let sys = System::new().expect("System::new");
         let chain = ancestors(&sys, 64);
         assert_eq!(chain.first().map(|(pid, _)| *pid), Some(std::process::id()));
         assert!(chain.len() >= 2, "the test runner has a parent: {chain:?}");
