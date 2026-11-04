@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793823129020,
+  "lastUpdate": 1793823130369,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -11131,6 +11131,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 257.31792333666505,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "295963bdbc8af7c388b2ec89b10c79357928fb2a",
+          "message": "Bump sysinfo to 0.40.1 and unicode-width to 0.2.3 (#316)\n\nSupersede Dependabot PR #315 by bumping `unicode-width` (`0.2.2` -> `0.2.3`)\nand `sysinfo` (`0.39.6` -> `0.40.1`) and adapting `retch-sysinfo` to\n`sysinfo` `0.40`'s breaking API changes:\n- Handle `Result<_, sysinfo::Error>` return values across `System::new`,\n  `System::new_with_specifics`, `System::physical_core_count`,\n  `System::long_os_version`, `System::name`, `System::kernel_version`,\n  `System::host_name`, `System::uptime`, `System::boot_time`,\n  `System::load_average`, `Users::new_with_refreshed_list`,\n  `Components::new_with_refreshed_list`, `Networks::new_with_refreshed_list`,\n  and `Disks::new_with_refreshed_list`.\n- Convert `&OsString` network interface keys via `to_string_lossy()` in\n  `crates/sysinfo/src/network.rs`.\n- Rename `Cpu::cpu_usage()` and `CpuRefreshKind::cpu_usage()` calls to\n  `usage()` in `crates/sysinfo/src/fetch.rs` and its unit tests.\n- Bump `retch-cli` to `0.20.40` and `retch-sysinfo` to `0.1.103`, update\n  `NOTES.md`, and regenerate `docs/retch.1`.\n\nAssisted-By: Gemini 4 Argon",
+          "timestamp": "2026-11-04T11:54:54-08:00",
+          "tree_id": "6b0676469b0b2a4fbf9d1e59f7f2357e4040a900",
+          "url": "https://github.com/l1a/retch/commit/295963bdbc8af7c388b2ec89b10c79357928fb2a"
+        },
+        "date": 1793823130327,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2329839.8000000003,
+            "unit": "ns",
+            "extra": "v0.20.40"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 327274182.1,
+            "unit": "ns",
+            "extra": "v0.20.40"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252272596.4,
+            "unit": "ns",
+            "extra": "v0.20.40"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1381430.1,
+            "unit": "ns",
+            "extra": "v0.20.40"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3513551.500000001,
+            "unit": "ns",
+            "extra": "v0.20.40"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 343616703.6,
+            "unit": "ns",
+            "extra": "v0.20.40"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 204638468.60000002,
+            "unit": "ns",
+            "extra": "v0.20.40"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2532086.3000000003,
+            "unit": "ns",
+            "extra": "v0.20.40"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 498353920.275,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 996.3625579253869,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 103.13633181200234,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947714916110905,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 44.9409527409308,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8977.717389923306,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 83312.24766741665,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 5792.431688077804,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4048.9992271322662,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 70955.85728341955,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 284.2763809923485,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 255.38801644055062,
             "unit": "ns"
           }
         ]
