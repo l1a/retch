@@ -273,19 +273,24 @@ pub fn detect_networks(
     #[cfg(not(target_os = "windows"))]
     {
         let mut interfaces: Vec<NetworkInterface> = Networks::new_with_refreshed_list()
-            .iter()
-            .map(|(name, data)| {
-                build_network_interface(
-                    name,
-                    data.operational_state() == sysinfo::InterfaceOperationalState::Up,
-                    data.total_received(),
-                    data.total_transmitted(),
-                    data.ip_networks().iter().map(|n| n.addr),
-                    active_interface,
-                    local_ip,
-                )
+            .map(|networks| {
+                networks
+                    .iter()
+                    .map(|(name, data)| {
+                        let name = name.to_string_lossy();
+                        build_network_interface(
+                            &name,
+                            data.operational_state() == sysinfo::InterfaceOperationalState::Up,
+                            data.total_received(),
+                            data.total_transmitted(),
+                            data.ip_networks().iter().map(|n| n.addr),
+                            active_interface,
+                            local_ip,
+                        )
+                    })
+                    .collect()
             })
-            .collect();
+            .unwrap_or_default();
         // sysinfo keeps interfaces in a HashMap, whose iteration order is randomised per process,
         // so until v0.20.30 the `Net:` lines came out in a different order on every run, and the
         // default mode's "first interface that is up" fallback picked a different one each time.

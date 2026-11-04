@@ -149,17 +149,21 @@ fn detect_logical_linux(include_fuse: bool) -> Vec<(String, u64, u64, String)> {
 fn detect_logical_sysinfo() -> Vec<(String, u64, u64, String)> {
     use sysinfo::Disks;
     Disks::new_with_refreshed_list()
-        .iter()
-        .filter(|d| d.total_space() > 0)
-        .map(|d| {
-            (
-                d.mount_point().to_string_lossy().to_string(),
-                d.total_space(),
-                d.available_space(),
-                d.file_system().to_string_lossy().to_string(),
-            )
+        .map(|disks| {
+            disks
+                .iter()
+                .filter(|d| d.total_space() > 0)
+                .map(|d| {
+                    (
+                        d.mount_point().to_string_lossy().to_string(),
+                        d.total_space(),
+                        d.available_space(),
+                        d.file_system().to_string_lossy().to_string(),
+                    )
+                })
+                .collect()
         })
-        .collect()
+        .unwrap_or_default()
 }
 
 pub fn detect_physical_disks() -> Vec<String> {

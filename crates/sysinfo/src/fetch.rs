@@ -198,7 +198,7 @@ pub struct SystemInfo {
 /// for the `cpu` field itself: brand and core count come from the *static* CPU list,
 /// which `RefreshKind::with_cpu` populates whatever refresh kind it is handed
 /// (sysinfo builds it on the first refresh regardless — `unix/linux/cpu.rs` guards it
-/// with `if first || refresh_kind.cpu_usage()`, and `windows/cpu.rs::init_cpus` reads
+/// with `if first || refresh_kind.usage()`, and `windows/cpu.rs::init_cpus` reads
 /// the brand via `GetSystemInfo` unconditionally).
 ///
 /// Frequency is what costs: on Windows `init_cpus` calls `get_frequencies()` only when
@@ -223,7 +223,7 @@ fn cpu_refresh_kind(want_freq: bool, want_usage: bool) -> Option<sysinfo::CpuRef
     // own `GetSystemTimes` samples (see the `cpu_usage` block below), so asking sysinfo
     // to prime a reading nothing consumes would be pure cost.
     if want_usage && !cfg!(target_os = "windows") {
-        kind = kind.with_cpu_usage();
+        kind = kind.with_usage();
     }
     Some(kind)
 }
@@ -484,10 +484,11 @@ impl SystemInfo {
         let cpu_early_handle = (should_collect("cpu") && !sys_needs_cpus).then(|| {
             std::thread::spawn(move || {
                 crate::timing::timed("cpu", || {
-                    let own = System::new_with_specifics(
+                    let (brand, logical) = System::new_with_specifics(
                         sysinfo::RefreshKind::nothing().with_cpu(own_cpu_refresh_kind()),
-                    );
-                    let (brand, logical) = (cpu_brand(own.cpus()), own.cpus().len());
+                    )
+                    .map(|own| (cpu_brand(own.cpus()), own.cpus().len()))
+                    .unwrap_or_else(|_| (cpu_brand(&[]), 0));
                     (brand, logical, hybrid_cores(logical))
                 })
             })
@@ -499,7 +500,7 @@ impl SystemInfo {
         // needs nothing else, so it runs beside the name probe, not after it.
         let cpu_physical_handle = if should_collect("cpu") {
             Some(std::thread::spawn(move || {
-                crate::timing::timed("cpu-physical", System::physical_core_count)
+                crate::timing::timed("cpu-physical", || System::physical_core_count().ok())
             }))
         } else {
             None
@@ -649,10 +650,11 @@ impl SystemInfo {
         // here overlaps that cost with weather instead of adding it after.
         let temp_handle = if should_collect("temp") {
             Some(std::thread::spawn(|| {
-                crate::timing::timed(
-                    "temp",
-                    || temp_lines(&Components::new_with_refreshed_list()),
-                )
+                crate::timing::timed("temp", || {
+                    Components::new_with_refreshed_list()
+                        .map(|c| temp_lines(&c))
+                        .unwrap_or_default()
+                })
             }))
         } else {
             None
@@ -741,7 +743,8 @@ impl SystemInfo {
         // `mut` is only needed off-Windows (refresh_cpu_usage below); on Windows CPU usage
         // comes from GetSystemTimes, so `sys` is never mutated there.
         #[cfg_attr(target_os = "windows", allow(unused_mut))]
-        let mut sys = crate::timing::timed("sys-init", || System::new_with_specifics(refresh_kind));
+        let mut sys =
+            crate::timing::timed("sys-init", || System::new_with_specifics(refresh_kind))?;
         // On Unix, `sys-init` just took the first CPU-usage sample (see `cpu_refresh_kind`).
         // Mark when, so the `cpu_usage` block only waits for whatever part of sysinfo's
         // minimum interval the probes in between have not already spent.
@@ -754,12 +757,12 @@ impl SystemInfo {
 
         let os = crate::timing::timed("os", || {
             System::long_os_version()
-                .or_else(System::name)
-                .unwrap_or_else(|| "Unknown".to_string())
+                .or_else(|_| System::name())
+                .unwrap_or_else(|_| "Unknown".to_string())
         });
 
-        let kernel = crate::timing::timed("kernel", System::kernel_version);
-        let hostname = crate::timing::timed("host", System::host_name);
+        let kernel = crate::timing::timed("kernel", || System::kernel_version().ok());
+        let hostname = crate::timing::timed("host", || System::host_name().ok());
 
         // `cpu`'s name and logical count: from `sys` when it already loaded the CPU list
         // for `cpu-freq`/`cpu-usage` (free here), otherwise read by the concurrent `cpu`
@@ -786,7 +789,10 @@ impl SystemInfo {
             String::new()
         };
 
-        let uptime = format!("{}s", crate::timing::timed("uptime", System::uptime));
+        let uptime = format!(
+            "{}s",
+            crate::timing::timed("uptime", || System::uptime().unwrap_or(0))
+        );
 
         let disks: Vec<String> = if should_collect("disk") {
             let disks_list =
@@ -901,15 +907,16 @@ impl SystemInfo {
         };
 
         let load_avg = if should_probe_load(should_collect("load")) {
-            let avg = System::load_average();
-            if avg.one > 0.0 || avg.five > 0.0 {
-                Some(format!(
-                    "{:.2}, {:.2}, {:.2}",
-                    avg.one, avg.five, avg.fifteen
-                ))
-            } else {
-                None
-            }
+            System::load_average().ok().and_then(|avg| {
+                if avg.one > 0.0 || avg.five > 0.0 {
+                    Some(format!(
+                        "{:.2}, {:.2}, {:.2}",
+                        avg.one, avg.five, avg.fifteen
+                    ))
+                } else {
+                    None
+                }
+            })
         } else {
             None
         };
@@ -948,11 +955,12 @@ impl SystemInfo {
                     Some(s.spawn(move || {
                         crate::timing::timed("cpu", || {
                             let (brand, logical) = known.unwrap_or_else(|| {
-                                let own = System::new_with_specifics(
+                                System::new_with_specifics(
                                     sysinfo::RefreshKind::nothing()
                                         .with_cpu(own_cpu_refresh_kind()),
-                                );
-                                (cpu_brand(own.cpus()), own.cpus().len())
+                                )
+                                .map(|own| (cpu_brand(own.cpus()), own.cpus().len()))
+                                .unwrap_or_else(|_| (cpu_brand(&[]), 0))
                             });
                             (brand, logical, hybrid_cores(logical))
                         })
@@ -1036,7 +1044,7 @@ impl SystemInfo {
             .unwrap_or_default();
         sort_temps_cpu_first(&mut temps);
 
-        let boot_timestamp = crate::timing::timed("boot-time", System::boot_time);
+        let boot_timestamp = crate::timing::timed("boot-time", || System::boot_time().unwrap_or(0));
         let boot_dt = chrono::Local
             .timestamp_opt(boot_timestamp as i64, 0)
             .single()
@@ -1142,18 +1150,23 @@ impl SystemInfo {
                 let window = cpu_usage_t0.elapsed();
                 let own = own_cpu_time().saturating_sub(cpu_usage_own0);
                 let raw: f32 =
-                    sys.cpus().iter().map(|c| c.cpu_usage()).sum::<f32>() / sys.cpus().len() as f32;
+                    sys.cpus().iter().map(|c| c.usage()).sum::<f32>() / sys.cpus().len() as f32;
                 // The window now overlaps retch's own probes rather than an idle sleep, so
                 // their CPU time would otherwise read as load (+1.3 points on a 32-thread
                 // machine, ~+13 on a 4-core one). `raw` still decides whether sysinfo had
                 // a reading at all: an idle system may legitimately adjust to 0.0%.
                 let usage = exclude_own_usage(raw, own, window, sys.cpus().len());
-                let avg = System::load_average();
-                let load_str = format!("{:.2}, {:.2}, {:.2}", avg.one, avg.five, avg.fifteen);
+                let avg = System::load_average().ok();
+                let load_str = avg
+                    .as_ref()
+                    .map(|a| format!("{:.2}, {:.2}, {:.2}", a.one, a.five, a.fifteen));
                 if raw > 0.0 {
-                    Some(format!("{:.1}% (load: {})", usage, load_str))
-                } else if avg.one > 0.0 {
-                    Some(format!("load: {}", load_str))
+                    match load_str {
+                        Some(s) => Some(format!("{:.1}% (load: {})", usage, s)),
+                        None => Some(format!("{:.1}%", usage)),
+                    }
+                } else if avg.as_ref().is_some_and(|a| a.one > 0.0) {
+                    load_str.map(|s| format!("load: {}", s))
                 } else {
                     None
                 }
@@ -1358,16 +1371,20 @@ impl SystemInfo {
             #[cfg(not(target_os = "windows"))]
             {
                 crate::timing::timed("users", Users::new_with_refreshed_list)
-                    .iter()
-                    .filter(|user| {
-                        // UID is exposed via Display
-                        user.id()
-                            .to_string()
-                            .parse::<u32>()
-                            .map(|uid| uid >= 1000)
-                            .unwrap_or(false)
+                    .map(|users| {
+                        users
+                            .iter()
+                            .filter(|user| {
+                                // UID is exposed via Display
+                                user.id()
+                                    .to_string()
+                                    .parse::<u32>()
+                                    .map(|uid| uid >= 1000)
+                                    .unwrap_or(false)
+                            })
+                            .count()
                     })
-                    .count()
+                    .unwrap_or(0)
             }
         } else {
             0
@@ -3359,7 +3376,7 @@ mod tests {
         // Windows for a field it does not display.
         let kind = own_cpu_refresh_kind();
         assert!(!kind.frequency(), "plain `cpu` must not request frequency");
-        assert!(!kind.cpu_usage(), "plain `cpu` must not request cpu usage");
+        assert!(!kind.usage(), "plain `cpu` must not request cpu usage");
     }
 
     #[test]
@@ -3377,10 +3394,10 @@ mod tests {
         if cfg!(target_os = "windows") {
             // The Windows arm diffs its own GetSystemTimes samples and never reads
             // sysinfo's counters, so priming them would be unread cost.
-            assert!(!kind.cpu_usage());
+            assert!(!kind.usage());
         } else {
             // The Unix arm deltas against this baseline; without it the reading is zero.
-            assert!(kind.cpu_usage());
+            assert!(kind.usage());
         }
         assert!(!kind.frequency(), "cpu-usage must not drag in frequency");
     }
@@ -3419,7 +3436,7 @@ mod tests {
         let info = collect_fields(&["cpu"]);
         assert_eq!(
             info.cpu_core_info,
-            format_cpu_cores(info.cpu_cores, System::physical_core_count())
+            format_cpu_cores(info.cpu_cores, System::physical_core_count().ok())
         );
     }
 
