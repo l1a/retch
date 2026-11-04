@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793600266011,
+  "lastUpdate": 1793822133171,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1080,6 +1080,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 806674020.1,
             "extra": "v0.20.35; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "295963bdbc8af7c388b2ec89b10c79357928fb2a",
+          "message": "Bump sysinfo to 0.40.1 and unicode-width to 0.2.3 (#316)\n\nSupersede Dependabot PR #315 by bumping `unicode-width` (`0.2.2` -> `0.2.3`)\nand `sysinfo` (`0.39.6` -> `0.40.1`) and adapting `retch-sysinfo` to\n`sysinfo` `0.40`'s breaking API changes:\n- Handle `Result<_, sysinfo::Error>` return values across `System::new`,\n  `System::new_with_specifics`, `System::physical_core_count`,\n  `System::long_os_version`, `System::name`, `System::kernel_version`,\n  `System::host_name`, `System::uptime`, `System::boot_time`,\n  `System::load_average`, `Users::new_with_refreshed_list`,\n  `Components::new_with_refreshed_list`, `Networks::new_with_refreshed_list`,\n  and `Disks::new_with_refreshed_list`.\n- Convert `&OsString` network interface keys via `to_string_lossy()` in\n  `crates/sysinfo/src/network.rs`.\n- Rename `Cpu::cpu_usage()` and `CpuRefreshKind::cpu_usage()` calls to\n  `usage()` in `crates/sysinfo/src/fetch.rs` and its unit tests.\n- Bump `retch-cli` to `0.20.40` and `retch-sysinfo` to `0.1.103`, update\n  `NOTES.md`, and regenerate `docs/retch.1`.\n\nAssisted-By: Gemini 4 Argon",
+          "timestamp": "2026-11-04T11:54:54-08:00",
+          "tree_id": "6b0676469b0b2a4fbf9d1e59f7f2357e4040a900",
+          "url": "https://github.com/l1a/retch/commit/295963bdbc8af7c388b2ec89b10c79357928fb2a"
+        },
+        "date": 1793822133171,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 2364320.8000000007,
+            "extra": "v0.20.40; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 10359924.3,
+            "extra": "v0.20.40; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 1891226.1000000003,
+            "extra": "v0.20.40; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 1523965.5000000002,
+            "extra": "v0.20.40; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 210165735.70000002,
+            "extra": "v0.20.40; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 610784087.0000001,
+            "extra": "v0.20.40; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 374971703.40000004,
+            "extra": "v0.20.40; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 718191775.9000002,
+            "extra": "v0.20.40; AC"
           }
         ]
       }
