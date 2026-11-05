@@ -239,9 +239,13 @@ pub mod win_media {
         unsafe extern "system" fn(string: HString, length: *mut u32) -> *const u16;
     type FnWindowsDeleteString = unsafe extern "system" fn(string: HString) -> HResult;
 
+    /// Restricts `LoadLibraryExA` resolution to `%SystemRoot%\System32` so the current
+    /// working directory and `PATH` are never searched.
+    const LOAD_LIBRARY_SEARCH_SYSTEM32: u32 = 0x0000_0800;
+
     #[link(name = "kernel32")]
     extern "system" {
-        fn LoadLibraryA(name: *const i8) -> *mut c_void;
+        fn LoadLibraryExA(name: *const i8, h_file: *mut c_void, flags: u32) -> *mut c_void;
         fn GetProcAddress(module: *mut c_void, name: *const i8) -> *mut c_void;
     }
 
@@ -258,7 +262,11 @@ pub mod win_media {
             return None;
         }
         let slice = std::slice::from_raw_parts(ptr, len as usize);
-        let s = String::from_utf16_lossy(slice).trim().to_string();
+        let s: String = String::from_utf16_lossy(slice)
+            .chars()
+            .filter(|c| !c.is_control())
+            .collect();
+        let s = s.trim().to_string();
         if s.is_empty() {
             None
         } else {
@@ -350,7 +358,11 @@ pub mod win_media {
         // SAFETY: All pointers are validated, HSTRINGs freed with WindowsDeleteString,
         // and COM interfaces released with IUnknown::Release.
         unsafe {
-            let combase = LoadLibraryA(c"combase.dll".as_ptr());
+            let combase = LoadLibraryExA(
+                c"combase.dll".as_ptr(),
+                ptr::null_mut(),
+                LOAD_LIBRARY_SEARCH_SYSTEM32,
+            );
             if combase.is_null() {
                 return None;
             }
@@ -648,16 +660,34 @@ pub mod linux_dbus {
         }
     }
 
+    /// Maximum size accepted for either the header-fields array or the body of a D-Bus
+    /// message read by `retch` (256 KiB each). MPRIS property replies are a few kilobytes;
+    /// capping prevents a malformed or untrusted D-Bus peer from triggering a multi-GiB
+    /// allocation or 32-bit `usize` addition overflow.
+    pub const MAX_DBUS_SECTION_LEN: usize = 256 * 1024;
+
+    /// Computes the remaining byte count (`fields_len + header_padding + body_len`) from a
+    /// 16-byte D-Bus message header, returning `None` if either section exceeds
+    /// [`MAX_DBUS_SECTION_LEN`] or the sum overflows.
+    pub fn compute_dbus_remaining_len(header_buf: &[u8; 16]) -> Option<usize> {
+        let body_len = u32::from_le_bytes(header_buf[4..8].try_into().ok()?) as usize;
+        let fields_len = u32::from_le_bytes(header_buf[12..16].try_into().ok()?) as usize;
+        if fields_len > MAX_DBUS_SECTION_LEN || body_len > MAX_DBUS_SECTION_LEN {
+            return None;
+        }
+        let header_padding = (8 - (fields_len % 8)) % 8;
+        fields_len
+            .checked_add(header_padding)?
+            .checked_add(body_len)
+    }
+
     /// Reads a single complete D-Bus message from the stream.
     #[cfg(target_os = "linux")]
     pub fn read_dbus_message(stream: &mut UnixStream) -> Option<Vec<u8>> {
         let mut header_buf = [0u8; 16];
         stream.read_exact(&mut header_buf).ok()?;
 
-        let body_len = u32::from_le_bytes(header_buf[4..8].try_into().ok()?) as usize;
-        let fields_len = u32::from_le_bytes(header_buf[12..16].try_into().ok()?) as usize;
-        let header_padding = (8 - (fields_len % 8)) % 8;
-        let total_remaining = fields_len + header_padding + body_len;
+        let total_remaining = compute_dbus_remaining_len(&header_buf)?;
 
         let mut rest = vec![0u8; total_remaining];
         stream.read_exact(&mut rest).ok()?;
@@ -678,25 +708,93 @@ pub mod linux_dbus {
         }
     }
 
-    /// Extracts reply serial number from D-Bus header field 5 (REPLY_SERIAL).
+    /// Extracts reply serial number from D-Bus header field 5 (`REPLY_SERIAL`).
+    ///
+    /// Walks the `a(yv)` header fields array structurally rather than scanning raw 8-byte
+    /// boundaries, so a string header field (`PATH`, `SENDER`, `ERROR_NAME`, etc.) whose
+    /// payload happens to contain `[5, 1, b'u', 0]` at an 8-byte offset cannot be mistaken
+    /// for `REPLY_SERIAL`.
     pub fn get_reply_serial(msg: &[u8]) -> Option<u32> {
         if msg.len() < 24 {
             return None;
         }
         let fields_len = u32::from_le_bytes(msg[12..16].try_into().ok()?) as usize;
-        let end = (16 + fields_len).min(msg.len());
+        let end = 16usize.checked_add(fields_len)?.min(msg.len());
         let mut pos = 16;
-        while pos + 8 <= end {
-            while pos % 8 != 0 && pos < end {
-                pos += 1;
+        while pos < end {
+            // Each `(yv)` struct in the header fields array is 8-byte aligned.
+            let rem = pos % 8;
+            if rem != 0 {
+                pos = pos.checked_add(8 - rem)?;
             }
-            if pos + 8 > end {
+            if pos + 4 > end {
                 break;
             }
-            if msg[pos] == 5 && msg[pos + 1] == 1 && msg[pos + 2] == b'u' && msg[pos + 3] == 0 {
-                return Some(u32::from_le_bytes(msg[pos + 4..pos + 8].try_into().ok()?));
+            let field_code = msg[pos];
+            let sig_len = msg[pos + 1] as usize;
+            pos += 2;
+            // Variant signature + NUL terminator.
+            if sig_len == 0 || pos.checked_add(sig_len + 1)? > end {
+                break;
             }
-            pos += 1;
+            let sig = &msg[pos..pos + sig_len];
+            if msg[pos + sig_len] != 0 {
+                break;
+            }
+            pos += sig_len + 1;
+
+            if sig == b"u" {
+                let rem4 = pos % 4;
+                if rem4 != 0 {
+                    pos = pos.checked_add(4 - rem4)?;
+                }
+                if pos + 4 > end {
+                    break;
+                }
+                if field_code == 5 {
+                    return Some(u32::from_le_bytes(msg[pos..pos + 4].try_into().ok()?));
+                }
+                pos += 4;
+            } else if sig == b"s" || sig == b"o" {
+                let rem4 = pos % 4;
+                if rem4 != 0 {
+                    pos = pos.checked_add(4 - rem4)?;
+                }
+                if pos + 4 > end {
+                    break;
+                }
+                let slen = u32::from_le_bytes(msg[pos..pos + 4].try_into().ok()?) as usize;
+                pos = pos.checked_add(4)?.checked_add(slen)?.checked_add(1)?;
+            } else if sig == b"g" {
+                if pos >= end {
+                    break;
+                }
+                let glen = msg[pos] as usize;
+                pos = pos.checked_add(1)?.checked_add(glen)?.checked_add(1)?;
+            } else if sig == b"y" {
+                pos = pos.checked_add(1)?;
+            } else if sig == b"b" || sig == b"i" || sig == b"h" {
+                let rem4 = pos % 4;
+                if rem4 != 0 {
+                    pos = pos.checked_add(4 - rem4)?;
+                }
+                pos = pos.checked_add(4)?;
+            } else if sig == b"n" || sig == b"q" {
+                let rem2 = pos % 2;
+                if rem2 != 0 {
+                    pos = pos.checked_add(2 - rem2)?;
+                }
+                pos = pos.checked_add(2)?;
+            } else if sig == b"x" || sig == b"t" || sig == b"d" {
+                let rem8 = pos % 8;
+                if rem8 != 0 {
+                    pos = pos.checked_add(8 - rem8)?;
+                }
+                pos = pos.checked_add(8)?;
+            } else {
+                // Unknown/container header field type; stop scanning rather than guessing.
+                break;
+            }
         }
         None
     }
@@ -849,11 +947,17 @@ pub mod linux_dbus {
                                     if let Ok(val) =
                                         std::str::from_utf8(&body[str_pos + 4..str_pos + 4 + slen])
                                     {
-                                        let trimmed = val.trim();
-                                        if !trimmed.is_empty()
-                                            && val.chars().all(|c| !c.is_control())
-                                        {
-                                            return Some(trimmed.to_string());
+                                        if val.chars().all(|c| {
+                                            !c.is_control() || matches!(c, '\n' | '\r' | '\t')
+                                        }) {
+                                            let sanitized: String = val
+                                                .trim()
+                                                .chars()
+                                                .map(|c| if c.is_control() { ' ' } else { c })
+                                                .collect();
+                                            if !sanitized.is_empty() {
+                                                return Some(sanitized);
+                                            }
                                         }
                                     }
                                 }
@@ -915,9 +1019,25 @@ pub mod linux_dbus {
                                             if let Ok(item_str) = std::str::from_utf8(
                                                 &body[elem_pos..elem_pos + slen],
                                             ) {
-                                                let trimmed = item_str.trim();
-                                                if !trimmed.is_empty() {
-                                                    items.push(trimmed.to_string());
+                                                if item_str.chars().all(|c| {
+                                                    !c.is_control()
+                                                        || matches!(c, '\n' | '\r' | '\t')
+                                                }) {
+                                                    let sanitized: String =
+                                                        item_str
+                                                            .trim()
+                                                            .chars()
+                                                            .map(|c| {
+                                                                if c.is_control() {
+                                                                    ' '
+                                                                } else {
+                                                                    c
+                                                                }
+                                                            })
+                                                            .collect();
+                                                    if !sanitized.is_empty() {
+                                                        items.push(sanitized);
+                                                    }
                                                 }
                                             }
                                             elem_pos += slen + 1; // skip string + null terminator
@@ -1056,11 +1176,99 @@ pub mod macos_media {
     extern "C" {
         fn objc_getClass(name: *const i8) -> *mut c_void;
         fn sel_registerName(name: *const i8) -> *mut c_void;
-        fn objc_msgSend(self_: *mut c_void, op: *mut c_void, ...) -> *mut c_void;
+        fn objc_msgSend();
+    }
+
+    /// Invoke a zero-argument Objective-C selector returning `id`.
+    ///
+    /// # Safety
+    /// `self_` must be a valid Objective-C object/class pointer and `op` must have
+    /// signature `id (*)(id, SEL)`. Never call `objc_msgSend` through a C variadic
+    /// prototype: on `aarch64-apple-darwin`, variadic arguments are passed on the stack
+    /// whereas Objective-C methods expect them in registers (`x2`, `x3`, ...).
+    unsafe fn objc_msg_send_id(self_: *mut c_void, op: *mut c_void) -> *mut c_void {
+        type FnType = unsafe extern "C" fn(*mut c_void, *mut c_void) -> *mut c_void;
+        // SAFETY: `objc_msgSend` is cast to the exact non-variadic ABI for `(id, SEL) -> id`.
+        let f: FnType = unsafe { std::mem::transmute(objc_msgSend as *const ()) };
+        unsafe { f(self_, op) }
+    }
+
+    /// Invoke a one-C-string-argument Objective-C selector returning `id`
+    /// (e.g. `+[NSString stringWithUTF8String:]`).
+    ///
+    /// # Safety
+    /// `self_` must be a valid Objective-C class/object pointer, `cstr` must be a valid
+    /// NUL-terminated C string, and `op` must have signature `id (*)(id, SEL, const char *)`.
+    unsafe fn objc_msg_send_id_cstr(
+        self_: *mut c_void,
+        op: *mut c_void,
+        cstr: *const i8,
+    ) -> *mut c_void {
+        type FnType = unsafe extern "C" fn(*mut c_void, *mut c_void, *const i8) -> *mut c_void;
+        // SAFETY: `objc_msgSend` is cast to the exact non-variadic ABI for
+        // `(id, SEL, const char *) -> id`.
+        let f: FnType = unsafe { std::mem::transmute(objc_msgSend as *const ()) };
+        unsafe { f(self_, op, cstr) }
+    }
+
+    /// Invoke a one-object-argument Objective-C selector returning `id`
+    /// (e.g. `+[SBApplication applicationWithBundleIdentifier:]`).
+    ///
+    /// # Safety
+    /// `self_` and `arg` must be valid Objective-C pointers and `op` must have signature
+    /// `id (*)(id, SEL, id)`.
+    unsafe fn objc_msg_send_id_id(
+        self_: *mut c_void,
+        op: *mut c_void,
+        arg: *mut c_void,
+    ) -> *mut c_void {
+        type FnType = unsafe extern "C" fn(*mut c_void, *mut c_void, *mut c_void) -> *mut c_void;
+        // SAFETY: `objc_msgSend` is cast to the exact non-variadic ABI for `(id, SEL, id) -> id`.
+        let f: FnType = unsafe { std::mem::transmute(objc_msgSend as *const ()) };
+        unsafe { f(self_, op, arg) }
+    }
+
+    /// Invoke a zero-argument Objective-C selector returning `BOOL` (`bool` / `signed char`).
+    ///
+    /// # Safety
+    /// `self_` must be a valid Objective-C object pointer and `op` must have signature
+    /// `BOOL (*)(id, SEL)`. Reading a 1-byte `BOOL` through a pointer-returning signature
+    /// would read uninitialized upper bits of `%rax` on `x86_64`, and reading directly as
+    /// Rust `bool` would be UB if an `x86_64` `signed char` `BOOL` holds a non-`0`/`1` byte.
+    unsafe fn objc_msg_send_bool(self_: *mut c_void, op: *mut c_void) -> bool {
+        type FnType = unsafe extern "C" fn(*mut c_void, *mut c_void) -> i8;
+        // SAFETY: `objc_msgSend` is cast to the non-variadic ABI for `(id, SEL) -> i8`
+        // (`signed char` / 1-byte `BOOL`), then compared against 0.
+        let f: FnType = unsafe { std::mem::transmute(objc_msgSend as *const ()) };
+        unsafe { f(self_, op) != 0 }
+    }
+
+    /// Invoke a zero-argument Objective-C selector returning a 32-bit `OSType` / `AEKeyword`
+    /// (e.g. `-[SBApplication playerState]`).
+    ///
+    /// # Safety
+    /// `self_` must be a valid Objective-C object pointer and `op` must have signature
+    /// `uint32_t (*)(id, SEL)`.
+    unsafe fn objc_msg_send_u32(self_: *mut c_void, op: *mut c_void) -> u32 {
+        type FnType = unsafe extern "C" fn(*mut c_void, *mut c_void) -> u32;
+        // SAFETY: `objc_msgSend` is cast to the exact non-variadic ABI for `(id, SEL) -> u32`.
+        let f: FnType = unsafe { std::mem::transmute(objc_msgSend as *const ()) };
+        unsafe { f(self_, op) }
+    }
+
+    fn sanitize_media_str(s: Option<String>) -> Option<String> {
+        let cleaned: String = s?.chars().filter(|c| !c.is_control()).collect();
+        let trimmed = cleaned.trim().to_string();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed)
+        }
     }
 
     /// Queries Apple Music or Spotify via native Objective-C ScriptingBridge FFI.
     pub fn detect_macos_media() -> Option<MediaInfo> {
+        // SAFETY: All Objective-C selectors are invoked via non-variadic typed wrappers.
         unsafe {
             for (bundle_id, player_name) in [
                 ("com.apple.Music", "Apple Music"),
@@ -1094,38 +1302,41 @@ pub mod macos_media {
         let album_sel = sel_registerName(CString::new("album").ok()?.as_ptr());
 
         let ns_str_cls = objc_getClass(CString::new("NSString").ok()?.as_ptr());
+        if ns_str_cls.is_null() {
+            return None;
+        }
         let str_with_utf8_sel =
             sel_registerName(CString::new("stringWithUTF8String:").ok()?.as_ptr());
         let bundle_c = CString::new(bundle_id).ok()?;
-        let bundle_ns = objc_msgSend(ns_str_cls, str_with_utf8_sel, bundle_c.as_ptr());
+        let bundle_ns = objc_msg_send_id_cstr(ns_str_cls, str_with_utf8_sel, bundle_c.as_ptr());
         if bundle_ns.is_null() {
             return None;
         }
 
-        let app = objc_msgSend(sb_cls, app_with_bundle_sel, bundle_ns);
+        let app = objc_msg_send_id_id(sb_cls, app_with_bundle_sel, bundle_ns);
         if app.is_null() {
             return None;
         }
 
-        let is_running = objc_msgSend(app, is_running_sel) as usize != 0;
+        let is_running = objc_msg_send_bool(app, is_running_sel);
         if !is_running {
             return None;
         }
 
-        let track = objc_msgSend(app, current_track_sel);
+        let track = objc_msg_send_id(app, current_track_sel);
         if track.is_null() {
             return None;
         }
 
-        let name_ref = objc_msgSend(track, name_sel) as CFStringRef;
-        let artist_ref = objc_msgSend(track, artist_sel) as CFStringRef;
-        let album_ref = objc_msgSend(track, album_sel) as CFStringRef;
+        let name_ref = objc_msg_send_id(track, name_sel) as CFStringRef;
+        let artist_ref = objc_msg_send_id(track, artist_sel) as CFStringRef;
+        let album_ref = objc_msg_send_id(track, album_sel) as CFStringRef;
 
-        let title = cf_string_to_rust(name_ref);
-        let artist = cf_string_to_rust(artist_ref);
-        let album = cf_string_to_rust(album_ref);
+        let title = sanitize_media_str(cf_string_to_rust(name_ref));
+        let artist = sanitize_media_str(cf_string_to_rust(artist_ref));
+        let album = sanitize_media_str(cf_string_to_rust(album_ref));
 
-        let state_val = objc_msgSend(app, player_state_sel) as usize;
+        let state_val = objc_msg_send_u32(app, player_state_sel);
         let status = if state_val == 1800426352 || state_val == 1 {
             // 'kPSP' (playing) or 1
             Some("Playing".to_string())
@@ -1379,6 +1590,99 @@ mod tests {
         assert_eq!(
             extract_mpris_string_list(&prop_buf, "xesam:artist"),
             Some("Daft Punk, Pharrell Williams".to_string())
+        );
+    }
+
+    #[test]
+    fn test_linux_dbus_bounds_and_control_char_filtering() {
+        use linux_dbus::{
+            compute_dbus_remaining_len, extract_mpris_string, extract_mpris_string_list,
+            get_reply_serial, MAX_DBUS_SECTION_LEN,
+        };
+
+        // 1. compute_dbus_remaining_len rejects oversized fields_len or body_len (e.g. u32::MAX)
+        let mut header = [0u8; 16];
+        header[0] = b'l';
+        header[1] = 2;
+        header[4..8].copy_from_slice(&128u32.to_le_bytes()); // body_len = 128
+        header[12..16].copy_from_slice(&20u32.to_le_bytes()); // fields_len = 20 (pads +4 to 24)
+        assert_eq!(compute_dbus_remaining_len(&header), Some(24 + 128));
+
+        let mut huge_body = header;
+        huge_body[4..8].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert_eq!(compute_dbus_remaining_len(&huge_body), None);
+
+        let mut huge_fields = header;
+        huge_fields[12..16].copy_from_slice(&((MAX_DBUS_SECTION_LEN as u32) + 1).to_le_bytes());
+        assert_eq!(compute_dbus_remaining_len(&huge_fields), None);
+
+        // 2. get_reply_serial skips a string header field containing fake [5, 1, b'u', 0] bytes
+        //    at an 8-byte boundary and finds the real REPLY_SERIAL field after it.
+        let mut fields = Vec::new();
+        // Field 6 (DESTINATION, signature 's'): starts at offset 16 (0 in fields)
+        fields.push(6);
+        fields.push(1);
+        fields.push(b's');
+        fields.push(0);
+        // String length at offset 20 (4 in fields); string bytes start at offset 24 (8 in fields, 8-byte aligned!)
+        let decoy_str: &[u8] = &[5, 1, b'u', 0, 99, 0, 0, 0];
+        fields.extend_from_slice(&(decoy_str.len() as u32).to_le_bytes());
+        fields.extend_from_slice(decoy_str);
+        fields.push(0); // NUL terminator
+        while fields.len() % 8 != 0 {
+            fields.push(0);
+        }
+        // Real Field 5 (REPLY_SERIAL, signature 'u') = 7
+        fields.push(5);
+        fields.push(1);
+        fields.push(b'u');
+        fields.push(0);
+        fields.extend_from_slice(&7u32.to_le_bytes());
+
+        let mut msg = Vec::new();
+        msg.extend_from_slice(&[b'l', 2, 0, 1]);
+        msg.extend_from_slice(&0u32.to_le_bytes());
+        msg.extend_from_slice(&1u32.to_le_bytes());
+        msg.extend_from_slice(&(fields.len() as u32).to_le_bytes());
+        msg.extend_from_slice(&fields);
+        assert_eq!(get_reply_serial(&msg), Some(7));
+
+        // 3. extract_mpris_string and extract_mpris_string_list reject terminal escape sequences
+        let mut evil_buf = Vec::new();
+        evil_buf.extend_from_slice(b"xesam:title\0\x01s\0");
+        let evil_title = b"\x1b]52;c;dGVzdA==\x07Evil Title";
+        evil_buf.extend_from_slice(&(evil_title.len() as u32).to_le_bytes());
+        evil_buf.extend_from_slice(evil_title);
+        evil_buf.push(0);
+
+        evil_buf.extend_from_slice(b"xesam:artist\0\x02as\0\0");
+        let mut evil_arr = Vec::new();
+        for a in [
+            b"\x1b[31mEvil Artist".as_slice(),
+            b"Clean Artist\n".as_slice(),
+        ] {
+            evil_arr.extend_from_slice(&(a.len() as u32).to_le_bytes());
+            evil_arr.extend_from_slice(a);
+            evil_arr.push(0);
+        }
+        evil_buf.extend_from_slice(&(evil_arr.len() as u32).to_le_bytes());
+        evil_buf.extend_from_slice(&evil_arr);
+
+        assert_eq!(extract_mpris_string(&evil_buf, "xesam:title"), None);
+        assert_eq!(
+            extract_mpris_string_list(&evil_buf, "xesam:artist"),
+            Some("Clean Artist".to_string())
+        );
+
+        let mut padded_buf = Vec::new();
+        padded_buf.extend_from_slice(b"xesam:title\0\x01s\0");
+        let padded_title = b"Padded\tTitle\n";
+        padded_buf.extend_from_slice(&(padded_title.len() as u32).to_le_bytes());
+        padded_buf.extend_from_slice(padded_title);
+        padded_buf.push(0);
+        assert_eq!(
+            extract_mpris_string(&padded_buf, "xesam:title"),
+            Some("Padded Title".to_string())
         );
     }
 }

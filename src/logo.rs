@@ -464,18 +464,8 @@ pub fn chafa_available() -> bool {
         .unwrap_or(false)
 }
 
-/// Write embedded logo bytes to a temporary file and return the path.
-fn write_temp_logo(bytes: &[u8]) -> std::io::Result<std::path::PathBuf> {
-    let temp_path = std::env::temp_dir().join(format!("retch_logo_{}.png", std::process::id()));
-    std::fs::write(&temp_path, bytes)?;
-    Ok(temp_path)
-}
-
-/// Attempts to render an image using the `chafa` utility.
-///
-/// Chafa renders images using high-quality Unicode symbols, providing a
-/// good graphical fallback for many terminal emulators.
-pub fn print_with_chafa(path: &std::path::Path) -> bool {
+/// Helper to build a `chafa` command with standard arguments.
+fn build_chafa_command() -> std::process::Command {
     let mut cmd = std::process::Command::new("chafa");
     cmd.arg("--format")
         .arg("symbols")
@@ -485,8 +475,38 @@ pub fn print_with_chafa(path: &std::path::Path) -> bool {
     if chafa_supports_probe() {
         cmd.arg("--probe").arg("off");
     }
+    cmd
+}
 
-    let output = cmd.arg(path).output();
+/// Pipe raw image bytes to `chafa` over stdin and return its stdout if successful.
+///
+/// Piping bytes directly via stdin avoids creating predictable `/tmp/retch_logo_<pid>.png`
+/// files in world-writable temporary directories (eliminating symlink/FIFO race conditions).
+fn run_chafa_with_bytes(bytes: &[u8]) -> std::io::Result<std::process::Output> {
+    use std::io::Write;
+    use std::process::Stdio;
+
+    let mut child = build_chafa_command()
+        .arg("-")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        // Ignore broken pipe errors here; wait_with_output() will report the exit status.
+        let _ = stdin.write_all(bytes);
+    }
+
+    child.wait_with_output()
+}
+
+/// Attempts to render an image file using the `chafa` utility.
+///
+/// Chafa renders images using high-quality Unicode symbols, providing a
+/// good graphical fallback for many terminal emulators.
+pub fn print_with_chafa(path: &std::path::Path) -> bool {
+    let output = build_chafa_command().arg(path).output();
 
     match output {
         Ok(out) if out.status.success() => {
@@ -504,19 +524,38 @@ pub fn print_with_chafa(path: &std::path::Path) -> bool {
     }
 }
 
-/// Attempts to get Chafa output as a list of lines.
-pub fn get_chafa_logo_lines(path: &std::path::Path) -> Option<Vec<String>> {
-    let mut cmd = std::process::Command::new("chafa");
-    cmd.arg("--format")
-        .arg("symbols")
-        .arg("--size")
-        .arg(chafa_size_arg());
-
-    if chafa_supports_probe() {
-        cmd.arg("--probe").arg("off");
+/// Attempts to render in-memory image bytes using the `chafa` utility via stdin.
+pub fn print_with_chafa_bytes(bytes: &[u8]) -> bool {
+    match run_chafa_with_bytes(bytes) {
+        Ok(out) if out.status.success() => {
+            print!("{}", String::from_utf8_lossy(&out.stdout));
+            true
+        }
+        Ok(out) => {
+            eprintln!("warning: chafa failed with status: {}", out.status);
+            false
+        }
+        Err(e) => {
+            eprintln!("warning: failed to execute chafa: {}", e);
+            false
+        }
     }
+}
 
-    let output = cmd.arg(path).output().ok()?;
+/// Attempts to get Chafa output for an image file as a list of lines.
+pub fn get_chafa_logo_lines(path: &std::path::Path) -> Option<Vec<String>> {
+    let output = build_chafa_command().arg(path).output().ok()?;
+    if output.status.success() {
+        let content = String::from_utf8_lossy(&output.stdout);
+        Some(content.lines().map(|s| s.to_string()).collect())
+    } else {
+        None
+    }
+}
+
+/// Attempts to get Chafa output for in-memory image bytes as a list of lines via stdin.
+pub fn get_chafa_logo_lines_from_bytes(bytes: &[u8]) -> Option<Vec<String>> {
+    let output = run_chafa_with_bytes(bytes).ok()?;
     if output.status.success() {
         let content = String::from_utf8_lossy(&output.stdout);
         Some(content.lines().map(|s| s.to_string()).collect())
@@ -595,17 +634,11 @@ pub fn print_distro_logo_with_ascii(distro: Option<&str>, ascii_only: bool, chaf
         }
     }
 
-    // 4. Try chafa using embedded distro logo
+    // 4. Try chafa using embedded distro logo via stdin
     if has_chafa {
         if let Some(bytes) = get_embedded_logo(distro) {
-            if bytes.len() > 100 {
-                if let Ok(temp_path) = write_temp_logo(bytes) {
-                    if print_with_chafa(&temp_path) {
-                        let _ = std::fs::remove_file(&temp_path);
-                        return;
-                    }
-                    let _ = std::fs::remove_file(&temp_path);
-                }
+            if bytes.len() > 100 && print_with_chafa_bytes(bytes) {
+                return;
             }
         }
     }

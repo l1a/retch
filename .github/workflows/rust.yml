@@ -69,16 +69,16 @@ jobs:
     - name: Format check
       run: cargo fmt -- --check
     - name: Clippy
-      run: cargo clippy --workspace -- -D warnings
+      run: cargo clippy --locked --workspace -- -D warnings
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --locked --verbose
     - name: Run tests
-      run: cargo test --workspace --verbose
+      run: cargo test --locked --workspace --verbose
     - name: Run fetcher (dry run)
       # --full exercises every field (incl. cosmetic/slow queries); --ascii-logo forces the
       # ASCII logo to render even though CI's stdout is not a TTY, so this step also covers
       # the logo + layout path. Matches the full-test dry run.
-      run: cargo run -- --full --ascii-logo
+      run: cargo run --locked -- --full --ascii-logo
     - name: Print system_profiler SPDisplaysDataType (macOS)
       if: runner.os == 'macOS'
       run: system_profiler SPDisplaysDataType
@@ -95,9 +95,9 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
     - name: Clippy (no default features)
-      run: cargo clippy -p retch-cli --no-default-features -- -D warnings
+      run: cargo clippy --locked -p retch-cli --no-default-features -- -D warnings
     - name: Build (no default features)
-      run: cargo build -p retch-cli --no-default-features --verbose
+      run: cargo build --locked -p retch-cli --no-default-features --verbose
 
   full-test:
     runs-on: ${{ matrix.os }}
@@ -153,13 +153,13 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
 
     - name: Build (release)
-      run: cargo build --release --verbose
+      run: cargo build --locked --release --verbose
 
     - name: Run tests (all features)
-      run: cargo test --workspace --all-features --verbose
+      run: cargo test --locked --workspace --all-features --verbose
 
     - name: Clippy
-      run: cargo clippy --workspace -- -D warnings
+      run: cargo clippy --locked --workspace -- -D warnings
 
     - name: Format check
       run: cargo fmt -- --check
@@ -168,7 +168,7 @@ jobs:
       # --full exercises every field (incl. cosmetic/slow queries); --ascii-logo forces the
       # ASCII logo to render even though CI's stdout is not a TTY, so this step also covers
       # the logo path (previously it showed no logo because the output was piped).
-      run: cargo run --release -- --full --ascii-logo
+      run: cargo run --locked --release -- --full --ascii-logo
 
     - name: Print system_profiler SPDisplaysDataType (macOS)
       if: runner.os == 'macOS'
@@ -227,12 +227,12 @@ jobs:
       - name: Build release binary (Fedora)
         if: startsWith(matrix.platform, 'fedora')
         run: |
-          $HOME/.cargo/bin/cargo build --release --verbose
+          $HOME/.cargo/bin/cargo build --locked --release --verbose
 
       - name: Build release binary (Non-Fedora)
         if: ${{ !startsWith(matrix.platform, 'fedora') }}
         run: |
-          cargo build --release --verbose
+          cargo build --locked --release --verbose
 
       - name: Prepare release assets
         shell: bash
@@ -312,9 +312,8 @@ jobs:
       - name: Clean up rc pre-releases and prune old releases (keep 10)
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
         run: |
-          VERSION="${{ github.ref_name }}"
-
           # Delete all rc pre-releases for this version
           gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName \
             --jq ".[] | select(.tagName | startswith(\"${VERSION}-rc.\")) | .tagName" \

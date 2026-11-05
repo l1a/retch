@@ -571,17 +571,19 @@ pub(crate) fn detect_terminal_font(terminal: Option<&str>) -> Option<String> {
     } else if term_lower.contains("konsole") {
         let rc_path = home.join(".config/konsolerc");
         let mut profile_name = "Default.profile".to_string();
-        if let Ok(content) = std::fs::read_to_string(&rc_path) {
+        if let Some(content) = read_bounded_regular_file(&rc_path) {
             for line in content.lines() {
                 let line = line.trim();
-                if line.starts_with("DefaultProfile=") {
-                    profile_name = line.trim_start_matches("DefaultProfile=").to_string();
+                if let Some(val) = line.strip_prefix("DefaultProfile=") {
+                    if let Some(clean) = sanitize_konsole_profile_name(val) {
+                        profile_name = clean.to_string();
+                    }
                     break;
                 }
             }
         }
         let profile_path = home.join(".local/share/konsole").join(profile_name);
-        if let Ok(content) = std::fs::read_to_string(&profile_path) {
+        if let Some(content) = read_bounded_regular_file(&profile_path) {
             for line in content.lines() {
                 let line = line.trim();
                 if line.starts_with("Font=") {
@@ -640,6 +642,44 @@ pub(crate) fn detect_terminal_font(terminal: Option<&str>) -> Option<String> {
     None
 }
 
+/// Maximum bytes read from a terminal configuration or theme file (1 MiB).
+const MAX_TERMINAL_CONFIG_BYTES: u64 = 1024 * 1024;
+
+/// Reads a regular file up to [`MAX_TERMINAL_CONFIG_BYTES`], rejecting FIFOs, device nodes,
+/// and directories so a misconfigured or untrusted `include`/`DefaultProfile` path cannot
+/// hang or exhaust memory.
+pub(crate) fn read_bounded_regular_file(path: &std::path::Path) -> Option<String> {
+    use std::io::Read;
+    let meta = std::fs::metadata(path).ok()?;
+    if !meta.is_file() || meta.len() > MAX_TERMINAL_CONFIG_BYTES {
+        return None;
+    }
+    let file = std::fs::File::open(path).ok()?;
+    let mut buf = String::new();
+    file.take(MAX_TERMINAL_CONFIG_BYTES)
+        .read_to_string(&mut buf)
+        .ok()?;
+    Some(buf)
+}
+
+/// Validates a `DefaultProfile=` value from `konsolerc` so it can only name a single file
+/// within `~/.local/share/konsole` (rejecting absolute paths, `/` or `\` separators, and
+/// `..` segments).
+pub(crate) fn sanitize_konsole_profile_name(raw: &str) -> Option<&str> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty()
+        || trimmed == "."
+        || trimmed == ".."
+        || trimmed.contains('/')
+        || trimmed.contains('\\')
+        || trimmed.contains("..")
+    {
+        None
+    } else {
+        Some(trimmed)
+    }
+}
+
 #[allow(dead_code)]
 pub(crate) fn parse_kitty_theme(
     content: &str,
@@ -662,7 +702,7 @@ pub(crate) fn parse_kitty_theme(
                     } else {
                         p.to_path_buf()
                     };
-                    if let Ok(theme_content) = std::fs::read_to_string(&full_p) {
+                    if let Some(theme_content) = read_bounded_regular_file(&full_p) {
                         for t_line in theme_content.lines() {
                             let t_line = t_line.trim();
                             if let Some(rest) = t_line
@@ -1006,17 +1046,19 @@ pub(crate) fn detect_terminal_theme(terminal: Option<&str>) -> Option<String> {
         if let Some(ref h) = home {
             let rc_path = h.join(".config/konsolerc");
             let mut profile_name = "Default.profile".to_string();
-            if let Ok(content) = std::fs::read_to_string(&rc_path) {
+            if let Some(content) = read_bounded_regular_file(&rc_path) {
                 for line in content.lines() {
                     let line = line.trim();
-                    if line.starts_with("DefaultProfile=") {
-                        profile_name = line.trim_start_matches("DefaultProfile=").to_string();
+                    if let Some(val) = line.strip_prefix("DefaultProfile=") {
+                        if let Some(clean) = sanitize_konsole_profile_name(val) {
+                            profile_name = clean.to_string();
+                        }
                         break;
                     }
                 }
             }
             let profile_path = h.join(".local/share/konsole").join(profile_name);
-            if let Ok(content) = std::fs::read_to_string(&profile_path) {
+            if let Some(content) = read_bounded_regular_file(&profile_path) {
                 if let Some(theme) = parse_konsole_theme(&content) {
                     return Some(theme);
                 }
@@ -1413,5 +1455,18 @@ return config
     fn test_parse_konsole_theme() {
         let profile = "[Appearance]\nColorScheme=Breeze\nFont=Hack,10,-1,5,50,0,0,0,0,0\n";
         assert_eq!(parse_konsole_theme(profile), Some("Breeze".to_string()));
+    }
+
+    #[test]
+    fn test_sanitize_konsole_profile_name() {
+        assert_eq!(
+            sanitize_konsole_profile_name("Profile 1.profile"),
+            Some("Profile 1.profile")
+        );
+        assert_eq!(sanitize_konsole_profile_name(""), None);
+        assert_eq!(sanitize_konsole_profile_name(".."), None);
+        assert_eq!(sanitize_konsole_profile_name("../etc/passwd"), None);
+        assert_eq!(sanitize_konsole_profile_name("/dev/zero"), None);
+        assert_eq!(sanitize_konsole_profile_name("sub\\evil.profile"), None);
     }
 }

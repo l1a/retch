@@ -1689,6 +1689,8 @@ extern "C" {}
 
 /// Read the current desktop wallpaper image path via NSWorkspace / AppKit.
 pub fn get_macos_wallpaper() -> Option<String> {
+    // SAFETY: Each selector is invoked through a non-variadic function pointer matching
+    // its exact Objective-C signature (`id (*)(id, SEL)` or `id (*)(id, SEL, id)`).
     unsafe {
         let ws_cls = objc_getClass(CString::new("NSWorkspace").unwrap().as_ptr());
         let screen_cls = objc_getClass(CString::new("NSScreen").unwrap().as_ptr());
@@ -1696,22 +1698,22 @@ pub fn get_macos_wallpaper() -> Option<String> {
             return None;
         }
         let shared_sel = sel_registerName(CString::new("sharedWorkspace").unwrap().as_ptr());
-        let ws = objc_msgSend(ws_cls, shared_sel);
+        let ws = objc_msg_send_id(ws_cls, shared_sel);
         if ws.is_null() {
             return None;
         }
         let main_sel = sel_registerName(CString::new("mainScreen").unwrap().as_ptr());
-        let screen = objc_msgSend(screen_cls, main_sel);
+        let screen = objc_msg_send_id(screen_cls, main_sel);
         if screen.is_null() {
             return None;
         }
         let wp_sel = sel_registerName(CString::new("desktopImageURLForScreen:").unwrap().as_ptr());
-        let url = objc_msgSend_id_id(ws, wp_sel, screen);
+        let url = objc_msg_send_id_id(ws, wp_sel, screen);
         if url.is_null() {
             return None;
         }
         let path_sel = sel_registerName(CString::new("path").unwrap().as_ptr());
-        let path_ns = objc_msgSend(url, path_sel) as CFStringRef;
+        let path_ns = objc_msg_send_id(url, path_sel) as CFStringRef;
         if let Some(path) = cf_string_to_rust(path_ns) {
             if !path.is_empty() {
                 return Some(path);
@@ -1734,15 +1736,52 @@ extern "C" {}
 extern "C" {
     fn objc_getClass(name: *const i8) -> *mut c_void;
     fn sel_registerName(str: *const i8) -> *mut c_void;
-    fn objc_msgSend(self_: *mut c_void, op: *mut c_void, ...) -> *mut c_void;
+    fn objc_msgSend();
 }
 
-#[allow(clashing_extern_declarations)]
-extern "C" {
-    #[link_name = "objc_msgSend"]
-    fn objc_msgSend_id_id(self_: *mut c_void, op: *mut c_void, arg: *mut c_void) -> *mut c_void;
-    #[link_name = "objc_msgSend"]
-    fn objc_msgSend_f64(self_: *mut c_void, op: *mut c_void) -> f64;
+/// Invoke a zero-argument Objective-C selector returning an object pointer (`id`).
+///
+/// # Safety
+/// `self_` must be a valid Objective-C object or class pointer and `op` must be a valid
+/// selector with signature `id (*)(id, SEL)`. Never call `objc_msgSend` through a C
+/// variadic prototype: on `aarch64-apple-darwin` variadic arguments are placed on the
+/// stack instead of registers, and redeclaring `objc_msgSend` with multiple clashing
+/// `#[link_name]` signatures is unsound in Rust/LLVM.
+unsafe fn objc_msg_send_id(self_: *mut c_void, op: *mut c_void) -> *mut c_void {
+    type FnType = unsafe extern "C" fn(*mut c_void, *mut c_void) -> *mut c_void;
+    // SAFETY: `objc_msgSend` is cast to the exact non-variadic ABI expected by the
+    // Objective-C runtime for `(id, SEL) -> id`.
+    let f: FnType = unsafe { std::mem::transmute(objc_msgSend as *const ()) };
+    unsafe { f(self_, op) }
+}
+
+/// Invoke a one-object-argument Objective-C selector returning an object pointer (`id`).
+///
+/// # Safety
+/// `self_` and `arg` must be valid Objective-C pointers and `op` must have signature
+/// `id (*)(id, SEL, id)`.
+unsafe fn objc_msg_send_id_id(
+    self_: *mut c_void,
+    op: *mut c_void,
+    arg: *mut c_void,
+) -> *mut c_void {
+    type FnType = unsafe extern "C" fn(*mut c_void, *mut c_void, *mut c_void) -> *mut c_void;
+    // SAFETY: `objc_msgSend` is cast to the exact non-variadic ABI for `(id, SEL, id) -> id`.
+    let f: FnType = unsafe { std::mem::transmute(objc_msgSend as *const ()) };
+    unsafe { f(self_, op, arg) }
+}
+
+/// Invoke a zero-argument Objective-C selector returning `double` (`f64`).
+///
+/// # Safety
+/// `self_` must be a valid Objective-C object pointer and `op` must have signature
+/// `double (*)(id, SEL)` (valid on both `aarch64` and `x86_64`, where `objc_msgSend_fpret`
+/// is only for `long double`).
+unsafe fn objc_msg_send_f64(self_: *mut c_void, op: *mut c_void) -> f64 {
+    type FnType = unsafe extern "C" fn(*mut c_void, *mut c_void) -> f64;
+    // SAFETY: `objc_msgSend` is cast to the exact non-variadic ABI for `(id, SEL) -> f64`.
+    let f: FnType = unsafe { std::mem::transmute(objc_msgSend as *const ()) };
+    unsafe { f(self_, op) }
 }
 
 /// Return `(ssid, rate_mbps)` for the connected Wi-Fi network via CoreWLAN.
@@ -1754,6 +1793,8 @@ extern "C" {
 /// active association, we return `"Connected"` as the display name so the
 /// Wi-Fi line still appears with the rate.
 pub fn get_wifi_info() -> Option<(String, Option<u64>)> {
+    // SAFETY: Each selector is invoked through the non-variadic `objc_msg_send_*` helper
+    // matching its exact Objective-C return and argument types.
     unsafe {
         let cls_name = CString::new("CWWiFiClient").unwrap();
         let cls = objc_getClass(cls_name.as_ptr());
@@ -1761,19 +1802,19 @@ pub fn get_wifi_info() -> Option<(String, Option<u64>)> {
             return None;
         }
         let shared_sel = sel_registerName(CString::new("sharedWiFiClient").unwrap().as_ptr());
-        let client = objc_msgSend(cls, shared_sel);
+        let client = objc_msg_send_id(cls, shared_sel);
         if client.is_null() {
             return None;
         }
         let iface_sel = sel_registerName(CString::new("interface").unwrap().as_ptr());
-        let iface = objc_msgSend(client, iface_sel);
+        let iface = objc_msg_send_id(client, iface_sel);
         if iface.is_null() {
             return None;
         }
 
         // transmitRate does not require Location Services.
         let rate_sel = sel_registerName(CString::new("transmitRate").unwrap().as_ptr());
-        let rate_f = objc_msgSend_f64(iface, rate_sel);
+        let rate_f = objc_msg_send_f64(iface, rate_sel);
         let rate = if rate_f > 0.0 {
             Some(rate_f as u64)
         } else {
@@ -1783,7 +1824,7 @@ pub fn get_wifi_info() -> Option<(String, Option<u64>)> {
         // SSID: NSString is toll-free bridged with CFString.
         // Returns nil when Location Services is not granted.
         let ssid_sel = sel_registerName(CString::new("ssid").unwrap().as_ptr());
-        let ssid_ns = objc_msgSend(iface, ssid_sel) as CFStringRef;
+        let ssid_ns = objc_msg_send_id(iface, ssid_sel) as CFStringRef;
         if let Some(ssid) = cf_string_to_rust(ssid_ns) {
             return Some((ssid, rate));
         }
@@ -1792,7 +1833,7 @@ pub fn get_wifi_info() -> Option<(String, Option<u64>)> {
         // On macOS 10.15+ without Location Services, ipconfig returns the
         // literal string "<redacted>" — filter that out.
         let iface_name_sel = sel_registerName(CString::new("interfaceName").unwrap().as_ptr());
-        let iface_name_ns = objc_msgSend(iface, iface_name_sel) as CFStringRef;
+        let iface_name_ns = objc_msg_send_id(iface, iface_name_sel) as CFStringRef;
         let iface_bsd = cf_string_to_rust(iface_name_ns).unwrap_or_else(|| "en0".to_string());
 
         if let Ok(out) = std::process::Command::new("/usr/sbin/ipconfig")

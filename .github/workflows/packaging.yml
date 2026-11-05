@@ -376,7 +376,7 @@ jobs:
     steps:
       # fetch-depth: 0 because the render step needs the last RELEASED tag, and the default
       # shallow checkout carries no tags.
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
 
@@ -526,7 +526,7 @@ jobs:
   scoop:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
 

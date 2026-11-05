@@ -215,21 +215,36 @@ mod dl {
 mod dl {
     use super::*;
 
+    /// Restricts `LoadLibraryExA` resolution to `%SystemRoot%\System32` so the current
+    /// working directory and `PATH` are never searched.
+    const LOAD_LIBRARY_SEARCH_SYSTEM32: u32 = 0x0000_0800;
+
     #[link(name = "kernel32")]
     extern "system" {
-        fn LoadLibraryA(lp_lib_file_name: *const c_char) -> *mut c_void;
+        fn LoadLibraryExA(
+            lp_lib_file_name: *const c_char,
+            h_file: *mut c_void,
+            dw_flags: u32,
+        ) -> *mut c_void;
         fn GetProcAddress(h_module: *mut c_void, lp_proc_name: *const c_char) -> *mut c_void;
         fn FreeLibrary(h_module: *mut c_void) -> i32;
     }
 
-    /// Open a DLL by name, or `None` if it is not installed.
+    /// Open a system DLL by name from `System32`, or `None` if it is not installed.
     ///
     /// A missing loader is the normal answer on a machine without that API — a headless
     /// server, or one with no GPU driver — not an error.
     pub fn open(name: &CStr) -> Option<*mut c_void> {
-        // SAFETY: `name` is a valid NUL-terminated C string for the duration of the call.
+        // SAFETY: `name` is a valid NUL-terminated C string for the duration of the call,
+        // and `LOAD_LIBRARY_SEARCH_SYSTEM32` prevents CWD/PATH DLL search-order hijacking.
         // A null return is the documented "not found" answer and is handled.
-        let h = unsafe { LoadLibraryA(name.as_ptr()) };
+        let h = unsafe {
+            LoadLibraryExA(
+                name.as_ptr(),
+                std::ptr::null_mut(),
+                LOAD_LIBRARY_SEARCH_SYSTEM32,
+            )
+        };
         (!h.is_null()).then_some(h)
     }
 
@@ -1085,7 +1100,10 @@ mod opencl {
     // redeclaration of a symbol std itself uses is a hard error ("invalid definition of the
     // runtime `open` symbol used by the standard library").
     #[cfg(target_os = "linux")]
-    use libc::{close, dup, dup2, open, O_WRONLY, STDERR_FILENO};
+    use libc::{close, dup2, fcntl, open, F_DUPFD_CLOEXEC, O_CLOEXEC, O_WRONLY, STDERR_FILENO};
+
+    #[cfg(target_os = "linux")]
+    static STDERR_SUPPRESS_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     /// Silences `stderr` for its lifetime, restoring the original on drop.
     ///
@@ -1106,26 +1124,33 @@ mod opencl {
     #[cfg(target_os = "linux")]
     struct SuppressStderr {
         saved: c_int,
+        _guard: std::sync::MutexGuard<'static, ()>,
     }
 
     #[cfg(target_os = "linux")]
     impl SuppressStderr {
         fn new() -> Option<Self> {
-            // SAFETY: plain fd manipulation. Every call's result is checked, and the
-            // original descriptor is retained for restoration in `drop`.
+            let guard = STDERR_SUPPRESS_LOCK.lock().ok()?;
+            // SAFETY: plain fd manipulation serialized by `STDERR_SUPPRESS_LOCK`. Both
+            // `saved` and `devnull` are created with `CLOEXEC` so child processes spawned
+            // concurrently on other probe threads never inherit them. Every call's result
+            // is checked, and the original descriptor is retained for restoration in `drop`.
             unsafe {
-                let saved = dup(STDERR_FILENO);
+                let saved = fcntl(STDERR_FILENO, F_DUPFD_CLOEXEC, 0);
                 if saved < 0 {
                     return None;
                 }
-                let devnull = open(c"/dev/null".as_ptr(), O_WRONLY);
+                let devnull = open(c"/dev/null".as_ptr(), O_WRONLY | O_CLOEXEC);
                 if devnull < 0 {
                     close(saved);
                     return None;
                 }
                 dup2(devnull, STDERR_FILENO);
                 close(devnull);
-                Some(Self { saved })
+                Some(Self {
+                    saved,
+                    _guard: guard,
+                })
             }
         }
     }
