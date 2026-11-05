@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793823131187,
+  "lastUpdate": 1793919073438,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1152,6 +1152,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 718191775.9000002,
             "extra": "v0.20.40; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "f12e0323ed98bc909884f6d2102d9a1d246a164a",
+          "message": "Harden FFI, subprocess, D-Bus, and terminal paths (#317)\n\n- Declare `objc_msgSend` once and dispatch via typed non-variadic\n  `extern \"C\"` function pointers (`macos_ffi.rs`, `media.rs`) so\n  `aarch64-apple-darwin` callers pass selector arguments in registers\n  rather than on the variadic stack and read exact 1-byte `BOOL` /\n  4-byte `OSType` returns.\n- Validate `$SHELL` and ancestor shell candidates against `KNOWN_SHELLS`\n  and `is_safe_shell_executable_path`, and resolve `/proc/<pid>/exe` on\n  Linux before invoking `--version` (`shell.rs`).\n- Use `LoadLibraryExA(..., LOAD_LIBRARY_SEARCH_SYSTEM32)` for Windows\n  system DLL probes (`gpu_api.rs`, `media.rs`) and an aligned `Vec<u16>`\n  buffer in `get_reg_string` (`win_reg.rs`).\n- Cap Linux D-Bus message sections at 256 KiB with `checked_add` and\n  walk `(yv)` header fields structurally in `get_reply_serial`\n  (`media.rs`).\n- Pipe embedded PNG logos directly to `chafa -` over `stdin` instead of\n  writing `/tmp/retch_logo_<pid>.png` (`src/logo.rs`, `src/display.rs`).\n- Strip non-SGR escape sequences and C0/C1 control characters from\n  rendered field values (`sanitize_terminal_text` in `src/display.rs`),\n  EDID strings (`crates/sysinfo/src/display.rs`), and media metadata\n  (`media.rs`).\n- Serialize `SuppressStderr` with a mutex and `F_DUPFD_CLOEXEC` /\n  `O_CLOEXEC` (`gpu_api.rs`), probe canonical `dmidecode` paths before\n  `PATH` (`memory.rs`), reject Konsole profile path traversal, and bound\n  config/theme/logo file reads to regular files (`terminal.rs`,\n  `src/config.rs`, `src/display.rs`).\n- Remove stale `battery`-era advisories from `.cargo/audit.toml`, add\n  `--locked` to CI `cargo` invocations, pass `VERSION` via `env:` in\n  `rust.yml`, and pin `actions/checkout` in `packaging.yml`.\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-11-05T14:50:33-08:00",
+          "tree_id": "edb439a9a03e1799539d610d3e2c2f455bd1da85",
+          "url": "https://github.com/l1a/retch/commit/f12e0323ed98bc909884f6d2102d9a1d246a164a"
+        },
+        "date": 1793919073438,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 3559851.7,
+            "extra": "v0.20.41; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 8551432.200000001,
+            "extra": "v0.20.41; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 1971785.4,
+            "extra": "v0.20.41; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2056959.6000000003,
+            "extra": "v0.20.41; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 210761622.0,
+            "extra": "v0.20.41; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 607898001.8,
+            "extra": "v0.20.41; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 354917652.3000001,
+            "extra": "v0.20.41; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 715572362.5999999,
+            "extra": "v0.20.41; AC"
           }
         ]
       }
