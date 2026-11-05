@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793919073438,
+  "lastUpdate": 1793919587063,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1204,7 +1204,7 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch --long",
             "unit": "ns",
-            "value": 210761622.0,
+            "value": 210761622,
             "extra": "v0.20.41; AC"
           },
           {
@@ -6845,6 +6845,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 230.6296436141704,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f12e0323ed98bc909884f6d2102d9a1d246a164a",
+          "message": "Harden FFI, subprocess, D-Bus, and terminal paths (#317)\n\n- Declare `objc_msgSend` once and dispatch via typed non-variadic\n  `extern \"C\"` function pointers (`macos_ffi.rs`, `media.rs`) so\n  `aarch64-apple-darwin` callers pass selector arguments in registers\n  rather than on the variadic stack and read exact 1-byte `BOOL` /\n  4-byte `OSType` returns.\n- Validate `$SHELL` and ancestor shell candidates against `KNOWN_SHELLS`\n  and `is_safe_shell_executable_path`, and resolve `/proc/<pid>/exe` on\n  Linux before invoking `--version` (`shell.rs`).\n- Use `LoadLibraryExA(..., LOAD_LIBRARY_SEARCH_SYSTEM32)` for Windows\n  system DLL probes (`gpu_api.rs`, `media.rs`) and an aligned `Vec<u16>`\n  buffer in `get_reg_string` (`win_reg.rs`).\n- Cap Linux D-Bus message sections at 256 KiB with `checked_add` and\n  walk `(yv)` header fields structurally in `get_reply_serial`\n  (`media.rs`).\n- Pipe embedded PNG logos directly to `chafa -` over `stdin` instead of\n  writing `/tmp/retch_logo_<pid>.png` (`src/logo.rs`, `src/display.rs`).\n- Strip non-SGR escape sequences and C0/C1 control characters from\n  rendered field values (`sanitize_terminal_text` in `src/display.rs`),\n  EDID strings (`crates/sysinfo/src/display.rs`), and media metadata\n  (`media.rs`).\n- Serialize `SuppressStderr` with a mutex and `F_DUPFD_CLOEXEC` /\n  `O_CLOEXEC` (`gpu_api.rs`), probe canonical `dmidecode` paths before\n  `PATH` (`memory.rs`), reject Konsole profile path traversal, and bound\n  config/theme/logo file reads to regular files (`terminal.rs`,\n  `src/config.rs`, `src/display.rs`).\n- Remove stale `battery`-era advisories from `.cargo/audit.toml`, add\n  `--locked` to CI `cargo` invocations, pass `VERSION` via `env:` in\n  `rust.yml`, and pin `actions/checkout` in `packaging.yml`.\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-11-05T14:50:33-08:00",
+          "tree_id": "edb439a9a03e1799539d610d3e2c2f455bd1da85",
+          "url": "https://github.com/l1a/retch/commit/f12e0323ed98bc909884f6d2102d9a1d246a164a"
+        },
+        "date": 1793919587023,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2624489.0999999996,
+            "unit": "ns",
+            "extra": "v0.20.41"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 278783975.3,
+            "unit": "ns",
+            "extra": "v0.20.41"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252295795.20000005,
+            "unit": "ns",
+            "extra": "v0.20.41"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1314875.9000000004,
+            "unit": "ns",
+            "extra": "v0.20.41"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2624135.0000000005,
+            "unit": "ns",
+            "extra": "v0.20.41"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 295969117.90000004,
+            "unit": "ns",
+            "extra": "v0.20.41"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205095243.10000002,
+            "unit": "ns",
+            "extra": "v0.20.41"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1825147.7999999998,
+            "unit": "ns",
+            "extra": "v0.20.41"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 361911178.375,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1563.4252427991405,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 105.05210424714016,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.906866877451025,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 67.45661383735685,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 16257.203392475694,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 157052.53229534123,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 11170.63281504084,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 7860.436350089631,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 128580.98027163895,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 233.68053407272086,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 183.22494328804052,
             "unit": "ns"
           }
         ]
