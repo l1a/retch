@@ -66,7 +66,35 @@ impl Config {
 
         if let Some(path) = path {
             if path.exists() {
-                let contents = fs::read_to_string(&path)?;
+                use std::io::Read;
+                const MAX_CONFIG_BYTES: u64 = 1024 * 1024;
+                let path_meta = fs::metadata(&path)?;
+                anyhow::ensure!(
+                    path_meta.is_file(),
+                    "Config path {} is not a regular file",
+                    path.display()
+                );
+                anyhow::ensure!(
+                    path_meta.len() <= MAX_CONFIG_BYTES,
+                    "Config file {} exceeds maximum size ({} bytes)",
+                    path.display(),
+                    MAX_CONFIG_BYTES
+                );
+                let file = fs::File::open(&path)?;
+                let meta = file.metadata()?;
+                anyhow::ensure!(
+                    meta.is_file(),
+                    "Config path {} is not a regular file",
+                    path.display()
+                );
+                anyhow::ensure!(
+                    meta.len() <= MAX_CONFIG_BYTES,
+                    "Config file {} exceeds maximum size ({} bytes)",
+                    path.display(),
+                    MAX_CONFIG_BYTES
+                );
+                let mut contents = String::with_capacity(meta.len() as usize);
+                file.take(MAX_CONFIG_BYTES).read_to_string(&mut contents)?;
                 let config: Config = toml::from_str(&contents)?;
                 return Ok(config);
             }

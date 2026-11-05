@@ -182,8 +182,14 @@ pub fn format_dimm_slots(slots: &[DimmSlot]) -> Option<String> {
 
 #[cfg(target_os = "linux")]
 fn detect_linux() -> Option<String> {
-    // Try name-only first (works when /usr/bin is in PATH), then known absolute paths.
-    let candidates = ["dmidecode", "/usr/bin/dmidecode", "/usr/sbin/dmidecode"];
+    // Try trusted canonical paths before falling back to a bare `PATH` lookup so
+    // `sudo retch` without `secure_path` does not prefer a user-writable `PATH` entry.
+    let candidates = [
+        "/usr/sbin/dmidecode",
+        "/usr/bin/dmidecode",
+        "/sbin/dmidecode",
+        "dmidecode",
+    ];
     for cmd in candidates {
         let Ok(output) = std::process::Command::new(cmd)
             .args(["--type", "17"])

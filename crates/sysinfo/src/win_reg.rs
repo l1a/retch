@@ -76,14 +76,17 @@ pub fn get_reg_string(hkey: HKEY, subkey: &str, value: &str) -> Option<String> {
         return None;
     }
 
-    let mut buf = vec![0u8; size as usize];
+    // Allocate as `Vec<u16>` rather than `Vec<u8>` so the buffer satisfies the 2-byte
+    // alignment invariant of `&[u16]` without needing `slice::from_raw_parts` on a 1-byte
+    // aligned pointer.
+    let mut words = vec![0u16; (size as usize).div_ceil(2)];
     let res = unsafe {
         RegQueryValueExW(
             hk,
             value_w.as_ptr(),
             ptr::null_mut(),
             &mut ty,
-            buf.as_mut_ptr(),
+            words.as_mut_ptr() as *mut u8,
             &mut size,
         )
     };
@@ -92,16 +95,14 @@ pub fn get_reg_string(hkey: HKEY, subkey: &str, value: &str) -> Option<String> {
     }
 
     if res == 0 {
+        let word_len = (size as usize / 2).min(words.len());
+        let words = &words[..word_len];
         if ty == 1 || ty == 2 {
             // REG_SZ or REG_EXPAND_SZ
-            let words =
-                unsafe { std::slice::from_raw_parts(buf.as_ptr() as *const u16, buf.len() / 2) };
             let len = words.iter().position(|&x| x == 0).unwrap_or(words.len());
             String::from_utf16(&words[..len]).ok()
         } else if ty == 7 {
             // REG_MULTI_SZ
-            let words =
-                unsafe { std::slice::from_raw_parts(buf.as_ptr() as *const u16, buf.len() / 2) };
             let strings: Vec<String> = words
                 .split(|&x| x == 0)
                 .filter_map(|w| {

@@ -108,6 +108,108 @@ fn strip_sgr(s: &str) -> String {
     out
 }
 
+/// Sanitize a field value before terminal rendering while preserving valid SGR color codes.
+///
+/// Probed strings (Wi-Fi SSIDs, Bluetooth device names, USB peripheral names, media titles,
+/// hostnames, DMI strings, etc.) originate from external hardware or untrusted local sources.
+/// Allowing arbitrary escape sequences or control characters through to stdout enables
+/// terminal injection (e.g. OSC 52 clipboard writes, window-title spoofing, cursor movement,
+/// or line-overwrite via `\r`/`\x08`).
+///
+/// Only well-formed CSI SGR sequences (`ESC [` followed by digits/semicolons and ending in `m`,
+/// such as `retch-sysinfo`'s `\x1b[32mUp\x1b[39m` network status) are retained; all other
+/// CSI, OSC, and escape sequences as well as C0/C1 control characters are stripped.
+fn sanitize_terminal_text(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out = String::with_capacity(s.len());
+    let mut i = 0;
+
+    while i < bytes.len() {
+        if bytes[i] == 0x1b {
+            if i + 1 < bytes.len() && bytes[i + 1] == b'[' {
+                // CSI sequence: check if it is a pure SGR sequence (`ESC [ <digits/;> m`).
+                let mut j = i + 2;
+                while j < bytes.len() && (bytes[j].is_ascii_digit() || bytes[j] == b';') {
+                    j += 1;
+                }
+                if j < bytes.len() && bytes[j] == b'm' {
+                    out.push_str(&s[i..=j]);
+                    i = j + 1;
+                    continue;
+                }
+                // Non-SGR CSI sequence: skip parameter (0x30..=0x3f), intermediate (0x20..=0x2f),
+                // and final byte (0x40..=0x7e) so trailing command characters don't leak.
+                let mut k = i + 2;
+                while k < bytes.len() && (0x20..=0x3f).contains(&bytes[k]) {
+                    k += 1;
+                }
+                if k < bytes.len() && (0x40..=0x7e).contains(&bytes[k]) {
+                    k += 1;
+                }
+                i = k;
+                continue;
+            } else if i + 1 < bytes.len() && bytes[i + 1] == b']' {
+                // OSC sequence (`ESC ] ... BEL` or `ESC ] ... ESC \`).
+                let mut k = i + 2;
+                while k < bytes.len() {
+                    if bytes[k] == 0x07 {
+                        k += 1;
+                        break;
+                    }
+                    if bytes[k] == 0x1b && k + 1 < bytes.len() && bytes[k + 1] == b'\\' {
+                        k += 2;
+                        break;
+                    }
+                    k += 1;
+                }
+                i = k;
+                continue;
+            } else {
+                // Other 2-byte ESC sequence or trailing bare ESC: skip ESC and next ASCII byte.
+                i += 1;
+                if i < bytes.len() && bytes[i].is_ascii() {
+                    i += 1;
+                }
+                continue;
+            }
+        }
+
+        // Safe UTF-8 slice from `i`: decode the next char and filter out C0/C1 control chars.
+        if let Some(ch) = s[i..].chars().next() {
+            if !ch.is_control() {
+                out.push(ch);
+            }
+            i += ch.len_utf8();
+        } else {
+            break;
+        }
+    }
+
+    out
+}
+
+/// Maximum size in bytes for a user-supplied custom logo image (`~/.config/retch/logo.png`).
+#[cfg(feature = "graphics")]
+const MAX_USER_LOGO_BYTES: u64 = 16 * 1024 * 1024;
+
+/// Read a user logo image only if it is a regular file within `MAX_USER_LOGO_BYTES`.
+#[cfg(feature = "graphics")]
+fn read_bounded_logo_bytes(path: &std::path::Path) -> Option<Vec<u8>> {
+    use std::io::Read;
+    let path_meta = std::fs::metadata(path).ok()?;
+    if !path_meta.is_file() || path_meta.len() > MAX_USER_LOGO_BYTES {
+        return None;
+    }
+    let file = std::fs::File::open(path).ok()?;
+    let meta = file.metadata().ok()?;
+    if !meta.is_file() || meta.len() > MAX_USER_LOGO_BYTES {
+        return None;
+    }
+    let mut buf = Vec::with_capacity(meta.len() as usize);
+    file.take(MAX_USER_LOGO_BYTES).read_to_end(&mut buf).ok()?;
+    Some(buf)
+}
+
 /// Result of [`plan_layout`]: whether the logo sits beside the text, the width the info
 /// lines beside the logo wrap to, and the column the logo itself is drawn at.
 ///
@@ -617,11 +719,12 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     let mut info_lines = Vec::new();
     let mut print_line = |label: &str, value: &str| {
         if should_show(label) {
+            let safe_value = sanitize_terminal_text(value);
             info_lines.push(format!(
                 "{:>width$}{} {}",
                 theme.color_label(label),
                 theme.color_separator(":"),
-                theme.color_value(value),
+                theme.color_value(&safe_value),
                 width = label_width
             ));
         }
@@ -917,7 +1020,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         let distro_hint = _config.logo.clone().or_else(logo::detect_distro);
         let user_logo = if let Some(config_dir) = dirs::config_dir() {
             let p = config_dir.join("retch").join("logo.png");
-            if p.exists() {
+            if p.is_file() {
                 Some(p)
             } else {
                 None
@@ -940,14 +1043,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                     }
                 } else if let Some(distro) = &distro_hint {
                     if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
-                        let temp_path = std::env::temp_dir()
-                            .join(format!("retch_logo_{}.png", std::process::id()));
-                        if std::fs::write(&temp_path, bytes).is_ok() {
-                            if let Some(lines) = logo::get_chafa_logo_lines(&temp_path) {
-                                active_logo = ActiveLogo::Lines(lines);
-                                resolved = true;
-                            }
-                            let _ = std::fs::remove_file(&temp_path);
+                        if let Some(lines) = logo::get_chafa_logo_lines_from_bytes(bytes) {
+                            active_logo = ActiveLogo::Lines(lines);
+                            resolved = true;
                         }
                     }
                 }
@@ -963,7 +1061,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             #[cfg(feature = "graphics")]
             if !resolved && logo::supports_kitty() {
                 if let Some(path) = &user_logo {
-                    if let Ok(bytes) = std::fs::read(path) {
+                    if let Some(bytes) = read_bounded_logo_bytes(path) {
                         let (cols, rows) = graphical_logo_cells(&bytes);
                         active_logo = ActiveLogo::Kitty(bytes, cols, rows);
                         resolved = true;
@@ -981,7 +1079,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             #[cfg(feature = "graphics")]
             if !resolved && logo::supports_iterm2() {
                 if let Some(path) = &user_logo {
-                    if let Ok(bytes) = std::fs::read(path) {
+                    if let Some(bytes) = read_bounded_logo_bytes(path) {
                         let (cols, rows) = graphical_logo_cells(&bytes);
                         active_logo = ActiveLogo::Iterm2(bytes, cols, rows);
                         resolved = true;
@@ -999,7 +1097,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
             #[cfg(feature = "graphics")]
             if !resolved && logo::supports_sixel() {
                 if let Some(path) = &user_logo {
-                    if let Ok(bytes) = std::fs::read(path) {
+                    if let Some(bytes) = read_bounded_logo_bytes(path) {
                         let (cols, rows) = graphical_logo_cells(&bytes);
                         active_logo = ActiveLogo::Sixel(bytes, cols, rows);
                         resolved = true;
@@ -1023,15 +1121,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                     }
                 } else if let Some(distro) = &distro_hint {
                     if let Some(bytes) = logo::get_embedded_logo(Some(distro)) {
-                        // Write temp logo and read lines via chafa
-                        let temp_path = std::env::temp_dir()
-                            .join(format!("retch_logo_{}.png", std::process::id()));
-                        if std::fs::write(&temp_path, bytes).is_ok() {
-                            if let Some(lines) = logo::get_chafa_logo_lines(&temp_path) {
-                                active_logo = ActiveLogo::Lines(lines);
-                                resolved = true;
-                            }
-                            let _ = std::fs::remove_file(&temp_path);
+                        if let Some(lines) = logo::get_chafa_logo_lines_from_bytes(bytes) {
+                            active_logo = ActiveLogo::Lines(lines);
+                            resolved = true;
                         }
                     }
                 }
@@ -2026,5 +2118,34 @@ mod tests {
             theme.color_value("宇多田ヒカル - 花束を君に")
         );
         assert_eq!(visible_len(&strip_sgr(&row)), visible_len(&row));
+    }
+
+    #[test]
+    fn test_sanitize_terminal_text_strips_injection_keeps_sgr() {
+        // Retain valid SGR sequences (like the network interface Up/Down status).
+        let sgr = "eth0 [\x1b[32mUp\x1b[39m] RX: 1.0 GB";
+        assert_eq!(sanitize_terminal_text(sgr), sgr);
+
+        // Strip OSC 52 clipboard injection and OSC window title spoofing (BEL and ST terminated).
+        assert_eq!(
+            sanitize_terminal_text("EvilSSID\x1b]52;c;SGVsbG8=\x07-5G"),
+            "EvilSSID-5G"
+        );
+        assert_eq!(
+            sanitize_terminal_text("Track\x1b]0;pwned\x1b\\Name"),
+            "TrackName"
+        );
+
+        // Strip non-SGR CSI sequences (screen clear, cursor movement, private modes).
+        assert_eq!(
+            sanitize_terminal_text(" Monitor\x1b[2J\x1b[?25l\x1b[5CPro "),
+            " MonitorPro "
+        );
+
+        // Strip C0/C1 control characters (CR, BS, NUL, DEL, C1 CSI).
+        assert_eq!(
+            sanitize_terminal_text("Host\rSpoof\x08\x00\x7f\u{009b}name"),
+            "HostSpoofname"
+        );
     }
 }

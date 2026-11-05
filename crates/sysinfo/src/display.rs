@@ -66,7 +66,8 @@ pub fn parse_monitor_name_from_edid(edid: &[u8]) -> Option<String> {
             if block[0] == 0x00 && block[1] == 0x00 && block[2] == 0x00 && block[3] == 0xFC {
                 let name_bytes = &block[4..17];
                 let name = String::from_utf8_lossy(name_bytes);
-                let cleaned = name.trim().replace('\0', "").to_string();
+                let cleaned: String = name.chars().filter(|c| !c.is_control()).collect();
+                let cleaned = cleaned.trim().to_string();
                 if !cleaned.is_empty() {
                     if let Some(v) = vendor {
                         if !cleaned.to_lowercase().starts_with(&v.to_lowercase()) {
@@ -148,7 +149,8 @@ pub fn parse_serial_number_from_edid(edid: &[u8]) -> Option<String> {
             if block[0] == 0x00 && block[1] == 0x00 && block[2] == 0x00 && block[3] == 0xFF {
                 let serial_bytes = &block[4..17];
                 let serial = String::from_utf8_lossy(serial_bytes);
-                let cleaned = serial.trim().replace('\0', "").to_string();
+                let cleaned: String = serial.chars().filter(|c| !c.is_control()).collect();
+                let cleaned = cleaned.trim().to_string();
                 if !cleaned.is_empty() {
                     return Some(cleaned);
                 }
@@ -941,5 +943,25 @@ mod tests {
         for d in displays {
             assert!(!d.is_empty());
         }
+    }
+
+    #[test]
+    fn test_edid_strips_control_and_escape_characters() {
+        let mut edid = vec![0u8; 128];
+        // Monitor Name descriptor (tag 0xFC) at offset 54 containing an ESC sequence
+        edid[54..58].copy_from_slice(&[0x00, 0x00, 0x00, 0xFC]);
+        edid[58..71].copy_from_slice(b"\x1b[31mU2723QE\n");
+        // Serial Number descriptor (tag 0xFF) at offset 72 containing an ESC sequence
+        edid[72..76].copy_from_slice(&[0x00, 0x00, 0x00, 0xFF]);
+        edid[76..89].copy_from_slice(b"\x1b]2;SN12345\x07\n");
+
+        assert_eq!(
+            parse_monitor_name_from_edid(&edid),
+            Some("[31mU2723QE".to_string())
+        );
+        assert_eq!(
+            parse_serial_number_from_edid(&edid),
+            Some("]2;SN12345".to_string())
+        );
     }
 }

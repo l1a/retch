@@ -151,9 +151,9 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.40)
+## Current State (v0.20.41)
 
-`main` carries **`retch-cli` 0.20.40** / **`retch-sysinfo` 0.1.103**. Newest released tag is
+`main` carries **`retch-cli` 0.20.41** / **`retch-sysinfo` 0.1.104**. Newest released tag is
 **`v0.20.38`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
@@ -161,6 +161,30 @@ deliberately omitted platform-specific items in §6a and §6c). What is open is 
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.41: Cross-platform security and FFI hardening.**
+  - **macOS `objc_msgSend` ABI (`crates/sysinfo/src/macos_ffi.rs`, `media.rs`):** Declared
+    `objc_msgSend` once as a bare symbol and cast it via `std::mem::transmute` to exact
+    non-variadic `extern "C"` function pointer signatures per call site (`objc_msg_send_id`,
+    `objc_msg_send_id_id`, `objc_msg_send_f64`, `objc_msg_send_bool`, `objc_msg_send_u32`, etc.).
+    Never declare `objc_msgSend` as C-variadic (`...`): on `aarch64-apple-darwin`, variadic
+    arguments spill to the stack while Objective-C methods read register `x2+`.
+  - **Windows DLL search-order hardening & UTF-16 alignment (`gpu_api.rs`, `media.rs`,
+    `win_reg.rs`):** Dynamic DLL loads (`vulkan-1.dll`, `opengl32.dll`, `OpenCL.dll`,
+    `combase.dll`) use `LoadLibraryExA(..., LOAD_LIBRARY_SEARCH_SYSTEM32)` instead of bare
+    `LoadLibraryA`, and registry `REG_SZ` reads allocate `Vec<u16>` directly rather than
+    casting `Vec<u8>::as_ptr()` to `*const u16`.
+  - **Shell & subprocess hardening (`shell.rs`, `memory.rs`, `logo.rs`):** `detect_shell`
+    resolves `/proc/<pid>/exe` on Linux (defeating `prctl(PR_SET_NAME)` spoofing) and validates
+    both ancestor and `$SHELL` candidates against `KNOWN_SHELLS` and `is_safe_shell_executable_path`
+    before invoking `--version`. `chafa` receives embedded PNG bytes over `stdin` (`chafa -`)
+    instead of writing `/tmp/retch_logo_<pid>.png`.
+  - **Terminal escape & D-Bus bounds hardening (`src/display.rs`, `crates/sysinfo/src/media.rs`,
+    `display.rs`, `terminal.rs`, `gpu_api.rs`):** `sanitize_terminal_text` strips non-SGR
+    escape sequences (OSC 52, non-SGR CSI) and C0/C1 control characters from rendered field
+    values while preserving valid SGR color codes; Linux D-Bus wire framing enforces a 256 KiB
+    section cap with checked arithmetic and structural `(yv)` header parsing; `SuppressStderr`
+    serializes `STDERR_FILENO` redirection behind a mutex with `F_DUPFD_CLOEXEC` / `O_CLOEXEC`.
 
 - **v0.20.38: Windows `cpu-usage` own-time subtraction uses the Job Object clock
   alone.** Mixing `GetProcessTimes` (process lifetime) with job accounting (starts at
