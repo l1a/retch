@@ -153,8 +153,9 @@ pub fn detect_bluetooth() -> Option<String> {
 
     #[cfg(target_os = "macos")]
     {
-        crate::macos_ffi::get_bluetooth_state()
-            .map(|(power, chipset)| format_macos_bluetooth(power, chipset.as_deref()))
+        crate::macos_ffi::get_bluetooth_state().map(|(power, chipset, connected)| {
+            format_macos_bluetooth(power, chipset.as_deref(), &connected)
+        })
     }
 
     #[cfg(target_os = "windows")]
@@ -168,23 +169,42 @@ pub fn detect_bluetooth() -> Option<String> {
     }
 }
 
-/// Formats the macOS Bluetooth line from the IOKit controller's power state and chipset.
+/// Formats the macOS Bluetooth line from the IOKit controller's power state, chipset, and
+/// connected devices enumerated from `IOBluetoothDevice`.
 ///
 /// `power` is `None` when the state cannot be read (macOS 26+ publishes no power property),
 /// and then **no state is printed at all**: the honest answer is unknown, and printing `Off`
 /// for a radio that is on is the asserting-something-false case NOTES §7.2 rules out. The
 /// controller name is `Apple <chipset>`, or `Apple Bluetooth` when no chipset string exists.
-#[cfg(target_os = "macos")]
-fn format_macos_bluetooth(power: Option<bool>, chipset: Option<&str>) -> String {
+#[cfg(any(target_os = "macos", test))]
+fn format_macos_bluetooth(
+    power: Option<bool>,
+    chipset: Option<&str>,
+    connected: &[String],
+) -> String {
     let name = match chipset {
         Some(ch) => format!("Apple {}", ch),
         None => "Apple Bluetooth".to_string(),
     };
+    let conn_suffix = if connected.is_empty() {
+        String::new()
+    } else {
+        format!(
+            " - {} connected ({})",
+            connected.len(),
+            connected.join(", ")
+        )
+    };
     match power {
-        // Connected device names require Obj-C IOBluetooth; not available via C IOKit.
-        Some(true) => format!("On ({}) - connected devices unknown", name),
-        Some(false) => format!("Off ({})", name),
-        None => name,
+        Some(true) => {
+            if connected.is_empty() {
+                format!("On ({name}) - 0 connected")
+            } else {
+                format!("On ({name}){conn_suffix}")
+            }
+        }
+        Some(false) => format!("Off ({name})"),
+        None => format!("{name}{conn_suffix}"),
     }
 }
 
@@ -514,27 +534,42 @@ mod tests {
         );
     }
 
-    #[cfg(target_os = "macos")]
     #[test]
     fn test_format_macos_bluetooth_unknown_power_is_not_off() {
         // macOS 26+/27: IOBluetoothHCIController has no BluetoothControllerPowerIsOn and no
-        // chipset string (seen on an M3 Pro with Bluetooth on). Must not claim "Off".
-        assert_eq!(format_macos_bluetooth(None, None), "Apple Bluetooth");
+        // chipset string (seen on an M3 Pro with Bluetooth on). Must not claim "Off" or
+        // duplicate the "Apple" prefix when connected devices are present.
+        assert_eq!(format_macos_bluetooth(None, None, &[]), "Apple Bluetooth");
         assert_eq!(
-            format_macos_bluetooth(None, Some("BCM_4388")),
+            format_macos_bluetooth(None, Some("BCM_4388"), &[]),
             "Apple BCM_4388"
+        );
+        assert_eq!(
+            format_macos_bluetooth(None, Some("Bluetooth 5.2+"), &["AirPods Pro (85%)".into()]),
+            "Apple Bluetooth 5.2+ - 1 connected (AirPods Pro (85%))"
+        );
+        assert_eq!(
+            format_macos_bluetooth(None, None, &["Magic Trackpad".into()]),
+            "Apple Bluetooth - 1 connected (Magic Trackpad)"
         );
     }
 
-    #[cfg(target_os = "macos")]
     #[test]
     fn test_format_macos_bluetooth_known_power_unchanged() {
         assert_eq!(
-            format_macos_bluetooth(Some(true), Some("BCM_4388")),
-            "On (Apple BCM_4388) - connected devices unknown"
+            format_macos_bluetooth(Some(true), Some("BCM_4388"), &[]),
+            "On (Apple BCM_4388) - 0 connected"
         );
         assert_eq!(
-            format_macos_bluetooth(Some(false), None),
+            format_macos_bluetooth(
+                Some(true),
+                Some("BCM_4388"),
+                &["Sony WH-1000XM4".into(), "Logitech MX Master".into()]
+            ),
+            "On (Apple BCM_4388) - 2 connected (Sony WH-1000XM4, Logitech MX Master)"
+        );
+        assert_eq!(
+            format_macos_bluetooth(Some(false), None, &[]),
             "Off (Apple Bluetooth)"
         );
     }

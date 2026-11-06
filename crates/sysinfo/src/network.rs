@@ -499,10 +499,7 @@ pub fn detect_wifi() -> Option<String> {
 
     #[cfg(target_os = "macos")]
     {
-        crate::macos_ffi::get_wifi_info().map(|(ssid, rate)| match rate {
-            Some(r) if r > 0 => format!("{} (↑{} Mbps)", ssid, r),
-            _ => ssid,
-        })
+        crate::macos_ffi::get_wifi_info()
     }
 
     #[cfg(target_os = "windows")]

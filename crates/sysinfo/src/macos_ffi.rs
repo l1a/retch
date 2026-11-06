@@ -29,6 +29,10 @@ pub type CFNumberRef = *const c_void;
 #[allow(non_upper_case_globals)]
 pub const kCFNumberSInt32Type: i32 = 3;
 #[allow(non_upper_case_globals)]
+pub const kCFNumberSInt64Type: i32 = 4;
+#[allow(non_upper_case_globals)]
+pub const kCFNumberFloat64Type: i32 = 6;
+#[allow(non_upper_case_globals)]
 pub const kCFStringEncodingUTF8: u32 = 0x08000100;
 
 #[link(name = "CoreFoundation", kind = "framework")]
@@ -279,28 +283,193 @@ pub unsafe fn iokit_property_as_bool(entry: IOService, key: &str) -> Option<bool
     }
 }
 
-// ─── BIOS — IODeviceTree:/rom ─────────────────────────────────────────────────
+// ─── BIOS & Platform — IODeviceTree ──────────────────────────────────────────
 
-/// Read the system firmware version from IODeviceTree:/rom.
+/// Split an Apple Silicon `system-firmware-version` string (e.g. `"mBoot-20457.41.3"` or
+/// `"iBoot-10151.140.19"`) into `(bios_display, bootmgr_display)`.
+///
+/// Pure helper so the Apple Silicon firmware/bootmgr parsing is unit-tested on all platforms.
+pub fn parse_apple_silicon_firmware(raw: &str) -> (Option<String>, Option<String>) {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return (None, None);
+    }
+    if let Some((prefix, ver)) = trimmed.split_once('-') {
+        let prefix = prefix.trim();
+        let ver = ver.trim();
+        if !prefix.is_empty() && !ver.is_empty() {
+            return (Some(format!("{prefix} {ver}")), Some(prefix.to_string()));
+        }
+    }
+    (Some(trimmed.to_string()), None)
+}
+
+/// Read the system firmware version from `IODeviceTree:/rom` (Intel Macs) or
+/// `IODeviceTree:/chosen`'s `system-firmware-version` (Apple Silicon Macs, e.g.
+/// `"mBoot 20457.41.3"`).
 pub fn get_firmware_version() -> Option<String> {
+    // SAFETY: `path` byte literals are NUL-terminated; registry entries are checked against
+    // `MACH_PORT_NULL` and released via `IOObjectRelease` before returning.
     unsafe {
-        let path = b"IODeviceTree:/rom\0";
-        let entry = IORegistryEntryFromPath(IOKIT_MAIN_PORT, path.as_ptr() as *const i8);
-        if entry == MACH_PORT_NULL {
+        let rom_path = b"IODeviceTree:/rom\0";
+        let rom_entry = IORegistryEntryFromPath(IOKIT_MAIN_PORT, rom_path.as_ptr() as *const i8);
+        if rom_entry != MACH_PORT_NULL {
+            let ver = iokit_property_as_string(rom_entry, "version");
+            IOObjectRelease(rom_entry);
+            if ver.is_some() {
+                return ver;
+            }
+        }
+
+        let chosen_path = b"IODeviceTree:/chosen\0";
+        let chosen_entry =
+            IORegistryEntryFromPath(IOKIT_MAIN_PORT, chosen_path.as_ptr() as *const i8);
+        if chosen_entry == MACH_PORT_NULL {
             return None;
         }
-        let result = iokit_property_as_string(entry, "version");
-        IOObjectRelease(entry);
-        result
+        let raw = iokit_property_as_string(chosen_entry, "system-firmware-version")
+            .or_else(|| iokit_property_as_string(chosen_entry, "iboot-version"));
+        IOObjectRelease(chosen_entry);
+        raw.and_then(|s| parse_apple_silicon_firmware(&s).0)
     }
+}
+
+/// Read the boot manager name on macOS (`"mBoot"` or `"iBoot"` on Apple Silicon from
+/// `IODeviceTree:/chosen`'s `system-firmware-version`, falling back to `"Apple Boot ROM"`).
+pub fn get_macos_bootmgr() -> String {
+    // SAFETY: `chosen_path` is NUL-terminated; entry is checked and released via `IOObjectRelease`.
+    unsafe {
+        let chosen_path = b"IODeviceTree:/chosen\0";
+        let chosen_entry =
+            IORegistryEntryFromPath(IOKIT_MAIN_PORT, chosen_path.as_ptr() as *const i8);
+        if chosen_entry != MACH_PORT_NULL {
+            let raw = iokit_property_as_string(chosen_entry, "system-firmware-version");
+            IOObjectRelease(chosen_entry);
+            if let Some(s) = raw {
+                if let Some(mgr) = parse_apple_silicon_firmware(&s).1 {
+                    return mgr;
+                }
+            }
+        }
+    }
+    "Apple Boot ROM".to_string()
+}
+
+/// Hardware model, marketing product description, board identifier, and battery flag read
+/// from `IODeviceTree:/` and `IODeviceTree:/product`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct MacPlatformInfo {
+    /// Model identifier, e.g. `"Mac15,6"` or `"MacBookPro18,3"`.
+    pub model: Option<String>,
+    /// Marketing product description, e.g. `"MacBook Pro (14-inch, Nov 2023)"`.
+    pub product_name: Option<String>,
+    /// Board / target sub-type identifier, e.g. `"J514sAP"`.
+    pub board_id: Option<String>,
+    /// Whether `IODeviceTree:/product` reports `"builtin-battery" = 1`.
+    pub builtin_battery: bool,
+}
+
+/// Read [`MacPlatformInfo`] from `IODeviceTree:/` and `IODeviceTree:/product` without
+/// spawning a `sysctl` subprocess.
+pub fn get_macos_platform_info() -> MacPlatformInfo {
+    let mut info = MacPlatformInfo::default();
+    // SAFETY: Paths are NUL-terminated literals; each non-null registry entry is released.
+    unsafe {
+        let root_path = b"IODeviceTree:/\0";
+        let root = IORegistryEntryFromPath(IOKIT_MAIN_PORT, root_path.as_ptr() as *const i8);
+        if root != MACH_PORT_NULL {
+            info.model = iokit_property_as_string(root, "model");
+            info.board_id = iokit_property_as_string(root, "target-sub-type")
+                .or_else(|| iokit_property_as_string(root, "board-id"));
+            IOObjectRelease(root);
+        }
+
+        let prod_path = b"IODeviceTree:/product\0";
+        let prod = IORegistryEntryFromPath(IOKIT_MAIN_PORT, prod_path.as_ptr() as *const i8);
+        if prod != MACH_PORT_NULL {
+            info.product_name = iokit_property_as_string(prod, "product-description")
+                .or_else(|| iokit_property_as_string(prod, "product-name"));
+            if info.board_id.is_none() {
+                info.board_id = iokit_property_as_string(prod, "unique-model");
+            }
+            if info.model.is_none() {
+                info.model = iokit_property_as_string(prod, "fdr-product-type");
+            }
+            info.builtin_battery = iokit_property_as_u64(prod, "builtin-battery") == Some(1);
+            IOObjectRelease(prod);
+        }
+    }
+    info
+}
+
+/// Detect Apple's hardware security module (Secure Enclave Processor / T2) for the `TPM`
+/// field on macOS.
+///
+/// Matches `fastfetch`'s macOS TPM detection: checks for the `AppleSEPManager` IOKit
+/// service, reporting `"Apple Silicon Security"` on `aarch64` and `"Apple T2 Security"`
+/// on `x86_64`.
+pub fn get_macos_tpm() -> Option<String> {
+    // SAFETY: `IOServiceMatching` creates a dictionary consumed by `IOServiceGetMatchingService`;
+    // a non-null service port is immediately released via `IOObjectRelease`.
+    unsafe {
+        let name = b"AppleSEPManager\0";
+        let matching = IOServiceMatching(name.as_ptr() as *const i8);
+        if matching.is_null() {
+            return None;
+        }
+        let service = IOServiceGetMatchingService(IOKIT_MAIN_PORT, matching as CFDictionaryRef);
+        if service == MACH_PORT_NULL {
+            return None;
+        }
+        IOObjectRelease(service);
+        #[cfg(target_arch = "aarch64")]
+        {
+            Some("Apple Silicon Security".to_string())
+        }
+        #[cfg(not(target_arch = "aarch64"))]
+        {
+            Some("Apple T2 Security".to_string())
+        }
+    }
+}
+
+/// Read the macOS build version (e.g. `"26B123"`) via `sysctlbyname("kern.osversion")`.
+pub fn get_macos_os_build() -> Option<String> {
+    extern "C" {
+        fn sysctlbyname(
+            name: *const i8,
+            oldp: *mut c_void,
+            oldlenp: *mut usize,
+            newp: *mut c_void,
+            newlen: usize,
+        ) -> i32;
+    }
+    let mut buf = [0u8; 64];
+    let mut len = buf.len();
+    // SAFETY: `name` is NUL-terminated and `buf` is a writable 64-byte stack buffer.
+    let rc = unsafe {
+        sysctlbyname(
+            c"kern.osversion".as_ptr(),
+            buf.as_mut_ptr() as *mut c_void,
+            &mut len,
+            ptr::null_mut(),
+            0,
+        )
+    };
+    if rc != 0 || len == 0 {
+        return None;
+    }
+    let end = buf[..len].iter().position(|&b| b == 0).unwrap_or(len);
+    let s = std::str::from_utf8(&buf[..end]).ok()?.trim();
+    (!s.is_empty()).then(|| s.to_string())
 }
 
 // ─── Unified memory — IODeviceTree:/chosen ───────────────────────────────────
 
-/// Read Apple Silicon's unified-memory size in bytes and its type (e.g. `LPDDR5`) from
-/// `IODeviceTree:/chosen`'s `dram-size` (8-byte little-endian CFData) and `dram-type`
-/// (NUL-padded CFData). Intel Macs publish neither, so this returns `None` there.
-pub fn get_dram_size_and_type() -> Option<(u64, String)> {
+/// Read Apple Silicon's unified-memory size in bytes, its type (e.g. `LPDDR5`), and optional
+/// DRAM manufacturer (e.g. `Hynix`) from `IODeviceTree:/chosen`'s `dram-size`, `dram-type`,
+/// and `dram-vendor`. Intel Macs publish none of these, so this returns `None` there.
+pub fn get_dram_size_and_type() -> Option<(u64, String, Option<String>)> {
     // SAFETY: `path` is a NUL-terminated byte string that outlives the call; the entry is
     // checked against MACH_PORT_NULL before use and released exactly once; the property
     // helpers check the CF type and length before reading and release what they copy.
@@ -312,12 +481,79 @@ pub fn get_dram_size_and_type() -> Option<(u64, String)> {
         }
         let size = iokit_property_as_u64(entry, "dram-size");
         let mem_type = iokit_property_as_string(entry, "dram-type");
+        let vendor = iokit_property_as_string(entry, "dram-vendor");
         IOObjectRelease(entry);
-        Some((size?, mem_type?))
+        Some((size?, mem_type?, vendor))
     }
 }
 
 // ─── GPU — IOPCIDevice + AGXAccelerator ──────────────────────────────────────
+
+/// Parse the maximum GPU clock frequency in MHz from `IODeviceTree:/arm-io/sgx`'s
+/// `perf-states` (M3/M4) or `voltage-states9` (M1/M2) byte buffer.
+///
+/// Each state is an 8-byte `(freq_hz: u32, millivolts: u32)` little-endian pair. Returns
+/// the highest valid frequency in MHz (`100..=10_000` MHz).
+pub fn parse_sgx_max_freq_mhz(bytes: &[u8]) -> Option<u64> {
+    let mut max_hz: u64 = 0;
+    for chunk in bytes.as_chunks::<8>().0 {
+        let hz = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]) as u64;
+        if (100_000_000..=10_000_000_000).contains(&hz) && hz > max_hz {
+            max_hz = hz;
+        }
+    }
+    (max_hz > 0).then_some(max_hz / 1_000_000)
+}
+
+/// Format an Apple Silicon GPU description with optional core count, max clock in MHz,
+/// and `[Integrated]` tag.
+pub fn format_apple_silicon_gpu(model: &str, cores: Option<u64>, max_mhz: Option<u64>) -> String {
+    let freq_str = max_mhz.filter(|&m| m > 0).map(|mhz| {
+        if mhz >= 1000 {
+            format!("{:.2} GHz", mhz as f64 / 1000.0)
+        } else {
+            format!("{mhz} MHz")
+        }
+    });
+    let detail = match (cores.filter(|&c| c > 0), freq_str) {
+        (Some(c), Some(f)) => format!(" ({c} cores @ {f})"),
+        (Some(c), None) => format!(" ({c} cores)"),
+        (None, Some(f)) => format!(" (@ {f})"),
+        (None, None) => String::new(),
+    };
+    format!("{model}{detail} [Integrated]")
+}
+
+/// Read the maximum GPU clock frequency in MHz from `IODeviceTree:/arm-io/sgx`.
+unsafe fn get_sgx_max_freq_mhz() -> Option<u64> {
+    let path = b"IODeviceTree:/arm-io/sgx\0";
+    let entry = IORegistryEntryFromPath(IOKIT_MAIN_PORT, path.as_ptr() as *const i8);
+    if entry == MACH_PORT_NULL {
+        return None;
+    }
+    let mut max_mhz = None;
+    for key in ["perf-states", "voltage-states9"] {
+        let val = with_cfstring(key, |k| {
+            IORegistryEntryCreateCFProperty(entry, k, kCFAllocatorDefault, 0)
+        });
+        if !val.is_null() {
+            let _owned = OwnedCF(val);
+            if CFGetTypeID(val) == CFDataGetTypeID() {
+                let len = CFDataGetLength(val as CFDataRef) as usize;
+                let ptr = CFDataGetBytePtr(val as CFDataRef);
+                if len >= 8 && !ptr.is_null() {
+                    let bytes = std::slice::from_raw_parts(ptr, len);
+                    if let Some(mhz) = parse_sgx_max_freq_mhz(bytes) {
+                        max_mhz = Some(mhz);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    IOObjectRelease(entry);
+    max_mhz
+}
 
 /// Enumerate GPUs. Returns `(name, vram_bytes)` pairs.
 /// Covers discrete/Intel GPUs (IOPCIDevice, PCI class 0x03) and Apple Silicon (AGXAccelerator).
@@ -332,13 +568,16 @@ pub fn get_gpus() -> Vec<(String, Option<u64>)> {
             if IOServiceGetMatchingServices(IOKIT_MAIN_PORT, matching as CFDictionaryRef, &mut iter)
                 == 0
             {
+                let sgx_mhz = get_sgx_max_freq_mhz();
                 loop {
                     let service = IOIteratorNext(iter);
                     if service == MACH_PORT_NULL {
                         break;
                     }
                     if let Some(name) = iokit_property_as_string(service, "model") {
-                        gpus.push((name, None)); // Unified memory; no discrete VRAM
+                        let cores = iokit_property_as_u64(service, "gpu-core-count");
+                        let formatted = format_apple_silicon_gpu(&name, cores, sgx_mhz);
+                        gpus.push((formatted, None)); // Unified memory; no discrete VRAM
                     }
                     IOObjectRelease(service);
                 }
@@ -1220,8 +1459,13 @@ struct AudioObjectPropertyAddress {
 // AudioObject constants (4-char codes as big-endian u32)
 const K_AUDIO_OBJECT_SYSTEM_OBJECT: u32 = 1;
 const K_AUDIO_HARDWARE_PROPERTY_DEVICES: u32 = 0x6465_7623; // 'dev#'
+const K_AUDIO_HARDWARE_PROPERTY_DEFAULT_OUTPUT_DEVICE: u32 = 0x644f_7574; // 'dOut'
+const K_AUDIO_DEVICE_PROPERTY_STREAMS: u32 = 0x7374_6d23; // 'stm#'
+const K_AUDIO_DEVICE_PROPERTY_VOLUME_SCALAR: u32 = 0x766f_6c6d; // 'volm'
+const K_AUDIO_HARDWARE_SERVICE_DEVICE_PROPERTY_VIRTUAL_MAIN_VOLUME: u32 = 0x766d_7663; // 'vmvc'
 const K_AUDIO_OBJECT_PROPERTY_NAME: u32 = 0x6c6e_616d; // 'lnam'
 const K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL: u32 = 0x676c_6f62; // 'glob'
+const K_AUDIO_OBJECT_PROPERTY_SCOPE_OUTPUT: u32 = 0x6f75_7470; // 'outp'
 const K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN: u32 = 0;
 
 #[link(name = "CoreAudio", kind = "framework")]
@@ -1244,7 +1488,44 @@ extern "C" {
     ) -> i32;
 }
 
-/// Enumerate CoreAudio device names.
+/// Read the scalar output volume (`0.0..=1.0`) for a CoreAudio output device, rounded to an
+/// integer percentage (`0..=100`).
+unsafe fn get_audio_device_volume_pct(device_id: u32) -> Option<u32> {
+    for (selector, element) in [
+        (
+            K_AUDIO_HARDWARE_SERVICE_DEVICE_PROPERTY_VIRTUAL_MAIN_VOLUME,
+            0,
+        ),
+        (K_AUDIO_DEVICE_PROPERTY_VOLUME_SCALAR, 0),
+        (K_AUDIO_DEVICE_PROPERTY_VOLUME_SCALAR, 1),
+        (K_AUDIO_DEVICE_PROPERTY_VOLUME_SCALAR, 2),
+    ] {
+        let addr = AudioObjectPropertyAddress {
+            selector,
+            scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_OUTPUT,
+            element,
+        };
+        let mut vol: f32 = 0.0;
+        let mut size = std::mem::size_of::<f32>() as u32;
+        if AudioObjectGetPropertyData(
+            device_id,
+            &addr,
+            0,
+            ptr::null(),
+            &mut size,
+            &mut vol as *mut f32 as *mut c_void,
+        ) == 0
+            && (0.0..=1.0).contains(&vol)
+        {
+            return Some((vol * 100.0).round() as u32);
+        }
+    }
+    None
+}
+
+/// Enumerate CoreAudio output device names, excluding input-only microphones, and place the
+/// active default output device first with its volume percentage (e.g.
+/// `"Realtek USB2.0 Audio (25%) *"`).
 pub fn get_audio_device_names() -> Vec<String> {
     let mut names = Vec::new();
     unsafe {
@@ -1281,13 +1562,52 @@ pub fn get_audio_device_names() -> Vec<String> {
             return names;
         }
 
+        // Query the active default output device ID (`'dOut'`).
+        let default_out_addr = AudioObjectPropertyAddress {
+            selector: K_AUDIO_HARDWARE_PROPERTY_DEFAULT_OUTPUT_DEVICE,
+            scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL,
+            element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+        };
+        let mut default_out_id: u32 = 0;
+        let mut out_id_size = std::mem::size_of::<u32>() as u32;
+        let _ = AudioObjectGetPropertyData(
+            K_AUDIO_OBJECT_SYSTEM_OBJECT,
+            &default_out_addr,
+            0,
+            ptr::null(),
+            &mut out_id_size,
+            &mut default_out_id as *mut u32 as *mut c_void,
+        );
+
         let name_addr = AudioObjectPropertyAddress {
             selector: K_AUDIO_OBJECT_PROPERTY_NAME,
             scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL,
             element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
         };
+        let out_streams_addr = AudioObjectPropertyAddress {
+            selector: K_AUDIO_DEVICE_PROPERTY_STREAMS,
+            scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_OUTPUT,
+            element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+        };
+
+        let mut default_entry: Option<String> = None;
 
         for &device_id in &device_ids {
+            // Skip input-only devices (microphones, webcam mics) that have 0 output streams.
+            let mut stream_size: u32 = 0;
+            if AudioObjectGetPropertyDataSize(
+                device_id,
+                &out_streams_addr,
+                0,
+                ptr::null(),
+                &mut stream_size,
+            ) == 0
+                && stream_size == 0
+                && device_id != default_out_id
+            {
+                continue;
+            }
+
             let mut name_ref: CFStringRef = ptr::null();
             let mut name_size = std::mem::size_of::<CFStringRef>() as u32;
             if AudioObjectGetPropertyData(
@@ -1301,18 +1621,37 @@ pub fn get_audio_device_names() -> Vec<String> {
                 && !name_ref.is_null()
             {
                 if let Some(name) = cf_string_to_rust(name_ref) {
-                    if !name.is_empty() && !names.contains(&name) {
-                        names.push(name);
+                    if !name.is_empty() {
+                        if device_id == default_out_id && default_out_id != 0 {
+                            let formatted = match get_audio_device_volume_pct(device_id) {
+                                Some(pct) => format!("{name} ({pct}%) *"),
+                                None => format!("{name} *"),
+                            };
+                            default_entry = Some(formatted);
+                        } else if !names.contains(&name) {
+                            names.push(name);
+                        }
                     }
                 }
                 CFRelease(name_ref as CFTypeRef);
             }
         }
+
+        if let Some(def) = default_entry {
+            names.insert(0, def);
+        }
     }
     names
 }
 
-// ─── CoreGraphics — Displays ──────────────────────────────────────────────────
+// ─── CoreGraphics & IOMobileFramebuffer — Displays & Brightness ───────────────
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct CGSize {
+    width: f64,
+    height: f64,
+}
 
 #[link(name = "CoreGraphics", kind = "framework")]
 extern "C" {
@@ -1324,44 +1663,171 @@ extern "C" {
     fn CGDisplayPixelsWide(display: u32) -> usize;
     fn CGDisplayPixelsHigh(display: u32) -> usize;
     fn CGDisplayCopyDisplayMode(display: u32) -> *mut c_void;
+    fn CGDisplayModeGetWidth(mode: *mut c_void) -> usize;
+    fn CGDisplayModeGetHeight(mode: *mut c_void) -> usize;
+    fn CGDisplayModeGetPixelWidth(mode: *mut c_void) -> usize;
+    fn CGDisplayModeGetPixelHeight(mode: *mut c_void) -> usize;
     fn CGDisplayModeGetRefreshRate(mode: *mut c_void) -> f64;
     fn CGDisplayModeRelease(mode: *mut c_void);
     fn CGDisplayVendorNumber(display: u32) -> u32;
     fn CGDisplayModelNumber(display: u32) -> u32;
+    fn CGDisplaySerialNumber(display: u32) -> u32;
+    fn CGDisplayIsBuiltin(display: u32) -> i32;
+    fn CGDisplayIsMain(display: u32) -> i32;
+    fn CGDisplayScreenSize(display: u32) -> CGSize;
 }
 
-/// Return a list of active displays as `(width_px, height_px, refresh_hz, vendor, model)`.
-fn get_active_displays() -> Vec<(usize, usize, f64, u32, u32)> {
-    let mut displays = Vec::new();
-    unsafe {
-        let mut count: u32 = 0;
-        if CGGetActiveDisplayList(0, ptr::null_mut(), &mut count) != 0 || count == 0 {
-            return displays;
-        }
-        let mut ids = vec![0u32; count as usize];
-        if CGGetActiveDisplayList(count, ids.as_mut_ptr(), &mut count) != 0 {
-            return displays;
-        }
-        for id in ids {
-            let w = CGDisplayPixelsWide(id);
-            let h = CGDisplayPixelsHigh(id);
-            let mode = CGDisplayCopyDisplayMode(id);
-            let refresh = if mode.is_null() {
-                0.0
-            } else {
-                let r = CGDisplayModeGetRefreshRate(mode);
-                CGDisplayModeRelease(mode);
-                r
-            };
-            let vendor = CGDisplayVendorNumber(id);
-            let model = CGDisplayModelNumber(id);
-            displays.push((w, h, refresh, vendor, model));
-        }
+/// Display metadata read from an `IOMobileFramebuffer` service in IOKit on Apple Silicon.
+#[derive(Debug, Clone, Default)]
+struct IoMfbDisplay {
+    product_name: Option<String>,
+    product_id: Option<u32>,
+    serial_number: Option<u32>,
+    external: bool,
+    hdr: bool,
+    brightness_cur: Option<u64>,
+    brightness_max: Option<u64>,
+}
+
+/// Read a boolean out of a `CFDictionary` by string key.
+unsafe fn cf_dict_bool(dict: CFDictionaryRef, key: &str) -> Option<bool> {
+    if dict.is_null() {
+        return None;
     }
-    displays
+    let val = with_cfstring(key, |k| CFDictionaryGetValue(dict, k));
+    if val.is_null() {
+        return None;
+    }
+    let tid = CFGetTypeID(val);
+    if tid == CFBooleanGetTypeID() {
+        Some(CFBooleanGetValue(val as CFBooleanRef))
+    } else if tid == CFNumberGetTypeID() {
+        let mut n: i64 = 0;
+        CFNumberGetValue(
+            val as CFNumberRef,
+            kCFNumberSInt64Type,
+            &mut n as *mut i64 as *mut c_void,
+        )
+        .then_some(n != 0)
+    } else {
+        None
+    }
 }
 
-/// Try to find a display name via IODisplayConnect by matching vendor+model numbers.
+/// Enumerate `IOMobileFramebuffer` IOKit services to retrieve product names, HDR support,
+/// and framebuffer brightness levels on Apple Silicon Macs (where `IODisplayConnect` does
+/// not exist).
+unsafe fn enumerate_iomfb_displays() -> Vec<IoMfbDisplay> {
+    let mut out = Vec::new();
+    let cls = CString::new("IOMobileFramebuffer").unwrap();
+    let matching = IOServiceMatching(cls.as_ptr());
+    if matching.is_null() {
+        return out;
+    }
+    let mut iter: IOIterator = MACH_PORT_NULL;
+    if IOServiceGetMatchingServices(IOKIT_MAIN_PORT, matching as CFDictionaryRef, &mut iter) != 0 {
+        return out;
+    }
+    loop {
+        let service = IOIteratorNext(iter);
+        if service == MACH_PORT_NULL {
+            break;
+        }
+        let external = iokit_property_as_bool(service, "external").unwrap_or(false);
+        let brightness_cur = iokit_property_as_u64(service, "IOMFBBrightnessLevel");
+        let brightness_max = iokit_property_as_u64(service, "BLNitsCap");
+        let mut entry = IoMfbDisplay {
+            external,
+            brightness_cur,
+            brightness_max,
+            ..Default::default()
+        };
+
+        let attrs = with_cfstring("DisplayAttributes", |k| {
+            IORegistryEntryCreateCFProperty(service, k, kCFAllocatorDefault, 0)
+        });
+        if !attrs.is_null() {
+            let _owned = OwnedCF(attrs);
+            if CFGetTypeID(attrs) == CFDictionaryGetTypeID() {
+                let dict = attrs as CFDictionaryRef;
+                entry.hdr = cf_dict_bool(dict, "SupportsHDRStaticMetadataType1") == Some(true)
+                    || cf_dict_bool(dict, "SupportsPQEOTF") == Some(true)
+                    || cf_dict_bool(dict, "SupportsHLGEOTF") == Some(true);
+
+                let prod = with_cfstring("ProductAttributes", |k| CFDictionaryGetValue(dict, k));
+                if !prod.is_null() && CFGetTypeID(prod) == CFDictionaryGetTypeID() {
+                    let pdict = prod as CFDictionaryRef;
+                    entry.product_name = cf_dict_string(pdict, "ProductName");
+                    entry.product_id = cf_dict_u64(pdict, "ProductID").map(|v| v as u32);
+                    entry.serial_number = cf_dict_u64(pdict, "SerialNumber").map(|v| v as u32);
+                }
+            }
+        }
+        IOObjectRelease(service);
+        out.push(entry);
+    }
+    IOObjectRelease(iter);
+    out
+}
+
+/// Format a macOS display entry with physical pixel dimensions, optional integer/fractional
+/// UI scale factor (`@ 2x`), diagonal screen size in inches (`in 32"`), refresh rate,
+/// `[Built-in]` / `[External]` + `HDR` tags, and primary display marker `*`.
+#[allow(clippy::too_many_arguments)]
+pub fn format_macos_display(
+    name: &str,
+    px_w: usize,
+    px_h: usize,
+    ui_w: usize,
+    ui_h: usize,
+    diagonal_in: Option<u32>,
+    refresh_hz: f64,
+    builtin: bool,
+    hdr: bool,
+    is_main: bool,
+    multi_display: bool,
+) -> String {
+    let scale_str = if ui_w > 0 && px_w > ui_w {
+        let ratio = px_w as f64 / ui_w as f64;
+        if (ratio - ratio.round()).abs() < 0.05 {
+            format!(" @ {}x", ratio.round() as u32)
+        } else {
+            let _ = ui_h;
+            format!(" @ {ratio:.2}x")
+        }
+    } else {
+        String::new()
+    };
+
+    let size_str = match diagonal_in.filter(|&d| (5..=120).contains(&d)) {
+        Some(d) => format!(" in {d}\""),
+        None => String::new(),
+    };
+
+    let rr_str = if refresh_hz > 0.0 {
+        let rr = crate::display::format_refresh_rate(refresh_hz);
+        if !scale_str.is_empty() || !size_str.is_empty() {
+            format!(", {rr}Hz")
+        } else {
+            format!(" @ {rr}Hz")
+        }
+    } else {
+        String::new()
+    };
+
+    let loc = if builtin { "Built-in" } else { "External" };
+    let tags = if hdr {
+        format!("[{loc}, HDR]")
+    } else {
+        format!("[{loc}]")
+    };
+
+    let main_suffix = if is_main && multi_display { " *" } else { "" };
+
+    format!("{name} ({px_w}x{px_h}{scale_str}{size_str}{rr_str}) {tags}{main_suffix}")
+}
+
+/// Try to find a display name via IODisplayConnect by matching vendor+model numbers (Intel Macs).
 unsafe fn iokit_display_name(vendor: u32, model: u32) -> Option<String> {
     let matching_name = CString::new("IODisplayConnect").unwrap();
     let matching = IOServiceMatching(matching_name.as_ptr());
@@ -1378,11 +1844,9 @@ unsafe fn iokit_display_name(vendor: u32, model: u32) -> Option<String> {
         if service == MACH_PORT_NULL {
             break;
         }
-        // Read DisplayVendorID and DisplayProductID
         let v = iokit_property_as_u64(service, "DisplayVendorID").unwrap_or(0) as u32;
         let m = iokit_property_as_u64(service, "DisplayProductID").unwrap_or(0) as u32;
         if v == vendor && m == model {
-            // DisplayProductName may be a CFString directly (on some macOS versions)
             result = iokit_property_as_string(service, "DisplayProductName");
             IOObjectRelease(service);
             break;
@@ -1393,23 +1857,153 @@ unsafe fn iokit_display_name(vendor: u32, model: u32) -> Option<String> {
     result
 }
 
-/// Return human-readable display descriptions: `"Name (WxH @ RRHz)"` or `"Display N (WxH @ RRHz)"`.
+/// Return human-readable display descriptions on macOS, combining CoreGraphics mode metrics
+/// with `IOMobileFramebuffer` (Apple Silicon) or `IODisplayConnect` (Intel) attributes.
 pub fn get_displays() -> Vec<String> {
-    let raw = get_active_displays();
-    raw.into_iter()
-        .enumerate()
-        .map(|(i, (w, h, refresh, vendor, model))| {
-            let name = unsafe { iokit_display_name(vendor, model) }
-                .unwrap_or_else(|| format!("Display {}", i + 1));
-            let res = format!("{}x{}", w, h);
-            if refresh > 0.0 {
-                let rr = crate::display::format_refresh_rate(refresh);
-                format!("{} ({} @ {}Hz)", name, res, rr)
+    let mut out = Vec::new();
+    unsafe {
+        let mut count: u32 = 0;
+        if CGGetActiveDisplayList(0, ptr::null_mut(), &mut count) != 0 || count == 0 {
+            return out;
+        }
+        let mut ids = vec![0u32; count as usize];
+        if CGGetActiveDisplayList(count, ids.as_mut_ptr(), &mut count) != 0 {
+            return out;
+        }
+        let multi = ids.len() > 1;
+        let mut mfb_list = enumerate_iomfb_displays();
+
+        for (i, &id) in ids.iter().enumerate() {
+            let fallback_w = CGDisplayPixelsWide(id);
+            let fallback_h = CGDisplayPixelsHigh(id);
+            let mode = CGDisplayCopyDisplayMode(id);
+            let (px_w, px_h, ui_w, ui_h, refresh) = if mode.is_null() {
+                (fallback_w, fallback_h, fallback_w, fallback_h, 0.0)
             } else {
-                format!("{} ({})", name, res)
+                let pw = CGDisplayModeGetPixelWidth(mode);
+                let ph = CGDisplayModeGetPixelHeight(mode);
+                let uw = CGDisplayModeGetWidth(mode);
+                let uh = CGDisplayModeGetHeight(mode);
+                let r = CGDisplayModeGetRefreshRate(mode);
+                CGDisplayModeRelease(mode);
+                (
+                    if pw > 0 { pw } else { fallback_w },
+                    if ph > 0 { ph } else { fallback_h },
+                    if uw > 0 { uw } else { fallback_w },
+                    if uh > 0 { uh } else { fallback_h },
+                    r,
+                )
+            };
+
+            let vendor = CGDisplayVendorNumber(id);
+            let model = CGDisplayModelNumber(id);
+            let serial = CGDisplaySerialNumber(id);
+            let builtin = CGDisplayIsBuiltin(id) != 0;
+            let is_main = CGDisplayIsMain(id) != 0;
+            let size_mm = CGDisplayScreenSize(id);
+            let diagonal_in = if size_mm.width > 0.0 && size_mm.height > 0.0 {
+                Some((size_mm.width.hypot(size_mm.height) / 25.4).round() as u32)
+            } else {
+                None
+            };
+
+            // Match against IOMobileFramebuffer entries by (serial, product_id, external).
+            let mfb_idx = mfb_list
+                .iter()
+                .position(|m| {
+                    m.external == !builtin && serial != 0 && m.serial_number == Some(serial)
+                })
+                .or_else(|| {
+                    mfb_list.iter().position(|m| {
+                        m.external == !builtin && model != 0 && m.product_id == Some(model)
+                    })
+                })
+                .or_else(|| mfb_list.iter().position(|m| m.external == !builtin));
+
+            let mfb = mfb_idx.map(|idx| mfb_list.remove(idx));
+            let hdr = mfb.as_ref().is_some_and(|m| m.hdr);
+            let name = mfb
+                .and_then(|m| m.product_name)
+                .or_else(|| iokit_display_name(vendor, model))
+                .unwrap_or_else(|| {
+                    if builtin {
+                        "Color LCD".to_string()
+                    } else {
+                        format!("Display {}", i + 1)
+                    }
+                });
+
+            out.push(format_macos_display(
+                &name,
+                px_w,
+                px_h,
+                ui_w,
+                ui_h,
+                diagonal_in,
+                refresh,
+                builtin,
+                hdr,
+                is_main,
+                multi,
+            ));
+        }
+    }
+    out
+}
+
+/// Detect display brightness on macOS, accounting for clamshell mode (lid closed with only
+/// external displays active).
+///
+/// - When an active built-in display is present in `CGGetActiveDisplayList`, reads
+///   `AppleARMBacklight` (`(value, min, max)`).
+/// - When no built-in display is active (e.g. a MacBook in clamshell mode or a desktop Mac),
+///   `AppleARMBacklight` still exists in IOKit with a stale slider reading (e.g. `50%`) for
+///   the sleeping internal panel; instead, reads `IOMobileFramebuffer`'s
+///   `IOMFBBrightnessLevel` / `BLNitsCap` for the active external display.
+pub fn get_macos_brightness() -> Option<String> {
+    unsafe {
+        let mut count: u32 = 0;
+        let has_active_list =
+            CGGetActiveDisplayList(0, ptr::null_mut(), &mut count) == 0 && count > 0;
+        let mut any_builtin_active = true;
+        if has_active_list {
+            let mut ids = vec![0u32; count as usize];
+            if CGGetActiveDisplayList(count, ids.as_mut_ptr(), &mut count) == 0 {
+                any_builtin_active = ids.iter().any(|&id| CGDisplayIsBuiltin(id) != 0);
             }
-        })
-        .collect()
+        }
+
+        if any_builtin_active {
+            if let Some((value, min, max)) = get_backlight_brightness() {
+                let span = max.checked_sub(min)?;
+                let level = value.checked_sub(min)?;
+                if span > 0 && level >= 0 {
+                    let pct = (level as f64 / span as f64 * 100.0).round() as u64;
+                    return Some(format!("{pct}%"));
+                }
+            }
+        }
+
+        // Clamshell mode or external-only display: inspect active IOMobileFramebuffer nodes.
+        for mfb in enumerate_iomfb_displays() {
+            if mfb.external != !any_builtin_active {
+                continue;
+            }
+            if let (Some(cur), Some(max)) = (mfb.brightness_cur, mfb.brightness_max) {
+                if max > 0 && cur > 0 {
+                    let pct = ((cur as f64 / max as f64) * 100.0)
+                        .round()
+                        .clamp(0.0, 100.0) as u64;
+                    let loc = if mfb.external { "External" } else { "Built-in" };
+                    return match mfb.product_name {
+                        Some(name) => Some(format!("{pct}% ({name}) [{loc}]")),
+                        None => Some(format!("{pct}% [{loc}]")),
+                    };
+                }
+            }
+        }
+        None
+    }
 }
 
 // ─── IOKit — USB Cameras ──────────────────────────────────────────────────────
@@ -1561,16 +2155,20 @@ unsafe fn enumerate_hid_usage(page: u32, usage: u32) -> Vec<String> {
     results
 }
 
-// ─── IOKit — Bluetooth state ──────────────────────────────────────────────────
+// ─── IOKit & IOBluetooth — Bluetooth state & connected devices ───────────────
 
-/// Return `(power_on, chipset_name)` from the IOBluetoothHCIController IOKit service.
-/// Connected device names are NOT available via pure-C IOKit (requires Obj-C IOBluetooth).
+#[link(name = "IOBluetooth", kind = "framework")]
+extern "C" {}
+
+/// Return `(power_on, chipset, connected_devices)` from `IOBluetoothHCIController`,
+/// `IODeviceTree:/product` (`bluetooth-lea2` / `bluetooth-le`), and `IOBluetoothDevice`
+/// (`pairedDevices`).
 ///
 /// The power state is `None` when the controller does not publish
 /// `BluetoothControllerPowerIsOn`, which is the case on macOS 26 and later (the service there
 /// carries only `BluetoothTransportConnected`). Unknown is reported as unknown: until v0.20.16
 /// it was folded into `false`, so a Mac with Bluetooth on and devices connected read `Off`.
-pub fn get_bluetooth_state() -> Option<(Option<bool>, Option<String>)> {
+pub fn get_bluetooth_state() -> Option<(Option<bool>, Option<String>, Vec<String>)> {
     unsafe {
         let svc_name = CString::new("IOBluetoothHCIController").unwrap();
         let matching = IOServiceMatching(svc_name.as_ptr());
@@ -1582,12 +2180,72 @@ pub fn get_bluetooth_state() -> Option<(Option<bool>, Option<String>)> {
             return None;
         }
         let power = iokit_property_as_bool(service, "BluetoothControllerPowerIsOn");
-        // Try several property names for chipset/product string
-        let chipset = iokit_property_as_string(service, "HardwareTransportCurrentSetting")
+        let mut chipset = iokit_property_as_string(service, "HardwareTransportCurrentSetting")
             .or_else(|| iokit_property_as_string(service, "ProductName"))
             .or_else(|| iokit_property_as_string(service, "ChipsetString"));
         IOObjectRelease(service);
-        Some((power, chipset))
+
+        if chipset.is_none() {
+            let prod_path = b"IODeviceTree:/product\0";
+            let prod = IORegistryEntryFromPath(IOKIT_MAIN_PORT, prod_path.as_ptr() as *const i8);
+            if prod != MACH_PORT_NULL {
+                if iokit_property_as_u64(prod, "bluetooth-lea2") == Some(1) {
+                    chipset = Some("Bluetooth 5.2+".to_string());
+                } else if iokit_property_as_u64(prod, "bluetooth-le") == Some(1) {
+                    chipset = Some("Bluetooth 4.0+".to_string());
+                }
+                IOObjectRelease(prod);
+            }
+        }
+
+        // Enumerate connected Bluetooth devices via `[IOBluetoothDevice pairedDevices]`.
+        let mut connected = Vec::new();
+        let dev_cls = objc_getClass(c"IOBluetoothDevice".as_ptr());
+        if !dev_cls.is_null() {
+            let responds_sel = sel_registerName(c"respondsToSelector:".as_ptr());
+            let paired_sel = sel_registerName(c"pairedDevices".as_ptr());
+            if objc_msg_send_bool_sel(dev_cls, responds_sel, paired_sel) {
+                let devices_arr = objc_msg_send_id(dev_cls, paired_sel) as CFArrayRef;
+                if !devices_arr.is_null() {
+                    let is_conn_sel = sel_registerName(c"isConnected".as_ptr());
+                    let name_sel = sel_registerName(c"name".as_ptr());
+                    let bat_sel = sel_registerName(c"batteryPercentSingle".as_ptr());
+                    let count = CFArrayGetCount(devices_arr);
+                    for i in 0..count {
+                        let dev = CFArrayGetValueAtIndex(devices_arr, i) as *mut c_void;
+                        if dev.is_null() {
+                            continue;
+                        }
+                        if objc_msg_send_bool_sel(dev, responds_sel, is_conn_sel)
+                            && objc_msg_send_bool(dev, is_conn_sel)
+                            && objc_msg_send_bool_sel(dev, responds_sel, name_sel)
+                        {
+                            let name_ns = objc_msg_send_id(dev, name_sel) as CFStringRef;
+                            if let Some(name) = cf_string_to_rust(name_ns) {
+                                // `batteryPercentSingle` is a private IOBluetoothDevice selector;
+                                // guard with `respondsToSelector:` so devices or OS releases that
+                                // lack it never raise `NSInvalidArgumentException`.
+                                let bat = if objc_msg_send_bool_sel(dev, responds_sel, bat_sel) {
+                                    objc_msg_send_u8(dev, bat_sel)
+                                } else {
+                                    0
+                                };
+                                let entry = if (1..=100).contains(&bat) {
+                                    format!("{name} ({bat}%)")
+                                } else {
+                                    name
+                                };
+                                if !connected.contains(&entry) {
+                                    connected.push(entry);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Some((power, chipset, connected))
     }
 }
 
@@ -1656,7 +2314,7 @@ pub fn get_battery_raw() -> Option<MacBatteryRaw> {
     }
 }
 
-// ─── CoreFoundation — Preferences (theme) ────────────────────────────────────
+// ─── CoreFoundation — Preferences (theme, accent, cursor, fonts) ─────────────
 
 /// Read the macOS appearance preference ("Dark" or nil for Light) from the global domain.
 /// Equivalent to `defaults read -g AppleInterfaceStyle`.
@@ -1680,6 +2338,203 @@ pub fn get_macos_appearance() -> Option<String> {
             }
         })
     }
+}
+
+/// Read the macOS window accent color (`AppleAccentColor`) from the global domain.
+pub fn get_macos_accent_color() -> Option<i64> {
+    unsafe {
+        with_cfstring("AppleAccentColor", |key| {
+            let val = CFPreferencesCopyValue(
+                key,
+                kCFPreferencesAnyApplication,
+                kCFPreferencesCurrentUser,
+                kCFPreferencesAnyHost,
+            );
+            if val.is_null() {
+                return None;
+            }
+            let _owned = OwnedCF(val);
+            if CFGetTypeID(val) == CFNumberGetTypeID() {
+                let mut out: i64 = 0;
+                CFNumberGetValue(
+                    val as CFNumberRef,
+                    kCFNumberSInt64Type,
+                    &mut out as *mut i64 as *mut c_void,
+                )
+                .then_some(out)
+            } else if CFGetTypeID(val) == CFStringGetTypeID() {
+                cf_string_to_rust(val as CFStringRef)?
+                    .trim()
+                    .parse::<i64>()
+                    .ok()
+            } else {
+                None
+            }
+        })
+    }
+}
+
+/// Read a `f64` out of a `CFDictionary` by string key.
+unsafe fn cf_dict_f64(dict: CFDictionaryRef, key: &str) -> Option<f64> {
+    if dict.is_null() {
+        return None;
+    }
+    let val = with_cfstring(key, |k| CFDictionaryGetValue(dict, k));
+    if val.is_null() || CFGetTypeID(val) != CFNumberGetTypeID() {
+        return None;
+    }
+    let mut out: f64 = 0.0;
+    CFNumberGetValue(
+        val as CFNumberRef,
+        kCFNumberFloat64Type,
+        &mut out as *mut f64 as *mut c_void,
+    )
+    .then_some(out)
+}
+
+/// Classify a normalized `(r, g, b)` color triple (`0.0..=1.0`) into a human-readable color
+/// name or `#RRGGBB` hex string.
+pub fn classify_cursor_rgb(r: f64, g: f64, b: f64) -> String {
+    let ri = (r.clamp(0.0, 1.0) * 255.0).round() as u8;
+    let gi = (g.clamp(0.0, 1.0) * 255.0).round() as u8;
+    let bi = (b.clamp(0.0, 1.0) * 255.0).round() as u8;
+    match (ri, gi, bi) {
+        (0..=15, 0..=15, 0..=15) => "Black".to_string(),
+        (240..=255, 240..=255, 240..=255) => "White".to_string(),
+        _ => format!("#{ri:02X}{gi:02X}{bi:02X}"),
+    }
+}
+
+/// Pure helper: format macOS cursor fill, outline, and size multiplier (`1.0` = `32px`).
+pub fn format_macos_cursor(
+    fill_rgb: Option<(f64, f64, f64)>,
+    outline_rgb: Option<(f64, f64, f64)>,
+    size_mult: Option<f64>,
+) -> String {
+    let fill = fill_rgb
+        .map(|(r, g, b)| classify_cursor_rgb(r, g, b))
+        .unwrap_or_else(|| "Black".to_string());
+    let outline = outline_rgb
+        .map(|(r, g, b)| classify_cursor_rgb(r, g, b))
+        .unwrap_or_else(|| "White".to_string());
+    let px = (size_mult.unwrap_or(1.0).clamp(0.5, 16.0) * 32.0).round() as u32;
+    format!("Fill - {fill}, Outline - {outline} ({px}px)")
+}
+
+/// Read macOS cursor customization from `com.apple.universalaccess` preferences (`cursorFill`,
+/// `cursorOutline`, `mouseDriverCursorSize`), defaulting to `Fill - Black, Outline - White (32px)`.
+pub fn get_macos_cursor() -> String {
+    unsafe {
+        let domain = with_cfstring_owned("com.apple.universalaccess");
+        let app_id = domain.0 as CFStringRef;
+
+        let read_rgb = |key_name: &str| -> Option<(f64, f64, f64)> {
+            with_cfstring(key_name, |k| {
+                let val = CFPreferencesCopyValue(
+                    k,
+                    app_id,
+                    kCFPreferencesCurrentUser,
+                    kCFPreferencesAnyHost,
+                );
+                if val.is_null() {
+                    return None;
+                }
+                let _owned = OwnedCF(val);
+                if CFGetTypeID(val) != CFDictionaryGetTypeID() {
+                    return None;
+                }
+                let d = val as CFDictionaryRef;
+                Some((
+                    cf_dict_f64(d, "red")?,
+                    cf_dict_f64(d, "green")?,
+                    cf_dict_f64(d, "blue")?,
+                ))
+            })
+        };
+
+        let size_mult = with_cfstring("mouseDriverCursorSize", |k| {
+            let val =
+                CFPreferencesCopyValue(k, app_id, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+            if val.is_null() {
+                return None;
+            }
+            let _owned = OwnedCF(val);
+            if CFGetTypeID(val) != CFNumberGetTypeID() {
+                return None;
+            }
+            let mut out: f64 = 1.0;
+            CFNumberGetValue(
+                val as CFNumberRef,
+                kCFNumberFloat64Type,
+                &mut out as *mut f64 as *mut c_void,
+            )
+            .then_some(out)
+        });
+
+        format_macos_cursor(read_rgb("cursorFill"), read_rgb("cursorOutline"), size_mult)
+    }
+}
+
+/// Pure helper: format the macOS system and user font family names.
+pub fn format_macos_fonts(sys_font: Option<&str>, user_font: Option<&str>) -> String {
+    let clean_sys = sys_font.map(str::trim).filter(|s| !s.is_empty());
+    let clean_usr = user_font.map(str::trim).filter(|s| !s.is_empty());
+    match (clean_sys, clean_usr) {
+        (Some(s), Some(u)) => format!("{s} [System], {u} [User]"),
+        (Some(s), None) => s.to_string(),
+        (None, Some(u)) => u.to_string(),
+        (None, None) => "San Francisco".to_string(),
+    }
+}
+
+/// Query macOS system UI font and user font via `NSFont`.
+pub fn get_macos_fonts() -> String {
+    unsafe {
+        let cls = objc_getClass(c"NSFont".as_ptr());
+        if cls.is_null() {
+            return "San Francisco".to_string();
+        }
+        let sys_sel = sel_registerName(c"systemFontOfSize:".as_ptr());
+        let usr_sel = sel_registerName(c"userFontOfSize:".as_ptr());
+        let fam_sel = sel_registerName(c"familyName".as_ptr());
+
+        let sys_font_obj = objc_msg_send_id_f64(cls, sys_sel, 0.0);
+        let sys_name = if !sys_font_obj.is_null() {
+            cf_string_to_rust(objc_msg_send_id(sys_font_obj, fam_sel) as CFStringRef)
+        } else {
+            None
+        };
+
+        let usr_font_obj = objc_msg_send_id_f64(cls, usr_sel, 0.0);
+        let usr_name = if !usr_font_obj.is_null() {
+            cf_string_to_rust(objc_msg_send_id(usr_font_obj, fam_sel) as CFStringRef)
+        } else {
+            None
+        };
+
+        format_macos_fonts(sys_name.as_deref(), usr_name.as_deref())
+    }
+}
+
+/// Resolve the executable path of a running process by PID via `proc_pidpath` (`libSystem`).
+pub fn get_proc_pidpath(pid: i32) -> Option<String> {
+    extern "C" {
+        fn proc_pidpath(pid: i32, buffer: *mut c_void, buffersize: u32) -> i32;
+    }
+    if pid <= 0 {
+        return None;
+    }
+    let mut buf = [0u8; 4096];
+    // SAFETY: `buf` is a writable 4096-byte (`PROC_PIDPATHINFO_MAXSIZE`) buffer.
+    let len = unsafe { proc_pidpath(pid, buf.as_mut_ptr() as *mut c_void, buf.len() as u32) };
+    if len <= 0 {
+        return None;
+    }
+    let slice = &buf[..(len as usize).min(buf.len())];
+    std::str::from_utf8(slice)
+        .ok()
+        .map(|s| s.trim_end_matches('\0').to_string())
+        .filter(|s| !s.is_empty())
 }
 
 // ─── AppKit — Wallpaper ──────────────────────────────────────────────────────
@@ -1723,11 +2578,12 @@ pub fn get_macos_wallpaper() -> Option<String> {
     }
 }
 
-// ─── CoreWLAN — Wi-Fi SSID and link rate ─────────────────────────────────────
+// ─── CoreWLAN — Wi-Fi SSID, PHY mode, band, security, RSSI, and link rate ────
 //
 // The SystemConfiguration dynamic store key `State:/Network/Interface/*/AirPort`
-// is not populated on macOS 15 Sequoia, so we use CoreWLAN for both SSID and
-// transmit rate. `NSString` is toll-free bridged with `CFStringRef`.
+// is not populated on macOS 15 Sequoia, so we use CoreWLAN for SSID, PHY mode,
+// channel band, security, RSSI, and transmit rate. `NSString` is toll-free bridged
+// with `CFStringRef`.
 
 #[link(name = "CoreWLAN", kind = "framework")]
 extern "C" {}
@@ -1771,6 +2627,18 @@ unsafe fn objc_msg_send_id_id(
     unsafe { f(self_, op, arg) }
 }
 
+/// Invoke a one-`CGFloat` (`f64`) Objective-C selector returning an object pointer (`id`).
+///
+/// # Safety
+/// `self_` must be a valid Objective-C pointer and `op` must have signature
+/// `id (*)(id, SEL, CGFloat)`.
+unsafe fn objc_msg_send_id_f64(self_: *mut c_void, op: *mut c_void, arg: f64) -> *mut c_void {
+    type FnType = unsafe extern "C" fn(*mut c_void, *mut c_void, f64) -> *mut c_void;
+    // SAFETY: `objc_msgSend` is cast to the exact non-variadic ABI for `(id, SEL, f64) -> id`.
+    let f: FnType = unsafe { std::mem::transmute(objc_msgSend as *const ()) };
+    unsafe { f(self_, op, arg) }
+}
+
 /// Invoke a zero-argument Objective-C selector returning `double` (`f64`).
 ///
 /// # Safety
@@ -1784,15 +2652,165 @@ unsafe fn objc_msg_send_f64(self_: *mut c_void, op: *mut c_void) -> f64 {
     unsafe { f(self_, op) }
 }
 
-/// Return `(ssid, rate_mbps)` for the connected Wi-Fi network via CoreWLAN.
+/// Invoke a zero-argument Objective-C selector returning `NSInteger` (`isize`).
 ///
-/// macOS 10.15+ restricts SSID access to processes with Location Services
-/// authorization. `CWInterface.ssid` returns nil and `ipconfig getsummary`
-/// returns the literal string `<redacted>` when authorization is absent.
-/// When the SSID is genuinely unavailable but `transmitRate > 0` confirms an
-/// active association, we return `"Connected"` as the display name so the
-/// Wi-Fi line still appears with the rate.
-pub fn get_wifi_info() -> Option<(String, Option<u64>)> {
+/// # Safety
+/// `self_` must be a valid Objective-C object pointer and `op` must have signature
+/// `NSInteger (*)(id, SEL)`.
+unsafe fn objc_msg_send_isize(self_: *mut c_void, op: *mut c_void) -> isize {
+    type FnType = unsafe extern "C" fn(*mut c_void, *mut c_void) -> isize;
+    // SAFETY: `objc_msgSend` is cast to the exact non-variadic ABI for `(id, SEL) -> isize`.
+    let f: FnType = unsafe { std::mem::transmute(objc_msgSend as *const ()) };
+    unsafe { f(self_, op) }
+}
+
+/// Invoke a zero-argument Objective-C selector returning `BOOL` (`u8` / `bool`).
+///
+/// # Safety
+/// `self_` must be a valid Objective-C object pointer and `op` must have signature
+/// `BOOL (*)(id, SEL)`.
+unsafe fn objc_msg_send_bool(self_: *mut c_void, op: *mut c_void) -> bool {
+    type FnType = unsafe extern "C" fn(*mut c_void, *mut c_void) -> u8;
+    // SAFETY: `objc_msgSend` is cast to the exact non-variadic ABI for `(id, SEL) -> u8`.
+    let f: FnType = unsafe { std::mem::transmute(objc_msgSend as *const ()) };
+    unsafe { f(self_, op) != 0 }
+}
+
+/// Invoke a one-selector Objective-C method returning `BOOL` (`u8` / `bool`), e.g.
+/// `[obj respondsToSelector:sel]`.
+///
+/// # Safety
+/// `self_` must be a valid Objective-C object or class pointer, `op` must have signature
+/// `BOOL (*)(id, SEL, SEL)`, and `sel` must be a valid `SEL`.
+unsafe fn objc_msg_send_bool_sel(self_: *mut c_void, op: *mut c_void, sel: *mut c_void) -> bool {
+    type FnType = unsafe extern "C" fn(*mut c_void, *mut c_void, *mut c_void) -> u8;
+    // SAFETY: `objc_msgSend` is cast to the exact non-variadic ABI for `(id, SEL, SEL) -> u8`.
+    let f: FnType = unsafe { std::mem::transmute(objc_msgSend as *const ()) };
+    unsafe { f(self_, op, sel) != 0 }
+}
+
+/// Invoke a zero-argument Objective-C selector returning `uint8_t` (`u8`).
+///
+/// # Safety
+/// `self_` must be a valid Objective-C object pointer and `op` must have signature
+/// `uint8_t (*)(id, SEL)`.
+unsafe fn objc_msg_send_u8(self_: *mut c_void, op: *mut c_void) -> u8 {
+    type FnType = unsafe extern "C" fn(*mut c_void, *mut c_void) -> u8;
+    // SAFETY: `objc_msgSend` is cast to the exact non-variadic ABI for `(id, SEL) -> u8`.
+    let f: FnType = unsafe { std::mem::transmute(objc_msgSend as *const ()) };
+    unsafe { f(self_, op) }
+}
+
+/// Map a CoreWLAN `CWPHYMode` enum value to a display string.
+pub fn cw_phy_mode_label(phy: isize) -> Option<&'static str> {
+    match phy {
+        1 => Some("802.11a"),
+        2 => Some("802.11b"),
+        3 => Some("802.11g"),
+        4 => Some("802.11n (Wi-Fi 4)"),
+        5 => Some("802.11ac (Wi-Fi 5)"),
+        6 => Some("802.11ax (Wi-Fi 6)"),
+        7 => Some("802.11be (Wi-Fi 7)"),
+        _ => None,
+    }
+}
+
+/// Map a CoreWLAN `CWChannelBand` enum value to a frequency band string.
+pub fn cw_channel_band_label(band: isize) -> Option<&'static str> {
+    match band {
+        1 => Some("2.4 GHz"),
+        2 => Some("5 GHz"),
+        3 => Some("6 GHz"),
+        _ => None,
+    }
+}
+
+/// Map a CoreWLAN `CWSecurity` enum value to a security mode display string.
+pub fn cw_security_label(sec: isize) -> Option<&'static str> {
+    match sec {
+        0 => Some("Open"),
+        1 => Some("WEP"),
+        2 => Some("WPA Personal"),
+        3 => Some("WPA/WPA2 Personal"),
+        4 => Some("WPA2 Personal"),
+        5 => Some("Personal"),
+        6 => Some("Dynamic WEP"),
+        7 => Some("WPA Enterprise"),
+        8 => Some("WPA/WPA2 Enterprise"),
+        9 => Some("WPA2 Enterprise"),
+        10 => Some("Enterprise"),
+        11 => Some("WPA3 Personal"),
+        12 => Some("WPA3 Enterprise"),
+        13 => Some("WPA2/WPA3 Personal"),
+        14 => Some("OWE"),
+        15 => Some("OWE Transition"),
+        _ => None,
+    }
+}
+
+/// Convert a Wi-Fi RSSI value in dBm (`-100..=-1`) to a signal quality percentage (`0..=100`).
+pub fn rssi_to_signal_percent(rssi: isize) -> Option<u8> {
+    if (-100..0).contains(&rssi) {
+        Some(((rssi + 100) * 2).clamp(0, 100) as u8)
+    } else {
+        None
+    }
+}
+
+/// Pure helper: format macOS CoreWLAN association details into a single display string.
+///
+/// Avoids `" - "` inside the connection summary so `split_wifi_line` in `src/display.rs`
+/// does not mistake connection attributes for an adapter-hardware / link split.
+pub fn format_macos_wifi(
+    ssid: Option<&str>,
+    phy_mode: isize,
+    channel_band: isize,
+    channel_num: isize,
+    security: isize,
+    rssi: isize,
+    rate_mbps: Option<u64>,
+) -> Option<String> {
+    let head = ssid
+        .map(str::trim)
+        .filter(|s| !s.is_empty() && *s != "<redacted>")
+        .unwrap_or("Connected");
+
+    let mut attrs: Vec<String> = Vec::new();
+    if let Some(phy) = cw_phy_mode_label(phy_mode) {
+        attrs.push(phy.to_string());
+    }
+    match (cw_channel_band_label(channel_band), channel_num > 0) {
+        (Some(band), true) => attrs.push(format!("{band} ch {channel_num}")),
+        (Some(band), false) => attrs.push(band.to_string()),
+        _ => {}
+    }
+    if let Some(sec) = cw_security_label(security) {
+        attrs.push(sec.to_string());
+    }
+    if let Some(pct) = rssi_to_signal_percent(rssi) {
+        attrs.push(format!("{pct}%"));
+    }
+    if let Some(rate) = rate_mbps.filter(|&r| r > 0) {
+        attrs.push(format!("↑{rate} Mbps"));
+    }
+
+    if head == "Connected" && attrs.is_empty() {
+        return None;
+    }
+    if attrs.is_empty() {
+        Some(head.to_string())
+    } else {
+        Some(format!("{head} ({})", attrs.join(", ")))
+    }
+}
+
+/// Return a formatted Wi-Fi connection summary for the active interface via CoreWLAN.
+///
+/// macOS 10.15+ restricts SSID access to processes with Location Services authorization
+/// (`CWInterface.ssid` returns nil). Even without Location Services, `activePHYMode`,
+/// `wlanChannel` (`channelBand`, `channelNumber`), `security`, `rssiValue`, and
+/// `transmitRate` are all readable without spawning any subprocesses.
+pub fn get_wifi_info() -> Option<String> {
     // SAFETY: Each selector is invoked through the non-variadic `objc_msg_send_*` helper
     // matching its exact Objective-C return and argument types.
     unsafe {
@@ -1812,44 +2830,45 @@ pub fn get_wifi_info() -> Option<(String, Option<u64>)> {
             return None;
         }
 
-        // transmitRate does not require Location Services.
         let rate_sel = sel_registerName(CString::new("transmitRate").unwrap().as_ptr());
         let rate_f = objc_msg_send_f64(iface, rate_sel);
-        let rate = if rate_f > 0.0 {
-            Some(rate_f as u64)
+        let rate = (rate_f > 0.0).then_some(rate_f as u64);
+
+        let phy_sel = sel_registerName(CString::new("activePHYMode").unwrap().as_ptr());
+        let phy_mode = objc_msg_send_isize(iface, phy_sel);
+
+        let ch_sel = sel_registerName(CString::new("wlanChannel").unwrap().as_ptr());
+        let ch_obj = objc_msg_send_id(iface, ch_sel);
+        let (channel_band, channel_num) = if !ch_obj.is_null() {
+            let band_sel = sel_registerName(CString::new("channelBand").unwrap().as_ptr());
+            let num_sel = sel_registerName(CString::new("channelNumber").unwrap().as_ptr());
+            (
+                objc_msg_send_isize(ch_obj, band_sel),
+                objc_msg_send_isize(ch_obj, num_sel),
+            )
         } else {
-            None
+            (0, 0)
         };
 
-        // SSID: NSString is toll-free bridged with CFString.
-        // Returns nil when Location Services is not granted.
+        let sec_sel = sel_registerName(CString::new("security").unwrap().as_ptr());
+        let security = objc_msg_send_isize(iface, sec_sel);
+
+        let rssi_sel = sel_registerName(CString::new("rssiValue").unwrap().as_ptr());
+        let rssi = objc_msg_send_isize(iface, rssi_sel);
+
         let ssid_sel = sel_registerName(CString::new("ssid").unwrap().as_ptr());
         let ssid_ns = objc_msg_send_id(iface, ssid_sel) as CFStringRef;
-        if let Some(ssid) = cf_string_to_rust(ssid_ns) {
-            return Some((ssid, rate));
-        }
+        let ssid = cf_string_to_rust(ssid_ns);
 
-        // Fallback: read SSID from configd via ipconfig getsummary <iface>.
-        // On macOS 10.15+ without Location Services, ipconfig returns the
-        // literal string "<redacted>" — filter that out.
-        let iface_name_sel = sel_registerName(CString::new("interfaceName").unwrap().as_ptr());
-        let iface_name_ns = objc_msg_send_id(iface, iface_name_sel) as CFStringRef;
-        let iface_bsd = cf_string_to_rust(iface_name_ns).unwrap_or_else(|| "en0".to_string());
-
-        if let Ok(out) = std::process::Command::new("/usr/sbin/ipconfig")
-            .args(["getsummary", &iface_bsd])
-            .output()
-        {
-            let text = String::from_utf8_lossy(&out.stdout);
-            if let Some(ssid) = parse_ipconfig_ssid(&text) {
-                return Some((ssid, rate));
-            }
-        }
-
-        // SSID unavailable (Location Services not granted). If the rate
-        // confirms an active association, surface that rather than hiding
-        // the Wi-Fi line entirely.
-        rate.map(|r| ("Connected".to_string(), Some(r)))
+        format_macos_wifi(
+            ssid.as_deref(),
+            phy_mode,
+            channel_band,
+            channel_num,
+            security,
+            rssi,
+            rate,
+        )
     }
 }
 
@@ -1858,6 +2877,7 @@ pub fn get_wifi_info() -> Option<(String, Option<u64>)> {
 /// Returns `None` when the SSID line is absent, empty, or the literal string
 /// `<redacted>` (which macOS substitutes when Location Services is not
 /// granted to the calling process).
+#[cfg(test)]
 pub fn parse_ipconfig_ssid(output: &str) -> Option<String> {
     output
         .lines()
@@ -1894,5 +2914,121 @@ mod tests {
 
         let no_ssid = "  BSSID : aa:bb:cc:dd:ee:ff\n  Channel : 149\n";
         assert_eq!(parse_ipconfig_ssid(no_ssid), None);
+    }
+
+    #[test]
+    fn test_parse_apple_silicon_firmware() {
+        // Verbatim from chani (Apple M3 Pro, macOS 27.2): IODeviceTree:/chosen
+        assert_eq!(
+            parse_apple_silicon_firmware("mBoot-20457.41.3"),
+            (
+                Some("mBoot 20457.41.3".to_string()),
+                Some("mBoot".to_string())
+            )
+        );
+        assert_eq!(
+            parse_apple_silicon_firmware("iBoot-10151.140.19"),
+            (
+                Some("iBoot 10151.140.19".to_string()),
+                Some("iBoot".to_string())
+            )
+        );
+        assert_eq!(parse_apple_silicon_firmware("  "), (None, None));
+    }
+
+    #[test]
+    fn test_parse_sgx_max_freq_mhz_and_format_gpu() {
+        // Last two 8-byte entries from chani's IODeviceTree:/arm-io/sgx `perf-states`:
+        // 0x4a076a80 = 1_242_000_000 Hz (1242 MHz), 0x52412100 = 1_380_000_000 Hz (1380 MHz).
+        let bytes: [u8; 16] = [
+            0x80, 0x6a, 0x07, 0x4a, 0xc0, 0x03, 0x00, 0x00, 0x00, 0x21, 0x41, 0x52, 0xc0, 0x03,
+            0x00, 0x00,
+        ];
+        let mhz = parse_sgx_max_freq_mhz(&bytes);
+        assert_eq!(mhz, Some(1380));
+        assert_eq!(
+            format_apple_silicon_gpu("Apple M3 Pro", Some(18), mhz),
+            "Apple M3 Pro (18 cores @ 1.38 GHz) [Integrated]"
+        );
+        assert_eq!(
+            format_apple_silicon_gpu("Apple M3 Pro", None, None),
+            "Apple M3 Pro [Integrated]"
+        );
+    }
+
+    #[test]
+    fn test_format_macos_display() {
+        // Primary external 4K monitor scaled 2x (UI 1920x1080) on chani
+        assert_eq!(
+            format_macos_display(
+                "LG HDR 4K",
+                3840,
+                2160,
+                1920,
+                1080,
+                Some(32),
+                60.0,
+                false,
+                true,
+                true,
+                true,
+            ),
+            "LG HDR 4K (3840x2160 @ 2x in 32\", 60Hz) [External, HDR] *"
+        );
+        // Single built-in Retina display
+        assert_eq!(
+            format_macos_display(
+                "Color LCD",
+                3024,
+                1964,
+                1512,
+                982,
+                Some(14),
+                120.0,
+                true,
+                true,
+                true,
+                false,
+            ),
+            "Color LCD (3024x1964 @ 2x in 14\", 120Hz) [Built-in, HDR]"
+        );
+    }
+
+    #[test]
+    fn test_format_macos_cursor_and_fonts() {
+        assert_eq!(
+            format_macos_cursor(None, None, None),
+            "Fill - Black, Outline - White (32px)"
+        );
+        assert_eq!(
+            format_macos_cursor(Some((1.0, 0.0, 0.0)), Some((0.0, 0.0, 0.0)), Some(2.0)),
+            "Fill - #FF0000, Outline - Black (64px)"
+        );
+        assert_eq!(
+            format_macos_fonts(Some(".AppleSystemUIFont"), Some("Helvetica")),
+            ".AppleSystemUIFont [System], Helvetica [User]"
+        );
+    }
+
+    #[test]
+    fn test_format_macos_wifi() {
+        // Redacted SSID on chani: 802.11ax (6), 5 GHz (2) ch 149, WPA3 Personal (11), -58 dBm (84%), 576 Mbps
+        assert_eq!(
+            format_macos_wifi(None, 6, 2, 149, 11, -58, Some(576)),
+            Some(
+                "Connected (802.11ax (Wi-Fi 6), 5 GHz ch 149, WPA3 Personal, 84%, ↑576 Mbps)"
+                    .to_string()
+            )
+        );
+        // With known SSID
+        assert_eq!(
+            format_macos_wifi(Some("HomeNet"), 6, 2, 36, 11, -50, Some(1200)),
+            Some(
+                "HomeNet (802.11ax (Wi-Fi 6), 5 GHz ch 36, WPA3 Personal, 100%, ↑1200 Mbps)"
+                    .to_string()
+            )
+        );
+        // Disconnected
+        assert_eq!(format_macos_wifi(None, 0, 0, 0, -1, 0, None), None);
     }
 }

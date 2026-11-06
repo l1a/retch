@@ -29,6 +29,8 @@ pub struct DimmSlot {
     /// it from the rated speed (currently: Linux dmidecode's "Configured
     /// Memory Speed"). `None` if unknown or not reported separately.
     pub configured_speed_mt: Option<u64>,
+    /// Optional memory manufacturer/vendor (e.g. `"Hynix"` from `dram-vendor` on macOS).
+    pub vendor: Option<String>,
 }
 
 /// Parses `dmidecode --type 17` text output into a list of populated DIMM slots.
@@ -52,6 +54,7 @@ pub fn parse_dmidecode_type17(output: &str) -> Vec<DimmSlot> {
                         mem_type: mem_type.clone(),
                         speed_mt,
                         configured_speed_mt,
+                        vendor: None,
                     });
                 }
             }
@@ -102,6 +105,7 @@ pub fn parse_dmidecode_type17(output: &str) -> Vec<DimmSlot> {
                 mem_type,
                 speed_mt,
                 configured_speed_mt,
+                vendor: None,
             });
         }
     }
@@ -116,13 +120,14 @@ pub fn format_dimm_slots(slots: &[DimmSlot]) -> Option<String> {
         return None;
     }
 
-    // Group identical slots (same size + type + speed)
+    // Group identical slots (same size + type + speed + vendor)
     #[derive(PartialEq, Eq, Hash)]
     struct Key {
         size_mb: u64,
         mem_type: String,
         speed_mt: Option<u64>,
         configured_speed_mt: Option<u64>,
+        vendor: Option<String>,
     }
 
     let mut groups: Vec<(Key, usize)> = Vec::new();
@@ -132,6 +137,7 @@ pub fn format_dimm_slots(slots: &[DimmSlot]) -> Option<String> {
             mem_type: slot.mem_type.clone(),
             speed_mt: slot.speed_mt,
             configured_speed_mt: slot.configured_speed_mt,
+            vendor: slot.vendor.clone(),
         };
         if let Some(entry) = groups.iter_mut().find(|(k, _)| k == &key) {
             entry.1 += 1;
@@ -171,6 +177,15 @@ pub fn format_dimm_slots(slots: &[DimmSlot]) -> Option<String> {
                     s.push_str(&format!(" {} MT/s", running));
                 }
                 (None, None) => {}
+            }
+
+            if let Some(vendor) = key
+                .vendor
+                .as_deref()
+                .map(str::trim)
+                .filter(|v| !v.is_empty())
+            {
+                s.push_str(&format!(" ({})", vendor));
             }
 
             s
@@ -217,8 +232,10 @@ fn detect_linux() -> Option<String> {
 /// cannot answer) still go through `system_profiler`.
 #[cfg(target_os = "macos")]
 fn detect_macos() -> Option<String> {
-    if let Some(slot) = crate::macos_ffi::get_dram_size_and_type()
-        .and_then(|(bytes, mem_type)| dimm_from_device_tree(bytes, &mem_type))
+    if let Some(slot) =
+        crate::macos_ffi::get_dram_size_and_type().and_then(|(bytes, mem_type, vendor)| {
+            dimm_from_device_tree(bytes, &mem_type, vendor.as_deref())
+        })
     {
         return format_dimm_slots(&[slot]);
     }
@@ -231,17 +248,26 @@ fn detect_macos() -> Option<String> {
 /// falls back to `system_profiler` instead of printing less than it would have. The size
 /// is truncated to whole MiB, matching how `system_profiler`'s `18 GB` was parsed.
 #[cfg(any(target_os = "macos", test))]
-pub fn dimm_from_device_tree(size_bytes: u64, mem_type: &str) -> Option<DimmSlot> {
+pub fn dimm_from_device_tree(
+    size_bytes: u64,
+    mem_type: &str,
+    vendor: Option<&str>,
+) -> Option<DimmSlot> {
     let size_mb = size_bytes / (1024 * 1024);
     let mem_type = mem_type.trim();
     if size_mb == 0 || mem_type.is_empty() {
         return None;
     }
+    let vendor = vendor
+        .map(str::trim)
+        .filter(|v| !v.is_empty() && *v != "Unknown")
+        .map(ToString::to_string);
     Some(DimmSlot {
         size_mb,
         mem_type: mem_type.to_string(),
         speed_mt: None,
         configured_speed_mt: None,
+        vendor,
     })
 }
 
@@ -279,6 +305,7 @@ pub fn parse_system_profiler_memory(text: &str) -> Option<String> {
     let mut current_size_mb: Option<u64> = None;
     let mut current_type = String::new();
     let mut current_speed: Option<u64> = None;
+    let mut current_vendor: Option<String> = None;
     let mut in_slot = false;
 
     for line in text.lines() {
@@ -296,11 +323,13 @@ pub fn parse_system_profiler_memory(text: &str) -> Option<String> {
                             mem_type: current_type.clone(),
                             speed_mt: current_speed,
                             configured_speed_mt: None,
+                            vendor: current_vendor.take(),
                         });
                     }
                 }
                 current_type.clear();
                 current_speed = None;
+                current_vendor = None;
             }
             in_slot = true;
             continue;
@@ -334,6 +363,14 @@ pub fn parse_system_profiler_memory(text: &str) -> Option<String> {
                 // Older Macs report MHz
                 current_speed = mhz_str.trim().parse::<u64>().ok().map(|mhz| mhz * 2);
             }
+        } else if let Some(rest) = trimmed
+            .strip_prefix("Manufacturer:")
+            .or_else(|| trimmed.strip_prefix("Manufacturers:"))
+        {
+            let v = rest.trim();
+            if v != "Unknown" && !v.is_empty() {
+                current_vendor = Some(v.to_string());
+            }
         }
     }
 
@@ -345,6 +382,7 @@ pub fn parse_system_profiler_memory(text: &str) -> Option<String> {
                 mem_type: current_type,
                 speed_mt: current_speed,
                 configured_speed_mt: None,
+                vendor: current_vendor,
             });
         }
     }
@@ -544,6 +582,7 @@ pub fn parse_smbios_type17(data: &[u8]) -> Vec<DimmSlot> {
             mem_type,
             speed_mt,
             configured_speed_mt,
+            vendor: None,
         })
     }
 
@@ -821,9 +860,18 @@ Memory Device
     #[test]
     fn device_tree_dram_formats_like_system_profiler() {
         // chani (M3 Pro, macOS 27): `dram-size` = 0x4_8000_0000, `dram-type` = "LPDDR5",
-        // and `system_profiler` printed `Memory: 18 GB` / `Type: LPDDR5`, no speed.
-        let slot = dimm_from_device_tree(0x4_8000_0000, "LPDDR5").unwrap();
-        assert_eq!(format_dimm_slots(&[slot]), Some("18 GB LPDDR5".to_string()));
+        // `dram-vendor` = "Hynix".
+        let slot = dimm_from_device_tree(0x4_8000_0000, "LPDDR5", Some("Hynix")).unwrap();
+        assert_eq!(
+            format_dimm_slots(&[slot]),
+            Some("18 GB LPDDR5 (Hynix)".to_string())
+        );
+
+        let slot_no_vendor = dimm_from_device_tree(0x4_8000_0000, "LPDDR5", None).unwrap();
+        assert_eq!(
+            format_dimm_slots(&[slot_no_vendor]),
+            Some("18 GB LPDDR5".to_string())
+        );
     }
 
     /// The same machine through the old path, captured verbatim: both must print the same.
@@ -833,28 +881,32 @@ Memory Device
         let profiler = parse_system_profiler_memory(
             "Memory:\n\n      Memory: 18 GB\n      Type: LPDDR5\n      Manufacturer: Hynix\n",
         );
-        let tree = format_dimm_slots(&[dimm_from_device_tree(0x4_8000_0000, "LPDDR5").unwrap()]);
+        let tree =
+            format_dimm_slots(&[
+                dimm_from_device_tree(0x4_8000_0000, "LPDDR5", Some("Hynix")).unwrap(),
+            ]);
         assert_eq!(profiler, tree);
     }
 
     #[test]
     fn device_tree_dram_needs_both_size_and_type() {
         // A partial answer falls back to `system_profiler` rather than printing less.
-        assert_eq!(dimm_from_device_tree(0, "LPDDR5"), None);
+        assert_eq!(dimm_from_device_tree(0, "LPDDR5", None), None);
         assert_eq!(
-            dimm_from_device_tree(512 * 1024, "LPDDR5"),
+            dimm_from_device_tree(512 * 1024, "LPDDR5", None),
             None,
             "under 1 MiB"
         );
-        assert_eq!(dimm_from_device_tree(16 << 30, ""), None);
-        assert_eq!(dimm_from_device_tree(16 << 30, "  "), None);
+        assert_eq!(dimm_from_device_tree(16 << 30, "", None), None);
+        assert_eq!(dimm_from_device_tree(16 << 30, "  ", None), None);
         assert_eq!(
-            dimm_from_device_tree(16 << 30, " LPDDR4X "),
+            dimm_from_device_tree(16 << 30, " LPDDR4X ", Some(" Unknown ")),
             Some(DimmSlot {
                 size_mb: 16 * 1024,
                 mem_type: "LPDDR4X".to_string(),
                 speed_mt: None,
                 configured_speed_mt: None,
+                vendor: None,
             })
         );
     }

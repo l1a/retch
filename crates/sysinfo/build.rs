@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
         println!("cargo:rustc-link-lib=framework=CoreFoundation");
         println!("cargo:rustc-link-lib=framework=IOKit");
@@ -9,6 +10,7 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=CoreGraphics");
         println!("cargo:rustc-link-lib=framework=CoreWLAN");
         println!("cargo:rustc-link-lib=framework=AppKit");
+        println!("cargo:rustc-link-lib=framework=IOBluetooth");
         // SystemConfiguration is the authoritative source for the default route's own DNS
         // configuration. /etc/resolv.conf on macOS is configd's legacy compatibility file
         // and mirrors the *merged* resolver, so it reports a split-tunnel VPN's servers

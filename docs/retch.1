@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "November 2026" "retch 0.20.42" "System Information Fetcher"
+.TH "RETCH" "1" "November 2026" "retch 0.21.0" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -205,11 +205,11 @@ Sixel and Chafa output, but not in ASCII mode\.
 .IP \(bu 4
 `\f[CR]bootmgr\fP`: Second\-stage bootloader (GRUB, systemd\-boot, etc\.)\.
 .IP \(bu 4
-`\f[CR]tpm\fP`: Trusted Platform Module specification version (`\f[CR]2\.0\fP`, `\f[CR]1\.2\fP`), read from `\f[CR]/sys/class/tpm\fP` on Linux and `\f[CR]Tbsi_GetDeviceInfo\fP` (`\f[CR]tbs\.dll\fP`) on Windows\. Omitted when no TPM is present or its version cannot be read\. Linux and Windows\. Long mode and above\.
+`\f[CR]tpm\fP`: Trusted Platform Module specification version (`\f[CR]2\.0\fP`, `\f[CR]1\.2\fP`) on Linux (`\f[CR]/sys/class/tpm\fP`) and Windows (`\f[CR]Tbsi_GetDeviceInfo\fP` in `\f[CR]tbs\.dll\fP`), or Secure Enclave presence on macOS (`\f[CR]AppleSEPManager\fP`: `\f[CR]Apple Silicon Security\fP` on Apple Silicon, `\f[CR]Apple T2 Security\fP` on Intel Macs with a T2 chip)\. Omitted when no TPM or Secure Enclave is present\. Linux, macOS and Windows\. Long mode and above\.
 .IP \(bu 4
 `\f[CR]display\fP`: Connected monitor displays with refresh rates and resolution\.
 .IP \(bu 4
-`\f[CR]brightness\fP`: Current backlight brightness as a percentage\. Linux reads `\f[CR]/sys/class/backlight\fP`; macOS reads the IOKit `\f[CR]AppleARMBacklight\fP` service's `\f[CR]IODisplayParameters\fP` (the classic `\f[CR]IODisplayConnect\fP` path does not exist on Apple Silicon); Windows queries `\f[CR]\e\e\.\eLCD\fP` via `\f[CR]IOCTL_VIDEO_QUERY_DISPLAY_BRIGHTNESS\fP`\. Internal panel only on all three \-\- an external display has no panel backlight device\. Linux, macOS and Windows\. Long mode and above\.
+`\f[CR]brightness\fP`: Current display brightness as a percentage\. Linux reads `\f[CR]/sys/class/backlight\fP`; macOS reads the IOKit `\f[CR]AppleARMBacklight\fP` service when the built\-in display is active, or `\f[CR]IOMobileFramebuffer\fP` brightness for the active external display in clamshell mode (avoiding a sleeping internal panel's stale `\f[CR]50%\fP` reading); Windows queries `\f[CR]\e\e\.\eLCD\fP` via `\f[CR]IOCTL_VIDEO_QUERY_DISPLAY_BRIGHTNESS\fP`\. Linux, macOS and Windows\. Long mode and above\.
 .IP \(bu 4
 `\f[CR]audio\fP`: Audio card controller and active sound servers (PipeWire, PulseAudio, ALSA, CoreAudio, Windows Audio)\.
 .IP \(bu 4

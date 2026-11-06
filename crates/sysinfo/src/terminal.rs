@@ -143,8 +143,8 @@ fn window_rect_to_size(left: i16, top: i16, right: i16, bottom: i16) -> Option<S
     }
 }
 
-/// How many processes the terminal lookup examines: retch itself and five ancestors.
-const MAX_ANCESTORS: usize = 6;
+/// How many processes the terminal lookup examines: retch itself and up to 11 ancestors.
+const MAX_ANCESTORS: usize = 12;
 
 /// The name retch reports for Windows Terminal, before any version is appended.
 const WINDOWS_TERMINAL: &str = "Windows Terminal";
@@ -159,6 +159,14 @@ const KNOWN_TERMINALS: &[(&str, &str)] = &[
     ("kitty", "kitty"),
     ("alacritty", "alacritty"),
     ("wezterm", "wezterm"),
+    ("ghostty", "Ghostty"),
+    ("warp", "Warp"),
+    ("antigravity", "Antigravity"),
+    ("cursor", "Cursor"),
+    ("zed", "Zed"),
+    ("hyper", "Hyper"),
+    ("tabby", "Tabby"),
+    ("wave", "Wave"),
     ("gnome-terminal", "gnome-terminal"),
     ("konsole", "konsole"),
     ("iterm2", "iterm2"),
@@ -235,7 +243,18 @@ fn resolve_terminal(env: impl Fn(&str) -> Option<String>, ancestors: &[String]) 
     }
 
     if let Some(term) = env("TERM") {
-        if term != "xterm-256color" && term != "xterm" && term != "linux" && term != "cygwin" {
+        let lower = term.trim().to_ascii_lowercase();
+        if !matches!(
+            lower.as_str(),
+            "" | "xterm-256color"
+                | "xterm"
+                | "linux"
+                | "cygwin"
+                | "dumb"
+                | "vt100"
+                | "ansi"
+                | "unknown"
+        ) {
             if let Some(stripped) = term.strip_prefix("xterm-") {
                 return Some(stripped.to_string());
             }
@@ -356,14 +375,84 @@ fn windows_terminal_version(sys: &System, chain: &[(u32, String)]) -> Option<Str
     unanimous_version(&running)
 }
 
+/// Extracts the application name and version from an executable path inside a macOS `.app`
+/// bundle and its `Contents/Info.plist` XML.
+#[cfg(any(target_os = "macos", test))]
+pub fn parse_macos_app_bundle_terminal(
+    exe_path: &str,
+    info_plist_xml: Option<&str>,
+) -> Option<String> {
+    let idx = exe_path.find(".app/")?;
+    let before_app = &exe_path[..idx];
+    // Ignore macOS system core services (e.g. loginwindow.app) that are not terminals/IDEs.
+    if exe_path.starts_with("/System/Library/CoreServices/") {
+        return None;
+    }
+    let bundle_stem = before_app.rsplit('/').next().filter(|s| !s.is_empty())?;
+    let name = info_plist_xml
+        .and_then(|xml| {
+            crate::wm::parse_plist_key_string(xml, "CFBundleDisplayName")
+                .or_else(|| crate::wm::parse_plist_key_string(xml, "CFBundleName"))
+        })
+        .unwrap_or_else(|| bundle_stem.to_string());
+    let ver = info_plist_xml.and_then(crate::wm::parse_plist_bundle_version);
+    Some(match ver {
+        Some(v) => format!("{} {}", name, v),
+        None => name,
+    })
+}
+
+/// Walks the ancestor PID chain on macOS to find the nearest enclosing `.app` bundle and
+/// reads its `Contents/Info.plist` name + version.
+#[cfg(target_os = "macos")]
+fn macos_terminal_from_ancestors(chain: &[(u32, String)]) -> Option<String> {
+    for (pid, _) in chain {
+        if let Some(exe_path) = crate::macos_ffi::get_proc_pidpath(*pid as i32) {
+            if let Some(plist_path) = crate::wm::app_bundle_info_plist_path(&exe_path) {
+                let xml = std::fs::read_to_string(&plist_path).ok();
+                if let Some(app_term) = parse_macos_app_bundle_terminal(&exe_path, xml.as_deref()) {
+                    return Some(app_term);
+                }
+            }
+        }
+    }
+    None
+}
+
 /// Names the terminal emulator running retch, or `None` when nothing identifies it.
 ///
 /// See [`resolve_terminal`] for the order of precedence. On Windows, Windows Terminal's
-/// package version is appended when [`windows_terminal_version`] can establish it.
+/// package version is appended when [`windows_terminal_version`] can establish it. On
+/// macOS, `.app` bundle ancestors and `TERM_PROGRAM_VERSION` provide the bundle name and
+/// version when available.
 pub(crate) fn detect_terminal(sys: &System) -> Option<String> {
     let chain = crate::proc_tree::ancestors(sys, MAX_ANCESTORS);
     let names: Vec<String> = chain.iter().map(|(_, name)| name.clone()).collect();
-    let terminal = resolve_terminal(|key| std::env::var(key).ok(), &names)?;
+    let resolved = resolve_terminal(|key| std::env::var(key).ok(), &names);
+
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(ref term) = resolved {
+            if let Ok(ver) = std::env::var("TERM_PROGRAM_VERSION") {
+                let ver = ver.trim();
+                if !ver.is_empty() && !term.contains(ver) {
+                    return Some(format!("{term} {ver}"));
+                }
+            }
+            if let Some(app_term) = macos_terminal_from_ancestors(&chain) {
+                if app_term
+                    .to_ascii_lowercase()
+                    .starts_with(&term.to_ascii_lowercase())
+                {
+                    return Some(app_term);
+                }
+            }
+        } else if let Some(app_term) = macos_terminal_from_ancestors(&chain) {
+            return Some(app_term);
+        }
+    }
+
+    let terminal = resolved?;
 
     #[cfg(target_os = "windows")]
     if terminal == WINDOWS_TERMINAL {
@@ -1156,9 +1245,9 @@ mod tests {
     }
 
     /// The process chain above a `retch` launched from an agent session on arrakis,
-    /// verbatim and nearest first, cut at [`MAX_ANCESTORS`] as `detect_terminal` cuts it.
-    /// `WindowsTerminal.exe` was the next process up — one past the walk's reach.
-    const ARRAKIS_AGENT_CHAIN: [&str; MAX_ANCESTORS] = [
+    /// verbatim and nearest first, cut at 6 processes as `detect_terminal` originally cut it.
+    /// `WindowsTerminal.exe` was the next process up — one past the 6-process reach.
+    const ARRAKIS_AGENT_CHAIN: [&str; 6] = [
         "retch.exe",
         "pwsh.exe",
         "cmd.exe",
@@ -1249,6 +1338,42 @@ mod tests {
         );
         assert_eq!(
             resolve_terminal(env_of(&[("TERM", "xterm-256color")]), &[]),
+            None
+        );
+        assert_eq!(resolve_terminal(env_of(&[("TERM", "dumb")]), &[]), None);
+        assert_eq!(resolve_terminal(env_of(&[("TERM", "vt100")]), &[]), None);
+    }
+
+    #[test]
+    fn test_parse_macos_app_bundle_terminal() {
+        let plist = r#"<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Antigravity</string>
+    <key>CFBundleShortVersionString</key>
+    <string>2.29.0</string>
+</dict>
+</plist>"#;
+        assert_eq!(
+            parse_macos_app_bundle_terminal(
+                "/Applications/Antigravity.app/Contents/Resources/app/extensions/antigravity/bin/language_server_macos_arm",
+                Some(plist),
+            ),
+            Some("Antigravity 2.29.0".to_string())
+        );
+        assert_eq!(
+            parse_macos_app_bundle_terminal(
+                "/Applications/Ghostty.app/Contents/MacOS/ghostty",
+                None,
+            ),
+            Some("Ghostty".to_string())
+        );
+        assert_eq!(
+            parse_macos_app_bundle_terminal(
+                "/System/Library/CoreServices/loginwindow.app/Contents/MacOS/loginwindow",
+                Some(plist),
+            ),
             None
         );
     }

@@ -133,9 +133,9 @@ default path with:
   - `motherboard`: Motherboard manufacturer and model.
   - `bios`: BIOS vendor and version.
   - `bootmgr`: Second-stage bootloader (GRUB, systemd-boot, etc.).
-  - `tpm`: Trusted Platform Module specification version (`2.0`, `1.2`), read from `/sys/class/tpm` on Linux and `Tbsi_GetDeviceInfo` (`tbs.dll`) on Windows. Omitted when no TPM is present or its version cannot be read. Linux and Windows. Long mode and above.
+  - `tpm`: Trusted Platform Module specification version (`2.0`, `1.2`) on Linux (`/sys/class/tpm`) and Windows (`Tbsi_GetDeviceInfo` in `tbs.dll`), or Secure Enclave presence on macOS (`AppleSEPManager`: `Apple Silicon Security` on Apple Silicon, `Apple T2 Security` on Intel Macs with a T2 chip). Omitted when no TPM or Secure Enclave is present. Linux, macOS and Windows. Long mode and above.
   - `display`: Connected monitor displays with refresh rates and resolution.
-  - `brightness`: Current backlight brightness as a percentage. Linux reads `/sys/class/backlight`; macOS reads the IOKit `AppleARMBacklight` service's `IODisplayParameters` (the classic `IODisplayConnect` path does not exist on Apple Silicon); Windows queries `\\.\LCD` via `IOCTL_VIDEO_QUERY_DISPLAY_BRIGHTNESS`. Internal panel only on all three — an external display has no panel backlight device. Linux, macOS and Windows. Long mode and above.
+  - `brightness`: Current display brightness as a percentage. Linux reads `/sys/class/backlight`; macOS reads the IOKit `AppleARMBacklight` service when the built-in display is active, or `IOMobileFramebuffer` brightness for the active external display in clamshell mode (avoiding a sleeping internal panel's stale `50%` reading); Windows queries `\\.\LCD` via `IOCTL_VIDEO_QUERY_DISPLAY_BRIGHTNESS`. Linux, macOS and Windows. Long mode and above.
   - `audio`: Audio card controller and active sound servers (PipeWire, PulseAudio, ALSA, CoreAudio, Windows Audio).
   - `camera`: Connected camera/webcam names.
   - `gamepad`: Connected gamepad/controller names.
