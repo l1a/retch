@@ -84,8 +84,8 @@ pub struct SystemInfo {
     pub users: usize,
     /// List of detected GPUs with model names.
     pub gpu: Vec<String>,
-    /// Total count of installed packages across supported managers.
-    pub packages: Option<usize>,
+    /// Installed package count summary across supported managers (e.g. `"191 (183 brew, 8 brew-cask)"`).
+    pub packages: Option<String>,
     /// Name of the user running the process.
     pub current_user: Option<String>,
     /// Primary local IP address.
@@ -419,7 +419,9 @@ fn needs_process_list(should_collect: impl Fn(&str) -> bool) -> bool {
             || should_collect("terminal_font")
             || should_collect("terminal-theme")
             || should_collect("terminal theme")
-            || should_collect("terminal_theme"))
+            || should_collect("terminal_theme")
+            || (cfg!(target_os = "macos")
+                && (should_collect("wm") || should_collect("window manager"))))
 }
 
 impl SystemInfo {
@@ -756,6 +758,14 @@ impl SystemInfo {
         let cpu_usage_own0 = own_cpu_time();
 
         let os = crate::timing::timed("os", || {
+            #[cfg(target_os = "macos")]
+            {
+                let ver = System::os_version().ok();
+                let build = crate::macos_ffi::get_macos_os_build();
+                if let Some(formatted) = format_macos_os(ver.as_deref(), build.as_deref()) {
+                    return formatted;
+                }
+            }
             System::long_os_version()
                 .or_else(|_| System::name())
                 .unwrap_or_else(|_| "Unknown".to_string())
@@ -770,18 +780,14 @@ impl SystemInfo {
         let cpu_from_sys: Option<(String, usize)> = (should_collect("cpu") && sys_has_cpus)
             .then(|| (cpu_brand(sys.cpus()), sys.cpus().len()));
         let memory = if should_collect("memory") {
-            let total_mem = sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
-            let used_mem = sys.used_memory() as f64 / 1024.0 / 1024.0 / 1024.0;
-            format!("{:.1} / {:.1} GB", used_mem, total_mem)
+            format_memory_usage(sys.used_memory(), sys.total_memory())
         } else {
             String::new()
         };
 
         let swap = if should_collect("swap") {
-            let total_swap = sys.total_swap() as f64 / 1024.0 / 1024.0 / 1024.0;
-            let used_swap = sys.used_swap() as f64 / 1024.0 / 1024.0 / 1024.0;
-            if total_swap > 0.0 {
-                format!("{:.1} / {:.1} GB", used_swap, total_swap)
+            if sys.total_swap() > 0 {
+                format_memory_usage(sys.used_swap(), sys.total_swap())
             } else {
                 "No swap".to_string()
             }
@@ -798,12 +804,7 @@ impl SystemInfo {
             let disks_list =
                 crate::timing::timed("disk", || crate::disk::detect_logical_disks(opts.full));
             let format_disk = |(mount, total, avail, fs): &(String, u64, u64, String)| {
-                let total_gb = *total as f64 / 1024.0 / 1024.0 / 1024.0;
-                let avail_gb = *avail as f64 / 1024.0 / 1024.0 / 1024.0;
-                format!(
-                    "{} ({}): {:.1} GB free / {:.1} GB",
-                    mount, fs, avail_gb, total_gb
-                )
+                format_logical_disk(mount, *total, *avail, fs)
             };
             if !opts.long {
                 let home = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("/"));
@@ -1324,12 +1325,26 @@ impl SystemInfo {
                 .ok()
                 .filter(|s| !s.is_empty())
                 .or_else(|| std::env::var("EDITOR").ok().filter(|s| !s.is_empty()))
+                .and_then(|raw| crate::timing::timed("editor", || resolve_editor(&raw)))
         } else {
             None
         };
 
         let detected_wm = wm_handle.and_then(|h| h.join().ok().flatten());
-        let wm = if want_wm { detected_wm.clone() } else { None };
+        let wm = if want_wm {
+            #[cfg(target_os = "macos")]
+            {
+                detected_wm
+                    .clone()
+                    .map(|base| crate::wm::enrich_macos_wm(base, &sys))
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                detected_wm.clone()
+            }
+        } else {
+            None
+        };
 
         let dns = dns_handle.and_then(|h| h.join().ok()).unwrap_or_default();
 
@@ -2324,7 +2339,13 @@ fn detect_init_system() -> Option<String> {
     }
     #[cfg(target_os = "macos")]
     {
-        Some("launchd".to_string())
+        let ver = std::fs::read("/sbin/launchd")
+            .ok()
+            .and_then(|bytes| parse_embedded_launchd_version(&bytes));
+        Some(match ver {
+            Some(v) => format!("launchd {v}"),
+            None => "launchd".to_string(),
+        })
     }
     #[cfg(target_os = "windows")]
     {
@@ -2361,23 +2382,13 @@ fn detect_chassis() -> Option<String> {
     }
     #[cfg(target_os = "macos")]
     {
-        let output = std::process::Command::new("sysctl")
-            .args(["-n", "hw.model"])
-            .output()
-            .ok()?;
-        let model = String::from_utf8(output.stdout).ok()?;
-        let model = model.trim();
-        if model.contains("MacBook") {
-            Some("Laptop".to_string())
-        } else if model.contains("MacPro") {
-            Some("Desktop".to_string())
-        } else if model.contains("Macmini") || model.contains("Mac mini") {
-            Some("Mini PC".to_string())
-        } else if model.contains("iMac") {
-            Some("All-in-One".to_string())
-        } else {
-            Some(model.to_string())
-        }
+        let info = crate::macos_ffi::get_macos_platform_info();
+        classify_macos_chassis(
+            info.product_name.as_deref(),
+            None,
+            info.model.as_deref(),
+            info.builtin_battery,
+        )
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
@@ -2410,7 +2421,7 @@ fn detect_bootmgr() -> Option<String> {
     }
     #[cfg(target_os = "macos")]
     {
-        Some("Apple Boot ROM".to_string())
+        Some(crate::macos_ffi::get_macos_bootmgr())
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
@@ -2679,17 +2690,7 @@ fn detect_brightness() -> Option<String> {
     }
     #[cfg(target_os = "macos")]
     {
-        let (value, min, max) = crate::macos_ffi::get_backlight_brightness()?;
-        // Rebased onto the shared `brightness_percent(cur, max)` helper by subtracting the
-        // floor, so the percentage arithmetic lives in one tested place rather than two.
-        // macOS reports min = 0 in practice (measured: 0 / 32768 / 65536), but the range
-        // is expressed as a triple and a nonzero floor would otherwise inflate the figure.
-        let span = max.checked_sub(min)?;
-        let level = value.checked_sub(min)?;
-        if span <= 0 || level < 0 {
-            return None;
-        }
-        brightness_percent(level as u64, span as u64)
+        crate::macos_ffi::get_macos_brightness()
     }
     #[cfg(target_os = "windows")]
     {
@@ -2840,7 +2841,7 @@ fn windows_lcd_brightness() -> Option<u8> {
 /// Shared by all backlight arms: Linux passes the raw `brightness`/`max_brightness`
 /// pair, macOS passes the `AppleARMBacklight` triple rebased onto a zero floor, and Windows
 /// passes `(level, 100)` from `IOCTL_VIDEO_QUERY_DISPLAY_BRIGHTNESS`.
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", test))]
+#[cfg(any(target_os = "linux", target_os = "windows", test))]
 fn brightness_percent(cur: u64, max: u64) -> Option<String> {
     if max == 0 {
         return None;
@@ -3026,7 +3027,11 @@ fn detect_tpm() -> Option<String> {
         }
         format_tpm_version(&info.tpm_version.to_string())
     }
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+    #[cfg(target_os = "macos")]
+    {
+        crate::macos_ffi::get_macos_tpm()
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     {
         None
     }
@@ -3046,6 +3051,155 @@ fn format_tpm_version(major: &str) -> Option<String> {
         "2" => Some("2.0".to_string()),
         _ => None,
     }
+}
+
+/// Formats the macOS release string with its marketing codename and build number
+/// (e.g. `"macOS Golden Gate 27.2 (26B123)"` or `"macOS Sequoia 15.4 (24E248)"`).
+#[cfg(any(target_os = "macos", test))]
+pub fn format_macos_os(os_version: Option<&str>, build: Option<&str>) -> Option<String> {
+    let ver = os_version.map(str::trim).filter(|s| !s.is_empty())?;
+    let major = ver
+        .split('.')
+        .next()
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(0);
+    let codename = match major {
+        27 => Some("Golden Gate"),
+        26 => Some("Tahoe"),
+        15 => Some("Sequoia"),
+        14 => Some("Sonoma"),
+        13 => Some("Ventura"),
+        12 => Some("Monterey"),
+        11 => Some("Big Sur"),
+        _ => None,
+    };
+    let mut out = match codename {
+        Some(name) => format!("macOS {} {}", name, ver),
+        None => format!("macOS {}", ver),
+    };
+    if let Some(b) = build.map(str::trim).filter(|s| !s.is_empty()) {
+        out.push_str(&format!(" ({})", b));
+    }
+    Some(out)
+}
+
+/// Formats used and total memory/swap bytes as `"X.Y / Z.W GB (P%)"`.
+pub fn format_memory_usage(used_bytes: u64, total_bytes: u64) -> String {
+    let total_gb = total_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+    let used_gb = used_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+    let pct = if total_bytes > 0 {
+        ((used_bytes as f64 / total_bytes as f64) * 100.0).round() as u64
+    } else {
+        0
+    };
+    format!("{:.1} / {:.1} GB ({}%)", used_gb, total_gb, pct)
+}
+
+/// Formats a logical disk mount with free space, total capacity, and used percentage
+/// (e.g. `"/ (apfs): 453.9 GB free / 926.4 GB (51%)"`).
+pub fn format_logical_disk(mount: &str, total_bytes: u64, avail_bytes: u64, fs: &str) -> String {
+    let total_gb = total_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+    let avail_gb = avail_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+    let used_bytes = total_bytes.saturating_sub(avail_bytes);
+    let used_pct = if total_bytes > 0 {
+        ((used_bytes as f64 / total_bytes as f64) * 100.0).round() as u64
+    } else {
+        0
+    };
+    format!(
+        "{} ({}): {:.1} GB free / {:.1} GB ({}%)",
+        mount, fs, avail_gb, total_gb, used_pct
+    )
+}
+
+/// Extracts the embedded `CFBundleShortVersionString` from `/sbin/launchd`'s `__TEXT,__info_plist`
+/// section bytes.
+#[cfg(any(target_os = "macos", test))]
+pub fn parse_embedded_launchd_version(bytes: &[u8]) -> Option<String> {
+    const KEY: &[u8] = b"<key>CFBundleShortVersionString</key>";
+    let pos = bytes.windows(KEY.len()).position(|w| w == KEY)?;
+    let window_end = (pos + 256).min(bytes.len());
+    let snippet = String::from_utf8_lossy(&bytes[pos..window_end]);
+    parse_plist_string(&snippet, "CFBundleShortVersionString")
+}
+
+/// Classifies a Mac's chassis type from `IODeviceTree` properties (`product-name`,
+/// `product-description`, `model`, and `builtin-battery`).
+#[cfg(any(target_os = "macos", test))]
+pub fn classify_macos_chassis(
+    product_name: Option<&str>,
+    product_description: Option<&str>,
+    model: Option<&str>,
+    has_builtin_battery: bool,
+) -> Option<String> {
+    for candidate in [product_name, product_description, model]
+        .into_iter()
+        .flatten()
+    {
+        let lower = candidate.to_ascii_lowercase();
+        if lower.contains("macbook") {
+            return Some("Laptop".to_string());
+        }
+        if lower.contains("mac mini") || lower.contains("macmini") || lower.contains("mac studio") {
+            return Some("Mini PC".to_string());
+        }
+        if lower.contains("imac") {
+            return Some("All-in-One".to_string());
+        }
+        if lower.contains("mac pro") || lower.contains("macpro") {
+            return Some("Desktop".to_string());
+        }
+    }
+    if has_builtin_battery {
+        return Some("Laptop".to_string());
+    }
+    None
+}
+
+/// Parses the first line of an editor's `--version` output into `"<editor> <version>"`.
+pub fn parse_editor_version_output(editor_name: &str, stdout: &str) -> Option<String> {
+    let first_line = stdout.lines().map(str::trim).find(|l| !l.is_empty())?;
+    for token in first_line.split_whitespace() {
+        let cleaned = token
+            .trim_start_matches('v')
+            .trim_matches(|c: char| matches!(c, ',' | ';' | '(' | ')' | '[' | ']'));
+        if cleaned.chars().next().is_some_and(|c| c.is_ascii_digit()) && cleaned.contains('.') {
+            return Some(format!("{} {}", editor_name, cleaned));
+        }
+    }
+    None
+}
+
+/// Resolves `$VISUAL` / `$EDITOR` into an editor name and version (e.g. `"/opt/homebrew/bin/hx"`
+/// → `"hx 25.07.1"`).
+fn resolve_editor(raw: &str) -> Option<String> {
+    let raw = raw.trim();
+    if raw.is_empty() {
+        return None;
+    }
+    let bin_token = raw.split_whitespace().next()?;
+    let basename = std::path::Path::new(bin_token)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(bin_token);
+    let stem = basename.strip_suffix(".exe").unwrap_or(basename);
+    if matches!(
+        stem.to_ascii_lowercase().as_str(),
+        "hx" | "helix" | "nvim" | "vim" | "nano" | "emacs" | "micro" | "kak" | "code" | "zed"
+    ) {
+        if let Ok(output) = std::process::Command::new(bin_token)
+            .arg("--version")
+            .output()
+        {
+            if output.status.success() {
+                let text = String::from_utf8_lossy(&output.stdout);
+                if let Some(versioned) = parse_editor_version_output(stem, &text) {
+                    return Some(versioned);
+                }
+            }
+        }
+    }
+    Some(stem.to_string())
 }
 
 /// Windows CPU-usage sampling via `GetSystemTimes`, `GetProcessTimes`, and Job Object
@@ -3875,7 +4029,6 @@ mod tests {
         assert_eq!(format_power_adapter("AC", ""), "AC (unknown)");
     }
 
-    #[cfg(target_os = "linux")]
     #[test]
     fn test_format_tpm_version() {
         // The spec names are 1.2 and 2.0, so the minor part is a lookup, not "major.0".
@@ -4298,5 +4451,77 @@ mod tests {
             s.contains("L1") || s.contains("L2") || s.contains("L3"),
             "expected cache level labels, got: {s}"
         );
+    }
+
+    #[test]
+    fn test_format_macos_os_and_chassis() {
+        assert_eq!(
+            format_macos_os(Some("27.2"), Some("26B123")).as_deref(),
+            Some("macOS Golden Gate 27.2 (26B123)")
+        );
+        assert_eq!(
+            format_macos_os(Some("26.1"), None).as_deref(),
+            Some("macOS Tahoe 26.1")
+        );
+        assert_eq!(
+            format_macos_os(Some("15.4"), Some("24E248")).as_deref(),
+            Some("macOS Sequoia 15.4 (24E248)")
+        );
+        assert_eq!(format_macos_os(None, Some("26B123")), None);
+
+        assert_eq!(
+            classify_macos_chassis(
+                Some("MacBook Pro"),
+                Some("MacBook Pro (14-inch, Nov 2023)"),
+                Some("Mac15,6"),
+                true,
+            )
+            .as_deref(),
+            Some("Laptop")
+        );
+        assert_eq!(
+            classify_macos_chassis(Some("Mac Studio"), None, Some("Mac14,13"), false).as_deref(),
+            Some("Mini PC")
+        );
+        assert_eq!(
+            classify_macos_chassis(None, None, Some("iMac21,1"), false).as_deref(),
+            Some("All-in-One")
+        );
+        assert_eq!(
+            classify_macos_chassis(None, None, Some("Mac15,6"), false),
+            None
+        );
+    }
+
+    #[test]
+    fn test_format_memory_and_logical_disk_percentages() {
+        let gb = 1024u64 * 1024 * 1024;
+        assert_eq!(format_memory_usage(9 * gb, 18 * gb), "9.0 / 18.0 GB (50%)");
+        assert_eq!(format_memory_usage(0, 0), "0.0 / 0.0 GB (0%)");
+        assert_eq!(
+            format_logical_disk("/", 1000 * gb, 490 * gb, "apfs"),
+            "/ (apfs): 490.0 GB free / 1000.0 GB (51%)"
+        );
+    }
+
+    #[test]
+    fn test_parse_launchd_and_editor_versions() {
+        let embedded =
+            b"\0\0<dict><key>CFBundleShortVersionString</key><string>7.0.0</string></dict>\0";
+        assert_eq!(
+            parse_embedded_launchd_version(embedded).as_deref(),
+            Some("7.0.0")
+        );
+        assert_eq!(parse_embedded_launchd_version(b"no plist here"), None);
+
+        assert_eq!(
+            parse_editor_version_output("hx", "helix 25.07.1 (a05c151b)\n").as_deref(),
+            Some("hx 25.07.1")
+        );
+        assert_eq!(
+            parse_editor_version_output("nvim", "NVIM v0.11.0\nBuild type: Release\n").as_deref(),
+            Some("nvim 0.11.0")
+        );
+        assert_eq!(parse_editor_version_output("hx", "unknown"), None);
     }
 }

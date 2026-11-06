@@ -238,12 +238,54 @@ pub(crate) fn detect_ui_theme_and_fonts() -> (
     Option<String>,
     Option<String>,
 ) {
-    let theme = match crate::macos_ffi::get_macos_appearance() {
-        Some(style) => Some(format!("Aqua ({})", style)),
-        None => Some("Aqua (Light)".to_string()),
-    };
+    let os_ver = sysinfo::System::os_version().ok();
+    let appearance = crate::macos_ffi::get_macos_appearance();
+    let theme = Some(format_macos_ui_theme(
+        os_ver.as_deref(),
+        appearance.as_deref(),
+    ));
+    let cursor = Some(crate::macos_ffi::get_macos_cursor());
+    let font = Some(crate::macos_ffi::get_macos_fonts());
 
-    (theme, None, None, Some("San Francisco".to_string()))
+    (theme, None, cursor, font)
+}
+
+/// Formats the macOS UI design language and appearance style (e.g. `"Liquid Glass (Dark)"` on
+/// macOS 26+ or `"Aqua (Dark)"` on macOS 15 and earlier).
+#[cfg(any(target_os = "macos", test))]
+pub fn format_macos_ui_theme(os_version: Option<&str>, appearance: Option<&str>) -> String {
+    let major = os_version
+        .and_then(|v| v.trim().split('.').next())
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(0);
+    let design = if major >= 26 { "Liquid Glass" } else { "Aqua" };
+    let style = appearance
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or("Light");
+    format!("{} ({})", design, style)
+}
+
+/// Formats the macOS window-manager accent color and appearance style from `AppleAccentColor`
+/// and `AppleInterfaceStyle` (e.g. `"Multicolor (Dark)"` or `"Blue (Light)"`).
+#[cfg(any(target_os = "macos", test))]
+pub fn format_macos_wm_theme(accent_color: Option<i64>, appearance: Option<&str>) -> String {
+    let accent = match accent_color {
+        Some(-1) => "Graphite",
+        Some(0) => "Red",
+        Some(1) => "Orange",
+        Some(2) => "Yellow",
+        Some(3) => "Green",
+        Some(4) => "Blue",
+        Some(5) => "Purple",
+        Some(6) => "Pink",
+        _ => "Multicolor",
+    };
+    let style = appearance
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or("Light");
+    format!("{} ({})", accent, style)
 }
 
 #[cfg(target_os = "windows")]
@@ -1231,10 +1273,9 @@ pub(crate) fn detect_wm_theme(wm: Option<&str>, desktop: Option<&str>) -> Option
     #[cfg(target_os = "macos")]
     {
         let _ = (wm, desktop);
-        return match crate::macos_ffi::get_macos_appearance() {
-            Some(style) => Some(format!("Aqua ({})", style)),
-            None => Some("Aqua (Light)".to_string()),
-        };
+        let accent = crate::macos_ffi::get_macos_accent_color();
+        let appearance = crate::macos_ffi::get_macos_appearance();
+        return Some(format_macos_wm_theme(accent, appearance.as_deref()));
     }
 
     #[cfg(target_os = "windows")]
@@ -2014,5 +2055,33 @@ path = "/home/user/Pictures/laptop.jpg"
             Some("/home/user/Pictures/stale.jpg".to_string())
         );
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_format_macos_ui_and_wm_theme() {
+        assert_eq!(
+            format_macos_ui_theme(Some("27.2"), Some("Dark")),
+            "Liquid Glass (Dark)"
+        );
+        assert_eq!(
+            format_macos_ui_theme(Some("26.0"), None),
+            "Liquid Glass (Light)"
+        );
+        assert_eq!(
+            format_macos_ui_theme(Some("15.4.1"), Some("Dark")),
+            "Aqua (Dark)"
+        );
+        assert_eq!(format_macos_ui_theme(None, None), "Aqua (Light)");
+
+        assert_eq!(
+            format_macos_wm_theme(None, Some("Dark")),
+            "Multicolor (Dark)"
+        );
+        assert_eq!(
+            format_macos_wm_theme(Some(-1), Some("Light")),
+            "Graphite (Light)"
+        );
+        assert_eq!(format_macos_wm_theme(Some(4), Some("Dark")), "Blue (Dark)");
+        assert_eq!(format_macos_wm_theme(Some(5), None), "Purple (Light)");
     }
 }

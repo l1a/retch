@@ -151,9 +151,9 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.42)
+## Current State (v0.21.0)
 
-`main` carries **`retch-cli` 0.20.42** / **`retch-sysinfo` 0.1.105**. Newest released tag is
+`main` carries **`retch-cli` 0.21.0** / **`retch-sysinfo` 0.1.106**. Newest released tag is
 **`v0.20.41`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
@@ -161,6 +161,72 @@ deliberately omitted platform-specific items in §6a and §6c). What is open is 
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.21.0: macOS fastfetch `--full` parity across 22 fields (native IOKit, CoreGraphics,
+  CoreAudio, CoreWLAN, IOBluetooth, and AppKit FFI with zero extra subprocess spawns).**
+  Verified on `chani` (MacBook Pro 14-inch Nov 2023, Apple M3 Pro, macOS 27.2 arm64 in clamshell
+  mode with external LG HDR 4K):
+  - **Missing fields added on macOS (`bios`, `tpm`, `cursor`):**
+    - **`bios` & `bootmgr` (`macos_ffi.rs`, `fetch.rs`):** Apple Silicon Macs have no x86
+      `IOPlatformExpertDevice` ROM keys; `get_firmware_version()` now falls back to
+      `IODeviceTree:/chosen`'s `system-firmware-version` (`"iBoot-20457.41.3"` -> `"mBoot 20457.41.3"`
+      on `aarch64`), and `get_macos_bootmgr()` reports `"mBoot"` (`"iBoot"` on Intel).
+    - **`tpm` (`macos_ffi.rs`, `fetch.rs`):** Queries IOKit `AppleSEPManager` (`"Apple Silicon Security"`
+      on `aarch64`, `"Apple T2 Security"` on `x86_64`).
+    - **`cursor` (`macos_ffi.rs`, `theme.rs`):** Reads `~/Library/Preferences/com.apple.universalaccess.plist`
+      via `CFPreferencesCopyAppValue` (`cursorFill`, `cursorOutline`, `mouseDriverCursorSize`),
+      rendering `"Fill - Black, Outline - White (32px)"`.
+  - **Disagreements resolved (`theme`, `wm-theme`, `brightness`, `display`, `chassis`,
+    `motherboard`, `audio`, `packages`, `terminal`):**
+    - **`theme` & `wm-theme` (`macos_ffi.rs`, `theme.rs`):** `Theme` now reports `"Liquid Glass (Dark)"`
+      on macOS 26+ (`"Aqua (Dark)"` on macOS <= 15); `WM Theme` reads `AppleAccentColor` and
+      `AppleAquaColorVariant` from global preferences (`"Multicolor (Dark)"`, `"Blue (Dark)"`,
+      `"Graphite (Light)"`, etc.).
+    - **`brightness` (`macos_ffi.rs`, `fetch.rs`):** Previously read `AppleARMBacklight`
+      unconditionally, reporting `50%` from the sleeping internal panel when the MacBook lid was
+      closed in clamshell mode. `get_macos_brightness()` now checks `CGGetActiveDisplayList` /
+      `CGDisplayIsBuiltin` first and reports `IOMobileFramebuffer` brightness for active displays
+      (`"100% (LG HDR 4K) [External]"`).
+    - **`display` (`macos_ffi.rs`):** Combines `CGDisplayCopyDisplayMode` physical pixel
+      dimensions (`3840x2160`) and logical UI scaling (`@ 2x`), `CGDisplayScreenSize` diagonal
+      inches (`in 32"`), `CGDisplayIsBuiltin` (`[External]`/`[Built-in]`), `CGDisplayIsMain`
+      (`*`), and `IOMobileFramebuffer` `DisplayAttributes` (`ProductName` = `"LG HDR 4K"`, `HDR`),
+      replacing the previous logical-point `1920x1080 @ 60Hz`.
+    - **`chassis` & `motherboard` (`macos_ffi.rs`, `motherboard.rs`, `fetch.rs`):** Reads
+      `IODeviceTree:/` (`model`, `target-sub-type`) and `IODeviceTree:/product`
+      (`product-description`, `product-name`, `builtin-battery`) in-process (~0.1 ms, no `sysctl`
+      subprocess), classifying `Chassis: Laptop` and formatting
+      `Motherboard: MacBook Pro (14-inch, Nov 2023) (Mac15,6 / J514sAP)`.
+    - **`audio` (`macos_ffi.rs`):** Filters out input-only microphones (0 streams in
+      `kAudioObjectPropertyScopeOutput`) and marks the active default output device
+      (`kAudioHardwarePropertyDefaultOutputDevice`) first with its volume percentage
+      (`"CoreAudio (Realtek USB2.0 Audio (25%) *, LG HDR 4K, MacBook Pro Speakers)"`).
+    - **`packages` (`packages.rs`, `src/display.rs`):** `count_visible_dir_entries` skips hidden
+      dotfiles such as `/opt/homebrew/Caskroom/.metadata` (fixing the off-by-one `192` ->
+      `191 (183 brew, 8 brew-cask)`), and formats multi-manager breakdowns with the total and
+      per-manager counts.
+    - **`terminal` (`terminal.rs`, `macos_ffi.rs`):** Excludes `"dumb"` / `"vt100"` / `"ansi"` /
+      `"unknown"` from the `$TERM` fallback, walks up to 12 ancestors resolving `.app` bundles via
+      `proc_pidpath` + `Contents/Info.plist` (`"Antigravity 2.29.0"`), and appends
+      `$TERM_PROGRAM_VERSION` when present.
+  - **Detail gaps closed (`os`, `gpu`, `memory`, `phys-mem`, `disk`, `init`, `wm`, `font`,
+    `editor`, `wifi`, `bluetooth`):**
+    - `OS`: adds marketing codename and `kern.osversion` build (`"macOS Golden Gate 27.2 (26B123)"`).
+    - `GPU`: adds `gpu-core-count` (`18`), max frequency (`1.38 GHz`) from `IODeviceTree:/arm-io/sgx`
+      `voltage-states9`, and `[Integrated]` (`"Apple M3 Pro (18 cores @ 1.38 GHz) [Integrated]"`).
+    - `Memory Usage` & `Disk`: include used percentage (`"13.7 / 18.0 GB (76%)"`,
+      `"/ (apfs): 453.9 GB free / 926.4 GB (51%)"`).
+    - `Phys Mem`: includes `dram-vendor` from `IODeviceTree:/chosen` (`"18 GB LPDDR5 (Hynix)"`).
+    - `Init`: extracts `CFBundleShortVersionString` from `/sbin/launchd`'s embedded `__info_plist`
+      (`"launchd 7.0.0"`).
+    - `WM`: reads `SkyLight.framework` version and window-tiling helper versions (`Rectangle`,
+      `AeroSpace`, `yabai`, `Amethyst`: `"Quartz Compositor 1.600.0 (with Rectangle 2.0.4)"`).
+    - `Font`: queries `NSFont.systemFontOfSize:` and `NSFont.userFontOfSize:` via Objective-C
+      runtime (`".AppleSystemUIFont [System], Helvetica [User]"`).
+    - `Editor`: resolves the binary on `$PATH` and queries `--version` (`"hx 25.07.1"`).
+    - `Wi-Fi` & `Bluetooth`: adds `activePHYMode`, band/channel, security, and RSSI signal `%` via
+      `CWInterface` without spawning `/usr/sbin/ipconfig`, and reads `bluetooth-lea2` (`"Apple Bluetooth 5.2+"`)
+      plus connected `IOBluetoothDevice` names/battery levels.
 
 - **v0.20.42: Cross-platform `cpu-cache` instance counts (`Nx`) and hybrid P/E cache tiers
   (`+`).** Verified on `chani` (Apple M3 Pro, macOS 26.2 arm64):
@@ -1100,11 +1166,6 @@ SQLite open-mode defect — see §7.3.
   (`IONVMeBlockStorageDevice` vs `IOAHCIBlockStorageDevice`) is the honest signal; it needs
   an Intel Mac to verify.
 
-**Decided — `tpm` stays absent on macOS.** Macs have a **Secure Enclave**, not a TPM. The field
-reports a TPM *specification* version (`2.0`/`1.2`) and a Secure Enclave has none; labelling one
-as the other would be an approximate-but-wrong answer. fastfetch reports no TPM on macOS either.
-Reopen only if a Secure Enclave field is wanted under its own name — a different feature.
-
 ---
 
 ## 7. Hard-won lessons
@@ -1388,7 +1449,14 @@ nobody asked.
   tells them apart. The old mapping printed `discharging` for a plugged-in Mac.
 - **Brightness lives on `AppleARMBacklight`** on Apple Silicon — the documented
   `IODisplayConnect`, `AppleBacklightDisplay`, `AppleCLCD2` and `IOMobileFramebufferShim` all
-  return nothing.
+  return nothing. **However, in clamshell mode (lid closed, external monitor attached),
+  `AppleARMBacklight` stays in the IORegistry with a frozen `value = 32768` (`50%`) even though
+  the built-in panel is off.** Always check `CGGetActiveDisplayList` + `CGDisplayIsBuiltin` first
+  and only read `AppleARMBacklight` when an active built-in display is present; otherwise read
+  `IOMobileFramebuffer` brightness for the active external display(s).
+- **Homebrew's `/opt/homebrew/Caskroom` contains a hidden `.metadata` directory inside every cask
+  and at the top level.** A naive `read_dir(path).count()` overcounts `brew-cask` by 1 whenever
+  `.metadata` or `.DS_Store` exists; always filter out entries whose filename starts with `.`.
 - **Top-level `hw.l1dcachesize`, `hw.l1icachesize` and `hw.l2cachesize` on Apple Silicon report
   `perflevel1` (Efficiency cores) only.** On an M3 Pro they return `64K` / `128K` / `4M`,
   silently omitting the P-cores (`128K` / `192K` / `16M`) and every instance count. Query

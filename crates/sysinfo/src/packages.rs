@@ -21,66 +21,82 @@ fn rpm_db_uri(path: &str) -> String {
     format!("file:{path}?immutable=1")
 }
 
-pub(crate) fn detect_packages() -> Option<usize> {
+/// Counts non-hidden entries inside `dir` (skipping dotfiles such as Homebrew Caskroom's
+/// `.metadata` directory and `.DS_Store`).
+pub fn count_visible_dir_entries(dir: &std::path::Path) -> usize {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return 0;
+    };
+    entries
+        .filter_map(|e| e.ok())
+        .filter(|e| !e.file_name().to_string_lossy().starts_with('.'))
+        .count()
+}
+
+/// Formats per-package-manager counts into a summary string.
+///
+/// A single manager renders as `"183 (brew)"`; multiple managers include the total and
+/// breakdown, e.g. `"191 (183 brew, 8 brew-cask)"`.
+pub fn format_package_counts(counts: &[(&str, usize)]) -> Option<String> {
+    let active: Vec<(&str, usize)> = counts.iter().copied().filter(|(_, c)| *c > 0).collect();
+    match active.as_slice() {
+        [] => None,
+        [(mgr, count)] => Some(format!("{} ({})", count, mgr)),
+        many => {
+            let total: usize = many.iter().map(|(_, c)| *c).sum();
+            let breakdown: Vec<String> = many.iter().map(|(m, c)| format!("{} {}", c, m)).collect();
+            Some(format!("{} ({})", total, breakdown.join(", ")))
+        }
+    }
+}
+
+pub(crate) fn detect_packages() -> Option<String> {
     #[cfg(target_os = "macos")]
     {
-        let mut count = 0;
-
+        let mut brew = 0;
         for cellar_path in &["/opt/homebrew/Cellar", "/usr/local/Cellar"] {
-            if let Ok(entries) = std::fs::read_dir(cellar_path) {
-                count += entries.filter_map(|e| e.ok()).count();
-            }
+            brew += count_visible_dir_entries(std::path::Path::new(cellar_path));
         }
 
+        let mut cask = 0;
         for cask_path in &["/opt/homebrew/Caskroom", "/usr/local/Caskroom"] {
-            if let Ok(entries) = std::fs::read_dir(cask_path) {
-                count += entries.filter_map(|e| e.ok()).count();
-            }
+            cask += count_visible_dir_entries(std::path::Path::new(cask_path));
         }
 
-        if let Ok(entries) = std::fs::read_dir("/opt/local/var/macports/software") {
-            count += entries.filter_map(|e| e.ok()).count();
-        }
+        let macports =
+            count_visible_dir_entries(std::path::Path::new("/opt/local/var/macports/software"));
 
-        if count > 0 {
-            Some(count)
-        } else {
-            None
-        }
+        format_package_counts(&[("brew", brew), ("brew-cask", cask), ("macports", macports)])
     }
 
     #[cfg(target_os = "windows")]
     {
-        let mut count = 0;
-
+        let mut scoop = 0;
         if let Some(home) = dirs::home_dir() {
             let scoop_dir = std::env::var("SCOOP")
                 .map(std::path::PathBuf::from)
                 .unwrap_or_else(|_| home.join("scoop"));
-            if let Ok(entries) = std::fs::read_dir(scoop_dir.join("apps")) {
-                count += entries.filter_map(|e| e.ok()).count();
-            }
+            scoop += count_visible_dir_entries(&scoop_dir.join("apps"));
         }
 
         let choco_install = std::env::var("ChocolateyInstall")
             .unwrap_or_else(|_| "C:\\ProgramData\\chocolatey".to_string());
-        if let Ok(entries) = std::fs::read_dir(std::path::Path::new(&choco_install).join("lib")) {
-            count += entries.filter_map(|e| e.ok()).count();
-        }
+        let choco = count_visible_dir_entries(&std::path::Path::new(&choco_install).join("lib"));
 
-        if count > 0 {
-            Some(count)
-        } else {
-            None
-        }
+        format_package_counts(&[("scoop", scoop), ("choco", choco)])
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
+        let mut counts: Vec<(&str, usize)> = Vec::new();
+
         if let Ok(entries) = std::fs::read_dir("/var/lib/pacman/local") {
-            let count = entries.filter_map(|e| e.ok()).count();
+            let count = entries
+                .filter_map(|e| e.ok())
+                .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
+                .count();
             if count > 0 {
-                return Some(count);
+                counts.push(("pacman", count));
             }
         }
 
@@ -90,31 +106,31 @@ pub(crate) fn detect_packages() -> Option<usize> {
                 .filter(|e| e.path().extension().is_some_and(|ext| ext == "list"))
                 .count();
             if count > 0 {
-                return Some(count);
+                counts.push(("dpkg", count));
             }
         }
 
         if let Ok(entries) = std::fs::read_dir("/var/db/pkg") {
             let count: usize = entries
                 .filter_map(|e| e.ok())
-                .map(|e| {
-                    std::fs::read_dir(e.path())
-                        .map(|d| d.filter(|_| true).count())
-                        .unwrap_or(0)
-                })
+                .map(|e| count_visible_dir_entries(&e.path()))
                 .sum();
             if count > 0 {
-                return Some(count);
+                counts.push(("portage", count));
             }
         }
 
         if let Ok(entries) = std::fs::read_dir("/var/db/xbps") {
             let count = entries
                 .filter_map(|e| e.ok())
-                .filter(|e| e.path().extension().is_some_and(|ext| ext == "plist"))
+                .filter(|e| {
+                    e.file_name().to_string_lossy().starts_with("pkgdb-")
+                        || e.path().extension().is_some_and(|ext| ext == "plist")
+                })
+                .filter(|e| !e.file_name().to_string_lossy().starts_with("pkgdb-"))
                 .count();
             if count > 0 {
-                return Some(count);
+                counts.push(("xbps", count));
             }
         }
 
@@ -129,7 +145,7 @@ pub(crate) fn detect_packages() -> Option<usize> {
                     match conn.query_row("SELECT COUNT(*) FROM Packages", [], |row| {
                         row.get::<_, i64>(0)
                     }) {
-                        Ok(count) if count > 0 => return Some(count as usize),
+                        Ok(count) if count > 0 => counts.push(("rpm", count as usize)),
                         Ok(_) => {}
                         // Surfaced rather than swallowed: the read-only-database failure this
                         // URI exists to prevent used to land here and vanish silently, so the
@@ -145,7 +161,18 @@ pub(crate) fn detect_packages() -> Option<usize> {
             }
         }
 
-        None
+        let mut flatpak = count_visible_dir_entries(std::path::Path::new("/var/lib/flatpak/app"))
+            + count_visible_dir_entries(std::path::Path::new("/var/lib/flatpak/runtime"));
+        if let Some(home) = dirs::home_dir() {
+            let user_fp = home.join(".local/share/flatpak");
+            flatpak += count_visible_dir_entries(&user_fp.join("app"))
+                + count_visible_dir_entries(&user_fp.join("runtime"));
+        }
+        if flatpak > 0 {
+            counts.push(("flatpak", flatpak));
+        }
+
+        format_package_counts(&counts)
     }
 }
 
@@ -170,5 +197,33 @@ mod tests {
         let uri = rpm_db_uri("/tmp/some.sqlite");
         assert!(uri.starts_with("file:"));
         assert!(uri.contains("?immutable=1"));
+    }
+
+    #[test]
+    fn test_format_package_counts() {
+        assert_eq!(format_package_counts(&[]), None);
+        assert_eq!(
+            format_package_counts(&[("brew", 0), ("brew-cask", 0)]),
+            None
+        );
+        assert_eq!(
+            format_package_counts(&[("brew", 183), ("brew-cask", 0)]),
+            Some("183 (brew)".to_string())
+        );
+        assert_eq!(
+            format_package_counts(&[("brew", 183), ("brew-cask", 8), ("macports", 0)]),
+            Some("191 (183 brew, 8 brew-cask)".to_string())
+        );
+    }
+
+    #[test]
+    fn test_count_visible_dir_entries_skips_dotfiles() {
+        let dir = std::env::temp_dir().join(format!("retch-pkg-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join(".metadata")).unwrap();
+        std::fs::create_dir_all(dir.join("ghostty")).unwrap();
+        std::fs::create_dir_all(dir.join("rectangle")).unwrap();
+        assert_eq!(count_visible_dir_entries(&dir), 2);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -764,9 +764,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     if info.users > 0 {
         print_line("Users", &info.users.to_string());
     }
-    if let Some(pkgs) = info.packages {
-        if pkgs > 0 {
-            print_line("Packages", &pkgs.to_string());
+    if let Some(pkgs) = &info.packages {
+        if !pkgs.is_empty() {
+            print_line("Packages", pkgs);
         }
     }
     if let Some(user) = &info.current_user {

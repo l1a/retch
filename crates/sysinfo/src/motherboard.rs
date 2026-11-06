@@ -6,6 +6,16 @@
 pub(crate) fn detect_motherboard() -> Option<String> {
     #[cfg(target_os = "macos")]
     {
+        let info = crate::macos_ffi::get_macos_platform_info();
+        if let Some(formatted) = format_macos_motherboard(
+            info.product_name.as_deref(),
+            None,
+            info.model.as_deref(),
+            info.board_id.as_deref(),
+        ) {
+            return Some(formatted);
+        }
+
         extern "C" {
             fn sysctlbyname(
                 name: *const i8,
@@ -17,10 +27,9 @@ pub(crate) fn detect_motherboard() -> Option<String> {
         }
 
         let name_c = std::ffi::CString::new("hw.model").ok();
-        let mut model_str = None;
-
         if let Some(name) = name_c {
             let mut size: usize = 0;
+            // SAFETY: null oldp queries required buffer size for hw.model.
             unsafe {
                 sysctlbyname(
                     name.as_ptr(),
@@ -32,6 +41,7 @@ pub(crate) fn detect_motherboard() -> Option<String> {
             }
             if size > 0 {
                 let mut buf = vec![0u8; size];
+                // SAFETY: buf is `size` bytes long.
                 let res = unsafe {
                     sysctlbyname(
                         name.as_ptr(),
@@ -48,25 +58,9 @@ pub(crate) fn detect_motherboard() -> Option<String> {
                     if let Ok(model) = String::from_utf8(buf) {
                         let trimmed = model.trim();
                         if !trimmed.is_empty() {
-                            model_str = Some(trimmed.to_string());
+                            return Some(trimmed.to_string());
                         }
                     }
-                }
-            }
-        }
-
-        if model_str.is_some() {
-            return model_str;
-        }
-
-        if let Ok(output) = std::process::Command::new("sysctl")
-            .args(["-n", "hw.model"])
-            .output()
-        {
-            if let Ok(model) = String::from_utf8(output.stdout) {
-                let trimmed = model.trim();
-                if !trimmed.is_empty() {
-                    return Some(trimmed.to_string());
                 }
             }
         }
@@ -123,5 +117,73 @@ pub(crate) fn detect_motherboard() -> Option<String> {
             (_, Some(n)) if !n.is_empty() => Some(n),
             _ => None,
         }
+    }
+}
+
+/// Formats macOS host/board properties from `IODeviceTree:/` and `IODeviceTree:/product`
+/// into a human-readable string combining marketing description, model identifier, and
+/// board target subtype (e.g. `"MacBook Pro (14-inch, Nov 2023) (Mac15,6 / J514sAP)"`).
+#[cfg(any(target_os = "macos", test))]
+pub fn format_macos_motherboard(
+    product_description: Option<&str>,
+    product_name: Option<&str>,
+    model: Option<&str>,
+    target_sub_type: Option<&str>,
+) -> Option<String> {
+    let marketing = product_description
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .or_else(|| product_name.map(str::trim).filter(|s| !s.is_empty()));
+
+    let model = model.map(str::trim).filter(|s| !s.is_empty());
+    let board = target_sub_type.map(str::trim).filter(|s| !s.is_empty());
+
+    let id = match (model, board) {
+        (Some(m), Some(b)) if m != b => Some(format!("{} / {}", m, b)),
+        (Some(m), _) => Some(m.to_string()),
+        (None, Some(b)) => Some(b.to_string()),
+        (None, None) => None,
+    };
+
+    match (marketing, id) {
+        (Some(mkt), Some(id_str)) if mkt != id_str => Some(format!("{} ({})", mkt, id_str)),
+        (Some(mkt), _) => Some(mkt.to_string()),
+        (None, Some(id_str)) => Some(id_str),
+        (None, None) => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_macos_motherboard_full_apple_silicon() {
+        assert_eq!(
+            format_macos_motherboard(
+                Some("MacBook Pro (14-inch, Nov 2023)"),
+                Some("MacBook Pro"),
+                Some("Mac15,6"),
+                Some("J514sAP"),
+            ),
+            Some("MacBook Pro (14-inch, Nov 2023) (Mac15,6 / J514sAP)".to_string())
+        );
+    }
+
+    #[test]
+    fn test_format_macos_motherboard_partial_fallbacks() {
+        assert_eq!(
+            format_macos_motherboard(None, Some("MacBook Air"), Some("Mac14,2"), None),
+            Some("MacBook Air (Mac14,2)".to_string())
+        );
+        assert_eq!(
+            format_macos_motherboard(None, None, Some("MacBookPro18,3"), None),
+            Some("MacBookPro18,3".to_string())
+        );
+        assert_eq!(
+            format_macos_motherboard(Some("Mac mini"), None, None, Some("J473AP")),
+            Some("Mac mini (J473AP)".to_string())
+        );
+        assert_eq!(format_macos_motherboard(None, None, None, None), None);
     }
 }

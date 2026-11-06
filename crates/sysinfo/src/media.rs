@@ -518,13 +518,15 @@ pub mod win_media {
 
 #[cfg(any(target_os = "linux", test))]
 pub mod linux_dbus {
+    #[cfg(target_os = "linux")]
     use super::MediaInfo;
+    #[cfg(target_os = "linux")]
     use std::io::{Read, Write};
-    use std::path::PathBuf;
-    use std::time::Duration;
-
     #[cfg(target_os = "linux")]
     use std::os::unix::net::UnixStream;
+    use std::path::PathBuf;
+    #[cfg(target_os = "linux")]
+    use std::time::Duration;
 
     /// Locates the user's session D-Bus Unix domain socket path.
     pub fn get_session_bus_path() -> Option<PathBuf> {
