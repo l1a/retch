@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "November 2026" "retch 0.20.41" "System Information Fetcher"
+.TH "RETCH" "1" "November 2026" "retch 0.20.42" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -187,7 +187,7 @@ Sixel and Chafa output, but not in ASCII mode\.
 .IP \(bu 4
 `\f[CR]cpu\-freq\fP`: CPU current/max/min frequencies\.
 .IP \(bu 4
-`\f[CR]cpu\-cache\fP`: CPU L1/L2/L3 cache sizes\.
+`\f[CR]cpu\-cache\fP`: CPU L1/L2/L3 cache sizes and instance counts (e\.g\. `\f[CR]L1d: 8x32K, L1i: 8x32K, L2: 8x1M, L3: 16M\fP`), including separate P\-core and E\-core tiers on hybrid CPUs (`\f[CR]L1d: 6x128K + 6x64K, L1i: 6x192K + 6x128K, L2: 16M + 4M\fP`)\.
 .IP \(bu 4
 `\f[CR]cpu\-usage\fP`: Current CPU utilization percentage\. Long mode and above: on Linux and macOS a usage figure needs two samples at least 200 ms apart, which would dominate the default mode's runtime (Windows measures across the run instead)\. The two samples bracket retch's own probes, so retch's own CPU time (and that of the helper processes it runs) is subtracted: the figure describes the rest of the system, not retch\. To show it without `\f[CR]\-\-long\fP`, name it in the config's `\f[CR]fields\fP` list or in `\f[CR]\-\-fields\fP`\.
 .IP \(bu 4
