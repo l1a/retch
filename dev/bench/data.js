@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793985837466,
+  "lastUpdate": 1793985839278,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -19905,6 +19905,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 285756372.5,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "06bd0a035eea89d9ae7f9a0850b28912abe78368",
+          "message": "Report CPU cache counts and hybrid P/E tiers (#318)\n\n- Update `format_cpu_cache_entries` to aggregate physical cache instances by\n  `(level, kind, size_kb)`, prefixing multi-instance caches with `{count}x`\n  and joining distinct size tiers within the same label (`L1d`, `L1i`, `L2`,\n  `L3`) with `\" + \"` in first-seen order (P-cores before E-cores).\n- Query `hw.nperflevels` and `hw.perflevel{i}.*` sysctls on macOS instead of\n  only top-level `hw.l*cachesize` (which on Apple Silicon reported Efficiency\n  cores alone and omitted instance counts).\n- Walk all `/sys/devices/system/cpu/cpu<N>/cache/index*` directories on Linux\n  in ascending CPU index order and deduplicate shared physical caches by\n  `(level, kind, shared_cpu_list)`.\n- Add unit tests for `format_macos_cpu_cache`, `cpu_cache_in`, and\n  `parse_windows_cache_records`, plus `test_detect_cpu_cache_returns_some_on_macos`.\n- Bump `retch-cli` to 0.20.42 and `retch-sysinfo` to 0.1.105, update\n  `docs/retch.1.md` and `NOTES.md`, and regenerate `docs/retch.1`.\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-11-06T09:14:51-08:00",
+          "tree_id": "05c991e3cb33cc47a8bd338b26caedaa7e2c2ee5",
+          "url": "https://github.com/l1a/retch/commit/06bd0a035eea89d9ae7f9a0850b28912abe78368"
+        },
+        "date": 1793985839235,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 31470680.000000007,
+            "unit": "ns",
+            "extra": "v0.20.42"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2360733390,
+            "unit": "ns",
+            "extra": "v0.20.42"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1295332220.0000002,
+            "unit": "ns",
+            "extra": "v0.20.42"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 15620180.000000002,
+            "unit": "ns",
+            "extra": "v0.20.42"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 19714520.000000004,
+            "unit": "ns",
+            "extra": "v0.20.42"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 312444400,
+            "unit": "ns",
+            "extra": "v0.20.42"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 175979340,
+            "unit": "ns",
+            "extra": "v0.20.42"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 16606530.000000002,
+            "unit": "ns",
+            "extra": "v0.20.42"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 232.86975149785388,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.9442385969135443,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 151.49859011195971,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 988.2365372553219,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 30708.97999005082,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 410.38499923137744,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 619.7959256201502,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 290226635,
             "unit": "ns"
           }
         ]
