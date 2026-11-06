@@ -151,16 +151,35 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.20.41)
+## Current State (v0.20.42)
 
-`main` carries **`retch-cli` 0.20.41** / **`retch-sysinfo` 0.1.104**. Newest released tag is
-**`v0.20.38`**.
+`main` carries **`retch-cli` 0.20.42** / **`retch-sysinfo` 0.1.105**. Newest released tag is
+**`v0.20.41`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.20.42: Cross-platform `cpu-cache` instance counts (`Nx`) and hybrid P/E cache tiers
+  (`+`).** Verified on `chani` (Apple M3 Pro, macOS 26.2 arm64):
+  - **macOS (`crates/sysinfo/src/fetch.rs`):** `detect_cpu_cache()` previously read only top-level
+    `hw.l1dcachesize`, `hw.l1icachesize`, `hw.l2cachesize`, and `hw.l3cachesize`, which on Apple
+    Silicon (`hw.nperflevels == 2`) report `perflevel1` (Efficiency cores) alone (`L1d: 64K,
+    L1i: 128K, L2: 4M` on M3 Pro, omitting the P-cores' `128K` L1d / `192K` L1i / `16M` L2 and
+    all core/cluster counts). Now iterates `hw.perflevel0..{hw.nperflevels-1}` reading
+    `physicalcpu`, `logicalcpu`, `l1dcachesize`, `l1icachesize`, `l2cachesize`, `cpusperl2`,
+    `l3cachesize`, and `cpusperl3` (accepting both 4-byte `CTLTYPE_INT` and 8-byte `CTLTYPE_QUAD`
+    sysctl responses) and formats via `format_macos_cpu_cache` / `format_cpu_cache_entries`
+    (rendering `CPU Cache: L1d: 6x128K + 6x64K, L1i: 6x192K + 6x128K, L2: 16M + 4M` on M3 Pro).
+  - **Linux (`cpu_cache_in`) & Windows (`parse_windows_cache_records`):** Linux now walks all
+    `/sys/devices/system/cpu/cpu<N>/cache/index*` directories in ascending CPU index order and
+    deduplicates shared physical cache instances by `(level, kind, shared_cpu_list)` instead of
+    reading `cpu0` alone. `format_cpu_cache_entries()` aggregates physical cache instances by
+    `(level, kind, size_kb)` across Linux, macOS, and Windows, preserving first-seen tier order
+    within each label (`L1d`, `L1i`, `L2`, `L3`) so P-core tiers precede E-core tiers and
+    multi-instance caches carry `{count}x`.
 
 - **v0.20.41: Cross-platform security and FFI hardening.**
   - **macOS `objc_msgSend` ABI (`crates/sysinfo/src/macos_ffi.rs`, `media.rs`):** Declared
@@ -1370,6 +1389,12 @@ nobody asked.
 - **Brightness lives on `AppleARMBacklight`** on Apple Silicon — the documented
   `IODisplayConnect`, `AppleBacklightDisplay`, `AppleCLCD2` and `IOMobileFramebufferShim` all
   return nothing.
+- **Top-level `hw.l1dcachesize`, `hw.l1icachesize` and `hw.l2cachesize` on Apple Silicon report
+  `perflevel1` (Efficiency cores) only.** On an M3 Pro they return `64K` / `128K` / `4M`,
+  silently omitting the P-cores (`128K` / `192K` / `16M`) and every instance count. Query
+  `hw.nperflevels` and iterate `hw.perflevel{i}.{physicalcpu,logicalcpu,l1dcachesize,l1icachesize,l2cachesize,cpusperl2,l3cachesize,cpusperl3}`
+  instead, reading into an 8-byte buffer and branching on the returned `size` (`4` vs `8`)
+  because XNU mixes `CTLTYPE_INT` and `CTLTYPE_QUAD` across those keys.
 
 **Linux**
 - **`/proc/diskstats` counts 512-byte sectors regardless of the device's `hw_sector_size`.**

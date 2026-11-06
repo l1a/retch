@@ -1495,24 +1495,53 @@ impl SystemInfo {
     }
 }
 
-/// Formats a list of `(level, kind, size_kb)` CPU cache entries into `"L1d: 32K, L1i: 32K, L2: 1M, L3: 16M"`.
+/// Formats a list of physical `(level, kind, size_kb)` CPU cache instances into a compact
+/// single-line summary such as `"L1d: 8x32K, L1i: 8x32K, L2: 8x1M, L3: 16M"` or, on hybrid
+/// CPUs with distinct cache sizes at the same level,
+/// `"L1d: 6x128K + 6x64K, L1i: 6x192K + 6x128K, L2: 16M + 4M"`.
 ///
-/// Sorts by `(level, kind)` (`"Data"` before `"Instruction"` before `"Unified"`), deduplicates
-/// by label so multi-core cache tables report the per-level cache size once, and formats
-/// exact MiB multiples as `NM`, fractional MiB as `N.XXM`, and smaller sizes as `NK`.
-#[cfg_attr(target_os = "macos", allow(dead_code))]
+/// Each tuple in `entries` represents one physical cache instance. Buckets are ordered by
+/// `(level, kind)` (`"Data"` before `"Instruction"` before `"Unified"`). Within each label,
+/// distinct `size_kb` tiers are kept in first-seen order (so P-core tiers precede E-core
+/// tiers) with their instance counts (`Nx` when `N > 1`, bare size when `N == 1`). Exact MiB
+/// multiples format as `NM`, fractional MiB as `N.XXM` (trailing zeros stripped), and smaller
+/// sizes as `NK`.
 fn format_cpu_cache_entries(entries: &[(u32, &str, u64)]) -> Option<String> {
-    let mut filtered: Vec<(u32, &str, u64)> = entries
-        .iter()
-        .copied()
-        .filter(|&(level, kind, size_kb)| {
-            level > 0 && size_kb > 0 && matches!(kind, "Data" | "Instruction" | "Unified")
-        })
-        .collect();
-    if filtered.is_empty() {
+    struct CacheBucket {
+        label: String,
+        tiers: Vec<(u64, usize)>,
+    }
+
+    let mut buckets: std::collections::BTreeMap<(u32, u8), CacheBucket> =
+        std::collections::BTreeMap::new();
+
+    for &(level, kind, size_kb) in entries {
+        if level == 0 || size_kb == 0 {
+            continue;
+        }
+        let (subrank, label) = match (level, kind) {
+            (1, "Data") => (0u8, "L1d".to_string()),
+            (1, "Instruction") => (1u8, "L1i".to_string()),
+            (1, "Unified") => (2u8, "L1".to_string()),
+            (n, "Data" | "Instruction" | "Unified") => (0u8, format!("L{n}")),
+            _ => continue,
+        };
+        let bucket = buckets
+            .entry((level, subrank))
+            .or_insert_with(|| CacheBucket {
+                label,
+                tiers: Vec::new(),
+            });
+        if let Some(tier) = bucket.tiers.iter_mut().find(|(s, _)| *s == size_kb) {
+            tier.1 += 1;
+        } else {
+            bucket.tiers.push((size_kb, 1));
+        }
+    }
+
+    if buckets.is_empty() {
         return None;
     }
-    filtered.sort_by_key(|&(level, kind, _)| (level, kind));
 
     let fmt_size = |kb: u64| -> String {
         if kb >= 1024 && kb.is_multiple_of(1024) {
@@ -1528,25 +1557,182 @@ fn format_cpu_cache_entries(entries: &[(u32, &str, u64)]) -> Option<String> {
         }
     };
 
-    let mut seen = std::collections::HashSet::new();
-    let mut parts: Vec<String> = Vec::new();
-    for (level, kind, size_kb) in filtered {
-        let label = match (level, kind) {
-            (1, "Data") => "L1d".to_string(),
-            (1, "Instruction") => "L1i".to_string(),
-            (1, "Unified") => "L1".to_string(),
-            (n, _) => format!("L{}", n),
+    let parts: Vec<String> = buckets
+        .into_values()
+        .map(|bucket| {
+            let tier_strs: Vec<String> = bucket
+                .tiers
+                .into_iter()
+                .map(|(size_kb, count)| {
+                    let s = fmt_size(size_kb);
+                    if count > 1 {
+                        format!("{count}x{s}")
+                    } else {
+                        s
+                    }
+                })
+                .collect();
+            format!("{}: {}", bucket.label, tier_strs.join(" + "))
+        })
+        .collect();
+
+    Some(parts.join(", "))
+}
+
+/// Per-perflevel CPU cache topology read from macOS `hw.perflevelN.*` (or top-level `hw.*`)
+/// sysctls.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+#[derive(Clone, Copy, Debug, Default)]
+struct MacosPerfLevelCache {
+    physical_cpus: u64,
+    logical_cpus: u64,
+    l1d_bytes: Option<u64>,
+    l1i_bytes: Option<u64>,
+    l2_bytes: Option<u64>,
+    cpus_per_l2: Option<u64>,
+    l3_bytes: Option<u64>,
+    cpus_per_l3: Option<u64>,
+}
+
+/// Pure helper: converts macOS per-perflevel cache topology records into physical cache
+/// instances and formats them via [`format_cpu_cache_entries`].
+///
+/// For each perflevel:
+/// - L1d and L1i are per physical core (`physical_cpus`, falling back to `logical_cpus`).
+/// - L2 instance count is `(logical_cpus / cpus_per_l2).max(1)` when `cpus_per_l2` is present,
+///   or `1` otherwise.
+/// - L3 instance count is `(logical_cpus / cpus_per_l3).max(1)` when `cpus_per_l3` is present,
+///   or `1` otherwise.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn format_macos_cpu_cache(levels: &[MacosPerfLevelCache]) -> Option<String> {
+    let mut entries: Vec<(u32, &'static str, u64)> = Vec::new();
+    for lvl in levels {
+        let logical = lvl.logical_cpus.max(lvl.physical_cpus).max(1);
+        let l1_count = if lvl.physical_cpus > 0 {
+            lvl.physical_cpus
+        } else {
+            logical
         };
-        if seen.insert(label.clone()) {
-            parts.push(format!("{}: {}", label, fmt_size(size_kb)));
+        if let Some(bytes) = lvl.l1d_bytes.filter(|&b| b >= 1024) {
+            let kb = bytes / 1024;
+            for _ in 0..l1_count {
+                entries.push((1, "Data", kb));
+            }
+        }
+        if let Some(bytes) = lvl.l1i_bytes.filter(|&b| b >= 1024) {
+            let kb = bytes / 1024;
+            for _ in 0..l1_count {
+                entries.push((1, "Instruction", kb));
+            }
+        }
+        if let Some(bytes) = lvl.l2_bytes.filter(|&b| b >= 1024) {
+            let kb = bytes / 1024;
+            let count = lvl
+                .cpus_per_l2
+                .filter(|&n| n > 0)
+                .map_or(1, |per_l2| (logical / per_l2).max(1));
+            for _ in 0..count {
+                entries.push((2, "Unified", kb));
+            }
+        }
+        if let Some(bytes) = lvl.l3_bytes.filter(|&b| b >= 1024) {
+            let kb = bytes / 1024;
+            let count = lvl
+                .cpus_per_l3
+                .filter(|&n| n > 0)
+                .map_or(1, |per_l3| (logical / per_l3).max(1));
+            for _ in 0..count {
+                entries.push((3, "Unified", kb));
+            }
+        }
+    }
+    format_cpu_cache_entries(&entries)
+}
+
+/// Parses a Linux sysfs cache `size` string (e.g. `"32K"`, `"16M"`, `"1280K"`) into KiB.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn parse_sysfs_cache_size_kb(size_raw: &str) -> Option<u64> {
+    let s = size_raw.trim();
+    if let Some(k) = s.strip_suffix('K') {
+        k.parse::<u64>().ok()
+    } else if let Some(m) = s.strip_suffix('M') {
+        m.parse::<u64>().ok().map(|n| n * 1024)
+    } else {
+        s.parse::<u64>().ok()
+    }
+}
+
+/// Walks a Linux `/sys/devices/system/cpu` directory across all `cpu<N>/cache/index*`
+/// entries, deduplicating shared physical cache instances by `(level, type, shared_cpu_list)`
+/// so both per-core instance counts (`Nx`) and hybrid P/E core cache tiers (`+`) are
+/// captured.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn cpu_cache_in(cpu_root: &std::path::Path) -> Option<String> {
+    use std::collections::HashSet;
+    use std::fs;
+
+    let mut cpu_dirs: Vec<(u32, std::path::PathBuf)> = fs::read_dir(cpu_root)
+        .ok()?
+        .flatten()
+        .filter_map(|e| {
+            let path = e.path();
+            let name = path.file_name()?.to_str()?;
+            let idx: u32 = name.strip_prefix("cpu")?.parse().ok()?;
+            path.join("cache").is_dir().then_some((idx, path))
+        })
+        .collect();
+
+    if cpu_dirs.is_empty() {
+        return None;
+    }
+    cpu_dirs.sort_by_key(|(idx, _)| *idx);
+
+    let mut seen_instances: HashSet<(u32, String, String)> = HashSet::new();
+    let mut owned: Vec<(u32, String, u64)> = Vec::new();
+
+    for (cpu_idx, cpu_path) in cpu_dirs {
+        let Ok(indices) = fs::read_dir(cpu_path.join("cache")) else {
+            continue;
+        };
+        let mut index_paths: Vec<std::path::PathBuf> = indices
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.is_dir())
+            .collect();
+        index_paths.sort();
+
+        for path in index_paths {
+            let Ok(level_str) = fs::read_to_string(path.join("level")) else {
+                continue;
+            };
+            let Ok(level) = level_str.trim().parse::<u32>() else {
+                continue;
+            };
+            let Ok(kind_raw) = fs::read_to_string(path.join("type")) else {
+                continue;
+            };
+            let kind = kind_raw.trim().to_string();
+            let Ok(size_str) = fs::read_to_string(path.join("size")) else {
+                continue;
+            };
+            let Some(size_kb) = parse_sysfs_cache_size_kb(&size_str) else {
+                continue;
+            };
+            let shared = fs::read_to_string(path.join("shared_cpu_list"))
+                .or_else(|_| fs::read_to_string(path.join("shared_cpu_map")))
+                .map(|s| s.trim().to_string())
+                .ok()
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| format!("cpu{cpu_idx}"));
+
+            if seen_instances.insert((level, kind.clone(), shared)) {
+                owned.push((level, kind, size_kb));
+            }
         }
     }
 
-    if parts.is_empty() {
-        None
-    } else {
-        Some(parts.join(", "))
-    }
+    let refs: Vec<(u32, &str, u64)> = owned.iter().map(|(l, k, s)| (*l, k.as_str(), *s)).collect();
+    format_cpu_cache_entries(&refs)
 }
 
 /// Parses raw `SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX` records returned by
@@ -1721,72 +1907,17 @@ fn windows_freq_range_khz(
     Some((low * 1000, high * 1000))
 }
 
-/// Detects CPU cache sizes.
+/// Detects CPU cache sizes and instance counts across all cores/clusters.
 ///
-/// Linux: reads from `/sys/devices/system/cpu/cpu0/cache/` sysfs entries.
-/// macOS: reads `hw.l1dcachesize`, `hw.l1icachesize`, `hw.l2cachesize`, `hw.l3cachesize` via sysctlbyname.
-/// Windows: queries `GetLogicalProcessorInformationEx(RelationCache, ...)`.
+/// - Linux: walks `/sys/devices/system/cpu/cpu*/cache/index*` and deduplicates shared
+///   physical cache instances via `shared_cpu_list`.
+/// - macOS: reads per-perflevel `hw.perflevelN.*` sysctls (`hw.nperflevels`), falling back
+///   to top-level `hw.l*cachesize` sysctls if unavailable.
+/// - Windows: queries `GetLogicalProcessorInformationEx(RelationCache, ...)`.
 pub fn detect_cpu_cache() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
-        use std::fs;
-        let cache_dir = std::path::Path::new("/sys/devices/system/cpu/cpu0/cache");
-        if !cache_dir.exists() {
-            return None;
-        }
-
-        let mut owned: Vec<(u32, String, u64)> = Vec::new();
-
-        let Ok(indices) = fs::read_dir(cache_dir) else {
-            return None;
-        };
-
-        for entry in indices.flatten() {
-            let path = entry.path();
-            // Skip non-index entries (e.g. the uevent file)
-            if !path.is_dir() {
-                continue;
-            }
-            let level_str = match fs::read_to_string(path.join("level")) {
-                Ok(s) => s,
-                Err(_) => continue,
-            };
-            let level: u32 = match level_str.trim().parse() {
-                Ok(n) => n,
-                Err(_) => continue,
-            };
-            let kind = match fs::read_to_string(path.join("type")) {
-                Ok(s) => s.trim().to_string(),
-                Err(_) => continue,
-            };
-            let size_str = match fs::read_to_string(path.join("size")) {
-                Ok(s) => s,
-                Err(_) => continue,
-            };
-            let size_raw = size_str.trim();
-            let size_kb: u64 = if let Some(k) = size_raw.strip_suffix('K') {
-                match k.parse() {
-                    Ok(n) => n,
-                    Err(_) => continue,
-                }
-            } else if let Some(m) = size_raw.strip_suffix('M') {
-                match m.parse::<u64>() {
-                    Ok(n) => n * 1024,
-                    Err(_) => continue,
-                }
-            } else {
-                match size_raw.parse() {
-                    Ok(n) => n,
-                    Err(_) => continue,
-                }
-            };
-
-            owned.push((level, kind, size_kb));
-        }
-
-        let refs: Vec<(u32, &str, u64)> =
-            owned.iter().map(|(l, k, s)| (*l, k.as_str(), *s)).collect();
-        format_cpu_cache_entries(&refs)
+        cpu_cache_in(std::path::Path::new("/sys/devices/system/cpu"))
     }
     #[cfg(target_os = "macos")]
     {
@@ -1800,53 +1931,67 @@ pub fn detect_cpu_cache() -> Option<String> {
             ) -> i32;
         }
 
-        let read_u64 = |key: &str| -> Option<u64> {
+        // Reads a 32-bit (`CTLTYPE_INT`) or 64-bit (`CTLTYPE_QUAD`) unsigned integer sysctl.
+        let read_uint = |key: &str| -> Option<u64> {
             let name = std::ffi::CString::new(key).ok()?;
-            let mut value: u64 = 0;
-            let mut size = std::mem::size_of::<u64>();
+            let mut buf = [0u8; 8];
+            let mut size = buf.len();
+            // SAFETY: `name` is a NUL-terminated C string and `buf` is a writable 8-byte buffer.
             let ret = unsafe {
                 sysctlbyname(
                     name.as_ptr(),
-                    &mut value as *mut u64 as *mut std::ffi::c_void,
+                    buf.as_mut_ptr() as *mut std::ffi::c_void,
                     &mut size,
                     std::ptr::null_mut(),
                     0,
                 )
             };
-            if ret == 0 && value > 0 {
-                Some(value)
-            } else {
-                None
+            if ret != 0 {
+                return None;
             }
+            let val = match size {
+                4 => u64::from(u32::from_ne_bytes([buf[0], buf[1], buf[2], buf[3]])),
+                8 => u64::from_ne_bytes(buf),
+                _ => return None,
+            };
+            (val > 0).then_some(val)
         };
 
-        let fmt_bytes = |bytes: u64| -> String {
-            if bytes >= 1024 * 1024 {
-                format!("{}M", bytes / (1024 * 1024))
-            } else {
-                format!("{}K", bytes / 1024)
+        if let Some(nlevels) = read_uint("hw.nperflevels") {
+            let mut levels = Vec::with_capacity(nlevels as usize);
+            for i in 0..nlevels {
+                let logical = read_uint(&format!("hw.perflevel{i}.logicalcpu")).unwrap_or(0);
+                let physical =
+                    read_uint(&format!("hw.perflevel{i}.physicalcpu")).unwrap_or(logical);
+                levels.push(MacosPerfLevelCache {
+                    physical_cpus: physical,
+                    logical_cpus: logical,
+                    l1d_bytes: read_uint(&format!("hw.perflevel{i}.l1dcachesize")),
+                    l1i_bytes: read_uint(&format!("hw.perflevel{i}.l1icachesize")),
+                    l2_bytes: read_uint(&format!("hw.perflevel{i}.l2cachesize")),
+                    cpus_per_l2: read_uint(&format!("hw.perflevel{i}.cpusperl2")),
+                    l3_bytes: read_uint(&format!("hw.perflevel{i}.l3cachesize")),
+                    cpus_per_l3: read_uint(&format!("hw.perflevel{i}.cpusperl3")),
+                });
             }
-        };
-
-        let mut parts = Vec::new();
-        if let Some(v) = read_u64("hw.l1dcachesize") {
-            parts.push(format!("L1d: {}", fmt_bytes(v)));
-        }
-        if let Some(v) = read_u64("hw.l1icachesize") {
-            parts.push(format!("L1i: {}", fmt_bytes(v)));
-        }
-        if let Some(v) = read_u64("hw.l2cachesize") {
-            parts.push(format!("L2: {}", fmt_bytes(v)));
-        }
-        if let Some(v) = read_u64("hw.l3cachesize") {
-            parts.push(format!("L3: {}", fmt_bytes(v)));
+            if let Some(s) = format_macos_cpu_cache(&levels) {
+                return Some(s);
+            }
         }
 
-        if parts.is_empty() {
-            None
-        } else {
-            Some(parts.join(", "))
-        }
+        let logical = read_uint("hw.logicalcpu").unwrap_or(1);
+        let physical = read_uint("hw.physicalcpu").unwrap_or(logical);
+        let fallback = [MacosPerfLevelCache {
+            physical_cpus: physical,
+            logical_cpus: logical,
+            l1d_bytes: read_uint("hw.l1dcachesize"),
+            l1i_bytes: read_uint("hw.l1icachesize"),
+            l2_bytes: read_uint("hw.l2cachesize"),
+            cpus_per_l2: read_uint("hw.cpusperl2"),
+            l3_bytes: read_uint("hw.l3cachesize"),
+            cpus_per_l3: read_uint("hw.cpusperl3"),
+        }];
+        format_macos_cpu_cache(&fallback)
     }
     #[cfg(target_os = "windows")]
     {
@@ -3882,7 +4027,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_windows_cache_records_formats_and_deduplicates() {
+    fn test_parse_windows_cache_records_counts_instances_and_hybrid_tiers() {
         fn make_cache_record(level: u8, cache_type: u32, size_bytes: u32) -> Vec<u8> {
             let mut rec = vec![0u8; 48];
             rec[0..4].copy_from_slice(&2u32.to_le_bytes()); // RelationCache = 2
@@ -3895,22 +4040,163 @@ mod tests {
             rec
         }
 
-        // Simulate two cores with identical L1d (32 KB), L1i (32 KB), L2 (1 MB), and a
-        // shared L3 (16 MB), deliberately out of level/type order to test sorting & dedup.
+        // Simulate two cores with identical L1d (32 KB), L1i (32 KB), L2 (1 MB), and one
+        // shared L3 (16 MB), deliberately out of level/type order to test sorting & counting.
         let mut buf = Vec::new();
-        buf.extend(make_cache_record(3, 0, 16 * 1024 * 1024)); // L3 Unified 16M
+        buf.extend(make_cache_record(3, 0, 16 * 1024 * 1024)); // L3 Unified 16M (shared)
         buf.extend(make_cache_record(1, 1, 32 * 1024)); // L1i 32K (core 0)
         buf.extend(make_cache_record(1, 2, 32 * 1024)); // L1d 32K (core 0)
         buf.extend(make_cache_record(2, 0, 1024 * 1024)); // L2 Unified 1M (core 0)
-        buf.extend(make_cache_record(1, 2, 32 * 1024)); // L1d 32K (core 1, duplicate)
-        buf.extend(make_cache_record(1, 1, 32 * 1024)); // L1i 32K (core 1, duplicate)
-        buf.extend(make_cache_record(2, 0, 1024 * 1024)); // L2 Unified 1M (core 1, duplicate)
+        buf.extend(make_cache_record(1, 2, 32 * 1024)); // L1d 32K (core 1)
+        buf.extend(make_cache_record(1, 1, 32 * 1024)); // L1i 32K (core 1)
+        buf.extend(make_cache_record(2, 0, 1024 * 1024)); // L2 Unified 1M (core 1)
 
         assert_eq!(
             parse_windows_cache_records(&buf).as_deref(),
-            Some("L1d: 32K, L1i: 32K, L2: 1M, L3: 16M")
+            Some("L1d: 2x32K, L1i: 2x32K, L2: 2x1M, L3: 16M")
+        );
+
+        // Hybrid CPU (4 P-cores + 8 E-cores): P-cores have 48K L1d / 32K L1i / 1.25M L2,
+        // E-cores have 32K L1d / 64K L1i and two 2M L2 clusters, plus one shared 18M L3.
+        let mut hybrid_buf = Vec::new();
+        for _ in 0..4 {
+            hybrid_buf.extend(make_cache_record(1, 2, 48 * 1024));
+            hybrid_buf.extend(make_cache_record(1, 1, 32 * 1024));
+            hybrid_buf.extend(make_cache_record(2, 0, 1280 * 1024));
+        }
+        for _ in 0..8 {
+            hybrid_buf.extend(make_cache_record(1, 2, 32 * 1024));
+            hybrid_buf.extend(make_cache_record(1, 1, 64 * 1024));
+        }
+        for _ in 0..2 {
+            hybrid_buf.extend(make_cache_record(2, 0, 2048 * 1024));
+        }
+        hybrid_buf.extend(make_cache_record(3, 0, 18432 * 1024));
+
+        assert_eq!(
+            parse_windows_cache_records(&hybrid_buf).as_deref(),
+            Some("L1d: 4x48K + 8x32K, L1i: 4x32K + 8x64K, L2: 4x1.25M + 2x2M, L3: 18M")
         );
         assert_eq!(parse_windows_cache_records(&[]), None);
+    }
+
+    #[test]
+    fn test_format_macos_cpu_cache_hybrid_and_homogeneous() {
+        // Verbatim Apple M3 Pro (`chani`): perflevel0 (6 P-cores: 128K L1d, 192K L1i, 16M L2
+        // shared across 6 cores) + perflevel1 (6 E-cores: 64K L1d, 128K L1i, 4M L2 shared
+        // across 6 cores).
+        let m3_pro = [
+            MacosPerfLevelCache {
+                physical_cpus: 6,
+                logical_cpus: 6,
+                l1d_bytes: Some(131_072),
+                l1i_bytes: Some(196_608),
+                l2_bytes: Some(16_777_216),
+                cpus_per_l2: Some(6),
+                l3_bytes: None,
+                cpus_per_l3: None,
+            },
+            MacosPerfLevelCache {
+                physical_cpus: 6,
+                logical_cpus: 6,
+                l1d_bytes: Some(65_536),
+                l1i_bytes: Some(131_072),
+                l2_bytes: Some(4_194_304),
+                cpus_per_l2: Some(6),
+                l3_bytes: None,
+                cpus_per_l3: None,
+            },
+        ];
+        assert_eq!(
+            format_macos_cpu_cache(&m3_pro).as_deref(),
+            Some("L1d: 6x128K + 6x64K, L1i: 6x192K + 6x128K, L2: 16M + 4M")
+        );
+
+        // Multi-cluster Apple Silicon (e.g. M3 Max: 12 P-cores across two 6-core 16M L2
+        // clusters + 4 E-cores sharing one 4M L2).
+        let m3_max = [
+            MacosPerfLevelCache {
+                physical_cpus: 12,
+                logical_cpus: 12,
+                l1d_bytes: Some(131_072),
+                l1i_bytes: Some(196_608),
+                l2_bytes: Some(16_777_216),
+                cpus_per_l2: Some(6),
+                l3_bytes: None,
+                cpus_per_l3: None,
+            },
+            MacosPerfLevelCache {
+                physical_cpus: 4,
+                logical_cpus: 4,
+                l1d_bytes: Some(65_536),
+                l1i_bytes: Some(131_072),
+                l2_bytes: Some(4_194_304),
+                cpus_per_l2: Some(4),
+                l3_bytes: None,
+                cpus_per_l3: None,
+            },
+        ];
+        assert_eq!(
+            format_macos_cpu_cache(&m3_max).as_deref(),
+            Some("L1d: 12x128K + 4x64K, L1i: 12x192K + 4x128K, L2: 2x16M + 4M")
+        );
+
+        // Homogeneous Intel Mac with SMT (8 physical / 16 logical, 2 threads per L2, 16 per L3).
+        let intel_smt = [MacosPerfLevelCache {
+            physical_cpus: 8,
+            logical_cpus: 16,
+            l1d_bytes: Some(32_768),
+            l1i_bytes: Some(32_768),
+            l2_bytes: Some(262_144),
+            cpus_per_l2: Some(2),
+            l3_bytes: Some(16_777_216),
+            cpus_per_l3: Some(16),
+        }];
+        assert_eq!(
+            format_macos_cpu_cache(&intel_smt).as_deref(),
+            Some("L1d: 8x32K, L1i: 8x32K, L2: 8x256K, L3: 16M")
+        );
+    }
+
+    #[test]
+    fn test_cpu_cache_in_linux_smt_and_hybrid() {
+        let root = std::env::temp_dir().join(format!("retch-cpucache-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+
+        let write_index = |cpu: u32, idx: u32, level: u32, kind: &str, size: &str, shared: &str| {
+            let dir = root.join(format!("cpu{cpu}/cache/index{idx}"));
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::write(dir.join("level"), format!("{level}\n")).unwrap();
+            std::fs::write(dir.join("type"), format!("{kind}\n")).unwrap();
+            std::fs::write(dir.join("size"), format!("{size}\n")).unwrap();
+            std::fs::write(dir.join("shared_cpu_list"), format!("{shared}\n")).unwrap();
+        };
+
+        // 2 SMT P-cores (cpu0..cpu3 in pairs "0-1" and "2-3") + 2 E-cores (cpu4, cpu5
+        // sharing L2 "4-5"), all sharing one 18M L3 ("0-5"). Also create a non-CPU
+        // directory (`cpufreq`) to ensure non-cpu<N> entries are ignored.
+        std::fs::create_dir_all(root.join("cpufreq")).unwrap();
+        for (core, shared_pair) in [(0u32, "0-1"), (1u32, "2-3")] {
+            for thread in [core * 2, core * 2 + 1] {
+                write_index(thread, 0, 1, "Data", "48K", shared_pair);
+                write_index(thread, 1, 1, "Instruction", "32K", shared_pair);
+                write_index(thread, 2, 2, "Unified", "1280K", shared_pair);
+                write_index(thread, 3, 3, "Unified", "18M", "0-5");
+            }
+        }
+        for e_cpu in [4u32, 5u32] {
+            let own = format!("{e_cpu}");
+            write_index(e_cpu, 0, 1, "Data", "32K", &own);
+            write_index(e_cpu, 1, 1, "Instruction", "64K", &own);
+            write_index(e_cpu, 2, 2, "Unified", "2048K", "4-5");
+            write_index(e_cpu, 3, 3, "Unified", "18M", "0-5");
+        }
+
+        assert_eq!(
+            cpu_cache_in(&root).as_deref(),
+            Some("L1d: 2x48K + 2x32K, L1i: 2x32K + 2x64K, L2: 2x1.25M + 2M, L3: 18M")
+        );
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -3991,6 +4277,16 @@ mod tests {
         assert_eq!(
             windows_freq_range_khz(None, &[2600, 3400]),
             Some((2_600_000, 3_400_000))
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_detect_cpu_cache_returns_some_on_macos() {
+        let s = detect_cpu_cache().expect("expected CPU cache info on macOS");
+        assert!(
+            s.contains("L1d:") && s.contains("L1i:") && s.contains("L2:"),
+            "expected L1d/L1i/L2 cache labels on macOS, got: {s}"
         );
     }
 

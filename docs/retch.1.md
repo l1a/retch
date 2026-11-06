@@ -124,7 +124,7 @@ default path with:
   - `locale`: System locale from `$LC_ALL` / `$LANG`.
   - `cpu`: CPU model name.
   - `cpu-freq`: CPU current/max/min frequencies.
-  - `cpu-cache`: CPU L1/L2/L3 cache sizes.
+  - `cpu-cache`: CPU L1/L2/L3 cache sizes and instance counts (e.g. `L1d: 8x32K, L1i: 8x32K, L2: 8x1M, L3: 16M`), including separate P-core and E-core tiers on hybrid CPUs (`L1d: 6x128K + 6x64K, L1i: 6x192K + 6x128K, L2: 16M + 4M`).
   - `cpu-usage`: Current CPU utilization percentage. Long mode and above: on Linux and macOS a usage figure needs two samples at least 200 ms apart, which would dominate the default mode's runtime (Windows measures across the run instead). The two samples bracket retch's own probes, so retch's own CPU time (and that of the helper processes it runs) is subtracted: the figure describes the rest of the system, not retch. To show it without `--long`, name it in the config's `fields` list or in `--fields`.
   - `gpu`: GPU model(s) and VRAM.
   - `vulkan`: Vulkan API version, driver name and driver version, e.g. `1.4.354 - radv [Mesa 26.1.8]`. Linux, Windows and macOS. **On macOS this is normally absent**, and correctly so: macOS ships no Vulkan, which exists there only through MoltenVK once a user installs it, so the field reports only when the Khronos loader (`libvulkan.1.dylib`) is present. Full mode only by default.
