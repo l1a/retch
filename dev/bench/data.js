@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794007241934,
+  "lastUpdate": 1794007242266,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -16543,6 +16543,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 426.3992394179721,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f967f7ec467ce2c855f5d2f2fd1268966a47ce42",
+          "message": "Add macOS TPM, BIOS, cursor, and fastfetch parity (#319)\n\nBring retch --full on macOS into parity with fastfetch across 22\nfields using native IOKit, CoreFoundation, CoreGraphics, CoreAudio,\nCoreWLAN, IOBluetooth, and AppKit FFI probes:\n\n- Add missing macOS fields: bios (mBoot firmware version from\n  IODeviceTree:/chosen), bootmgr (mBoot/iBoot), tpm (AppleSEPManager\n  Secure Enclave detection), and cursor (fill, outline, and size from\n  com.apple.universalaccess preferences).\n- Resolve conflicting values on macOS: theme (Liquid Glass on macOS\n  26+, Aqua on macOS <= 15), wm-theme (AppleAccentColor and\n  AppleAquaColorVariant), clamshell-aware brightness (checking\n  CGGetActiveDisplayList before reading AppleARMBacklight and falling\n  back to active IOMobileFramebuffer brightness), display (physical\n  pixel dimensions, UI scaling factor, diagonal inches, and\n  IOMobileFramebuffer ProductName/HDR), chassis (Laptop/Mini PC/All-in-One/\n  Desktop from IODeviceTree:/product), motherboard (marketing name +\n  model/board ID without spawning sysctl), audio (filtering out\n  input-only microphones and marking the default output device with\n  volume %), packages (skipping hidden .metadata entries in Homebrew\n  Caskroom and showing per-manager breakdown), and terminal (skipping\n  generic $TERM=dumb and resolving .app bundle ancestors via\n  proc_pidpath + Info.plist).\n- Close detail gaps in os (marketing codename + kern.osversion build),\n  gpu (core count + SGX max clock + [Integrated]), memory and disk\n  (used %), phys-mem (dram-vendor), init (embedded launchd plist\n  version), wm (SkyLight version + tiling helper versions), font\n  (NSFont system and user fonts), editor (--version query), wifi\n  (PHY mode, band/channel, security, RSSI % without spawning ipconfig),\n  and bluetooth (Bluetooth 5.2+ and connected IOBluetoothDevice names).\n- Bump retch-cli to 0.21.0 and retch-sysinfo to 0.1.106.\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-11-06T15:09:19-08:00",
+          "tree_id": "f326e21ba4046552f4ee7f6a1cbee03178a1e015",
+          "url": "https://github.com/l1a/retch/commit/f967f7ec467ce2c855f5d2f2fd1268966a47ce42"
+        },
+        "date": 1794007242214,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 410102245.79999995,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1076235941.8,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1042106262.6000001,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 15383520.799999999,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 344783391.90000004,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 420926279.3,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 372690383.4,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 9280870.8,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 290062991.65,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 538.0875224261242,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 182.3052325476266,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.0402679015430376,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 106.50847632860818,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 11961.72416898303,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1222.256424519012,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 361.06504225467745,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 108172.04505705643,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 391.0677155641687,
             "unit": "ns"
           }
         ]
