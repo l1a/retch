@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794006652036,
+  "lastUpdate": 1794007241590,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -7253,6 +7253,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 249.91523662637027,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f967f7ec467ce2c855f5d2f2fd1268966a47ce42",
+          "message": "Add macOS TPM, BIOS, cursor, and fastfetch parity (#319)\n\nBring retch --full on macOS into parity with fastfetch across 22\nfields using native IOKit, CoreFoundation, CoreGraphics, CoreAudio,\nCoreWLAN, IOBluetooth, and AppKit FFI probes:\n\n- Add missing macOS fields: bios (mBoot firmware version from\n  IODeviceTree:/chosen), bootmgr (mBoot/iBoot), tpm (AppleSEPManager\n  Secure Enclave detection), and cursor (fill, outline, and size from\n  com.apple.universalaccess preferences).\n- Resolve conflicting values on macOS: theme (Liquid Glass on macOS\n  26+, Aqua on macOS <= 15), wm-theme (AppleAccentColor and\n  AppleAquaColorVariant), clamshell-aware brightness (checking\n  CGGetActiveDisplayList before reading AppleARMBacklight and falling\n  back to active IOMobileFramebuffer brightness), display (physical\n  pixel dimensions, UI scaling factor, diagonal inches, and\n  IOMobileFramebuffer ProductName/HDR), chassis (Laptop/Mini PC/All-in-One/\n  Desktop from IODeviceTree:/product), motherboard (marketing name +\n  model/board ID without spawning sysctl), audio (filtering out\n  input-only microphones and marking the default output device with\n  volume %), packages (skipping hidden .metadata entries in Homebrew\n  Caskroom and showing per-manager breakdown), and terminal (skipping\n  generic $TERM=dumb and resolving .app bundle ancestors via\n  proc_pidpath + Info.plist).\n- Close detail gaps in os (marketing codename + kern.osversion build),\n  gpu (core count + SGX max clock + [Integrated]), memory and disk\n  (used %), phys-mem (dram-vendor), init (embedded launchd plist\n  version), wm (SkyLight version + tiling helper versions), font\n  (NSFont system and user fonts), editor (--version query), wifi\n  (PHY mode, band/channel, security, RSSI % without spawning ipconfig),\n  and bluetooth (Bluetooth 5.2+ and connected IOBluetoothDevice names).\n- Bump retch-cli to 0.21.0 and retch-sysinfo to 0.1.106.\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-11-06T15:09:19-08:00",
+          "tree_id": "f326e21ba4046552f4ee7f6a1cbee03178a1e015",
+          "url": "https://github.com/l1a/retch/commit/f967f7ec467ce2c855f5d2f2fd1268966a47ce42"
+        },
+        "date": 1794007241521,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2527772.7,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 277441360.4,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 266908189.70000002,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1288968.0000000002,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3207204.8000000007,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 594126265.8000002,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205252202.40000004,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1812943.7999999998,
+            "unit": "ns",
+            "extra": "v0.21.0"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 351276238.275,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1605.7940098704707,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 104.2099955847585,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.906732421203633,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 64.45668162123451,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 15773.246802023485,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 781669.1380770791,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 10847.107239282737,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 7531.2248311017665,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 126162.80652991399,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 257.8071596442211,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 214.14027514901508,
             "unit": "ns"
           }
         ]
