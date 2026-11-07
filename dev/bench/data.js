@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794033357228,
+  "lastUpdate": 1794033358392,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -21045,6 +21045,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 290427535,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "68cc8d6f985847cba5d4b4d5fca4c787d70bc43a",
+          "message": "Close Linux field parity gaps against fastfetch (#320)\n\nBring retch --full on Linux into parity with fastfetch across 17\nfields using unprivileged sysfs, /proc, udev, efivarfs, and EGL probes:\n\n- Read unprivileged DMI physical memory slots (phys-mem) from\n  /run/udev/data/+dmi:id (systemd-udevd memory_id builtin, 0644)\n  before falling back to dmidecode --type 17, and include DIMM\n  Manufacturer vendor strings.\n- Probe EGL_PLATFORM_SURFACELESS_MESA (0x31DD) via eglGetPlatformDisplay\n  and relax eglChooseConfig to omit EGL_PBUFFER_BIT first so headless\n  OpenGL detection succeeds on Wayland/GBM and in subshells without\n  DISPLAY or WAYLAND_DISPLAY.\n- Read /etc/os-release PRETTY_NAME for Linux OS display, append the\n  installed systemd version from libsystemd-shared-*.so to init, and\n  map DMI chassis types 31 (Convertible) and 32 (Detachable).\n- Include board_vendor and (board_version) in motherboard, append\n  [UEFI] to bios when /sys/firmware/efi exists, and read EFI LoaderInfo\n  and BootCurrent/BootXXXX efivars for bootmgr.\n- Enrich Linux GPU entries with Compute Unit counts, max engine clock\n  (MHz/GHz), and [Integrated]/[Discrete] tags from AMD KFD topology\n  (/sys/devices/virtual/kfd/kfd/topology/nodes/*/properties) and DRM\n  pp_dpm_sclk.\n- Add EDID physical screen diagonal (in N\") and [Built-in]/[External]\n  tags to Linux DRM displays, and suppress closed laptop eDP panels and\n  backlight brightness when /proc/acpi/button/lid/*/state is closed and\n  an external monitor is connected.\n- Deduplicate btrfs bind mounts sharing (device, subvol) to the\n  shortest mount path, skip 0-sector empty card-reader block devices in\n  phys-disk and disk-io, exclude gpg-pubkey rows from RPM SQLite counts,\n  and skip uninstalled Flatpak remnant directories lacking a current or\n  active symlink.\n- Supplement /sys/bus/hdaudio/devices with non-HDA ALSA cards from\n  /proc/asound/cards, prefer upstream DNS servers in\n  /run/systemd/resolve/resolv.conf over 127.0.0.53, add Wi-Fi signal %\n  (dBm) and PHY standard (Wi-Fi 4/5/6/6E/7), append (Wayland)/(X11) to\n  wm with runtime-socket and /proc fallbacks, and add Rio, Ghostty, and\n  Zellij terminal/font/theme detection.\n- Bump retch-cli to 0.21.1 and retch-sysinfo to 0.1.107.\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-11-06T22:27:05-08:00",
+          "tree_id": "fa94b753a2f75f49c5080d727aea89b1b68b5ab2",
+          "url": "https://github.com/l1a/retch/commit/68cc8d6f985847cba5d4b4d5fca4c787d70bc43a"
+        },
+        "date": 1794033358337,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 31539540.000000004,
+            "unit": "ns",
+            "extra": "v0.21.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2357282210,
+            "unit": "ns",
+            "extra": "v0.21.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1290141380,
+            "unit": "ns",
+            "extra": "v0.21.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 13190050,
+            "unit": "ns",
+            "extra": "v0.21.1"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 16547130,
+            "unit": "ns",
+            "extra": "v0.21.1"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 294117040.00000006,
+            "unit": "ns",
+            "extra": "v0.21.1"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 190472640.00000003,
+            "unit": "ns",
+            "extra": "v0.21.1"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 14641100,
+            "unit": "ns",
+            "extra": "v0.21.1"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 227.61523207928167,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.882006697295661,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 151.97269961319773,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1004.4370667236868,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 30951.890317630237,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 538.7906149851134,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 605.2780726900941,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 270413017.5,
             "unit": "ns"
           }
         ]
