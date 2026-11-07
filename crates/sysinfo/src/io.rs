@@ -251,7 +251,15 @@ fn is_physical_disk(name: &str) -> bool {
         return false;
     }
     let dev = std::path::Path::new("/sys/class/block").join(name);
-    !dev.join("partition").exists() && dev.join("queue").exists()
+    if dev.join("partition").exists() || !dev.join("queue").exists() {
+        return false;
+    }
+    // Skip unpopulated 0-sector block devices (e.g. empty SD card reader slots).
+    std::fs::read_to_string(dev.join("size"))
+        .ok()
+        .and_then(|s| s.trim().parse::<u64>().ok())
+        .map(|sectors| sectors > 0)
+        .unwrap_or(false)
 }
 
 /// Samples cumulative network byte counters per interface.

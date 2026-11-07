@@ -33,6 +33,43 @@ pub fn count_visible_dir_entries(dir: &std::path::Path) -> usize {
         .count()
 }
 
+/// Counts active Flatpak installations under `dir` (`app/` or `runtime/`), skipping
+/// dotfiles and empty directories left behind after `flatpak uninstall`.
+#[cfg(any(not(any(target_os = "macos", target_os = "windows")), test))]
+pub fn count_active_flatpak_entries(dir: &std::path::Path) -> usize {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return 0;
+    };
+    entries
+        .filter_map(|e| e.ok())
+        .filter(|e| !e.file_name().to_string_lossy().starts_with('.'))
+        .filter(|e| is_active_flatpak_entry(&e.path()))
+        .count()
+}
+
+/// Returns `true` when a Flatpak `<id>` directory contains an active deployment
+/// (`current` symlink or `<arch>/<branch>/active`).
+#[cfg(any(not(any(target_os = "macos", target_os = "windows")), test))]
+fn is_active_flatpak_entry(id_dir: &std::path::Path) -> bool {
+    if id_dir.join("current").symlink_metadata().is_ok() {
+        return true;
+    }
+    let Ok(archs) = std::fs::read_dir(id_dir) else {
+        return false;
+    };
+    for arch in archs.flatten() {
+        let Ok(branches) = std::fs::read_dir(arch.path()) else {
+            continue;
+        };
+        for branch in branches.flatten() {
+            if branch.path().join("active").symlink_metadata().is_ok() {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 /// Formats per-package-manager counts into a summary string.
 ///
 /// A single manager renders as `"183 (brew)"`; multiple managers include the total and
@@ -142,9 +179,20 @@ pub(crate) fn detect_packages() -> Option<String> {
                 | OpenFlags::SQLITE_OPEN_NO_MUTEX;
             match rusqlite::Connection::open_with_flags(rpm_db_uri(rpm_db), flags) {
                 Ok(conn) => {
-                    match conn.query_row("SELECT COUNT(*) FROM Packages", [], |row| {
-                        row.get::<_, i64>(0)
-                    }) {
+                    // Exclude `gpg-pubkey` pseudo-packages (imported RPM signing keys) when the
+                    // `Name` index table is present, matching `fastfetch` and `rpm -qa`.
+                    let query_res = conn
+                        .query_row(
+                            "SELECT COUNT(*) FROM Name WHERE key != 'gpg-pubkey'",
+                            [],
+                            |row| row.get::<_, i64>(0),
+                        )
+                        .or_else(|_| {
+                            conn.query_row("SELECT COUNT(*) FROM Packages", [], |row| {
+                                row.get::<_, i64>(0)
+                            })
+                        });
+                    match query_res {
                         Ok(count) if count > 0 => counts.push(("rpm", count as usize)),
                         Ok(_) => {}
                         // Surfaced rather than swallowed: the read-only-database failure this
@@ -161,12 +209,13 @@ pub(crate) fn detect_packages() -> Option<String> {
             }
         }
 
-        let mut flatpak = count_visible_dir_entries(std::path::Path::new("/var/lib/flatpak/app"))
-            + count_visible_dir_entries(std::path::Path::new("/var/lib/flatpak/runtime"));
+        let mut flatpak =
+            count_active_flatpak_entries(std::path::Path::new("/var/lib/flatpak/app"))
+                + count_active_flatpak_entries(std::path::Path::new("/var/lib/flatpak/runtime"));
         if let Some(home) = dirs::home_dir() {
             let user_fp = home.join(".local/share/flatpak");
-            flatpak += count_visible_dir_entries(&user_fp.join("app"))
-                + count_visible_dir_entries(&user_fp.join("runtime"));
+            flatpak += count_active_flatpak_entries(&user_fp.join("app"))
+                + count_active_flatpak_entries(&user_fp.join("runtime"));
         }
         if flatpak > 0 {
             counts.push(("flatpak", flatpak));
@@ -224,6 +273,20 @@ mod tests {
         std::fs::create_dir_all(dir.join("ghostty")).unwrap();
         std::fs::create_dir_all(dir.join("rectangle")).unwrap();
         assert_eq!(count_visible_dir_entries(&dir), 2);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_count_active_flatpak_entries_skips_uninstalled_remnants() {
+        let dir = std::env::temp_dir().join(format!("retch-flatpak-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        // Active app with `current` marker
+        std::fs::create_dir_all(dir.join("org.mozilla.firefox/current")).unwrap();
+        // Active runtime with `<arch>/<branch>/active` marker
+        std::fs::create_dir_all(dir.join("org.freedesktop.Platform/x86_64/24.08/active")).unwrap();
+        // Uninstalled remnant directory with no `current` or `active`
+        std::fs::create_dir_all(dir.join("org.old.UninstalledApp/x86_64/stable")).unwrap();
+        assert_eq!(count_active_flatpak_entries(&dir), 2);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

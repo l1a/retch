@@ -375,7 +375,7 @@ pub fn config_fields_block() -> String {
     let mut out = String::new();
     out.push_str("# List of fields to display (leave empty or omit to show all)\n");
     out.push_str(
-        "# Note: \"phys-mem\" requires running as root (sudo) on Linux to read DMI memory tables.\n",
+        "# Note: \"phys-mem\" on Linux reads /run/udev/data/+dmi:id unprivileged (falls back to dmidecode as root).\n",
     );
     out.push_str(
         "# Note: \"weather\" requires network access and is shown in full mode only by default.\n",

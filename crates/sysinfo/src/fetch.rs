@@ -766,6 +766,12 @@ impl SystemInfo {
                     return formatted;
                 }
             }
+            #[cfg(target_os = "linux")]
+            {
+                if let Some(formatted) = detect_linux_os() {
+                    return formatted;
+                }
+            }
             System::long_os_version()
                 .or_else(|_| System::name())
                 .unwrap_or_else(|_| "Unknown".to_string())
@@ -2321,21 +2327,127 @@ fn normalize_desktop_name(raw: &str) -> String {
     }
 }
 
+/// Parse `PRETTY_NAME` from an `/etc/os-release` payload and wrap it as `"Linux (<PRETTY_NAME>)"`
+/// so edition/variant suffixes (e.g. `"Fedora Linux 44 (Workstation Edition)"`) are preserved.
+#[cfg(any(target_os = "linux", test))]
+fn parse_os_release_pretty_name(content: &str) -> Option<String> {
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if let Some(rest) = trimmed.strip_prefix("PRETTY_NAME=") {
+            let val = rest.trim().trim_matches('"').trim_matches('\'').trim();
+            if !val.is_empty() {
+                return Some(format!("Linux ({val})"));
+            }
+        }
+    }
+    None
+}
+
+#[cfg(target_os = "linux")]
+fn detect_linux_os() -> Option<String> {
+    std::fs::read_to_string("/etc/os-release")
+        .or_else(|_| std::fs::read_to_string("/usr/lib/os-release"))
+        .ok()
+        .and_then(|s| parse_os_release_pretty_name(&s))
+}
+
+/// Extract a systemd version string from a list of library filenames in `/usr/lib*/systemd`
+/// (e.g. `"libsystemd-shared-259.10-1.fc44.so"` -> `"259.10-1.fc44"`).
+#[cfg(any(target_os = "linux", test))]
+fn parse_systemd_shared_lib_version(filenames: &[&str]) -> Option<String> {
+    for name in filenames {
+        if let Some(rest) = name.strip_prefix("libsystemd-shared-") {
+            let ver = rest.split(".so").next().unwrap_or("").trim();
+            if !ver.is_empty() {
+                return Some(ver.to_string());
+            }
+        }
+    }
+    None
+}
+
+#[cfg(target_os = "linux")]
+fn detect_systemd_version() -> Option<String> {
+    const SYSTEMD_LIB_DIRS: &[&str] = &[
+        "/usr/lib64/systemd",
+        "/usr/lib/systemd",
+        "/lib64/systemd",
+        "/lib/systemd",
+        "/usr/lib/x86_64-linux-gnu/systemd",
+        "/usr/lib/aarch64-linux-gnu/systemd",
+    ];
+    for dir in SYSTEMD_LIB_DIRS {
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            let names: Vec<String> = entries
+                .flatten()
+                .filter_map(|e| e.file_name().into_string().ok())
+                .collect();
+            let refs: Vec<&str> = names.iter().map(String::as_str).collect();
+            if let Some(ver) = parse_systemd_shared_lib_version(&refs) {
+                return Some(ver);
+            }
+        }
+    }
+    None
+}
+
+/// Return `true` when `name` is a recognised init daemon rather than a PID-namespace
+/// wrapper binary (such as `bwrap` or `exe` inside a sandbox).
+#[cfg(any(target_os = "linux", test))]
+fn is_known_init_daemon(name: &str) -> bool {
+    matches!(
+        name,
+        "systemd"
+            | "init"
+            | "openrc-init"
+            | "runit"
+            | "runit-init"
+            | "s6-svscan"
+            | "dinit"
+            | "shepherd"
+            | "tini"
+            | "dumb-init"
+    )
+}
+
 fn detect_init_system() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
         let comm = std::fs::read_to_string("/proc/1/comm")
             .map(|s| s.trim().to_string())
             .ok()
-            .filter(|s| !s.is_empty());
-        if let Some(name) = comm {
-            return Some(name);
+            .filter(|s| !s.is_empty())
+            .or_else(|| {
+                std::fs::read_link("/proc/1/exe").ok().and_then(|p| {
+                    p.file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|s| s.to_string())
+                })
+            });
+
+        // Inside a PID-namespaced sandbox (e.g. bwrap), PID 1's comm/exe may be `exe` or
+        // `bwrap` rather than the host's init system. Fall back to `/sbin/init`'s symlink
+        // target when PID 1 is not a recognised init daemon.
+        let init_name = match comm {
+            Some(ref name) if is_known_init_daemon(name) => Some(name.clone()),
+            other => std::fs::read_link("/sbin/init")
+                .or_else(|_| std::fs::read_link("/usr/sbin/init"))
+                .ok()
+                .and_then(|p| {
+                    p.file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|s| s.to_string())
+                })
+                .filter(|name| is_known_init_daemon(name))
+                .or(other),
+        }?;
+
+        if init_name == "systemd" {
+            if let Some(ver) = detect_systemd_version() {
+                return Some(format!("systemd {ver}"));
+            }
         }
-        std::fs::read_link("/proc/1/exe").ok().and_then(|p| {
-            p.file_name()
-                .and_then(|n| n.to_str())
-                .map(|s| s.to_string())
-        })
+        Some(init_name)
     }
     #[cfg(target_os = "macos")]
     {
@@ -2357,28 +2469,35 @@ fn detect_init_system() -> Option<String> {
     }
 }
 
+/// Map an SMBIOS / DMI enclosure `chassis_type` code to its human-readable label.
+#[cfg(any(target_os = "linux", test))]
+fn dmi_chassis_label(chassis_type: u32) -> Option<&'static str> {
+    match chassis_type {
+        3 => Some("Desktop"),
+        4 => Some("Low-Profile Desktop"),
+        6 => Some("Mini Tower"),
+        7 => Some("Tower"),
+        8 | 9 | 10 | 14 => Some("Laptop"),
+        11 => Some("Handheld"),
+        13 => Some("All-in-One"),
+        17 => Some("Main Server"),
+        23 => Some("Rack Server"),
+        28 => Some("Blade"),
+        30 => Some("Tablet"),
+        31 => Some("Convertible"),
+        32 => Some("Detachable"),
+        35 => Some("Mini PC"),
+        36 => Some("Stick PC"),
+        _ => None,
+    }
+}
+
 fn detect_chassis() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
         let raw = std::fs::read_to_string("/sys/class/dmi/id/chassis_type").ok()?;
         let n: u32 = raw.trim().parse().ok()?;
-        let label = match n {
-            3 => "Desktop",
-            4 => "Low-Profile Desktop",
-            6 => "Mini Tower",
-            7 => "Tower",
-            8 | 9 | 10 | 14 | 31 | 32 => "Laptop",
-            11 => "Handheld",
-            13 => "All-in-One",
-            17 => "Main Server",
-            23 => "Rack Server",
-            28 => "Blade",
-            30 => "Tablet",
-            35 => "Mini PC",
-            36 => "Stick PC",
-            _ => return None,
-        };
-        Some(label.to_string())
+        dmi_chassis_label(n).map(str::to_string)
     }
     #[cfg(target_os = "macos")]
     {
@@ -2396,22 +2515,160 @@ fn detect_chassis() -> Option<String> {
     }
 }
 
+/// Decode a NUL-terminated UTF-16LE string from a Linux efivars payload (4-byte EFI variable
+/// attribute header followed by UTF-16LE code units), such as `LoaderInfo`.
+#[cfg(any(target_os = "linux", test))]
+fn parse_efi_utf16le_var(bytes: &[u8]) -> Option<String> {
+    if bytes.len() < 6 {
+        return None;
+    }
+    let body = &bytes[4..];
+    let units: Vec<u16> = body
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|&c| u16::from_le_bytes(c))
+        .take_while(|&u| u != 0)
+        .collect();
+    let s = String::from_utf16_lossy(&units);
+    let cleaned: String = s.chars().filter(|c| !c.is_control()).collect();
+    let trimmed = cleaned.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_string())
+}
+
+/// Parse an `EFI_LOAD_OPTION` efivar payload (`BootXXXX-8be4df61-...`) into
+/// `(description, optional_media_file_path)`.
+#[cfg(any(target_os = "linux", test))]
+fn parse_efi_boot_option(bytes: &[u8]) -> Option<(String, Option<String>)> {
+    // 4-byte efivar attributes + 4-byte Attributes + 2-byte FilePathListLength = 10 bytes min
+    if bytes.len() < 12 {
+        return None;
+    }
+    let fp_list_len = u16::from_le_bytes([bytes[8], bytes[9]]) as usize;
+    let mut pos = 10usize;
+    let mut desc_units = Vec::new();
+    while pos + 2 <= bytes.len() {
+        let u = u16::from_le_bytes([bytes[pos], bytes[pos + 1]]);
+        pos += 2;
+        if u == 0 {
+            break;
+        }
+        desc_units.push(u);
+    }
+    let desc: String = String::from_utf16_lossy(&desc_units)
+        .chars()
+        .filter(|c| !c.is_control())
+        .collect();
+    let desc = desc.trim().to_string();
+    if desc.is_empty() {
+        return None;
+    }
+
+    let fp_end = (pos + fp_list_len).min(bytes.len());
+    let mut file_path: Option<String> = None;
+    let mut cur = pos;
+    while cur + 4 <= fp_end {
+        let dev_type = bytes[cur];
+        let sub_type = bytes[cur + 1];
+        let node_len = u16::from_le_bytes([bytes[cur + 2], bytes[cur + 3]]) as usize;
+        if node_len < 4 || cur + node_len > fp_end {
+            break;
+        }
+        // Media Device Path (4), File Path Media Device Path (4)
+        if dev_type == 4 && sub_type == 4 && node_len > 4 {
+            let units: Vec<u16> = bytes[cur + 4..cur + node_len]
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|&c| u16::from_le_bytes(c))
+                .take_while(|&u| u != 0)
+                .collect();
+            let p: String = String::from_utf16_lossy(&units)
+                .chars()
+                .filter(|c| !c.is_control())
+                .collect();
+            let p = p.trim();
+            if !p.is_empty() {
+                file_path = Some(p.to_string());
+                break;
+            }
+        }
+        if dev_type == 0x7f {
+            break;
+        }
+        cur += node_len;
+    }
+
+    Some((desc, file_path))
+}
+
+/// Format a Linux UEFI boot manager string from `LoaderInfo` and/or `BootCurrent` (`BootXXXX`).
+#[cfg(any(target_os = "linux", test))]
+fn format_efi_bootmgr(
+    loader_info: Option<&str>,
+    boot_option: Option<(&str, Option<&str>)>,
+) -> Option<String> {
+    let entry_str = boot_option.map(|(desc, path)| match path {
+        Some(p) => format!("{desc} - {p}"),
+        None => desc.to_string(),
+    });
+    match (loader_info, entry_str) {
+        (Some(loader), Some(entry)) => Some(format!("{loader} ({entry})")),
+        (Some(loader), None) => Some(loader.to_string()),
+        (None, Some(entry)) => Some(entry),
+        (None, None) => None,
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn detect_efi_bootmgr() -> Option<String> {
+    use std::path::Path;
+    let efivars = Path::new("/sys/firmware/efi/efivars");
+    if !efivars.is_dir() {
+        return None;
+    }
+    let loader_info =
+        std::fs::read(efivars.join("LoaderInfo-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f"))
+            .ok()
+            .and_then(|b| parse_efi_utf16le_var(&b));
+
+    let boot_option =
+        std::fs::read(efivars.join("BootCurrent-8be4df61-93ca-11d2-aa0d-00e098032b8c"))
+            .ok()
+            .filter(|b| b.len() >= 6)
+            .map(|b| u16::from_le_bytes([b[4], b[5]]))
+            .and_then(|num| {
+                let name = format!("Boot{num:04X}-8be4df61-93ca-11d2-aa0d-00e098032b8c");
+                std::fs::read(efivars.join(name)).ok()
+            })
+            .and_then(|b| parse_efi_boot_option(&b));
+
+    format_efi_bootmgr(
+        loader_info.as_deref(),
+        boot_option
+            .as_ref()
+            .map(|(d, p)| (d.as_str(), p.as_deref())),
+    )
+}
+
 fn detect_bootmgr() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
         use std::path::Path;
-        let is_uefi = Path::new("/sys/firmware/efi").exists();
-        if Path::new("/boot/loader/entries").exists()
-            || Path::new("/boot/loader/loader.conf").exists()
-            || Path::new("/efi/loader/loader.conf").exists()
-        {
-            return Some("systemd-boot".to_string());
+        if let Some(efi) = detect_efi_bootmgr() {
+            return Some(efi);
         }
+        let is_uefi = Path::new("/sys/firmware/efi").exists();
         if Path::new("/boot/grub2/grub.cfg").exists() || Path::new("/boot/grub2").exists() {
             return Some("GRUB 2".to_string());
         }
         if Path::new("/boot/grub/grub.cfg").exists() || Path::new("/boot/grub").exists() {
             return Some("GRUB".to_string());
+        }
+        if Path::new("/boot/loader/loader.conf").exists()
+            || Path::new("/efi/loader/loader.conf").exists()
+        {
+            return Some("systemd-boot".to_string());
         }
         if is_uefi {
             Some("UEFI".to_string())
@@ -2649,6 +2906,16 @@ fn detect_brightness() -> Option<String> {
     #[cfg(target_os = "linux")]
     {
         use std::path::Path;
+        // In laptop clamshell mode (lid closed while an external display is connected), the
+        // built-in panel is inactive even though `/sys/class/backlight/*` continues to report
+        // the last non-zero PWM duty cycle. Require `has_connected_external_drm_display()` to
+        // match `detect_displays()`, so convertibles in tablet/tent mode do not drop the
+        // built-in backlight when the internal panel is still the only connected display.
+        if crate::display::is_laptop_lid_closed()
+            && crate::display::has_connected_external_drm_display()
+        {
+            return None;
+        }
         let dir = Path::new("/sys/class/backlight");
         if !dir.exists() {
             return None;
@@ -4523,5 +4790,76 @@ mod tests {
             Some("nvim 0.11.0")
         );
         assert_eq!(parse_editor_version_output("hx", "unknown"), None);
+    }
+
+    #[test]
+    fn test_linux_os_init_chassis_and_efi_bootmgr_helpers() {
+        let os_release = "\
+NAME=\"Fedora Linux\"
+VERSION=\"44 (Workstation Edition)\"
+PRETTY_NAME=\"Fedora Linux 44 (Workstation Edition)\"
+ID=fedora
+";
+        assert_eq!(
+            parse_os_release_pretty_name(os_release).as_deref(),
+            Some("Linux (Fedora Linux 44 (Workstation Edition))")
+        );
+        assert_eq!(parse_os_release_pretty_name("ID=fedora\n"), None);
+
+        assert_eq!(
+            parse_systemd_shared_lib_version(&[
+                "libsystemd-core-259.10-1.fc44.so",
+                "libsystemd-shared-259.10-1.fc44.so"
+            ])
+            .as_deref(),
+            Some("259.10-1.fc44")
+        );
+        assert_eq!(parse_systemd_shared_lib_version(&["libc.so.6"]), None);
+
+        assert!(is_known_init_daemon("systemd"));
+        assert!(is_known_init_daemon("openrc-init"));
+        assert!(!is_known_init_daemon("exe"));
+        assert!(!is_known_init_daemon("bwrap"));
+
+        assert_eq!(dmi_chassis_label(10), Some("Laptop"));
+        assert_eq!(dmi_chassis_label(31), Some("Convertible"));
+        assert_eq!(dmi_chassis_label(32), Some("Detachable"));
+        assert_eq!(dmi_chassis_label(999), None);
+
+        // LoaderInfo efivar: 4-byte attributes + UTF-16LE "GRUB 2.12\0"
+        let mut loader_var = vec![0x06, 0x00, 0x00, 0x00];
+        for u in "GRUB 2.12\0".encode_utf16() {
+            loader_var.extend_from_slice(&u.to_le_bytes());
+        }
+        assert_eq!(
+            parse_efi_utf16le_var(&loader_var).as_deref(),
+            Some("GRUB 2.12")
+        );
+
+        // Boot0000 efivar: 4-byte efivar attrs + 4-byte load_option attrs + 2-byte fp_len
+        // + UTF-16LE "Fedora\0" + Media File Path node (type 4, subtype 4) "\EFI\fedora\shimx64.efi\0"
+        let path_str = "\\EFI\\fedora\\shimx64.efi\0";
+        let path_bytes: Vec<u8> = path_str
+            .encode_utf16()
+            .flat_map(|u| u.to_le_bytes())
+            .collect();
+        let node_len = (4 + path_bytes.len()) as u16;
+        let mut boot_var = vec![0x07, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00];
+        boot_var.extend_from_slice(&node_len.to_le_bytes());
+        for u in "Fedora\0".encode_utf16() {
+            boot_var.extend_from_slice(&u.to_le_bytes());
+        }
+        boot_var.push(4);
+        boot_var.push(4);
+        boot_var.extend_from_slice(&node_len.to_le_bytes());
+        boot_var.extend_from_slice(&path_bytes);
+
+        let (desc, fp) = parse_efi_boot_option(&boot_var).expect("valid EFI_LOAD_OPTION");
+        assert_eq!(desc, "Fedora");
+        assert_eq!(fp.as_deref(), Some("\\EFI\\fedora\\shimx64.efi"));
+        assert_eq!(
+            format_efi_bootmgr(Some("GRUB 2.12"), Some((desc.as_str(), fp.as_deref()))).as_deref(),
+            Some("GRUB 2.12 (Fedora - \\EFI\\fedora\\shimx64.efi)")
+        );
     }
 }

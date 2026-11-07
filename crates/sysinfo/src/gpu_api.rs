@@ -495,9 +495,12 @@ mod opengl {
     const EGL_PBUFFER_BIT: i32 = 0x0001;
     const EGL_RENDERABLE_TYPE: i32 = 0x3040;
     const EGL_OPENGL_BIT: i32 = 0x0008;
+    const EGL_PLATFORM_SURFACELESS_MESA: u32 = 0x31DD;
     const GL_VERSION: u32 = 0x1F02;
 
     type EglGetDisplay = unsafe extern "C" fn(*mut c_void) -> *mut c_void;
+    type EglGetPlatformDisplay =
+        unsafe extern "C" fn(u32, *mut c_void, *const isize) -> *mut c_void;
     type EglInitialize = unsafe extern "C" fn(*mut c_void, *mut i32, *mut i32) -> u32;
     type EglBindApi = unsafe extern "C" fn(u32) -> u32;
     type EglChooseConfig =
@@ -512,9 +515,10 @@ mod opengl {
 
     /// Read `GL_VERSION` from a headless EGL context.
     ///
-    /// Deliberately uses EGL with `EGL_DEFAULT_DISPLAY` and a surfaceless
-    /// `eglMakeCurrent`, so this works with no X or Wayland connection and without
-    /// touching the environment. GLX would require a display server.
+    /// Deliberately tries `EGL_PLATFORM_SURFACELESS_MESA` first (falling back to
+    /// `EGL_DEFAULT_DISPLAY`) with a surfaceless `eglMakeCurrent`, so this works both in
+    /// Wayland/X11 sessions and in headless/SSH/subshell contexts where `DISPLAY` and
+    /// `WAYLAND_DISPLAY` are unset. GLX would require an X11 display server.
     ///
     /// **The context choice decides the number printed.** Passing no attribute list asks
     /// for the driver's default, which is the highest *compatibility* profile — matching
@@ -530,6 +534,7 @@ mod opengl {
 
     fn detect_with(lib: *mut c_void) -> Option<String> {
         let get_display = dl::sym(lib, c"eglGetDisplay")?;
+        let get_platform_display = dl::sym(lib, c"eglGetPlatformDisplay");
         let initialize = dl::sym(lib, c"eglInitialize")?;
         let bind_api = dl::sym(lib, c"eglBindAPI")?;
         let choose = dl::sym(lib, c"eglChooseConfig")?;
@@ -549,14 +554,28 @@ mod opengl {
             let make_current: EglMakeCurrent = std::mem::transmute(make_current);
             let get_proc: EglGetProcAddress = std::mem::transmute(get_proc);
 
-            // EGL_DEFAULT_DISPLAY is a null handle.
-            let display = get_display(std::ptr::null_mut());
-            if display.is_null() {
-                return None;
-            }
+            // Prefer EGL_PLATFORM_SURFACELESS_MESA so headless/subshell contexts without
+            // WAYLAND_DISPLAY or DISPLAY still initialize via /dev/dri/renderD*. Fall back
+            // to eglGetDisplay(EGL_DEFAULT_DISPLAY) on non-Mesa stacks.
+            let mut display: *mut c_void = std::ptr::null_mut();
             let (mut major, mut minor) = (0i32, 0i32);
-            if initialize(display, &mut major, &mut minor) == 0 {
-                return None;
+            if let Some(p) = get_platform_display {
+                let get_platform_display: EglGetPlatformDisplay = std::mem::transmute(p);
+                let cand = get_platform_display(
+                    EGL_PLATFORM_SURFACELESS_MESA,
+                    std::ptr::null_mut(),
+                    std::ptr::null(),
+                );
+                if !cand.is_null() && initialize(cand, &mut major, &mut minor) != 0 {
+                    display = cand;
+                }
+            }
+            if display.is_null() {
+                let cand = get_display(std::ptr::null_mut());
+                if cand.is_null() || initialize(cand, &mut major, &mut minor) == 0 {
+                    return None;
+                }
+                display = cand;
             }
             // Desktop GL specifically; an ES-only stack answers 0 here and is reported as
             // "no OpenGL" rather than being silently downgraded to an ES version string.
@@ -565,7 +584,11 @@ mod opengl {
                 return None;
             }
 
-            let attrs = [
+            // Do not require EGL_PBUFFER_BIT first: Wayland and surfaceless/GBM EGL platforms
+            // expose configs without pbuffer support, and eglMakeCurrent below binds
+            // EGL_NO_SURFACE anyway.
+            let attrs_any = [EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT, EGL_NONE];
+            let attrs_pbuffer = [
                 EGL_SURFACE_TYPE,
                 EGL_PBUFFER_BIT,
                 EGL_RENDERABLE_TYPE,
@@ -574,9 +597,16 @@ mod opengl {
             ];
             let mut config: *mut c_void = std::ptr::null_mut();
             let mut configs = 0i32;
-            if choose(display, attrs.as_ptr(), &mut config, 1, &mut configs) == 0 || configs == 0 {
-                terminate(lib, display);
-                return None;
+            if choose(display, attrs_any.as_ptr(), &mut config, 1, &mut configs) == 0
+                || configs == 0
+            {
+                let _ = choose(
+                    display,
+                    attrs_pbuffer.as_ptr(),
+                    &mut config,
+                    1,
+                    &mut configs,
+                );
             }
             let context = create_context(display, config, std::ptr::null_mut(), std::ptr::null());
             if context.is_null() {

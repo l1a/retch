@@ -67,46 +67,81 @@ pub(crate) fn detect_bios() -> Option<String> {
 
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
-        let vendor = std::fs::read_to_string("/sys/class/dmi/id/bios_vendor")
-            .map(|s| s.trim().to_string())
-            .ok();
-        let version = std::fs::read_to_string("/sys/class/dmi/id/bios_version")
-            .map(|s| s.trim().to_string())
-            .ok();
-        let date = std::fs::read_to_string("/sys/class/dmi/id/bios_date")
-            .map(|s| s.trim().to_string())
-            .ok();
+        let vendor = std::fs::read_to_string("/sys/class/dmi/id/bios_vendor").ok();
+        let version = std::fs::read_to_string("/sys/class/dmi/id/bios_version").ok();
+        let date = std::fs::read_to_string("/sys/class/dmi/id/bios_date").ok();
+        let is_uefi = std::path::Path::new("/sys/firmware/efi").exists();
 
-        let mut parts = Vec::new();
-        if let Some(v) = vendor {
-            if !v.is_empty() {
-                parts.push(v);
-            }
+        format_linux_bios(
+            vendor.as_deref(),
+            version.as_deref(),
+            date.as_deref(),
+            is_uefi,
+        )
+    }
+}
+
+/// Format Linux DMI BIOS fields into a human-readable firmware string, appending `[UEFI]`
+/// when the system booted via UEFI (`/sys/firmware/efi` exists).
+pub fn format_linux_bios(
+    vendor: Option<&str>,
+    version: Option<&str>,
+    date: Option<&str>,
+    is_uefi: bool,
+) -> Option<String> {
+    let mut parts = Vec::new();
+    if let Some(v) = vendor.map(str::trim).filter(|s| !s.is_empty()) {
+        parts.push(v.to_string());
+    }
+    if let Some(ver) = version {
+        let mut ver_cleaned = ver.trim().to_string();
+        while ver_cleaned.contains(" )") {
+            ver_cleaned = ver_cleaned.replace(" )", ")");
         }
-        if let Some(ver) = version {
-            let mut ver_cleaned = ver;
-            while ver_cleaned.contains(" )") {
-                ver_cleaned = ver_cleaned.replace(" )", ")");
-            }
-            let ver_cleaned = ver_cleaned.trim().to_string();
-            if !ver_cleaned.is_empty() {
-                parts.push(ver_cleaned);
-            }
+        let ver_cleaned = ver_cleaned.trim().to_string();
+        if !ver_cleaned.is_empty() {
+            parts.push(ver_cleaned);
         }
-        let mut res = parts.join(" ");
-        if let Some(d) = date {
-            if !d.is_empty() {
-                if res.is_empty() {
-                    res = d;
-                } else {
-                    res = format!("{} ({})", res, d);
-                }
-            }
-        }
-        if !res.is_empty() {
-            Some(res)
+    }
+    let mut res = parts.join(" ");
+    if let Some(d) = date.map(str::trim).filter(|s| !s.is_empty()) {
+        if res.is_empty() {
+            res = d.to_string();
         } else {
-            None
+            res = format!("{res} ({d})");
         }
+    }
+    if res.is_empty() {
+        return None;
+    }
+    if is_uefi {
+        res.push_str(" [UEFI]");
+    }
+    Some(res)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_linux_bios() {
+        assert_eq!(
+            format_linux_bios(
+                Some("American Megatrends International, LLC.\n"),
+                Some("HN7306EAC.318\n"),
+                Some("01/29/2026\n"),
+                true,
+            ),
+            Some(
+                "American Megatrends International, LLC. HN7306EAC.318 (01/29/2026) [UEFI]"
+                    .to_string()
+            )
+        );
+        assert_eq!(
+            format_linux_bios(Some("SeaBIOS"), Some("1.16.3"), None, false),
+            Some("SeaBIOS 1.16.3".to_string())
+        );
+        assert_eq!(format_linux_bios(None, None, None, true), None);
     }
 }

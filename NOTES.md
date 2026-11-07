@@ -151,9 +151,9 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.21.0)
+## Current State (v0.21.1)
 
-`main` carries **`retch-cli` 0.21.0** / **`retch-sysinfo` 0.1.106**. Newest released tag is
+`main` carries **`retch-cli` 0.21.1** / **`retch-sysinfo` 0.1.107**. Newest released tag is
 **`v0.20.41`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
@@ -161,6 +161,76 @@ deliberately omitted platform-specific items in §6a and §6c). What is open is 
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.21.1: Linux fastfetch `--full` parity across 21 fields (zero extra subprocess spawns).**
+  Verified on `arrakis` (ASUS ProArt PX13 HN7306EAC, AMD Ryzen AI 9 HX 370 w/ Radeon 890M,
+  Fedora Linux 44 x86_64 in clamshell mode with two external LG HDR 4K displays under Umbriel):
+  - **Missing fields added on Linux (`phys-mem`, `opengl`, `terminal`, `terminal-theme`):**
+    - **`phys-mem` (`memory.rs`):** `systemd-udevd`'s `60-memory-id.rules` (`memory_id` builtin)
+      parses SMBIOS Type 16 & 17 at boot as root and writes world-readable (`0644`)
+      `E:MEMORY_DEVICE_<N>_{SIZE,VOLATILE_SIZE,TYPE,SPEED_MTS,CONFIGURED_SPEED_MTS,MANUFACTURER,PRESENT}`
+      records to `/run/udev/data/+dmi:id`. `detect_linux()` now reads `/run/udev/data/+dmi:id`
+      via `parse_udev_dmi_memory()` before falling back to `dmidecode --type 17`, delivering
+      unprivileged physical RAM slot topology (`"8× 16 GB LPDDR5 8000 MT/s (rated 8533 MT/s) (Samsung)"`)
+      without `sudo` or spawning a child process.
+    - **`opengl` (`gpu_api.rs`):** `eglGetDisplay(EGL_DEFAULT_DISPLAY)` + `EGL_SURFACE_TYPE = EGL_PBUFFER_BIT`
+      failed on Wayland/GBM platforms and headless subshells where no display server is attached
+      or pbuffer configs are absent. `opengl::detect_with()` now tries
+      `eglGetPlatformDisplay(EGL_PLATFORM_SURFACELESS_MESA, NULL, NULL)` (`0x31DD`) first and
+      requests `[EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT, EGL_NONE]` before falling back to a pbuffer
+      surface (`"4.6 (Core Profile) Mesa 26.0.4"`).
+    - **`terminal` & `terminal-theme` (`terminal.rs`):** Checks `KITTY_PID`/`KITTY_WINDOW_ID`,
+      `GHOSTTY_RESOURCES_DIR`, and `WEZTERM_EXECUTABLE`, falls back to detached multiplexer
+      servers (`zellij`, `tmux`, `screen`) when reparented under `systemd --user`, and adds `rio`
+      (`~/.config/rio/config.toml`), `ghostty` (`~/.config/ghostty/config`), and `zellij`
+      (`~/.config/zellij/config.kdl`) font and theme parsers.
+  - **Disagreements resolved (`display`, `brightness`, `btrfs`, `phys-disk`, `disk-io`,
+    `packages`, `dns`, `bootmgr`, `chassis`, `init`):**
+    - **`display` & `brightness` (`display.rs`, `fetch.rs`):** DRM atomic KMS sets
+      `/sys/class/drm/card*-*/enabled` to `"disabled"` even on active monitors, while
+      `/proc/acpi/button/lid/*/state` reliably reports `"state: closed"` in clamshell mode.
+      `is_laptop_lid_closed()` together with `has_connected_external_drm_display()` now
+      suppresses built-in connectors (`eDP-*`, `LVDS-*`, `DSI-*`) and internal panel
+      backlights in `detect_brightness()` when external monitors are connected (preserving
+      `brightness` on convertibles in tablet/tent mode when the internal panel is the only
+      connected display). DRM displays now include physical diagonal size (`in 32"`) from
+      EDID basic bytes 21–22 / DTD bytes 66–68 and `[Built-in]` / `[External]` tags.
+    - **`btrfs` (`btrfs.rs`):** `collect_unique_btrfs_mounts()` deduplicates bind mounts sharing
+      the same `(device, subvol)` pair to the shortest mount point while keeping distinct
+      subvolumes on the same block device (`/` and `/home`).
+    - **`phys-disk` & `disk-io` (`disk.rs`, `io.rs`):** Skips 0-sector block devices
+      (`/sys/block/*/size == 0`) so empty USB SD/MMC card reader slots (`sda`, `sdb`) do not
+      appear as `0 GB [SSD]` drives or idle `Disk IO` lines.
+    - **`packages` (`packages.rs`):** Excludes imported GPG keys from RPM counts
+      (`SELECT COUNT(*) FROM Name WHERE key != 'gpg-pubkey'`) and requires an active deployment
+      symlink (`current` or `<arch>/<branch>/active`) when counting Flatpak app directories so
+      leftover empty directories from `flatpak uninstall` are ignored.
+    - **`dns` (`network.rs`):** `resolve_linux_dns()` reads `/run/systemd/resolve/resolv.conf`
+      when `/etc/resolv.conf` only lists `systemd-resolved`'s local stub (`127.0.0.53`).
+    - **`bootmgr` (`fetch.rs`):** Reads `LoaderInfo` and `BootCurrent` -> `BootXXXX` (`EFI_LOAD_OPTION`)
+      from `/sys/firmware/efi/efivars` (`"GRUB 2.12 (Fedora - \EFI\fedora\shimx64.efi)"`), and
+      fixes the `/boot` fallback order so Fedora GRUB 2 BLS systems (`/boot/loader/entries`) are
+      not misidentified as `systemd-boot`.
+    - **`chassis` (`fetch.rs`):** Maps DMI `chassis_type` `31` to `"Convertible"` and `32` to
+      `"Detachable"` instead of collapsing them into `"Laptop"`.
+    - **`init` (`fetch.rs`):** Appends the installed `systemd` version from
+      `/usr/lib*/systemd/libsystemd-shared-<ver>.so` (`"systemd 259.10-1.fc44"`) and falls back
+      to `/sbin/init`'s symlink target when `/proc/1/comm` is a PID-namespace wrapper (`bwrap`/`exe`).
+  - **Detail gaps closed (`os`, `gpu`, `motherboard`, `bios`, `wm`, `audio`, `wifi`):**
+    - `OS`: reads `PRETTY_NAME` from `/etc/os-release` (`"Linux (Fedora Linux 44 (Workstation Edition))"`).
+    - `GPU`: reads AMD KFD topology (`/sys/devices/virtual/kfd/kfd/topology/nodes/*/properties`)
+      and `pp_dpm_sclk` for compute unit counts, max clock frequency, and `[Integrated]`/`[Discrete]`
+      (`"AMD Radeon 8060S Graphics (40 cores, 2.90 GHz, 4 GB) [Integrated]"`).
+    - `Motherboard` & `BIOS`: includes `product_name` when it subsumes `board_name` plus
+      `(board_version)` (`"ASUSTeK COMPUTER INC. ProArt PX13 HN7306EAC (1.0)"`), and appends
+      `[UEFI]` to `BIOS` when `/sys/firmware/efi` exists.
+    - `WM`: appends `(Wayland)` / `(X11)`, checks `XDG_RUNTIME_DIR/wayland-*` and `/proc`
+      compositor processes even when `WAYLAND_DISPLAY` is unset in a subshell, and adds `dwl`,
+      `scroll`, and `jay`.
+    - `Audio`: supplements `/sys/bus/hdaudio/devices` with non-HDA ALSA cards from
+      `/proc/asound/cards` (`USB Audio`, `amd-soundwire`, `Logitech BRIO`).
+    - `Wi-Fi`: parses `signal: <dBm> dBm` into link quality `%` and PHY standard (`802.11be`,
+      `802.11ax`, `802.11ac`, `802.11n`) from `iw dev <iface> link`.
 
 - **v0.21.0: macOS fastfetch `--full` parity across 22 fields (native IOKit, CoreGraphics,
   CoreAudio, CoreWLAN, IOBluetooth, and AppKit FFI with zero extra subprocess spawns).**
