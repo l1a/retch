@@ -229,11 +229,16 @@ fn detect_linux() -> Vec<String> {
             .map(|s| strip_embedded_size(s.trim()).to_string())
             .unwrap_or_default();
 
-        // Size in 512-byte sectors
-        let size_bytes = fs::read_to_string(dev_path.join("size"))
+        // Size in 512-byte sectors. Skip 0-sector block devices (e.g. empty USB SD/MMC
+        // card reader slots with no media inserted).
+        let Some(sectors) = fs::read_to_string(dev_path.join("size"))
             .ok()
             .and_then(|s| s.trim().parse::<u64>().ok())
-            .map(|sectors| sectors * 512);
+            .filter(|&s| s > 0)
+        else {
+            continue;
+        };
+        let size_bytes = Some(sectors * 512);
 
         let rotational = fs::read_to_string(dev_path.join("queue/rotational"))
             .map(|s| s.trim() == "1")

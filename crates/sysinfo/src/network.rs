@@ -382,61 +382,12 @@ pub fn detect_wifi() -> Option<String> {
                         };
 
                         if !links.is_empty() {
-                            let mut link_strs = Vec::new();
-                            for link in links {
-                                let freq_str = link.freq.map(|f| {
-                                    let ghz_mhz = if f >= 1000.0 {
-                                        format!("{:.1} GHz", f / 1000.0)
-                                    } else {
-                                        format!("{} MHz", f)
-                                    };
-                                    if let Some(ch) = freq_to_channel(f) {
-                                        format!("{} ch{}", ghz_mhz, ch)
-                                    } else {
-                                        ghz_mhz
-                                    }
-                                });
-
-                                let mut rx_tx = Vec::new();
-                                if let Some(rx) = link.rx_rate {
-                                    if rx != "0"
-                                        && !rx.starts_with("0 ")
-                                        && rx != "0 Mbps"
-                                        && rx != "0 MBit/s"
-                                    {
-                                        rx_tx.push(format!("↓{}", clean_rate(&rx)));
-                                    }
-                                }
-                                if let Some(tx) = link.tx_rate {
-                                    if tx != "0"
-                                        && !tx.starts_with("0 ")
-                                        && tx != "0 Mbps"
-                                        && tx != "0 MBit/s"
-                                    {
-                                        rx_tx.push(format!("↑{}", clean_rate(&tx)));
-                                    }
-                                }
-
-                                match (freq_str, rx_tx.is_empty()) {
-                                    (Some(f), false) => {
-                                        link_strs.push(format!("{} [{}]", f, rx_tx.join(" ")))
-                                    }
-                                    (Some(f), true) => link_strs.push(f),
-                                    (None, false) => link_strs.push(rx_tx.join(" ")),
-                                    _ => {}
-                                }
-                            }
+                            let link_strs: Vec<String> =
+                                links.iter().filter_map(format_wifi_link).collect();
                             if !link_strs.is_empty() {
-                                return Some(format!(
-                                    "{}{}{} ({})",
-                                    prefix,
-                                    s,
-                                    "",
-                                    link_strs.join(", ")
-                                ));
-                            } else {
-                                return Some(format!("{}{}", prefix, s));
+                                return Some(format!("{}{} ({})", prefix, s, link_strs.join(", ")));
                             }
+                            return Some(format!("{}{}", prefix, s));
                         }
                         return Some(format!("{}{}", prefix, s));
                     }
@@ -603,11 +554,85 @@ fn clean_rate(rate: &str) -> String {
         .replace("Bit/s", "bps")
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct WifiLink {
     pub freq: Option<f64>,
     pub rx_rate: Option<String>,
     pub tx_rate: Option<String>,
+    pub signal_dbm: Option<i32>,
+    pub phy_standard: Option<String>,
+}
+
+/// Extract the 802.11 PHY generation standard from an `iw dev <iface> link` bitrate line.
+#[allow(dead_code)]
+pub fn parse_iw_phy_standard(bitrate_line: &str) -> Option<&'static str> {
+    if bitrate_line.contains("EHT-MCS") {
+        Some("802.11be")
+    } else if bitrate_line.contains("HE-MCS") {
+        Some("802.11ax")
+    } else if bitrate_line.contains("VHT-MCS") {
+        Some("802.11ac")
+    } else if bitrate_line.contains("MCS") {
+        Some("802.11n")
+    } else {
+        None
+    }
+}
+
+/// Convert an RSSI signal level in dBm (e.g. `-64`) into a 0..=100% link quality percentage.
+#[allow(dead_code)]
+pub fn dbm_to_signal_pct(dbm: i32) -> u32 {
+    (2 * (dbm + 100)).clamp(0, 100) as u32
+}
+
+/// Format a single [`WifiLink`] into its parenthesised link summary
+/// (e.g. `"802.11ax, 5.2 GHz ch36 [↓960.7 Mbps ↑1081.7 Mbps], 72%"`).
+#[allow(dead_code)]
+pub fn format_wifi_link(link: &WifiLink) -> Option<String> {
+    let freq_str = link.freq.map(|f| {
+        let ghz_mhz = if f >= 1000.0 {
+            format!("{:.1} GHz", f / 1000.0)
+        } else {
+            format!("{} MHz", f)
+        };
+        if let Some(ch) = freq_to_channel(f) {
+            format!("{} ch{}", ghz_mhz, ch)
+        } else {
+            ghz_mhz
+        }
+    });
+
+    let mut rx_tx = Vec::new();
+    if let Some(ref rx) = link.rx_rate {
+        if rx != "0" && !rx.starts_with("0 ") && rx != "0 Mbps" && rx != "0 MBit/s" {
+            rx_tx.push(format!("↓{}", clean_rate(rx)));
+        }
+    }
+    if let Some(ref tx) = link.tx_rate {
+        if tx != "0" && !tx.starts_with("0 ") && tx != "0 Mbps" && tx != "0 MBit/s" {
+            rx_tx.push(format!("↑{}", clean_rate(tx)));
+        }
+    }
+
+    let band_rates = match (freq_str, rx_tx.is_empty()) {
+        (Some(f), false) => Some(format!("{} [{}]", f, rx_tx.join(" "))),
+        (Some(f), true) => Some(f),
+        (None, false) => Some(rx_tx.join(" ")),
+        (None, true) => None,
+    };
+
+    let mut parts = Vec::new();
+    if let Some(ref phy) = link.phy_standard {
+        parts.push(phy.clone());
+    }
+    if let Some(br) = band_rates {
+        parts.push(br);
+    }
+    if let Some(dbm) = link.signal_dbm {
+        parts.push(format!("{}%", dbm_to_signal_pct(dbm)));
+    }
+
+    (!parts.is_empty()).then(|| parts.join(", "))
 }
 
 #[allow(dead_code)]
@@ -622,17 +647,19 @@ pub fn parse_iw_link_output(stdout: &str) -> (Option<String>, Vec<WifiLink>) {
             if let Some(link) = current_link.take() {
                 links.push(link);
             }
-            current_link = Some(WifiLink {
-                freq: None,
-                rx_rate: None,
-                tx_rate: None,
-            });
+            current_link = Some(WifiLink::default());
         } else if trimmed.starts_with("SSID:") {
             ssid = Some(trimmed.strip_prefix("SSID:").unwrap().trim().to_string());
         } else if trimmed.starts_with("freq:") {
             if let Some(ref mut link) = current_link {
                 let freq_str = trimmed.strip_prefix("freq:").unwrap().trim();
                 link.freq = freq_str.parse::<f64>().ok();
+            }
+        } else if let Some(sig_rest) = trimmed.strip_prefix("signal:") {
+            if let Some(ref mut link) = current_link {
+                if let Some(dbm_tok) = sig_rest.split_whitespace().next() {
+                    link.signal_dbm = dbm_tok.parse::<i32>().ok();
+                }
             }
         } else if trimmed.starts_with("rx bitrate:") {
             if let Some(ref mut link) = current_link {
@@ -643,6 +670,9 @@ pub fn parse_iw_link_output(stdout: &str) -> (Option<String>, Vec<WifiLink>) {
                     .collect::<Vec<&str>>()
                     .join(" ");
                 link.rx_rate = Some(rate);
+                if link.phy_standard.is_none() {
+                    link.phy_standard = parse_iw_phy_standard(rx_str).map(str::to_string);
+                }
             }
         } else if trimmed.starts_with("tx bitrate:") {
             if let Some(ref mut link) = current_link {
@@ -653,6 +683,9 @@ pub fn parse_iw_link_output(stdout: &str) -> (Option<String>, Vec<WifiLink>) {
                     .collect::<Vec<&str>>()
                     .join(" ");
                 link.tx_rate = Some(rate);
+                if let Some(phy) = parse_iw_phy_standard(tx_str) {
+                    link.phy_standard = Some(phy.to_string());
+                }
             }
         }
     }
@@ -755,18 +788,48 @@ pub fn detect_dns() -> Vec<String> {
             return config.servers;
         }
     }
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg(target_os = "linux")]
+    {
+        let etc_resolv = std::fs::read_to_string("/etc/resolv.conf").ok();
+        let systemd_resolv = std::fs::read_to_string("/run/systemd/resolve/resolv.conf").ok();
+        resolve_linux_dns(etc_resolv.as_deref(), systemd_resolv.as_deref())
+    }
+    #[cfg(target_os = "macos")]
     {
         if let Ok(content) = std::fs::read_to_string("/etc/resolv.conf") {
             return parse_resolv_conf(&content);
         }
+        Vec::new()
     }
     #[cfg(target_os = "windows")]
     {
         windows_dns_servers()
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     Vec::new()
+}
+
+/// Resolve Linux DNS nameservers from `/etc/resolv.conf`, substituting upstream nameservers
+/// from `/run/systemd/resolve/resolv.conf` when `/etc/resolv.conf` only lists a local
+/// stub/loopback resolver (`127.0.0.53`, `127.0.0.54`, `127.0.0.1`, `::1`).
+#[cfg(any(target_os = "linux", test))]
+pub fn resolve_linux_dns(etc_resolv: Option<&str>, systemd_resolv: Option<&str>) -> Vec<String> {
+    let etc_servers = etc_resolv.map(parse_resolv_conf).unwrap_or_default();
+    let only_stub = etc_servers.is_empty()
+        || etc_servers.iter().all(|s| {
+            matches!(
+                s.as_str(),
+                "127.0.0.53" | "127.0.0.54" | "127.0.0.1" | "::1"
+            )
+        });
+    if only_stub {
+        if let Some(upstream) = systemd_resolv.map(parse_resolv_conf) {
+            if !upstream.is_empty() {
+                return upstream;
+            }
+        }
+    }
+    etc_servers
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos", test))]
@@ -1849,13 +1912,19 @@ mod tests {
 
     #[test]
     fn test_parse_iw_link_output() {
-        let sample = "Connected to 84:78:48:dc:97:23 (on wlp2s0)\n        SSID: OfficeNet\n        freq: 6135.0\n        rx bitrate: 6.0 MBit/s\n        tx bitrate: 864.6 MBit/s 160MHz HE-MCS 4\n";
+        let sample = "Connected to 84:78:48:dc:97:23 (on wlp2s0)\n        SSID: OfficeNet\n        freq: 6135.0\n        signal: -64 dBm\n        rx bitrate: 6.0 MBit/s\n        tx bitrate: 864.6 MBit/s 160MHz HE-MCS 4\n";
         let (ssid, links) = parse_iw_link_output(sample);
         assert_eq!(ssid, Some("OfficeNet".to_string()));
         assert_eq!(links.len(), 1);
         assert_eq!(links[0].freq, Some(6135.0));
         assert_eq!(links[0].rx_rate, Some("6.0 MBit/s".to_string()));
         assert_eq!(links[0].tx_rate, Some("864.6 MBit/s".to_string()));
+        assert_eq!(links[0].signal_dbm, Some(-64));
+        assert_eq!(links[0].phy_standard.as_deref(), Some("802.11ax"));
+        assert_eq!(
+            format_wifi_link(&links[0]).as_deref(),
+            Some("802.11ax, 6.1 GHz ch37 [↓6.0 Mbps ↑864.6 Mbps], 72%")
+        );
 
         // MLO multi-link mock output
         let sample_mlo = "Connected to aa:bb:cc:dd:ee:ff (on wlan0)\n        SSID: HomeWiFi\n        freq: 5180.0\n        rx bitrate: 866.0 MBit/s\n        tx bitrate: 866.0 MBit/s\nConnected to aa:bb:cc:dd:ee:01 (on wlan0)\n        freq: 6135.0\n        rx bitrate: 1200.0 MBit/s\n        tx bitrate: 1200.0 MBit/s\n";
@@ -1864,6 +1933,22 @@ mod tests {
         assert_eq!(links_mlo.len(), 2);
         assert_eq!(links_mlo[0].freq, Some(5180.0));
         assert_eq!(links_mlo[1].freq, Some(6135.0));
+    }
+
+    #[test]
+    fn test_resolve_linux_dns_prefers_upstream_over_stub() {
+        let stub = "nameserver 127.0.0.53\noptions edns0 trust-ad\n";
+        let upstream = "nameserver 10.10.1.1\nnameserver 100.101.191.65\n";
+        assert_eq!(
+            resolve_linux_dns(Some(stub), Some(upstream)),
+            vec!["10.10.1.1", "100.101.191.65"]
+        );
+        // When /etc/resolv.conf already has real upstream servers, keep them.
+        let direct = "nameserver 1.1.1.1\nnameserver 8.8.8.8\n";
+        assert_eq!(
+            resolve_linux_dns(Some(direct), Some(upstream)),
+            vec!["1.1.1.1", "8.8.8.8"]
+        );
     }
 
     #[test]

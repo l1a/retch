@@ -230,6 +230,15 @@ fn resolve_terminal(env: impl Fn(&str) -> Option<String>, ancestors: &[String]) 
     if env("ALACRITTY_LOG").is_some() || env("ALACRITTY_WINDOW_ID").is_some() {
         return Some("alacritty".to_string());
     }
+    if set("KITTY_PID").is_some() || set("KITTY_WINDOW_ID").is_some() {
+        return Some("kitty".to_string());
+    }
+    if set("GHOSTTY_RESOURCES_DIR").is_some() {
+        return Some("Ghostty".to_string());
+    }
+    if set("WEZTERM_EXECUTABLE").is_some() {
+        return Some("wezterm".to_string());
+    }
 
     if let Some(term) = ancestors
         .iter()
@@ -254,12 +263,50 @@ fn resolve_terminal(env: impl Fn(&str) -> Option<String>, ancestors: &[String]) 
                 | "vt100"
                 | "ansi"
                 | "unknown"
+                | "screen"
+                | "screen-256color"
+                | "tmux"
+                | "tmux-256color"
         ) {
             if let Some(stripped) = term.strip_prefix("xterm-") {
                 return Some(stripped.to_string());
             }
             return Some(term);
         }
+    }
+
+    // Detached terminal multiplexer servers (zellij, tmux, screen) reparent under
+    // systemd/init, so when no outer terminal emulator variable was forwarded into the
+    // session, report the multiplexer hosting the PTY rather than None.
+    if set("ZELLIJ").is_some()
+        || set("ZELLIJ_SESSION_NAME").is_some()
+        || ancestors.iter().any(|n| n.eq_ignore_ascii_case("zellij"))
+    {
+        return Some("zellij".to_string());
+    }
+    if set("TMUX").is_some()
+        || ancestors
+            .iter()
+            .any(|n| n.eq_ignore_ascii_case("tmux") || n.starts_with("tmux:"))
+        || set("TERM")
+            .map(|t| {
+                let l = t.trim().to_ascii_lowercase();
+                l == "tmux" || l == "tmux-256color"
+            })
+            .unwrap_or(false)
+    {
+        return Some("tmux".to_string());
+    }
+    if set("STY").is_some()
+        || ancestors.iter().any(|n| n.eq_ignore_ascii_case("screen"))
+        || set("TERM")
+            .map(|t| {
+                let l = t.trim().to_ascii_lowercase();
+                l == "screen" || l == "screen-256color"
+            })
+            .unwrap_or(false)
+    {
+        return Some("screen".to_string());
     }
 
     None
@@ -690,6 +737,20 @@ pub(crate) fn detect_terminal_font(terminal: Option<&str>) -> Option<String> {
             }
         }
         return crate::theme::get_default_monospace_font();
+    } else if term_lower.contains("rio") {
+        let conf_path = home.join(".config/rio/config.toml");
+        if let Some(content) = read_bounded_regular_file(&conf_path) {
+            if let Some(font) = parse_rio_font(&content) {
+                return Some(font);
+            }
+        }
+    } else if term_lower.contains("ghostty") {
+        let conf_path = home.join(".config/ghostty/config");
+        if let Some(content) = read_bounded_regular_file(&conf_path) {
+            if let Some(font) = parse_ghostty_font(&content) {
+                return Some(font);
+            }
+        }
     }
 
     #[cfg(target_os = "windows")]
@@ -1079,6 +1140,186 @@ pub(crate) fn parse_konsole_theme(profile_content: &str) -> Option<String> {
     None
 }
 
+/// Extract a string or scalar value from the right-hand side of a TOML `key = value`
+/// assignment, preserving `#` characters inside quoted strings (e.g. `"#0F0D0E"`) while
+/// stripping trailing `#` comments on unquoted values.
+#[allow(dead_code)]
+fn extract_toml_value(raw_val: &str) -> &str {
+    let trimmed = raw_val.trim();
+    if let Some(rest) = trimmed.strip_prefix('"') {
+        rest.split('"').next().unwrap_or("").trim()
+    } else if let Some(rest) = trimmed.strip_prefix('\'') {
+        rest.split('\'').next().unwrap_or("").trim()
+    } else {
+        trimmed.split('#').next().unwrap_or("").trim()
+    }
+}
+
+/// Parse font family and size from a Rio terminal `~/.config/rio/config.toml` file.
+#[allow(dead_code)]
+pub(crate) fn parse_rio_font(content: &str) -> Option<String> {
+    let mut in_fonts = false;
+    let mut family: Option<String> = None;
+    let mut size: Option<String> = None;
+
+    for line in content.lines() {
+        let line = line.trim();
+        if line.starts_with('#') || line.is_empty() {
+            continue;
+        }
+        if line.starts_with("[fonts]") || line.starts_with("[fonts.") {
+            in_fonts = true;
+            continue;
+        } else if line.starts_with('[') {
+            in_fonts = false;
+            continue;
+        }
+        if in_fonts {
+            if let Some((key, raw_val)) = line.split_once('=') {
+                let key = key.trim();
+                let val = extract_toml_value(raw_val);
+                if key == "family" && !val.is_empty() && family.is_none() {
+                    family = Some(val.to_string());
+                } else if key == "size" && !val.is_empty() && size.is_none() {
+                    size = Some(val.to_string());
+                }
+            }
+        }
+    }
+
+    match (family, size) {
+        (Some(f), Some(s)) => Some(format!("{f} ({s})")),
+        (Some(f), None) => Some(f),
+        (None, Some(s)) => {
+            let fallback =
+                crate::theme::get_default_monospace_font().unwrap_or_else(|| "Default".to_string());
+            Some(format!("{fallback} ({s})"))
+        }
+        (None, None) => None,
+    }
+}
+
+/// Parse theme name or `[colors]` background/foreground from `~/.config/rio/config.toml`.
+#[allow(dead_code)]
+pub(crate) fn parse_rio_theme(content: &str) -> Option<String> {
+    let mut in_section = false;
+    let mut in_colors = false;
+    let mut bg: Option<String> = None;
+    let mut fg: Option<String> = None;
+
+    for line in content.lines() {
+        let line = line.trim();
+        if line.starts_with('#') || line.is_empty() {
+            continue;
+        }
+        if line.starts_with("[colors]") {
+            in_section = true;
+            in_colors = true;
+            continue;
+        } else if line.starts_with('[') {
+            in_section = true;
+            in_colors = false;
+            continue;
+        }
+        if let Some((key, raw_val)) = line.split_once('=') {
+            let key = key.trim();
+            let val = extract_toml_value(raw_val);
+            if !in_section && key == "theme" && !val.is_empty() {
+                return Some(val.to_string());
+            } else if in_colors && key == "background" && !val.is_empty() {
+                bg = Some(val.to_string());
+            } else if in_colors && key == "foreground" && !val.is_empty() {
+                fg = Some(val.to_string());
+            }
+        }
+    }
+
+    match (bg, fg) {
+        (Some(b), Some(f)) => Some(format!("BG: {b}, FG: {f}")),
+        (Some(b), None) => Some(format!("BG: {b}")),
+        (None, Some(f)) => Some(format!("FG: {f}")),
+        (None, None) => None,
+    }
+}
+
+/// Parse `font-family` and `font-size` from a Ghostty `~/.config/ghostty/config` file.
+#[allow(dead_code)]
+pub(crate) fn parse_ghostty_font(content: &str) -> Option<String> {
+    let mut family: Option<String> = None;
+    let mut size: Option<String> = None;
+
+    for line in content.lines() {
+        let line = line.trim();
+        if line.starts_with('#') || line.is_empty() {
+            continue;
+        }
+        if let Some((key, raw_val)) = line.split_once('=') {
+            let key = key.trim();
+            let val = raw_val.trim().trim_matches('"').trim_matches('\'');
+            if key == "font-family" && !val.is_empty() && family.is_none() {
+                family = Some(val.to_string());
+            } else if key == "font-size" && !val.is_empty() && size.is_none() {
+                size = Some(val.to_string());
+            }
+        }
+    }
+
+    match (family, size) {
+        (Some(f), Some(s)) => Some(format!("{f} ({s})")),
+        (Some(f), None) => Some(f),
+        (None, Some(s)) => {
+            let fallback =
+                crate::theme::get_default_monospace_font().unwrap_or_else(|| "Default".to_string());
+            Some(format!("{fallback} ({s})"))
+        }
+        (None, None) => None,
+    }
+}
+
+/// Parse `theme = ...` from a Ghostty `~/.config/ghostty/config` file.
+#[allow(dead_code)]
+pub(crate) fn parse_ghostty_theme(content: &str) -> Option<String> {
+    for line in content.lines() {
+        let line = line.trim();
+        if line.starts_with('#') || line.is_empty() {
+            continue;
+        }
+        if let Some((key, raw_val)) = line.split_once('=') {
+            if key.trim() == "theme" {
+                let val = raw_val.trim().trim_matches('"').trim_matches('\'');
+                if !val.is_empty() {
+                    return Some(val.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Parse `theme "<name>"` from a Zellij `~/.config/zellij/config.kdl` file.
+#[allow(dead_code)]
+pub(crate) fn parse_zellij_theme(content: &str) -> Option<String> {
+    for line in content.lines() {
+        let line = line.trim();
+        if line.starts_with("//") || line.starts_with('#') || line.is_empty() {
+            continue;
+        }
+        if let Some(rest) = line.strip_prefix("theme ") {
+            let val = rest
+                .split("//")
+                .next()
+                .unwrap_or("")
+                .trim()
+                .trim_matches('"')
+                .trim_matches('\'');
+            if !val.is_empty() && !val.contains('{') {
+                return Some(val.to_string());
+            }
+        }
+    }
+    None
+}
+
 pub(crate) fn detect_terminal_theme(terminal: Option<&str>) -> Option<String> {
     let term = terminal?;
     let term_lower = term.to_lowercase();
@@ -1166,6 +1407,33 @@ pub(crate) fn detect_terminal_theme(terminal: Option<&str>) -> Option<String> {
                     .to_string();
                 if !val.is_empty() && val != "''" {
                     return Some(val);
+                }
+            }
+        }
+    } else if term_lower.contains("rio") {
+        if let Some(ref h) = home {
+            let conf_path = h.join(".config/rio/config.toml");
+            if let Some(content) = read_bounded_regular_file(&conf_path) {
+                if let Some(theme) = parse_rio_theme(&content) {
+                    return Some(theme);
+                }
+            }
+        }
+    } else if term_lower.contains("ghostty") {
+        if let Some(ref h) = home {
+            let conf_path = h.join(".config/ghostty/config");
+            if let Some(content) = read_bounded_regular_file(&conf_path) {
+                if let Some(theme) = parse_ghostty_theme(&content) {
+                    return Some(theme);
+                }
+            }
+        }
+    } else if term_lower.contains("zellij") {
+        if let Some(ref h) = home {
+            let conf_path = h.join(".config/zellij/config.kdl");
+            if let Some(content) = read_bounded_regular_file(&conf_path) {
+                if let Some(theme) = parse_zellij_theme(&content) {
+                    return Some(theme);
                 }
             }
         }
@@ -1593,5 +1861,92 @@ return config
         assert_eq!(sanitize_konsole_profile_name("../etc/passwd"), None);
         assert_eq!(sanitize_konsole_profile_name("/dev/zero"), None);
         assert_eq!(sanitize_konsole_profile_name("sub\\evil.profile"), None);
+    }
+
+    #[test]
+    fn test_parse_rio_ghostty_and_zellij_configs() {
+        let rio_toml = r##"
+theme = "Dracula"
+
+[fonts]
+size = 16
+family = "JetBrainsMono Nerd Font"
+"##;
+        assert_eq!(
+            parse_rio_font(rio_toml).as_deref(),
+            Some("JetBrainsMono Nerd Font (16)")
+        );
+        assert_eq!(parse_rio_theme(rio_toml).as_deref(), Some("Dracula"));
+
+        let rio_colors = r##"
+[colors]
+background = "#0F0D0E"
+foreground = "#F9F4DA"
+"##;
+        assert_eq!(
+            parse_rio_theme(rio_colors).as_deref(),
+            Some("BG: #0F0D0E, FG: #F9F4DA")
+        );
+
+        let ghostty_conf = "\
+font-family = \"JetBrainsMono Nerd Font\"
+font-size = 14
+theme = catppuccin-mocha
+";
+        assert_eq!(
+            parse_ghostty_font(ghostty_conf).as_deref(),
+            Some("JetBrainsMono Nerd Font (14)")
+        );
+        assert_eq!(
+            parse_ghostty_theme(ghostty_conf).as_deref(),
+            Some("catppuccin-mocha")
+        );
+
+        let zellij_kdl = "\
+// Zellij configuration
+theme \"catppuccin-mocha\"
+default_layout \"compact\"
+";
+        assert_eq!(
+            parse_zellij_theme(zellij_kdl).as_deref(),
+            Some("catppuccin-mocha")
+        );
+
+        // Detached multiplexer fallback in resolve_terminal
+        assert_eq!(
+            resolve_terminal(
+                env_of(&[("TERM", "xterm-256color"), ("ZELLIJ", "0")]),
+                &names(&["retch", "zsh", "zellij", "systemd"])
+            )
+            .as_deref(),
+            Some("zellij")
+        );
+        assert_eq!(
+            resolve_terminal(
+                env_of(&[
+                    ("TERM", "tmux-256color"),
+                    ("TMUX", "/tmp/tmux-1000/default,123,0")
+                ]),
+                &names(&["retch", "zsh", "tmux: server", "systemd"])
+            )
+            .as_deref(),
+            Some("tmux")
+        );
+        assert_eq!(
+            resolve_terminal(
+                env_of(&[("TERM", "screen-256color"), ("STY", "1234.pts-0.host")]),
+                &names(&["retch", "zsh", "SCREEN", "systemd"])
+            )
+            .as_deref(),
+            Some("screen")
+        );
+        assert_eq!(
+            resolve_terminal(
+                env_of(&[("TERM", "screen-256color")]),
+                &names(&["retch", "zsh", "systemd"])
+            )
+            .as_deref(),
+            Some("screen")
+        );
     }
 }

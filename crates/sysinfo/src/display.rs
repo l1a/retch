@@ -170,6 +170,155 @@ pub fn parse_serial_number_from_edid(edid: &[u8]) -> Option<String> {
     None
 }
 
+/// Parse the physical active image size in millimetres `(width_mm, height_mm)` from a raw
+/// EDID blob.
+///
+/// Prefers the centimetre-precision basic display parameters at EDID offsets 21–22 (which
+/// monitor vendors round to match the marketed diagonal class, e.g. `70 cm x 40 cm` -> `32"`
+/// on 31.5" 4K panels whose active matrix is `697 x 392 mm` = `31.48"`), falling back to the
+/// first Detailed Timing Descriptor (DTD bytes at offsets 66–68 when the DTD pixel clock at
+/// offsets 54–55 is non-zero).
+#[allow(dead_code)]
+pub fn parse_edid_physical_mm(edid: &[u8]) -> Option<(u32, u32)> {
+    if edid.len() >= 23 && edid[21] > 0 && edid[22] > 0 {
+        return Some(((edid[21] as u32) * 10, (edid[22] as u32) * 10));
+    }
+    if edid.len() >= 72 {
+        let pixel_clock = ((edid[55] as u16) << 8) | (edid[54] as u16);
+        if pixel_clock != 0 {
+            let h_mm = (edid[66] as u32) | (((edid[68] as u32) & 0xF0) << 4);
+            let v_mm = (edid[67] as u32) | (((edid[68] as u32) & 0x0F) << 8);
+            if h_mm > 0 && v_mm > 0 {
+                return Some((h_mm, v_mm));
+            }
+        }
+    }
+    None
+}
+
+/// Convert physical display dimensions in millimetres to a rounded diagonal size in inches.
+///
+/// Returns `None` for implausible sizes outside `5..=120` inches (e.g. projector/virtual
+/// EDIDs that report bogus dimensions).
+#[allow(dead_code)]
+pub fn diagonal_inches_from_mm(width_mm: u32, height_mm: u32) -> Option<u32> {
+    if width_mm == 0 || height_mm == 0 {
+        return None;
+    }
+    let diag_mm = (width_mm as f64).hypot(height_mm as f64);
+    let inches = (diag_mm / 25.4).round() as u32;
+    (5..=120).contains(&inches).then_some(inches)
+}
+
+/// Return `true` when a DRM connector name (e.g. `"eDP-1"`, `"card1-eDP-1"`, `"LVDS-1"`,
+/// `"DSI-1"`) represents an internal laptop/tablet panel rather than an external port.
+#[allow(dead_code)]
+pub fn is_builtin_connector(port: &str) -> bool {
+    let clean = match port.split_once('-') {
+        Some((prefix, rest)) if prefix.starts_with("card") => rest,
+        _ => port,
+    };
+    let lower = clean.to_ascii_lowercase();
+    lower.starts_with("edp") || lower.starts_with("lvds") || lower.starts_with("dsi")
+}
+
+/// Parse a `/proc/acpi/button/lid/*/state` file and return `true` when the lid is closed.
+#[allow(dead_code)]
+pub fn parse_lid_closed(content: &str) -> bool {
+    for line in content.lines() {
+        if let Some((key, val)) = line.split_once(':') {
+            if key.trim().eq_ignore_ascii_case("state") && val.trim().eq_ignore_ascii_case("closed")
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Check whether any ACPI laptop lid switch under `/proc/acpi/button/lid` reports a
+/// `"closed"` state.
+#[allow(dead_code)]
+pub fn is_laptop_lid_closed() -> bool {
+    let Ok(entries) = std::fs::read_dir("/proc/acpi/button/lid") else {
+        return false;
+    };
+    for entry in entries.flatten() {
+        if let Ok(state) = std::fs::read_to_string(entry.path().join("state")) {
+            if parse_lid_closed(&state) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Return `true` when at least one external (non-built-in) DRM connector under
+/// `/sys/class/drm` is `"connected"` with at least one mode.
+#[allow(dead_code)]
+pub fn has_connected_external_drm_display() -> bool {
+    has_connected_external_drm_display_in(std::path::Path::new("/sys/class/drm"))
+}
+
+/// Testable core of [`has_connected_external_drm_display`] parameterised over the DRM sysfs
+/// directory.
+#[allow(dead_code)]
+pub fn has_connected_external_drm_display_in(drm_dir: &std::path::Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(drm_dir) else {
+        return false;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let Some(port) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        if is_builtin_connector(port) {
+            continue;
+        }
+        let Ok(status) = std::fs::read_to_string(path.join("status")) else {
+            continue;
+        };
+        if status.trim() != "connected" {
+            continue;
+        }
+        if let Ok(modes) = std::fs::read_to_string(path.join("modes")) {
+            if modes.lines().any(|l| !l.trim().is_empty()) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Format a Linux DRM display entry with resolution, optional diagonal screen size in
+/// inches (`in 32"`), refresh rate, and `[Built-in]` / `[External]` connection tag.
+#[allow(dead_code)]
+pub fn format_drm_display(
+    display_name: &str,
+    res: &str,
+    diagonal_in: Option<u32>,
+    refresh_hz: Option<f64>,
+    builtin: bool,
+) -> String {
+    let size_str = match diagonal_in.filter(|&d| (5..=120).contains(&d)) {
+        Some(d) => format!(" in {d}\""),
+        None => String::new(),
+    };
+    let rr_str = match refresh_hz.filter(|&r| r > 0.0) {
+        Some(r) => {
+            let rr = format_refresh_rate(r);
+            if !size_str.is_empty() {
+                format!(", {rr}Hz")
+            } else {
+                format!(" @ {rr}Hz")
+            }
+        }
+        None => String::new(),
+    };
+    let loc = if builtin { "Built-in" } else { "External" };
+    format!("{display_name} ({res}{size_str}{rr_str}) [{loc}]")
+}
+
 /// Look up the monitor name for a given DRM connector port name by reading
 /// the EDID from sysfs (`/sys/class/drm/<entry>/edid`).
 ///
@@ -428,7 +577,7 @@ pub fn detect_displays() -> Vec<String> {
 
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
-        let mut displays = Vec::new();
+        let mut raw_displays: Vec<(String, bool, String)> = Vec::new();
 
         // Try reading directly from sysfs first for best performance
         if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
@@ -447,8 +596,9 @@ pub fn detect_displays() -> Vec<String> {
                                     let clean_port = if let Some(idx) = port.find('-') {
                                         port[idx + 1..].to_string()
                                     } else {
-                                        port
+                                        port.clone()
                                     };
+                                    let builtin = is_builtin_connector(&clean_port);
 
                                     let edid_bytes = if edid_path.exists() {
                                         std::fs::read(&edid_path).ok()
@@ -459,7 +609,7 @@ pub fn detect_displays() -> Vec<String> {
                                     let name = edid_bytes
                                         .as_ref()
                                         .and_then(|bytes| parse_monitor_name_from_edid(bytes))
-                                        .unwrap_or(clean_port);
+                                        .unwrap_or_else(|| clean_port.clone());
 
                                     let refresh = edid_bytes
                                         .as_ref()
@@ -469,22 +619,25 @@ pub fn detect_displays() -> Vec<String> {
                                         .as_ref()
                                         .and_then(|bytes| parse_serial_number_from_edid(bytes));
 
+                                    let diagonal_in = edid_bytes
+                                        .as_ref()
+                                        .and_then(|bytes| parse_edid_physical_mm(bytes))
+                                        .and_then(|(w, h)| diagonal_inches_from_mm(w, h));
+
                                     let display_name = if let Some(ref s) = serial {
                                         format!("{} #{}", name, s)
                                     } else {
                                         name
                                     };
 
-                                    if let Some(r) = refresh {
-                                        displays.push(format!(
-                                            "{} ({} @ {}Hz)",
-                                            display_name,
-                                            res,
-                                            format_refresh_rate(r)
-                                        ));
-                                    } else {
-                                        displays.push(format!("{} ({})", display_name, res));
-                                    }
+                                    let formatted = format_drm_display(
+                                        &display_name,
+                                        &res,
+                                        diagonal_in,
+                                        refresh,
+                                        builtin,
+                                    );
+                                    raw_displays.push((port, builtin, formatted));
                                 }
                             }
                         }
@@ -492,6 +645,18 @@ pub fn detect_displays() -> Vec<String> {
                 }
             }
         }
+
+        raw_displays.sort_by(|a, b| a.0.cmp(&b.0));
+
+        // When the laptop lid is closed in clamshell mode and at least one external display
+        // is connected, omit the built-in panel (which DRM sysfs still reports as "connected").
+        let lid_closed = is_laptop_lid_closed();
+        let has_external = raw_displays.iter().any(|(_, builtin, _)| !*builtin);
+        let mut displays: Vec<String> = raw_displays
+            .into_iter()
+            .filter(|(_, builtin, _)| !(lid_closed && has_external && *builtin))
+            .map(|(_, _, s)| s)
+            .collect();
 
         // Fallback to xrandr only if sysfs yielded no connected displays
         if displays.is_empty() {
@@ -962,6 +1127,88 @@ mod tests {
         assert_eq!(
             parse_serial_number_from_edid(&edid),
             Some("]2;SN12345".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_edid_physical_mm_and_diagonal() {
+        let mut edid = edid_1080p60();
+        // Basic display parameters: 70 cm x 40 cm (preferred over DTD 697x392 mm so 31.5"
+        // monitors report 32" matching their marketed class)
+        edid[21] = 70;
+        edid[22] = 40;
+        edid[66] = 0xB9;
+        edid[67] = 0x88;
+        edid[68] = 0x21;
+
+        let (w_mm, h_mm) = parse_edid_physical_mm(&edid).expect("basic display parameters");
+        assert_eq!((w_mm, h_mm), (700, 400));
+        assert_eq!(diagonal_inches_from_mm(w_mm, h_mm), Some(32));
+
+        // Zero basic parameters (21..=22 == 0) falls back to DTD bytes 66..=68
+        edid[21] = 0;
+        edid[22] = 0;
+        assert_eq!(parse_edid_physical_mm(&edid), Some((697, 392)));
+        assert_eq!(diagonal_inches_from_mm(286, 179), Some(13));
+        assert_eq!(diagonal_inches_from_mm(0, 0), None);
+    }
+
+    #[test]
+    fn test_is_builtin_connector_and_lid_closed() {
+        assert!(is_builtin_connector("eDP-1"));
+        assert!(is_builtin_connector("card1-eDP-1"));
+        assert!(is_builtin_connector("LVDS-1"));
+        assert!(is_builtin_connector("DSI-1"));
+        assert!(!is_builtin_connector("DP-4"));
+        assert!(!is_builtin_connector("card1-HDMI-A-1"));
+
+        assert!(parse_lid_closed("state:      closed\n"));
+        assert!(!parse_lid_closed("state:      open\n"));
+        assert!(!parse_lid_closed(""));
+
+        let tmp = std::env::temp_dir().join(format!("retch_drm_ext_test_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&tmp);
+        let edp = tmp.join("card1-eDP-1");
+        std::fs::create_dir_all(&edp).unwrap();
+        std::fs::write(edp.join("status"), "connected\n").unwrap();
+        std::fs::write(edp.join("modes"), "2880x1800\n").unwrap();
+        // Only built-in eDP connected -> no external display
+        assert!(!has_connected_external_drm_display_in(&tmp));
+
+        // External DP connected with modes -> true
+        let dp = tmp.join("card1-DP-4");
+        std::fs::create_dir_all(&dp).unwrap();
+        std::fs::write(dp.join("status"), "connected\n").unwrap();
+        std::fs::write(dp.join("modes"), "3840x2160\n").unwrap();
+        assert!(has_connected_external_drm_display_in(&tmp));
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn test_format_drm_display() {
+        assert_eq!(
+            format_drm_display(
+                "LG HDR 4K #205259",
+                "3840x2160",
+                Some(32),
+                Some(60.0),
+                false
+            ),
+            "LG HDR 4K #205259 (3840x2160 in 32\", 60Hz) [External]"
+        );
+        assert_eq!(
+            format_drm_display(
+                "Samsung ATNA33AA08-0",
+                "2880x1800",
+                Some(13),
+                Some(60.0),
+                true
+            ),
+            "Samsung ATNA33AA08-0 (2880x1800 in 13\", 60Hz) [Built-in]"
+        );
+        assert_eq!(
+            format_drm_display("DP-1", "2560x1440", None, Some(143.97), false),
+            "DP-1 (2560x1440 @ 143.97Hz) [External]"
         );
     }
 }

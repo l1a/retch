@@ -25,17 +25,28 @@ pub fn detect_wm() -> Option<String> {
         let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok()
             || std::env::var("XDG_SESSION_TYPE")
                 .map(|v| v.to_lowercase() == "wayland")
-                .unwrap_or(false);
+                .unwrap_or(false)
+            || has_wayland_runtime_socket();
 
         if is_wayland {
             if let Some(wm) = probe_wayland_compositor() {
-                return Some(wm);
+                return Some(format!("{wm} (Wayland)"));
             }
         }
 
-        // X11 process scan (also catches Wayland compositors running XWayland)
+        // X11 process scan (also catches dual-mode WMs like Mutter/KWin on X11)
         if let Some(wm) = probe_wm_process() {
-            return Some(wm);
+            let proto = if is_wayland { "Wayland" } else { "X11" };
+            return Some(format!("{wm} ({proto})"));
+        }
+
+        // Fallback: even if WAYLAND_DISPLAY / XDG_SESSION_TYPE was not inherited by the
+        // current subshell (e.g. SSH/ETR/daemon child), check /proc for a live Wayland
+        // compositor, matching detect_desktop_from_proc().
+        if !is_wayland {
+            if let Some(wm) = probe_wayland_compositor() {
+                return Some(format!("{wm} (Wayland)"));
+            }
         }
 
         // wmctrl fallback (X11 only)
@@ -73,6 +84,23 @@ pub fn detect_wm() -> Option<String> {
 }
 
 #[cfg(target_os = "linux")]
+fn has_wayland_runtime_socket() -> bool {
+    let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") else {
+        return false;
+    };
+    let Ok(entries) = std::fs::read_dir(runtime_dir) else {
+        return false;
+    };
+    entries.flatten().any(|e| {
+        let name = e.file_name();
+        let Some(s) = name.to_str() else {
+            return false;
+        };
+        s.starts_with("wayland-") && !s.ends_with(".lock")
+    })
+}
+
+#[cfg(target_os = "linux")]
 fn probe_wayland_compositor() -> Option<String> {
     // Ordered by prevalence
     const COMPOSITORS: &[(&str, &str)] = &[
@@ -90,6 +118,9 @@ fn probe_wayland_compositor() -> Option<String> {
         ("weston", "Weston"),
         ("cage", "Cage"),
         ("gamescope", "gamescope"),
+        ("dwl", "dwl"),
+        ("scroll", "Scroll"),
+        ("jay", "Jay"),
         ("mir", "Mir"),
     ];
     probe_from_process_list(COMPOSITORS)

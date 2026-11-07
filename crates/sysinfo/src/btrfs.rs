@@ -34,14 +34,7 @@ fn detect_linux() -> Vec<String> {
     let mounts = std::fs::read_to_string("/proc/mounts").unwrap_or_default();
     let mut results = Vec::new();
 
-    for line in mounts.lines() {
-        let Some(entry) = parse_mount_line(line) else {
-            continue;
-        };
-        if entry.fs_type != "btrfs" {
-            continue;
-        }
-
+    for entry in collect_unique_btrfs_mounts(&mounts) {
         if let Some(formatted) = format_btrfs_volume(entry.mount_point, entry.subvol) {
             results.push(formatted);
         }
@@ -50,20 +43,52 @@ fn detect_linux() -> Vec<String> {
     results
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", test))]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct MountEntry<'a> {
+    device: &'a str,
     mount_point: &'a str,
     fs_type: &'a str,
     subvol: Option<&'a str>,
 }
 
+/// Parses `/proc/mounts` and returns unique btrfs mounts, collapsing bind mounts that
+/// share the same `(device, subvol)` pair to the shortest (root-most) mount point while
+/// preserving distinct subvolumes on the same device (e.g. `/` and `/home`).
+#[cfg(any(target_os = "linux", test))]
+fn collect_unique_btrfs_mounts(mounts: &str) -> Vec<MountEntry<'_>> {
+    let mut selected: Vec<MountEntry<'_>> = Vec::new();
+    for line in mounts.lines() {
+        let Some(entry) = parse_mount_line(line) else {
+            continue;
+        };
+        if entry.fs_type != "btrfs" {
+            continue;
+        }
+        if let Some(subvol) = entry.subvol {
+            if let Some(existing) = selected
+                .iter_mut()
+                .find(|e| e.device == entry.device && e.subvol == Some(subvol))
+            {
+                if entry.mount_point.len() < existing.mount_point.len() {
+                    *existing = entry;
+                }
+                continue;
+            }
+        }
+        selected.push(entry);
+    }
+    selected
+}
+
 /// Parses one `/proc/mounts` line into device/mountpoint/fstype/subvol-option.
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", test))]
 fn parse_mount_line(line: &str) -> Option<MountEntry<'_>> {
     let parts: Vec<&str> = line.splitn(4, ' ').collect();
     if parts.len() < 4 {
         return None;
     }
+    let device = parts[0];
     let mount_point = parts[1];
     let fs_type = parts[2];
     // parts[3] is "options dump pass"; options is the first whitespace-separated token.
@@ -73,6 +98,7 @@ fn parse_mount_line(line: &str) -> Option<MountEntry<'_>> {
         .find_map(|opt| opt.strip_prefix("subvol="));
 
     Some(MountEntry {
+        device,
         mount_point,
         fs_type,
         subvol,
@@ -174,8 +200,26 @@ fn parse_btrfs_usage(text: &str) -> Option<(u64, u64)> {
 
 #[cfg(test)]
 mod tests {
+    use super::{collect_unique_btrfs_mounts, parse_mount_line};
     #[cfg(target_os = "linux")]
-    use super::{parse_btrfs_label, parse_btrfs_usage, parse_mount_line};
+    use super::{parse_btrfs_label, parse_btrfs_usage};
+
+    #[test]
+    fn test_collect_unique_btrfs_mounts_deduplicates_bind_mounts() {
+        let mounts = "\
+/dev/nvme0n1p3 /bin btrfs rw,subvolid=256,subvol=/root 0 0
+/dev/nvme0n1p3 / btrfs rw,subvolid=256,subvol=/root 0 0
+/dev/nvme0n1p3 /usr btrfs rw,subvolid=256,subvol=/root 0 0
+/dev/nvme0n1p3 /home btrfs rw,subvolid=257,subvol=/home 0 0
+/dev/nvme0n1p3 /home/user/Sync btrfs rw,subvolid=257,subvol=/home 0 0
+";
+        let unique = collect_unique_btrfs_mounts(mounts);
+        assert_eq!(unique.len(), 2);
+        assert_eq!(unique[0].mount_point, "/");
+        assert_eq!(unique[0].subvol, Some("/root"));
+        assert_eq!(unique[1].mount_point, "/home");
+        assert_eq!(unique[1].subvol, Some("/home"));
+    }
 
     #[cfg(target_os = "linux")]
     #[test]

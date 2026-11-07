@@ -393,7 +393,7 @@ separator_color = "bright_black"
 # weather_unit = "fahrenheit"
 
 # Which system information fields to display (selection only — this list does not reorder output)
-# Note: "phys-mem" requires root (sudo) on Linux to read DMI memory tables. On Windows, reads the SMBIOS table natively (no PowerShell).
+# Note: "phys-mem" on Linux reads /run/udev/data/+dmi:id unprivileged (falls back to dmidecode as root). On Windows, reads the SMBIOS table natively (no PowerShell).
 # Note: "btrfs" snapshot counts require root on Linux; the count is omitted (not shown as 0) when it can't be read.
 # Note: "editor", "desktop" and "wm" read environment variables, so they are absent under `sudo` (env_reset).
 # Note: "phys-disk" on Windows uses native storage IOCTLs (no PowerShell, no admin).

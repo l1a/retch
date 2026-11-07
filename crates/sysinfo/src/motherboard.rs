@@ -98,26 +98,88 @@ pub(crate) fn detect_motherboard() -> Option<String> {
 
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
-        let vendor = std::fs::read_to_string("/sys/class/dmi/id/board_vendor")
-            .map(|s| s.trim().to_string())
-            .ok();
-        let name = std::fs::read_to_string("/sys/class/dmi/id/board_name")
-            .map(|s| s.trim().to_string())
+        let vendor = std::fs::read_to_string("/sys/class/dmi/id/board_vendor").ok();
+        let name = std::fs::read_to_string("/sys/class/dmi/id/board_name").ok();
+        let product = std::fs::read_to_string("/sys/class/dmi/id/product_name").ok();
+        let version = std::fs::read_to_string("/sys/class/dmi/id/board_version")
+            .or_else(|_| std::fs::read_to_string("/sys/class/dmi/id/product_version"))
             .ok();
 
-        match (vendor, name) {
-            (Some(v), Some(n)) if !v.is_empty() && !n.is_empty() => {
-                if n.starts_with(&v) {
-                    Some(n)
-                } else {
-                    Some(format!("{} {}", v, n))
-                }
-            }
-            (Some(v), _) if !v.is_empty() => Some(v),
-            (_, Some(n)) if !n.is_empty() => Some(n),
-            _ => None,
-        }
+        format_linux_motherboard(
+            vendor.as_deref(),
+            name.as_deref(),
+            product.as_deref(),
+            version.as_deref(),
+        )
     }
+}
+
+/// Return `true` when a DMI string is a non-empty, non-placeholder value.
+fn is_valid_dmi_field(s: &str) -> bool {
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    !matches!(
+        trimmed.to_ascii_lowercase().as_str(),
+        "default string"
+            | "to be filled by o.e.m."
+            | "system product name"
+            | "system version"
+            | "none"
+            | "n/a"
+            | "unknown"
+            | "not specified"
+            | "not applicable"
+    )
+}
+
+/// Format Linux DMI motherboard/system identifiers into a human-readable string.
+///
+/// When `product_name` is a superset of `board_name` (e.g. `"ProArt PX13 HN7306EAC"` vs
+/// `"HN7306EAC"`), prefers `product_name` so the laptop/system marketing name is preserved
+/// alongside the board code, and appends `(board_version)` when present.
+pub fn format_linux_motherboard(
+    board_vendor: Option<&str>,
+    board_name: Option<&str>,
+    product_name: Option<&str>,
+    board_version: Option<&str>,
+) -> Option<String> {
+    let vendor = board_vendor
+        .map(str::trim)
+        .filter(|s| is_valid_dmi_field(s));
+    let board = board_name.map(str::trim).filter(|s| is_valid_dmi_field(s));
+    let product = product_name
+        .map(str::trim)
+        .filter(|s| is_valid_dmi_field(s));
+    let version = board_version
+        .map(str::trim)
+        .filter(|s| is_valid_dmi_field(s));
+
+    let model = match (board, product) {
+        (Some(b), Some(p)) if p.to_ascii_lowercase().contains(&b.to_ascii_lowercase()) => Some(p),
+        (Some(b), _) => Some(b),
+        (None, Some(p)) => Some(p),
+        (None, None) => None,
+    };
+
+    let base = match (vendor, model) {
+        (Some(v), Some(m)) => {
+            if m.to_ascii_lowercase().starts_with(&v.to_ascii_lowercase()) {
+                m.to_string()
+            } else {
+                format!("{v} {m}")
+            }
+        }
+        (Some(v), None) => v.to_string(),
+        (None, Some(m)) => m.to_string(),
+        (None, None) => return None,
+    };
+
+    Some(match version {
+        Some(ver) => format!("{base} ({ver})"),
+        None => base,
+    })
 }
 
 /// Formats macOS host/board properties from `IODeviceTree:/` and `IODeviceTree:/product`
@@ -185,5 +247,28 @@ mod tests {
             Some("Mac mini (J473AP)".to_string())
         );
         assert_eq!(format_macos_motherboard(None, None, None, None), None);
+    }
+
+    #[test]
+    fn test_format_linux_motherboard() {
+        assert_eq!(
+            format_linux_motherboard(
+                Some("ASUSTeK COMPUTER INC.\n"),
+                Some("HN7306EAC\n"),
+                Some("ProArt PX13 HN7306EAC\n"),
+                Some("1.0\n"),
+            ),
+            Some("ASUSTeK COMPUTER INC. ProArt PX13 HN7306EAC (1.0)".to_string())
+        );
+        assert_eq!(
+            format_linux_motherboard(
+                Some("Micro-Star International Co., Ltd."),
+                Some("MAG B650 TOMAHAWK WIFI"),
+                Some("System Product Name"),
+                Some("Default string"),
+            ),
+            Some("Micro-Star International Co., Ltd. MAG B650 TOMAHAWK WIFI".to_string())
+        );
+        assert_eq!(format_linux_motherboard(None, None, None, None), None);
     }
 }

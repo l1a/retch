@@ -11,28 +11,53 @@ use std::collections::HashSet;
 use std::fs;
 
 /// Information about a detected GPU.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct GpuInfo {
     /// The marketing or model name of the GPU.
     pub name: String,
     /// Total VRAM in bytes, if detected.
     pub vram_bytes: Option<u64>,
+    /// Compute Unit / GPU core count, if detected.
+    pub cores: Option<u32>,
+    /// Maximum GPU engine clock in MHz, if detected.
+    pub clock_mhz: Option<u32>,
+    /// `"Integrated"` or `"Discrete"`, if detected.
+    pub gpu_type: Option<String>,
 }
 
 impl GpuInfo {
-    /// Formats the GPU name and VRAM into a human-readable string.
+    /// Formats the GPU name, cores, clock, VRAM, and type into a human-readable string.
     pub fn format(&self) -> String {
+        let mut details = Vec::new();
+        if let Some(cores) = self.cores.filter(|&c| c > 0) {
+            details.push(format!("{cores} cores"));
+        }
+        if let Some(mhz) = self.clock_mhz.filter(|&m| m > 0) {
+            if mhz >= 1000 {
+                details.push(format!("{:.2} GHz", mhz as f64 / 1000.0));
+            } else {
+                details.push(format!("{mhz} MHz"));
+            }
+        }
         if let Some(vram) = self.vram_bytes {
             let vram_gb = vram as f64 / 1024.0 / 1024.0 / 1024.0;
             if vram_gb >= 1.0 {
-                format!("{} ({:.0} GB)", self.name, vram_gb)
+                details.push(format!("{:.0} GB", vram_gb));
             } else {
                 let vram_mb = vram / 1024 / 1024;
-                format!("{} ({} MB)", self.name, vram_mb)
+                details.push(format!("{} MB", vram_mb));
             }
-        } else {
-            self.name.clone()
         }
+        let detail_str = if details.is_empty() {
+            String::new()
+        } else {
+            format!(" ({})", details.join(", "))
+        };
+        let type_str = match self.gpu_type.as_deref() {
+            Some(t) if !t.is_empty() => format!(" [{t}]"),
+            _ => String::new(),
+        };
+        format!("{}{}{}", self.name, detail_str, type_str)
     }
 }
 
@@ -274,6 +299,7 @@ pub fn parse_system_profiler_displays(stdout: &str) -> Vec<GpuInfo> {
             current_gpu = Some(GpuInfo {
                 name,
                 vram_bytes: None,
+                ..Default::default()
             });
         } else if let Some(stripped) = trimmed.strip_prefix("VRAM (Total):") {
             if let Some(ref mut gpu) = current_gpu {
@@ -322,6 +348,7 @@ pub fn parse_wmi_videocontroller(output: &str) -> Vec<GpuInfo> {
                     gpus.push(GpuInfo {
                         name: name.clone(),
                         vram_bytes: vram,
+                        ..Default::default()
                     });
                     vram = None;
                 }
@@ -331,6 +358,7 @@ pub fn parse_wmi_videocontroller(output: &str) -> Vec<GpuInfo> {
                     gpus.push(GpuInfo {
                         name: name.clone(),
                         vram_bytes: vram,
+                        ..Default::default()
                     });
                     name = String::new();
                     vram = None;
@@ -346,10 +374,103 @@ pub fn parse_wmi_videocontroller(output: &str) -> Vec<GpuInfo> {
         gpus.push(GpuInfo {
             name,
             vram_bytes: vram,
+            ..Default::default()
         });
     }
 
     gpus
+}
+
+/// Parsed AMD KFD (`amdkfd`) topology node properties from
+/// `/sys/devices/virtual/kfd/kfd/topology/nodes/*/properties`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct KfdGpuProperties {
+    /// PCI vendor ID in decimal (`4098` = `0x1002`).
+    pub vendor_id: u32,
+    /// PCI device ID in decimal (`5510` = `0x1586`).
+    pub device_id: u32,
+    /// Compute Unit count (`simd_count / simd_per_cu`).
+    pub compute_units: Option<u32>,
+    /// Maximum GPU engine clock in MHz (`max_engine_clk_fcompute`).
+    pub max_clock_mhz: Option<u32>,
+    /// `Some(true)` when `local_mem_size == 0` (integrated APU), `Some(false)` when `> 0`.
+    pub is_integrated: Option<bool>,
+}
+
+/// Parses a single `/sys/devices/virtual/kfd/kfd/topology/nodes/<N>/properties` file.
+/// Returns `None` for CPU-only KFD nodes (`simd_count == 0` or `device_id == 0`).
+pub fn parse_kfd_gpu_properties(content: &str) -> Option<KfdGpuProperties> {
+    let mut vendor_id: u32 = 0;
+    let mut device_id: u32 = 0;
+    let mut simd_count: u32 = 0;
+    let mut simd_per_cu: u32 = 0;
+    let mut max_clock_mhz: Option<u32> = None;
+    let mut local_mem_size: Option<u64> = None;
+
+    for line in content.lines() {
+        let mut parts = line.split_whitespace();
+        let (Some(key), Some(val)) = (parts.next(), parts.next()) else {
+            continue;
+        };
+        match key {
+            "vendor_id" => vendor_id = val.parse().unwrap_or(0),
+            "device_id" => device_id = val.parse().unwrap_or(0),
+            "simd_count" => simd_count = val.parse().unwrap_or(0),
+            "simd_per_cu" => simd_per_cu = val.parse().unwrap_or(0),
+            "max_engine_clk_fcompute" => {
+                max_clock_mhz = val.parse::<u32>().ok().filter(|&v| v > 0);
+            }
+            "local_mem_size" => {
+                local_mem_size = val.parse::<u64>().ok();
+            }
+            _ => {}
+        }
+    }
+
+    if vendor_id == 0 || device_id == 0 || simd_count == 0 {
+        return None;
+    }
+
+    let compute_units = simd_count.checked_div(simd_per_cu);
+
+    Some(KfdGpuProperties {
+        vendor_id,
+        device_id,
+        compute_units,
+        max_clock_mhz,
+        is_integrated: local_mem_size.map(|sz| sz == 0),
+    })
+}
+
+/// Parses the highest clock frequency in MHz from AMD's `/sys/class/drm/cardN/device/pp_dpm_sclk`
+/// (e.g. `"0: 600Mhz *\n1: 1100Mhz \n2: 2900Mhz \n"` -> `Some(2900)`).
+pub fn parse_pp_dpm_sclk_max_mhz(content: &str) -> Option<u32> {
+    content
+        .lines()
+        .filter_map(|line| {
+            let token = line.split_whitespace().nth(1)?;
+            let num = token
+                .strip_suffix("Mhz")
+                .or_else(|| token.strip_suffix("MHz"))
+                .or_else(|| token.strip_suffix("mhz"))?;
+            num.parse::<u32>().ok()
+        })
+        .max()
+        .filter(|&v| v > 0)
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn read_kfd_gpu_nodes() -> Vec<KfdGpuProperties> {
+    let Ok(entries) = fs::read_dir("/sys/devices/virtual/kfd/kfd/topology/nodes") else {
+        return Vec::new();
+    };
+    entries
+        .flatten()
+        .filter_map(|e| {
+            let content = fs::read_to_string(e.path().join("properties")).ok()?;
+            parse_kfd_gpu_properties(&content)
+        })
+        .collect()
 }
 
 /// Detects GPUs using system APIs or profiles.
@@ -358,7 +479,11 @@ pub fn detect_gpus() -> Vec<GpuInfo> {
     {
         crate::macos_ffi::get_gpus()
             .into_iter()
-            .map(|(name, vram_bytes)| GpuInfo { name, vram_bytes })
+            .map(|(name, vram_bytes)| GpuInfo {
+                name,
+                vram_bytes,
+                ..Default::default()
+            })
             .collect()
     }
 
@@ -402,6 +527,7 @@ pub fn detect_gpus() -> Vec<GpuInfo> {
             gpus.push(GpuInfo {
                 name: name.clone(),
                 vram_bytes,
+                ..Default::default()
             });
         }
 
@@ -416,12 +542,17 @@ pub fn detect_gpus() -> Vec<GpuInfo> {
     {
         let mut gpus = Vec::new();
         let mut seen_devices = HashSet::new();
+        let kfd_nodes = read_kfd_gpu_nodes();
 
         // Scan /sys/class/drm for all card* and renderD* entries
         if let Ok(entries) = std::fs::read_dir("/sys/class/drm") {
             for entry in entries.flatten() {
                 let name = entry.file_name().into_string().unwrap_or_default();
                 if !name.starts_with("card") && !name.starts_with("renderD") {
+                    continue;
+                }
+                if name.contains('-') {
+                    // Connector entry like `card1-DP-4`
                     continue;
                 }
 
@@ -474,9 +605,59 @@ pub fn detect_gpus() -> Vec<GpuInfo> {
                         }
                     }
 
+                    let vendor_num =
+                        u32::from_str_radix(vendor_id.trim_start_matches("0x"), 16).unwrap_or(0);
+                    let device_num =
+                        u32::from_str_radix(device_id.trim_start_matches("0x"), 16).unwrap_or(0);
+                    let kfd = kfd_nodes
+                        .iter()
+                        .find(|n| n.vendor_id == vendor_num && n.device_id == device_num);
+
+                    let cores = kfd.and_then(|n| n.compute_units);
+                    let clock_mhz = kfd
+                        .and_then(|n| n.max_clock_mhz)
+                        .or_else(|| {
+                            fs::read_to_string(device_path.join("pp_dpm_sclk"))
+                                .ok()
+                                .and_then(|s| parse_pp_dpm_sclk_max_mhz(&s))
+                        })
+                        .or_else(|| {
+                            fs::read_to_string(entry.path().join("gt_max_freq_mhz"))
+                                .or_else(|_| {
+                                    fs::read_to_string(entry.path().join("gt/gt0/rps_max_freq_mhz"))
+                                })
+                                .ok()
+                                .and_then(|s| s.trim().parse::<u32>().ok())
+                                .filter(|&v| v > 0)
+                        });
+
+                    let pci_class = fs::read_to_string(device_path.join("class"))
+                        .unwrap_or_default()
+                        .trim()
+                        .to_ascii_lowercase();
+                    let gpu_type = match kfd.and_then(|n| n.is_integrated) {
+                        Some(true) => Some("Integrated".to_string()),
+                        Some(false) => Some("Discrete".to_string()),
+                        None if vendor_num == 0x10de => Some("Discrete".to_string()),
+                        None if vendor_num == 0x8086 => {
+                            if slot.ends_with("00:02.0") {
+                                Some("Integrated".to_string())
+                            } else {
+                                Some("Discrete".to_string())
+                            }
+                        }
+                        None if vendor_num == 0x1002 && pci_class.starts_with("0x0380") => {
+                            Some("Integrated".to_string())
+                        }
+                        None => None,
+                    };
+
                     gpus.push(GpuInfo {
                         name: gpu_name,
                         vram_bytes,
+                        cores,
+                        clock_mhz,
+                        gpu_type,
                     });
                 }
             }
@@ -490,6 +671,7 @@ pub fn detect_gpus() -> Vec<GpuInfo> {
                     gpus.push(GpuInfo {
                         name: model.to_string(),
                         vram_bytes: None,
+                        ..Default::default()
                     });
                 }
             }
@@ -508,26 +690,100 @@ mod tests {
         let info = GpuInfo {
             name: "NVIDIA GeForce RTX 4090".to_string(),
             vram_bytes: Some(24 * 1024 * 1024 * 1024),
+            ..Default::default()
         };
         assert_eq!(info.format(), "NVIDIA GeForce RTX 4090 (24 GB)");
 
         let info = GpuInfo {
             name: "Intel Arc A770".to_string(),
             vram_bytes: Some(16 * 1024 * 1024 * 1024),
+            ..Default::default()
         };
         assert_eq!(info.format(), "Intel Arc A770 (16 GB)");
 
         let info = GpuInfo {
             name: "Radeon 780M".to_string(),
             vram_bytes: Some(512 * 1024 * 1024),
+            ..Default::default()
         };
         assert_eq!(info.format(), "Radeon 780M (512 MB)");
 
         let info = GpuInfo {
             name: "Generic GPU".to_string(),
             vram_bytes: None,
+            ..Default::default()
         };
         assert_eq!(info.format(), "Generic GPU");
+
+        let info = GpuInfo {
+            name: "AMD Radeon 890M Graphics".to_string(),
+            vram_bytes: Some(512 * 1024 * 1024),
+            cores: Some(16),
+            clock_mhz: Some(2900),
+            gpu_type: Some("Integrated".to_string()),
+        };
+        assert_eq!(
+            info.format(),
+            "AMD Radeon 890M Graphics (16 cores, 2.90 GHz, 512 MB) [Integrated]"
+        );
+    }
+
+    #[test]
+    fn test_parse_kfd_gpu_properties() {
+        let props = "\
+cpu_cores_count 0
+simd_count 64
+mem_banks_count 1
+caches_count 106
+io_links_count 1
+p2p_links_count 0
+cpu_core_id_base 0
+simd_id_base 2147487744
+max_waves_per_simd 16
+lds_size_in_kb 64
+gds_size_in_kb 0
+num_gws 64
+wave_front_size 32
+array_count 2
+simd_arrays_per_engine 2
+cu_per_simd_array 8
+simd_per_cu 4
+max_slots_scratch_cu 32
+gfx_target_version 110500
+vendor_id 4098
+device_id 5390
+location_id 50176
+domain 0
+drm_render_minor 128
+hive_id 0
+num_sdma_engines 1
+num_sdma_xgmi_engines 0
+num_sdma_queues_per_engine 8
+num_cp_queues 8
+max_engine_clk_fcompute 2900
+local_mem_size 0
+";
+        let parsed = parse_kfd_gpu_properties(props).expect("should parse valid KFD GPU node");
+        assert_eq!(parsed.vendor_id, 0x1002);
+        assert_eq!(parsed.device_id, 0x150e);
+        assert_eq!(parsed.compute_units, Some(16));
+        assert_eq!(parsed.max_clock_mhz, Some(2900));
+        assert_eq!(parsed.is_integrated, Some(true));
+
+        // CPU-only node (simd_count 0) should return None.
+        let cpu_props = "cpu_cores_count 24\nsimd_count 0\ndrm_render_minor 0\n";
+        assert!(parse_kfd_gpu_properties(cpu_props).is_none());
+    }
+
+    #[test]
+    fn test_parse_pp_dpm_sclk_max_mhz() {
+        let dpm = "\
+0: 600Mhz *
+1: 1110Mhz
+2: 2900Mhz
+";
+        assert_eq!(parse_pp_dpm_sclk_max_mhz(dpm), Some(2900));
+        assert_eq!(parse_pp_dpm_sclk_max_mhz(""), None);
     }
 
     #[test]

@@ -24,14 +24,21 @@ pub fn detect_audio_devices() -> Option<String> {
         // ~48 ms; see `crate::proc_tree`).
         let server_str = crate::proc_tree::audio_server();
 
-        // Codec names from the HDA bus in sysfs first (v0.20.6); the old path — reading
-        // `/proc/asound/card*/codec#*`, then the card list — only when the bus has none.
+        // Codec names from the HDA bus in sysfs first (v0.20.6), supplemented with
+        // non-HDA ALSA cards (e.g. USB-Audio, amd-soundwire) from `/proc/asound/cards`
+        // without touching `/proc/asound/card*/codec#*` unless the HDA bus had nothing.
         let mut devices = crate::timing::timed("audio-codecs", || {
             hda_codec_names(std::path::Path::new("/sys/bus/hdaudio/devices"))
         });
-        if devices.is_empty() {
-            if let Ok(content) = std::fs::read_to_string("/proc/asound/cards") {
+        if let Ok(content) = std::fs::read_to_string("/proc/asound/cards") {
+            if devices.is_empty() {
                 devices = parse_asound_cards(&content, "/proc/asound");
+            } else {
+                for card in parse_non_hda_asound_cards(&content) {
+                    if !devices.contains(&card) {
+                        devices.push(card);
+                    }
+                }
             }
         }
 
@@ -123,6 +130,33 @@ fn hda_codec_names(bus_devices: &std::path::Path) -> Vec<String> {
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 fn codec_display_name(vendor: &str, chip: &str) -> Option<String> {
     (!vendor.is_empty() && !chip.is_empty()).then(|| format!("{vendor} {chip}"))
+}
+
+/// Extracts non-HDA ALSA card names from `/proc/asound/cards` (such as `USB-Audio` or
+/// `amd-soundwire`) so they are reported alongside HDA codec names read from
+/// `/sys/bus/hdaudio/devices`.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn parse_non_hda_asound_cards(content: &str) -> Vec<String> {
+    let mut devices = Vec::new();
+    for line in content.lines() {
+        let Some(idx) = line.find("]: ") else {
+            continue;
+        };
+        let desc = line[idx + 3..].trim();
+        let (driver, device_name) = match desc.split_once(" - ") {
+            Some((drv, name)) => (drv.trim(), name.trim()),
+            None => ("", desc),
+        };
+        // Skip HDA controllers whose codecs are already resolved via `/sys/bus/hdaudio/devices`.
+        let drv_lower = driver.to_ascii_lowercase();
+        if drv_lower.starts_with("hda-") || drv_lower == "sof-hda-dsp" {
+            continue;
+        }
+        if !device_name.is_empty() && !devices.iter().any(|d| d == device_name) {
+            devices.push(device_name.to_string());
+        }
+    }
+    devices
 }
 
 /// Codec names from `/proc/asound/card*/codec#*`, falling back to the descriptions in
@@ -231,6 +265,28 @@ mod tests {
                 "HDA Intel PCH".to_string(),
                 "HDA NVIDIA HDMI".to_string(),
                 "sof-hda-dsp".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_non_hda_asound_cards() {
+        let sample = "\
+ 0 [Audio          ]: USB-Audio - USB Audio
+                      Generic USB Audio at usb-0000:c6:00.3-1.2, high speed
+ 1 [Generic        ]: HDA-Intel - HD-Audio Generic
+                      HD-Audio Generic at 0xa0440000 irq 164
+ 2 [amdsoundwire   ]: amd-soundwire - amd-soundwire
+                      ASUSTeKCOMPUTERINC.-ProArtPX13HN7306EAC-1.0-HN7306EAC
+ 3 [BRIO           ]: USB-Audio - Logitech BRIO
+                      Logitech BRIO at usb-0000:c6:00.3-1.4.2, super speed
+";
+        assert_eq!(
+            parse_non_hda_asound_cards(sample),
+            vec![
+                "USB Audio".to_string(),
+                "amd-soundwire".to_string(),
+                "Logitech BRIO".to_string(),
             ]
         );
     }

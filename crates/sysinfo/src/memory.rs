@@ -34,13 +34,14 @@ pub struct DimmSlot {
 }
 
 /// Parses `dmidecode --type 17` text output into a list of populated DIMM slots.
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", test))]
 pub fn parse_dmidecode_type17(output: &str) -> Vec<DimmSlot> {
     let mut slots = Vec::new();
     let mut size_mb: Option<u64> = None;
     let mut mem_type = String::new();
     let mut speed_mt: Option<u64> = None;
     let mut configured_speed_mt: Option<u64> = None;
+    let mut vendor: Option<String> = None;
 
     for line in output.lines() {
         let trimmed = line.trim();
@@ -54,13 +55,14 @@ pub fn parse_dmidecode_type17(output: &str) -> Vec<DimmSlot> {
                         mem_type: mem_type.clone(),
                         speed_mt,
                         configured_speed_mt,
-                        vendor: None,
+                        vendor: vendor.take(),
                     });
                 }
             }
             mem_type.clear();
             speed_mt = None;
             configured_speed_mt = None;
+            vendor = None;
         } else if let Some(rest) = trimmed.strip_prefix("Size:") {
             let rest = rest.trim();
             if rest.contains("No Module") || rest == "Unknown" {
@@ -94,6 +96,8 @@ pub fn parse_dmidecode_type17(output: &str) -> Vec<DimmSlot> {
             if let Some(mt_str) = rest.strip_suffix(" MT/s") {
                 speed_mt = mt_str.trim().parse::<u64>().ok();
             }
+        } else if let Some(rest) = trimmed.strip_prefix("Manufacturer:") {
+            vendor = clean_memory_vendor(rest);
         }
     }
 
@@ -105,12 +109,114 @@ pub fn parse_dmidecode_type17(output: &str) -> Vec<DimmSlot> {
                 mem_type,
                 speed_mt,
                 configured_speed_mt,
-                vendor: None,
+                vendor,
             });
         }
     }
 
     slots
+}
+
+/// Normalizes a memory manufacturer string, rejecting placeholder tokens.
+#[cfg(any(target_os = "linux", test))]
+fn clean_memory_vendor(raw: &str) -> Option<String> {
+    let v = raw.trim();
+    if v.is_empty()
+        || v.eq_ignore_ascii_case("unknown")
+        || v.eq_ignore_ascii_case("not specified")
+        || v.eq_ignore_ascii_case("no dimm")
+        || v.eq_ignore_ascii_case("empty")
+        || v.chars().all(|c| c == '0' || c == 'F' || c == 'f')
+    {
+        None
+    } else {
+        Some(v.to_string())
+    }
+}
+
+/// Parses `systemd-udevd`'s `/run/udev/data/+dmi:id` database (`memory_id` builtin) into
+/// populated [`DimmSlot`] records without requiring root or spawning `dmidecode`.
+#[cfg(any(target_os = "linux", test))]
+pub fn parse_udev_dmi_memory(content: &str) -> Vec<DimmSlot> {
+    use std::collections::BTreeMap;
+
+    #[derive(Default)]
+    struct RawDevice {
+        present: Option<bool>,
+        size_bytes: Option<u64>,
+        mem_type: String,
+        speed_mt: Option<u64>,
+        configured_speed_mt: Option<u64>,
+        vendor: Option<String>,
+    }
+
+    let mut devices: BTreeMap<u32, RawDevice> = BTreeMap::new();
+
+    for line in content.lines() {
+        let Some(rest) = line.trim().strip_prefix("E:MEMORY_DEVICE_") else {
+            continue;
+        };
+        let Some((idx_str, prop)) = rest.split_once('_') else {
+            continue;
+        };
+        let Ok(idx) = idx_str.parse::<u32>() else {
+            continue;
+        };
+        let Some((key, val)) = prop.split_once('=') else {
+            continue;
+        };
+        let val = val.trim();
+        let entry = devices.entry(idx).or_default();
+        match key {
+            "PRESENT" => {
+                entry.present = Some(val != "0");
+            }
+            "SIZE" | "VOLATILE_SIZE" => {
+                if entry.size_bytes.is_none() {
+                    if let Ok(bytes) = val.parse::<u64>() {
+                        if bytes > 0 {
+                            entry.size_bytes = Some(bytes);
+                        }
+                    }
+                }
+            }
+            "TYPE" => {
+                if !val.is_empty() && !val.eq_ignore_ascii_case("unknown") {
+                    entry.mem_type = val.to_string();
+                }
+            }
+            "SPEED_MTS" => {
+                entry.speed_mt = val.parse::<u64>().ok().filter(|&v| v > 0);
+            }
+            "CONFIGURED_SPEED_MTS" => {
+                entry.configured_speed_mt = val.parse::<u64>().ok().filter(|&v| v > 0);
+            }
+            "MANUFACTURER" => {
+                entry.vendor = clean_memory_vendor(val);
+            }
+            _ => {}
+        }
+    }
+
+    devices
+        .into_values()
+        .filter_map(|dev| {
+            if dev.present == Some(false) {
+                return None;
+            }
+            let size_mb = dev.size_bytes? / (1024 * 1024);
+            if size_mb == 0 {
+                return None;
+            }
+            Some(DimmSlot {
+                size_mb,
+                mem_type: dev.mem_type,
+                speed_mt: dev.speed_mt,
+                configured_speed_mt: dev.configured_speed_mt,
+                vendor: dev.vendor,
+            })
+        })
+        .collect()
 }
 
 /// Formats a list of DIMM slots into a human-readable summary string.
@@ -197,6 +303,17 @@ pub fn format_dimm_slots(slots: &[DimmSlot]) -> Option<String> {
 
 #[cfg(target_os = "linux")]
 fn detect_linux() -> Option<String> {
+    // 1. Prefer systemd-udevd's world-readable DMI memory database (`/run/udev/data/+dmi:id`),
+    // populated at boot by `60-memory-id.rules` (`memory_id` builtin). This succeeds without
+    // root and avoids spawning `dmidecode`.
+    if let Ok(content) = std::fs::read_to_string("/run/udev/data/+dmi:id") {
+        let slots = parse_udev_dmi_memory(&content);
+        if let Some(formatted) = format_dimm_slots(&slots) {
+            return Some(formatted);
+        }
+    }
+
+    // 2. Fallback: `dmidecode --type 17` (requires root access to `/sys/firmware/dmi/tables/DMI`).
     // Try trusted canonical paths before falling back to a bare `PATH` lookup so
     // `sudo retch` without `secure_path` does not prefer a user-writable `PATH` entry.
     let candidates = [
@@ -1100,5 +1217,32 @@ Memory:
         zero_speeds.extend([127, 4, 0, 0x7F, 0, 0]);
         assert_eq!(parse_smbios_type4_speeds(&zero_speeds), None);
         assert_eq!(parse_smbios_type4_speeds(&[]), None);
+    }
+
+    #[test]
+    fn test_parse_udev_dmi_memory() {
+        let udev_sample = "\
+I:19087272
+E:ID_VENDOR=ASUS
+E:ID_MODEL=ProArt PX13 HN7306EAC
+E:MEMORY_DEVICE_0_SIZE=17179869184
+E:MEMORY_DEVICE_0_TYPE=LPDDR5
+E:MEMORY_DEVICE_0_SPEED_MTS=8533
+E:MEMORY_DEVICE_0_CONFIGURED_SPEED_MTS=8000
+E:MEMORY_DEVICE_0_MANUFACTURER=Samsung
+E:MEMORY_DEVICE_1_SIZE=17179869184
+E:MEMORY_DEVICE_1_TYPE=LPDDR5
+E:MEMORY_DEVICE_1_SPEED_MTS=8533
+E:MEMORY_DEVICE_1_CONFIGURED_SPEED_MTS=8000
+E:MEMORY_DEVICE_1_MANUFACTURER=Samsung
+E:MEMORY_DEVICE_2_PRESENT=0
+E:MEMORY_DEVICE_2_TYPE=Unknown
+";
+        let slots = parse_udev_dmi_memory(udev_sample);
+        assert_eq!(slots.len(), 2);
+        assert_eq!(
+            format_dimm_slots(&slots).as_deref(),
+            Some("2× 16 GB LPDDR5 8000 MT/s (rated 8533 MT/s) (Samsung)")
+        );
     }
 }
