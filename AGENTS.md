@@ -6,7 +6,7 @@ all AI assistants (Gemini, Claude, etc.) contributing to the **retch** project.
 This file has two parts:
 
 - **Part 1 — Portable Core**: rules that are identical across all of Ken's repos using this
-  pattern (currently `etr` and `retch`). If you change wording here, propagate the same
+  pattern (currently `etr`, `retch`, `rusticprofile`, and `dog`). If you change wording here, propagate the same
   change to the Portable Core section in sibling repos so they stay in sync.
 - **Part 2 — Project-Specific**: rules that only make sense for `retch`.
 
@@ -153,6 +153,15 @@ agent-specific memory feature also gets used as a convenience cache, the durable
 the learning MUST still land in `AGENTS.md`/`SKILL.md` in the same turn, not deferred.
 This file exists specifically so Claude, Gemini, and any other agent working here read
 the same standing knowledge — an agent-specific memory entry does not satisfy that.
+
+## 5. Sandbox Bypass (`BypassSandbox: true`) & Sandbox Learning Loop
+See `~/AGENTS.md` §6 (**Sandbox Bypass & Sandbox Learning Loop**) for the full universal rule. Do NOT run commands that structurally fail inside the `bwrap` sandbox (no network access, `.git/` mounted read-only, `/run/user/1000/just` mounted read-only) with `BypassSandbox: false` first:
+* **Always `BypassSandbox: true` on the first call:**
+  * All `gh` and `ghpub` commands (`gh pr`, `gh issue`, `gh run`, `gh api`, `gh workflow`).
+  * All `git` write or remote operations (`git checkout`, `git switch`, `git branch`, `git add`, `git rm`, `git mv`, `git commit`, `git merge`, `git rebase`, `git cherry-pick`, `git reset`, `git tag`, `git stash`, `git fetch`, `git pull`, `git push`). Read-only git commands (`git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git for-each-ref`) work in the sandbox (`BypassSandbox: false`).
+  * All `just` shebang (`#!/usr/bin/env ...`) and network/publish recipes (`just pr`, `just open-pr`, `just merge-pr`, `just prune-branches`, `just github-metadata`, `just aur-publish` / `just publish-aur`, `just brew-publish` / `just publish-brew`, `just scoop-publish` / `just publish-scoop`).
+  * All `chezmoi` commands and network-bound `cargo` commands (`cargo update`, `cargo fetch`, `cargo publish`, `cargo audit` when updating the advisory DB).
+* **Repo-specific sandbox exceptions** live in Part 2 below (and if discovered while on a clean `main` or after a PR's final commit is pushed, are staged in `WIP.md` under `## Sandbox Exceptions (staged for AGENTS.md)` and folded into `AGENTS.md` on the next PR).
 
 ---
 
@@ -355,5 +364,19 @@ rolling log, not reset per-PR — `merge-pr` regenerates **only** the state bloc
 file (active branch, main HEAD, versions, newest tag), inserting it on first run. Nothing
 outside the markers is touched, so hand-written entries and open tasks still need updating by
 hand after a merge. It refuses, writing nothing, if the markers are duplicated or unpaired.
+
+## 6. Sandbox Exceptions (`BypassSandbox: true`)
+Always run the following `retch` commands with `BypassSandbox: true` on the **first** attempt — never try them with `BypassSandbox: false` first:
+- **All `gh` / `ghpub` commands** (`gh pr ...`, `gh run ...`, `gh workflow ...`, `gh api ...`, `gh issue ...`): require network access to `api.github.com`.
+- **All `git` write or remote commands** (`git checkout -b`, `git switch`, `git branch -d/-D`, `git add`, `git commit`, `git merge`, `git rebase`, `git tag`, `git fetch`, `git pull`, `git push`): `.git/` is mounted read-only in the sandbox and remote ops need network access.
+- **`just` shebang and network/publish recipes (`#!/usr/bin/env bash` recipes fail in the sandbox with `/run/user/1000/just: Read-only file system (os error 30)`):**
+  - `just pr` / `PR_CONFIRM=y just pr`, `just open-pr` (in Antigravity's PTY, always pass `--fill` or `--title ... --body-file ...`, e.g. `PR_CONFIRM=y just open-pr --fill`, because `[ -t 0 ]` is true in `run_command` and bare `gh pr create` hangs on an interactive prompt), `just merge-pr`, `just prune-branches`
+  - `just audit`, `just publish-check`, `just publish`, `just aur-publish` / `just publish-aur`, `just brew-publish` / `just publish-brew`, `just scoop-publish` / `just publish-scoop`, `just github-metadata`, `just bench-upload`, `just bench-page`
+  - `just logos`, `just install-tag`
+- **Cargo network operations:** `cargo update` (use `cargo --config net.retry=0 update` with `BypassSandbox: true`), `cargo fetch`, `cargo publish`, `cargo audit`, and the first build after `Cargo.lock` updates a crate not yet cached in `~/.cargo/registry/cache/`.
+- **Live `./target/debug/retch` hardware/session probes** when testing fields that query host sockets/devices unmounted in the sandbox (Wayland/X11/DBus/PipeWire/NetworkManager/udev).
+- **Commands that DO work in the sandbox (`BypassSandbox: false`):**
+  - `just build`, `just build-release`, `just test`, `just fmt`, `just fmt-check`, `just lint`, `just clippy`, `just check`, `just man`, `just man-check`, `just packaging-check`, `just standard-check`, `just render-check`, `just aur-check`, `just copr-check`, `just brew-check`, `just scoop-check`, `just metadata-check`, `just text-check`, `just wip-check`, `just bench-check`, `just fastfetch-configs`, `just install-hooks`
+  - Read-only `git` commands: `git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git for-each-ref`
 
 ---

@@ -151,10 +151,10 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.21.1)
+## Current State (v0.21.2)
 
-`main` carries **`retch-cli` 0.21.1** / **`retch-sysinfo` 0.1.107**. Newest released tag is
-**`v0.20.41`**.
+`main` carries **`retch-cli` 0.21.2** / **`retch-sysinfo` 0.1.107**. Newest released tag is
+**`v0.21.1`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
@@ -162,6 +162,10 @@ and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
 
+- **v0.21.2: Cross-repo Justfile, scripts & GitHub workflow standardization.**
+  - Split `.github/workflows/rust.yml` into `ci.yml` (`checks`, 7-platform `build` matrix with 2-step `rustup-init.sh` + `cargo --version` verification, `no-default-features`) and `release.yml` (`full-test`, `build-release`, `release`), pinned all GitHub Actions across all workflows to 40-char commit SHAs, switched `security.yml` to `actions-rust-lang/audit`, and fixed `dependabot.yml` (`patterns: ["*"]`).
+  - Replaced `scripts/build_man.py` with `scripts/man_pages.py` (`--build`, `--check`, `--self-test`, wired into `just check` via `man-check`) and replaced `scripts/install_hooks.sh` with shell-free `scripts/install_hooks.py` (installing both `pre-push` and `post-merge`).
+  - Added `fmt-check`, `clippy` alias, `packaging-check`, `publish-aur`/`publish-brew`/`publish-scoop` aliases, `prune-branches`, and `headRefOid == HEAD` guard in `merge-pr`.
 - **v0.21.1: Linux fastfetch `--full` parity across 21 fields (zero extra subprocess spawns).**
   Verified on `arrakis` (ASUS ProArt PX13 HN7306EAC, AMD Ryzen AI 9 HX 370 w/ Radeon 890M,
   Fedora Linux 44 x86_64 in clamshell mode with two external LG HDR 4K displays under Umbriel):

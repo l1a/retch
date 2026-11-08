@@ -51,13 +51,18 @@ jobs:
     steps:
       - name: Install dependencies (Fedora)
         run: |
+          set -euo pipefail
           dnf upgrade -y --refresh
           dnf install -y git curl gcc make sqlite-devel python3
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup-init.sh
+          sh /tmp/rustup-init.sh -y --default-toolchain stable --profile minimal
+          rm -f /tmp/rustup-init.sh
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          "$HOME/.cargo/bin/cargo" --version
+          "$HOME/.cargo/bin/rustc" --version
           git config --global --add safe.directory '*'
 
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Install fastfetch and hyperfine
         run: |
@@ -76,7 +81,7 @@ jobs:
       # Publishing is deferred to the `publish` job so these five can run in
       # parallel; see the comment at the top of this file.
       - name: Upload benchmark result
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: bench-result-linux-x64
           path: benchmark_result.json
@@ -89,13 +94,18 @@ jobs:
     steps:
       - name: Install dependencies (Fedora)
         run: |
+          set -euo pipefail
           dnf upgrade -y --refresh
           dnf install -y git curl gcc make sqlite-devel python3
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup-init.sh
+          sh /tmp/rustup-init.sh -y --default-toolchain stable --profile minimal
+          rm -f /tmp/rustup-init.sh
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          "$HOME/.cargo/bin/cargo" --version
+          "$HOME/.cargo/bin/rustc" --version
           git config --global --add safe.directory '*'
 
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Install fastfetch and hyperfine
         run: |
@@ -114,7 +124,7 @@ jobs:
       # Publishing is deferred to the `publish` job so these five can run in
       # parallel; see the comment at the top of this file.
       - name: Upload benchmark result
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: bench-result-linux-arm
           path: benchmark_result.json
@@ -124,10 +134,10 @@ jobs:
     name: Benchmark macOS arm64
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
 
       - name: Untap aws/tap (cosmetic — pre-tapped on the runner image, unrelated to this job, and untrusted-tap warnings clutter the Actions summary)
         run: brew untap aws/tap || true
@@ -149,7 +159,7 @@ jobs:
       # Publishing is deferred to the `publish` job so these five can run in
       # parallel; see the comment at the top of this file.
       - name: Upload benchmark result
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: bench-result-macos-arm
           path: benchmark_result.json
@@ -159,10 +169,10 @@ jobs:
     name: Benchmark Windows x64
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
 
       - name: Configure Windows PATH
         run: |
@@ -189,7 +199,7 @@ jobs:
       # Publishing is deferred to the `publish` job so these five can run in
       # parallel; see the comment at the top of this file.
       - name: Upload benchmark result
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: bench-result-windows-x64
           path: benchmark_result.json
@@ -199,10 +209,10 @@ jobs:
     name: Benchmark Windows arm64
     runs-on: windows-11-arm
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
 
       - name: Configure Windows PATH
         run: |
@@ -229,7 +239,7 @@ jobs:
       # Publishing is deferred to the `publish` job so these five can run in
       # parallel; see the comment at the top of this file.
       - name: Upload benchmark result
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: bench-result-windows-arm
           path: benchmark_result.json
@@ -263,10 +273,10 @@ jobs:
     if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Download benchmark results
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           path: bench-results
           pattern: bench-result-*
@@ -302,7 +312,7 @@ jobs:
       # point of `!cancelled()` above plus this condition.
       - name: Publish Linux x64
         if: hashFiles('bench-results/bench-result-linux-x64/benchmark_result.json') != ''
-        uses: benchmark-action/github-action-benchmark@v1
+        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
         with:
           name: "Linux x64 Benchmarks"
           tool: 'customSmallerIsBetter'
@@ -326,7 +336,7 @@ jobs:
       # point of `!cancelled()` above plus this condition.
       - name: Publish Linux arm64
         if: hashFiles('bench-results/bench-result-linux-arm/benchmark_result.json') != ''
-        uses: benchmark-action/github-action-benchmark@v1
+        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
         with:
           name: "Linux Arm64 Benchmarks"
           tool: 'customSmallerIsBetter'
@@ -350,7 +360,7 @@ jobs:
       # point of `!cancelled()` above plus this condition.
       - name: Publish macOS arm64
         if: hashFiles('bench-results/bench-result-macos-arm/benchmark_result.json') != ''
-        uses: benchmark-action/github-action-benchmark@v1
+        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
         with:
           name: "macOS Arm64 Benchmarks"
           tool: 'customSmallerIsBetter'
@@ -374,7 +384,7 @@ jobs:
       # point of `!cancelled()` above plus this condition.
       - name: Publish Windows x64
         if: hashFiles('bench-results/bench-result-windows-x64/benchmark_result.json') != ''
-        uses: benchmark-action/github-action-benchmark@v1
+        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
         with:
           name: "Windows x64 Benchmarks"
           tool: 'customSmallerIsBetter'
@@ -398,7 +408,7 @@ jobs:
       # point of `!cancelled()` above plus this condition.
       - name: Publish Windows arm64
         if: hashFiles('bench-results/bench-result-windows-arm/benchmark_result.json') != ''
-        uses: benchmark-action/github-action-benchmark@v1
+        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
         with:
           name: "Windows Arm64 Benchmarks"
           tool: 'customSmallerIsBetter'

@@ -1,18 +1,9 @@
-name: Rust
+name: Release
 
 on:
   push:
-    branches: [ "main" ]
     tags:
       - 'v*'
-  pull_request:
-    branches: [ "main" ]
-    paths:
-      - '**/*.rs'
-      - '**/Cargo.toml'
-      - 'Cargo.lock'
-      - 'build.rs'
-      - '.github/workflows/rust.yml'
   workflow_dispatch:
     inputs:
       ref:
@@ -27,82 +18,9 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    container: ${{ matrix.container }}
-    # Skip this job on version tags (full-test will run instead)
-    if: github.ref_type != 'tag'
-    strategy:
-      matrix:
-        platform: [ubuntu-x64, ubuntu-arm, fedora-x64, fedora-arm, macos, windows-x64, windows-arm]
-        include:
-          - platform: ubuntu-x64
-            os: ubuntu-latest
-          - platform: ubuntu-arm
-            os: ubuntu-24.04-arm
-          - platform: fedora-x64
-            os: ubuntu-latest
-            container: fedora:latest
-          - platform: fedora-arm
-            os: ubuntu-24.04-arm
-            container: fedora:latest
-          - platform: macos
-            os: macos-latest
-          - platform: windows-x64
-            os: windows-latest
-          - platform: windows-arm
-            os: windows-11-arm
-
-    steps:
-    - name: Install dependencies (Fedora)
-      if: startsWith(matrix.platform, 'fedora')
-      run: |
-        dnf install -y git curl gcc make sqlite-devel
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-    - name: Install Rust toolchain (Host)
-      if: ${{ !matrix.container }}
-      uses: dtolnay/rust-toolchain@stable
-
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-    - name: Format check
-      run: cargo fmt -- --check
-    - name: Clippy
-      run: cargo clippy --locked --workspace -- -D warnings
-    - name: Build
-      run: cargo build --locked --verbose
-    - name: Run tests
-      run: cargo test --locked --workspace --verbose
-    - name: Run fetcher (dry run)
-      # --full exercises every field (incl. cosmetic/slow queries); --ascii-logo forces the
-      # ASCII logo to render even though CI's stdout is not a TTY, so this step also covers
-      # the logo + layout path. Matches the full-test dry run.
-      run: cargo run --locked -- --full --ascii-logo
-    - name: Print system_profiler SPDisplaysDataType (macOS)
-      if: runner.os == 'macOS'
-      run: system_profiler SPDisplaysDataType
-
-  # `graphics` (base64/image/icy_sixel + src/logo.rs) is a DEFAULT feature, so the `build`
-  # job above already compiles and lints it. This job covers the other build, without it.
-  # Until v0.20.13 it ran `--features graphics`, which only repeated the default while the
-  # `--no-default-features` build stopped passing clippy. Mirrors `just check`'s second pass.
-  no-default-features:
-    runs-on: ubuntu-latest
-    if: github.ref_type != 'tag'
-    steps:
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-    - name: Clippy (no default features)
-      run: cargo clippy --locked -p retch-cli --no-default-features -- -D warnings
-    - name: Build (no default features)
-      run: cargo build --locked -p retch-cli --no-default-features --verbose
-
   full-test:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
-    # Run on version tags or manual workflow_dispatch
     if: (github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')) || github.event_name == 'workflow_dispatch'
 
     strategy:
@@ -129,54 +47,64 @@ jobs:
             os: windows-11-arm
 
     steps:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Install Rust toolchain (Ubuntu Container)
+        if: startsWith(matrix.platform, 'ubuntu')
+        run: |
+          set -euo pipefail
+          apt-get update
+          apt-get install -y git curl build-essential sqlite3 libsqlite3-dev python3
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup-init.sh
+          sh /tmp/rustup-init.sh -y --default-toolchain stable --profile minimal --component rustfmt,clippy
+          rm -f /tmp/rustup-init.sh
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          "$HOME/.cargo/bin/cargo" --version
+          "$HOME/.cargo/bin/cargo" install mandown
 
-    - name: Install Rust toolchain (Ubuntu Container)
-      if: startsWith(matrix.platform, 'ubuntu')
-      run: |
-        apt-get update
-        apt-get install -y curl build-essential sqlite3 libsqlite3-dev
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-        $HOME/.cargo/bin/cargo install mandown
+      - name: Install Rust toolchain (Fedora Container)
+        if: startsWith(matrix.platform, 'fedora')
+        run: |
+          set -euo pipefail
+          dnf install -y git curl gcc make sqlite-devel python3
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup-init.sh
+          sh /tmp/rustup-init.sh -y --default-toolchain stable --profile minimal --component rustfmt,clippy
+          rm -f /tmp/rustup-init.sh
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          "$HOME/.cargo/bin/cargo" --version
+          "$HOME/.cargo/bin/cargo" install mandown
 
-    - name: Install Rust toolchain (Fedora Container)
-      if: startsWith(matrix.platform, 'fedora')
-      run: |
-        dnf install -y curl gcc make sqlite-devel
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-        $HOME/.cargo/bin/cargo install mandown
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
-    - name: Install Rust toolchain (Host)
-      if: ${{ !matrix.container }}
-      uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust toolchain (Host)
+        if: ${{ !matrix.container }}
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          components: rustfmt, clippy
 
-    - name: Build (release)
-      run: cargo build --locked --release --verbose
+      - name: Build (release)
+        run: cargo build --locked --release --verbose
 
-    - name: Run tests (all features)
-      run: cargo test --locked --workspace --all-features --verbose
+      - name: Run tests (all features)
+        run: cargo test --locked --workspace --all-features --verbose
 
-    - name: Clippy
-      run: cargo clippy --locked --workspace -- -D warnings
+      - name: Clippy
+        run: cargo clippy --locked --workspace -- -D warnings
 
-    - name: Format check
-      run: cargo fmt -- --check
+      - name: Format check
+        run: cargo fmt -- --check
 
-    - name: Run fetcher (dry run)
-      # --full exercises every field (incl. cosmetic/slow queries); --ascii-logo forces the
-      # ASCII logo to render even though CI's stdout is not a TTY, so this step also covers
-      # the logo path (previously it showed no logo because the output was piped).
-      run: cargo run --locked --release -- --full --ascii-logo
+      - name: Run fetcher (dry run)
+        # --full exercises every field (incl. cosmetic/slow queries); --ascii-logo forces the
+        # ASCII logo to render even though CI's stdout is not a TTY, so this step also covers
+        # the logo path (previously it showed no logo because the output was piped).
+        run: cargo run --locked --release -- --full --ascii-logo
 
-    - name: Print system_profiler SPDisplaysDataType (macOS)
-      if: runner.os == 'macOS'
-      run: system_profiler SPDisplaysDataType
+      - name: Print system_profiler SPDisplaysDataType (macOS)
+        if: runner.os == 'macOS'
+        run: system_profiler SPDisplaysDataType
 
-    - name: Generate man page
-      shell: bash
-      run: just man || echo "Man page generation skipped (just may not be installed)"
+      - name: Generate man page
+        shell: bash
+        run: just man || echo "Man page generation skipped (just may not be installed)"
 
   build-release:
     needs: full-test
@@ -212,17 +140,22 @@ jobs:
         run: |
           dnf install -y git curl gcc make sqlite-devel
 
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Install Rust toolchain (Fedora)
         if: startsWith(matrix.platform, 'fedora')
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup-init.sh
+          sh /tmp/rustup-init.sh -y --default-toolchain stable --profile minimal
+          rm -f /tmp/rustup-init.sh
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          "$HOME/.cargo/bin/cargo" --version
+          "$HOME/.cargo/bin/rustc" --version
 
       - name: Install Rust toolchain (Host)
         if: ${{ !matrix.container }}
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
 
       - name: Build release binary (Fedora)
         if: startsWith(matrix.platform, 'fedora')
@@ -253,7 +186,7 @@ jobs:
           fi
 
       - name: Upload release assets
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: ${{ matrix.artifact_name }}
           path: release/
@@ -267,17 +200,17 @@ jobs:
       contents: write   # Required to create GitHub Releases
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Download release assets
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           path: release
           pattern: release-assets-*
           merge-multiple: true
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
@@ -286,7 +219,7 @@ jobs:
         run: python3 scripts/calculate_nix_hashes.py
 
       - name: Create Release
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
         with:
           tag_name: ${{ github.ref_name }}
           name: retch ${{ github.ref_name }}

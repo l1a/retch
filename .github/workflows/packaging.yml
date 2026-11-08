@@ -55,7 +55,7 @@ jobs:
   metadata:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Channel descriptions and licences agree with packaging/metadata.toml
         run: python3 scripts/metadata_check.py --self-test && python3 scripts/metadata_check.py
 
@@ -63,10 +63,10 @@ jobs:
     runs-on: ubuntu-latest
     if: false  # disabled: nixpkgs PR declined due to lack of popularity
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
@@ -92,7 +92,7 @@ jobs:
 
       # fetch-depth: 0 because the render step below needs the last RELEASED tag, and the
       # default shallow checkout carries no tags at all.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
 
@@ -272,7 +272,7 @@ jobs:
       - name: Install system dependencies
         run: dnf -y install git make rpm-build rpmdevtools
 
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       # Offline consistency, the same half `just check` runs. CI invokes cargo directly and
       # never `just` (see NOTES.md), so the checker has to be called explicitly here or the
@@ -376,7 +376,7 @@ jobs:
     steps:
       # fetch-depth: 0 because the render step needs the last RELEASED tag, and the default
       # shallow checkout carries no tags.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
 
@@ -526,7 +526,7 @@ jobs:
   scoop:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
 

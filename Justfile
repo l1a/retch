@@ -123,9 +123,17 @@ clean:
 fmt:
     cargo fmt
 
-# Run clippy lints (all workspace members)
+# Check code formatting without modifying files
+fmt-check:
+    cargo fmt -- --check
+
+# Run clippy lints (all workspace members, plus retch-cli without default `graphics` feature)
 lint:
     cargo clippy --workspace -- -D warnings
+    cargo clippy -p retch-cli --no-default-features -- -D warnings
+
+# Alias for `lint` (cross-repo standard name)
+clippy: lint
 
 # The renderer is the single implementation behind all four packaging targets, so its
 # self-test is a `check` dependency like theirs. It is the piece that must refuse: a
@@ -133,17 +141,19 @@ lint:
 #
 # Verify scripts/render_packaging.py still renders and still refuses (offline)
 render-check:
-    @{{PY}} scripts/render_packaging.py --self-test
+    @"{{PY}}" scripts/render_packaging.py --self-test
 
-# Run strict checks (formatting and linting) as done in CI
-check: standard-check render-check aur-check copr-check brew-check scoop-check metadata-check text-check wip-check bench-check
-    cargo fmt -- --check
-    cargo clippy --workspace -- -D warnings
-    # Also lint retch-cli WITHOUT its default `graphics` feature (base64/image/icy_sixel).
-    # `graphics` is a default feature, so the --workspace clippy above already covers it;
-    # this pass covers the other build. Until v0.20.13 it ran `--features graphics`, which
-    # repeated the default while this build quietly stopped passing.
-    cargo clippy -p retch-cli --no-default-features -- -D warnings
+# Umbrella recipe for all offline packaging guards (cross-repo standard name)
+packaging-check: render-check aur-check copr-check brew-check scoop-check metadata-check
+
+# Verify the committed man page matches docs/retch.1.md and Cargo.toml (worktree + HEAD)
+man-check:
+    @"{{PY}}" scripts/man_pages.py --self-test
+    @"{{PY}}" scripts/man_pages.py --check
+
+# Run strict checks (formatting, linting, and all offline guards) as done in CI
+check: fmt-check lint standard-check man-check packaging-check text-check wip-check bench-check
+    @echo "All checks passed."
 
 # Run security audit (requires cargo-audit)
 audit:
@@ -152,7 +162,7 @@ audit:
 
 # Generate man page from Markdown using mandown (requires: mandown)
 man:
-    @python3 scripts/build_man.py 2>/dev/null || python scripts/build_man.py
+    @"{{PY}}" scripts/man_pages.py --build
 
 # Convert all SVGs to PNGs (used for embedded logos)
 logos:
@@ -183,7 +193,7 @@ bench:
 
 # Benchmark the release binary with hyperfine (requires: hyperfine)
 bench-cli:
-    @python3 scripts/install_hyperfine.py 2>/dev/null || python scripts/install_hyperfine.py
+    @"{{PY}}" scripts/install_hyperfine.py
     cargo build --release
     hyperfine --shell=none --warmup 3 --runs 10 '{{retch_release_bin}}'
 
@@ -202,11 +212,11 @@ fastfetch-configs:
 # Upload local benchmark results to the gh-pages dashboard (requires: hyperfine, gh)
 # On Windows: run from Git Bash, or invoke python scripts/upload_local_bench.py directly.
 bench-upload *ARGS:
-    @python3 scripts/upload_local_bench.py {{ARGS}} 2>/dev/null || python scripts/upload_local_bench.py {{ARGS}}
+    @"{{PY}}" scripts/upload_local_bench.py {{ARGS}}
 
-# Install git hooks (run once after cloning)
+# Install git hooks into .git/hooks (pre-push -> just check, post-merge -> bench upload)
 install-hooks:
-    bash scripts/install_hooks.sh
+    @"{{PY}}" scripts/install_hooks.py
 
 # One-time repo setup: install git hooks and any other local tooling
 setup: install-hooks
@@ -310,16 +320,16 @@ publish:
 
 # Automatically calculate and update Nixpkgs hashes in packaging/nixpkgs/package.nix (requires Nix)
 nix-update VERSION="":
-    @python3 scripts/calculate_nix_hashes.py {{VERSION}}
+    @"{{PY}}" scripts/calculate_nix_hashes.py {{VERSION}}
 
 # Tag, wait for CI hashes, update nixpkgs fork, and open a PR — no Nix required.
 # Set NIXPKGS_DIR to override the default ~/git/nixpkgs fork location.
 nixpkgs-release VERSION="":
-    @python3 scripts/nixpkgs_release.py {{VERSION}}
+    @"{{PY}}" scripts/nixpkgs_release.py {{VERSION}}
 
 # Submit the local tldr page upstream to tldr-pages/tldr (requires gh)
 tldr-release:
-    @python3 scripts/tldr_release.py
+    @"{{PY}}" scripts/tldr_release.py
 
 # ===== AUR =====
 #
@@ -542,6 +552,9 @@ aur-publish VERSION:
     git push origin master 2>&1 | tail -3
     pass "published retch $PKGVER to the AUR"
     echo "  https://aur.archlinux.org/packages/retch"
+
+# Alias for `aur-publish`
+publish-aur VERSION: (aur-publish VERSION)
 
 # ===== COPR =====
 #
@@ -801,6 +814,9 @@ brew-publish VERSION:
     pass "pushed retch $VER to $TAP_REPO"
     echo "Verify: brew tap l1a/retch && brew install retch"
 
+# Alias for `brew-publish`
+publish-brew VERSION: (brew-publish VERSION)
+
 #
 # Takes the version for the same reason `aur-publish` and `brew-publish` do: the manifest is a
 # template, and this is the moment the released version and its two binary checksums come into
@@ -885,6 +901,9 @@ scoop-publish VERSION:
     pass "pushed retch $VER to $BUCKET_REPO"
     echo "Verify: scoop bucket add l1a https://github.com/l1a/scoop-retch && scoop install retch"
 
+# Alias for `scoop-publish`
+publish-scoop VERSION: (scoop-publish VERSION)
+
 # ===== RELEASING =====
 #
 # A release needs NO VERSION BUMP, and that is the point of the shape below.
@@ -960,7 +979,7 @@ merge-pr:
     if [ "$(printf '%s' "$STATES" | tr -d '[:space:]')" = "[]" ]; then
         echo "Error: no checks have reported for this commit at all."
         echo "       That is not the same as passing. GitHub sometimes fails to create a run;"
-        echo "       force one with: gh workflow run rust.yml --ref $BRANCH"
+        echo "       force one with: gh workflow run ci.yml --ref $BRANCH"
         exit 1
     fi
 
@@ -975,6 +994,8 @@ merge-pr:
         echo "Fix it, or merge deliberately with gh if you have a reason."
         exit 1
     fi
+    [ "$(gh pr view --json headRefOid --jq .headRefOid)" = "$(git rev-parse HEAD)" ] \
+        || { echo "Error: PR head on GitHub does not match local HEAD — push first." >&2; exit 1; }
     echo "CI is green."
 
     echo "Merging PR for branch $BRANCH..."
@@ -989,6 +1010,22 @@ merge-pr:
     # named `@/usr/bin/python3` and fails with 127. `wip-check` below DOES take `@`, because it
     # is a plain recipe. Same trap as rusticprofile's 0.2.2.
     "{{PY}}" scripts/update_wip.py
+
+# Prune local branches whose remote tracking branch was deleted after a squash-merge
+prune-branches:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git fetch --prune
+    GONE=$(git for-each-ref --format '%(refname:short) %(upstream:track)' refs/heads/ \
+        | awk '$2 == "[gone]" { print $1 }')
+    if [ -z "$GONE" ]; then
+        echo "No stale local branches to prune."
+        exit 0
+    fi
+    for b in $GONE; do
+        echo "Deleting merged branch: $b"
+        git branch -D "$b"
+    done
 
 # Pre-PR gate: run all automated checks and print manual checklist before opening a PR.
 # All items must pass before calling `gh pr create`.

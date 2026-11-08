@@ -4,30 +4,19 @@ on:
   # pull_request:
   #   types: [opened, synchronize, ready_for_review, reopened]
   workflow_dispatch:
+    inputs:
+      pr:
+        description: 'PR number to review'
+        required: true
+        type: number
+
+permissions:
+  contents: read
 
 jobs:
   claude-review:
-    # NOTE: there is deliberately no `if: false` here.
-    #
-    # Until v0.6.22 this job carried one, on top of the commented-out `pull_request` trigger
-    # above. The trigger alone already stops automatic review on every PR -- which was the
-    # whole point -- so the guard added nothing there, and its only remaining effect was to
-    # neuter the manual path: `gh workflow run claude-code-review.yml` started a run, skipped
-    # this job, and reported SUCCESS having reviewed nothing.
-    #
-    # A green run that did nothing is the exact failure this repo's tooling exists to refuse,
-    # and it is the one the sibling repo recorded twice about this very action (a review job
-    # going green without reviewing). "Dispatch is available but silently inert" is worse than
-    # either honest alternative -- working, or absent.
-    #
     # To review a PR on demand:
-    #     gh workflow run claude-code-review.yml --ref <branch>
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-
+    #     gh workflow run claude-code-review.yml -f pr=<number>
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -37,21 +26,30 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 1
 
       - name: Run Claude Code Review
         id: claude-review
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@c0949c50a78c1ec8ce2647db36629b870e715d0c # v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number || inputs.pr }}'
           # Dependabot PRs are opened by a bot actor; the action refuses to run for
           # non-human actors unless explicitly allowed. Scoped to dependabot[bot] only.
           allowed_bots: 'dependabot[bot]'
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
+          claude_args: '--max-turns 25'
 
+      - name: Write review to job summary and log
+        if: always() && steps.claude-review.outputs.execution_file != ''
+        env:
+          EXEC_FILE: ${{ steps.claude-review.outputs.execution_file }}
+        run: |
+          echo "=== Review Result ==="
+          jq -r '.[] | select(.type == "result") | .result // "(empty result)"' "$EXEC_FILE" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo ""
+          echo "=== Turn Count / Cost ==="
+          jq -r '.[] | select(.type == "result") | "turns: \(.num_turns), subtype: \(.subtype), is_error: \(.is_error), cost_usd: \(.total_cost_usd)"' "$EXEC_FILE"
