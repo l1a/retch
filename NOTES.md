@@ -151,9 +151,9 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.21.2)
+## Current State (v0.21.3)
 
-`main` carries **`retch-cli` 0.21.2** / **`retch-sysinfo` 0.1.107**. Newest released tag is
+`main` carries **`retch-cli` 0.21.3** / **`retch-sysinfo` 0.1.107**. Newest released tag is
 **`v0.21.1`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
@@ -162,6 +162,10 @@ and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
 
+- **v0.21.3: Workflow and gate hardening across the four-repo fleet.**
+  - `scripts/man_pages.py --check` now always validates the `.TH` version/title header and LF line endings in both the worktree and `HEAD` even when `mandown` is not installed locally, while `ci.yml` installs `mandown` (`cargo install --locked mandown`) so CI runs the full byte-for-byte re-render check.
+  - `copr.yml` installs `git` before `actions/checkout` in `fedora:latest`, `security.yml` grants `issues: write` to `actions-rust-lang/audit`, `claude.yml` enforces `author_association` and refuses fork PRs at the job/step level, and `claude-code-review.yml` passes `github_token: ${{ secrets.GITHUB_TOKEN }}` to `code-review@claude-code-plugins`.
+  - `Justfile` `aur-publish` requires positive SSH authentication output from `aur.archlinux.org`, and `merge-pr` requires all non-skipped checks to conclude `SUCCESS` and refuses to merge when inline PR review comments exist unless `MERGE_ALLOW_COMMENTS=1` is set after inspecting them.
 - **v0.21.2: Cross-repo Justfile, scripts & GitHub workflow standardization.**
   - Split `.github/workflows/rust.yml` into `ci.yml` (`checks`, 7-platform `build` matrix with 2-step `rustup-init.sh` + `cargo --version` verification, `no-default-features`) and `release.yml` (`full-test`, `build-release`, `release`), pinned all GitHub Actions across all workflows to 40-char commit SHAs, switched `security.yml` to `actions-rust-lang/audit`, and fixed `dependabot.yml` (`patterns: ["*"]`).
   - Replaced `scripts/build_man.py` with `scripts/man_pages.py` (`--build`, `--check`, `--self-test`, wired into `just check` via `man-check`) and replaced `scripts/install_hooks.sh` with shell-free `scripts/install_hooks.py` (installing both `pre-push` and `post-merge`).

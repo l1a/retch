@@ -18,7 +18,10 @@ jobs:
     name: Offline Repository Guards
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install mandown for man-page render verification
+        run: cargo install --locked mandown
 
       - name: Run offline repository guards
         run: |
@@ -99,7 +102,7 @@ jobs:
         if: startsWith(matrix.platform, 'fedora')
         run: rustup component add rustfmt clippy
 
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Format check
         run: cargo fmt -- --check
       - name: Clippy
@@ -128,7 +131,7 @@ jobs:
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           components: clippy
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Clippy (no default features)
         run: cargo clippy --locked -p retch-cli --no-default-features -- -D warnings
       - name: Build (no default features)
