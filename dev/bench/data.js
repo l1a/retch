@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794179717323,
+  "lastUpdate": 1794179717615,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13147,6 +13147,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 223.7590089095892,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f756ffa3be3cec9fbcd40dc4727b193de4078aa2",
+          "message": "Harden workflows and pre-merge review gates (#324)\n\nAssisted-By: Gemini 4 Argon",
+          "timestamp": "2026-11-08T15:04:29-08:00",
+          "tree_id": "5055c4f2d960ef4b250b2687240bacfb27f0611d",
+          "url": "https://github.com/l1a/retch/commit/f756ffa3be3cec9fbcd40dc4727b193de4078aa2"
+        },
+        "date": 1794179717568,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2953928.1,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 252434979.40000004,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252361666.1,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1573016.4000000001,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 4636727.399999999,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 220696468.10000002,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 210400778.99999997,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2730797.5,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 249766956.85,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 990.666616363866,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 124.12473653431542,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.960159214199492,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 67.41888554386178,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 9240.210139639554,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 436124.2457153797,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 5676.364022028889,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4019.1386117200645,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 55844.696505865766,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 397.0720742258066,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 246.38118683324333,
             "unit": "ns"
           }
         ]
