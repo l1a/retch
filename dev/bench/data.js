@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794179718160,
+  "lastUpdate": 1794179718441,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -26667,6 +26667,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 250591505,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f756ffa3be3cec9fbcd40dc4727b193de4078aa2",
+          "message": "Harden workflows and pre-merge review gates (#324)\n\nAssisted-By: Gemini 4 Argon",
+          "timestamp": "2026-11-08T15:04:29-08:00",
+          "tree_id": "5055c4f2d960ef4b250b2687240bacfb27f0611d",
+          "url": "https://github.com/l1a/retch/commit/f756ffa3be3cec9fbcd40dc4727b193de4078aa2"
+        },
+        "date": 1794179718393,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 39461930.00000001,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2382353310,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1302678480,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 22011870,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 25072700.000000004,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 330232330,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 207596379.99999997,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 22798640,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 253.05212671792256,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.948601487007129,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 171.5204805920008,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1301.0834598794713,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 48779.684307058174,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 563.9443328069902,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 681.0637399319596,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 284164825,
             "unit": "ns"
           }
         ]
