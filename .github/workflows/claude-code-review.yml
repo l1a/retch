@@ -1,23 +1,30 @@
 name: Claude Code Review
 
+# Runs automatically on same-repo pull requests and on manual `workflow_dispatch`:
+#     gh workflow run claude-code-review.yml -f pr=<number>
+#
+# Read-only by design: this job reviews, it does not push. Anything that needs to change
+# the repository goes through `claude.yml`, which is triggered deliberately by an @claude
+# mention and has the write permissions to match.
+
 on:
-  # pull_request:
-  #   types: [opened, synchronize, ready_for_review, reopened]
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
   workflow_dispatch:
     inputs:
       pr:
-        description: 'PR number to review'
+        description: 'Pull request number to review'
         required: true
-        type: number
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   claude-review:
-    # To review a PR on demand:
-    #     gh workflow run claude-code-review.yml -f pr=<number>
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+
     permissions:
       contents: read
       pull-requests: read
@@ -26,7 +33,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
 
@@ -37,19 +44,57 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number || inputs.pr }}'
-          # Dependabot PRs are opened by a bot actor; the action refuses to run for
-          # non-human actors unless explicitly allowed. Scoped to dependabot[bot] only.
+          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ inputs.pr || github.event.pull_request.number }}'
           allowed_bots: 'dependabot[bot]'
-          claude_args: '--max-turns 25'
+          use_sticky_comment: true
 
-      - name: Write review to job summary and log
-        if: always() && steps.claude-review.outputs.execution_file != ''
+      - name: Report whether the review actually ran
+        if: always()
         env:
-          EXEC_FILE: ${{ steps.claude-review.outputs.execution_file }}
+          EXECUTION_FILE: ${{ steps.claude-review.outputs.execution_file }}
         run: |
-          echo "=== Review Result ==="
-          jq -r '.[] | select(.type == "result") | .result // "(empty result)"' "$EXEC_FILE" | tee -a "$GITHUB_STEP_SUMMARY"
-          echo ""
-          echo "=== Turn Count / Cost ==="
-          jq -r '.[] | select(.type == "result") | "turns: \(.num_turns), subtype: \(.subtype), is_error: \(.is_error), cost_usd: \(.total_cost_usd)"' "$EXEC_FILE"
+          set -uo pipefail
+          {
+            echo "### Claude Code Review"
+            echo
+            if [ -z "${EXECUTION_FILE:-}" ] || [ ! -f "${EXECUTION_FILE:-}" ]; then
+              echo "**The review did NOT run.** No execution output was produced."
+              echo
+              echo "The usual cause is the action's workflow-validation check, which skips"
+              echo "with a \`success\` conclusion when this workflow file differs from the"
+              echo "copy on the default branch — so any PR editing it gets no review."
+              echo "Search the job log for \`Workflow validation failed\` to confirm."
+            else
+              python3 - "$EXECUTION_FILE" <<'PYEOF'
+          import json, sys
+
+          try:
+              data = json.load(open(sys.argv[1]))
+          except Exception as e:
+              print(f"**The review ran**, but its output could not be parsed ({e}).")
+              raise SystemExit(0)
+
+          candidates = data if isinstance(data, list) else [data]
+          result = next(
+              (c for c in reversed(candidates)
+               if isinstance(c, dict) and "num_turns" in c),
+              None,
+          )
+
+          if result is None:
+              print("**The review ran**, but produced no recognisable result record.")
+              raise SystemExit(0)
+
+          turns = result.get("num_turns", "?")
+          cost = result.get("total_cost_usd")
+          errored = result.get("is_error", False)
+
+          status = "completed with an error" if errored else "completed"
+          cost_text = f", ${cost:.2f}" if isinstance(cost, (int, float)) else ""
+          print(f"**The review ran** and {status} — {turns} turns{cost_text}.")
+          print()
+          print("Findings, if any, appear as comments on the pull request.")
+          print("No comment means the review found nothing to raise.")
+          PYEOF
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
