@@ -72,7 +72,7 @@ jobs:
           "$HOME/.cargo/bin/cargo" --version
           "$HOME/.cargo/bin/cargo" install mandown
 
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Rust toolchain (Host)
         if: ${{ !matrix.container }}
@@ -140,7 +140,7 @@ jobs:
         run: |
           dnf install -y git curl gcc make sqlite-devel
 
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Rust toolchain (Fedora)
         if: startsWith(matrix.platform, 'fedora')
@@ -200,7 +200,7 @@ jobs:
       contents: write   # Required to create GitHub Releases
 
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Download release assets
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
