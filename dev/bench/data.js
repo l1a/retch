@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794033358711,
+  "lastUpdate": 1794118293473,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1296,6 +1296,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 728973280.6,
             "extra": "v0.21.1; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "df32d0614357a740da80c528ae8b3db6a599b6f9",
+          "message": "Standardize Justfile and GitHub workflows (#321)\n\nAlign retch's Justfile, scripts, git hooks, and GitHub Actions workflows\nwith the cross-repository standard shared across etr, retch,\nrusticprofile, and dog:\n\n- Split .github/workflows/rust.yml into ci.yml (adding an offline\n  checks job, 2-step rustup-init.sh + cargo --version verification on\n  Windows/Linux ARM64, and no-default-features) and release.yml\n  (full-test, build-release, release).\n- Pin all GitHub Actions across ci.yml, release.yml, packaging.yml,\n  copr.yml, security.yml, benchmark.yml, claude.yml, and\n  claude-code-review.yml to 40-char commit SHAs.\n- Switch security.yml to actions-rust-lang/audit, remove paths: filter,\n  and add workflow_dispatch; fix .github/dependabot.yml github-actions\n  pattern from [\"main\"] to [\"*\"].\n- Sync claude-code-review.yml (inputs.pr and review summary step) and\n  claude.yml.\n- Replace scripts/build_man.py with scripts/man_pages.py (--build,\n  --check, --self-test) and wire man-check into just check.\n- Replace scripts/install_hooks.sh with shell-free\n  scripts/install_hooks.py (installing pre-push and post-merge) and\n  update scripts/hooks/pre-push to skip delete-only pushes and\n  gh-pages.\n- Add fmt-check, clippy alias, packaging-check, publish-aur /\n  publish-brew / publish-scoop aliases, prune-branches, and\n  headRefOid == HEAD verification in merge-pr.\n- Fold staged sandbox exceptions from WIP.md into AGENTS.md, bump\n  version to 0.21.2, regenerate docs/retch.1, and update NOTES.md.\n\nAssisted-By: Gemini 4 Argon",
+          "timestamp": "2026-11-07T22:10:53-08:00",
+          "tree_id": "343ead7b4b562efa12cee011c02893012398efe5",
+          "url": "https://github.com/l1a/retch/commit/df32d0614357a740da80c528ae8b3db6a599b6f9"
+        },
+        "date": 1794118293473,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 5362722.200000001,
+            "extra": "v0.21.2; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 11958116.9,
+            "extra": "v0.21.2; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 2547060.3,
+            "extra": "v0.21.2; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2422925.2,
+            "extra": "v0.21.2; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 216124829.40000007,
+            "extra": "v0.21.2; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 612828412.3000001,
+            "extra": "v0.21.2; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 376275754.40000004,
+            "extra": "v0.21.2; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 722520882.1999999,
+            "extra": "v0.21.2; AC"
           }
         ]
       }
