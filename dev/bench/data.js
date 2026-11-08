@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794118910092,
+  "lastUpdate": 1794118910409,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17459,6 +17459,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 453.67588490284686,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "df32d0614357a740da80c528ae8b3db6a599b6f9",
+          "message": "Standardize Justfile and GitHub workflows (#321)\n\nAlign retch's Justfile, scripts, git hooks, and GitHub Actions workflows\nwith the cross-repository standard shared across etr, retch,\nrusticprofile, and dog:\n\n- Split .github/workflows/rust.yml into ci.yml (adding an offline\n  checks job, 2-step rustup-init.sh + cargo --version verification on\n  Windows/Linux ARM64, and no-default-features) and release.yml\n  (full-test, build-release, release).\n- Pin all GitHub Actions across ci.yml, release.yml, packaging.yml,\n  copr.yml, security.yml, benchmark.yml, claude.yml, and\n  claude-code-review.yml to 40-char commit SHAs.\n- Switch security.yml to actions-rust-lang/audit, remove paths: filter,\n  and add workflow_dispatch; fix .github/dependabot.yml github-actions\n  pattern from [\"main\"] to [\"*\"].\n- Sync claude-code-review.yml (inputs.pr and review summary step) and\n  claude.yml.\n- Replace scripts/build_man.py with scripts/man_pages.py (--build,\n  --check, --self-test) and wire man-check into just check.\n- Replace scripts/install_hooks.sh with shell-free\n  scripts/install_hooks.py (installing pre-push and post-merge) and\n  update scripts/hooks/pre-push to skip delete-only pushes and\n  gh-pages.\n- Add fmt-check, clippy alias, packaging-check, publish-aur /\n  publish-brew / publish-scoop aliases, prune-branches, and\n  headRefOid == HEAD verification in merge-pr.\n- Fold staged sandbox exceptions from WIP.md into AGENTS.md, bump\n  version to 0.21.2, regenerate docs/retch.1, and update NOTES.md.\n\nAssisted-By: Gemini 4 Argon",
+          "timestamp": "2026-11-07T22:10:53-08:00",
+          "tree_id": "343ead7b4b562efa12cee011c02893012398efe5",
+          "url": "https://github.com/l1a/retch/commit/df32d0614357a740da80c528ae8b3db6a599b6f9"
+        },
+        "date": 1794118910348,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 410695779.2,
+            "unit": "ns",
+            "extra": "v0.21.2"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 978524254.2000002,
+            "unit": "ns",
+            "extra": "v0.21.2"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 964882746.0000001,
+            "unit": "ns",
+            "extra": "v0.21.2"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 25023962.599999998,
+            "unit": "ns",
+            "extra": "v0.21.2"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 387979149.90000004,
+            "unit": "ns",
+            "extra": "v0.21.2"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 460365950,
+            "unit": "ns",
+            "extra": "v0.21.2"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 419500366.8,
+            "unit": "ns",
+            "extra": "v0.21.2"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 16241754.200000003,
+            "unit": "ns",
+            "extra": "v0.21.2"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 393211081.275,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 577.6720913474488,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 184.87157913758898,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.1585075256833877,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 140.86959782888616,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 14878.363545918855,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1507.241456708903,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 394.5250262955375,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 114491.00743002017,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 518.9955247575989,
             "unit": "ns"
           }
         ]
