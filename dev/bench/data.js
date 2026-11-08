@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794179717615,
+  "lastUpdate": 1794179717881,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17917,6 +17917,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 518.9955247575989,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f756ffa3be3cec9fbcd40dc4727b193de4078aa2",
+          "message": "Harden workflows and pre-merge review gates (#324)\n\nAssisted-By: Gemini 4 Argon",
+          "timestamp": "2026-11-08T15:04:29-08:00",
+          "tree_id": "5055c4f2d960ef4b250b2687240bacfb27f0611d",
+          "url": "https://github.com/l1a/retch/commit/f756ffa3be3cec9fbcd40dc4727b193de4078aa2"
+        },
+        "date": 1794179717837,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 431324504.2,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1119650116.5000002,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1101175300,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 27105841.80000001,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 314002899.90000004,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 420701991.90000004,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 382162050.2,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 16036233.3,
+            "unit": "ns",
+            "extra": "v0.21.3"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 280221796.825,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 558.6474634550997,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 191.53895934054722,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.383370616519552,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 112.33767631028961,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 14390.795981592542,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1490.195283774358,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 362.75704578257614,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 90812.41596955809,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 525.5333056777772,
             "unit": "ns"
           }
         ]
