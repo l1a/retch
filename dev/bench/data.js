@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794253962703,
+  "lastUpdate": 1794253962942,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -27959,6 +27959,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 244571950,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a6d756be1f7a6c7730a7f15a161076ab3224135",
+          "message": "Add semantic colorization to field values (#327)\n\nColorize percentages, temperatures, and status tokens across retch's\noutput fields in `src/display.rs` (`colorize_field_value`) before\nwrapping with `Theme::color_value`:\n\n- Usage percentages (`CPU Usage`, `Memory Usage`, `Swap`, `Disk`):\n  `< 50%` green, `50..80%` yellow, `>= 80%` red.\n- Health/charge/signal percentages (`Battery`, `Wi-Fi`, `Wi-Fi Link`,\n  `Bluetooth`, `Gamepad`): `>= 50%` green, `20..50%` yellow, `< 20%` red.\n- Level percentages (`Brightness`, `Audio`): green.\n- Temperatures (`Temp`, `Weather`): hardware thermal thresholds\n  (`< 60°C` green, `60..80°C` yellow, `>= 80°C` red) and ambient weather\n  thresholds (`°C` and `°F`).\n- Status tokens (`Bluetooth` `On`/`Off`, `Battery`\n  `charging`/`full`/`discharging`/`not charging`, `Power Adapter`\n  `connected`/`not connected`/`unknown`, `Player`\n  `Playing`/`Paused`/`Buffering`/`Stopped`, `Zpool`\n  `ONLINE`/`DEGRADED`/`FAULTED`).\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-11-09T11:44:53-08:00",
+          "tree_id": "6a0b6f924d7477d1eca7ee8294c89a64c1e9464d",
+          "url": "https://github.com/l1a/retch/commit/3a6d756be1f7a6c7730a7f15a161076ab3224135"
+        },
+        "date": 1794253962902,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 47246220,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2386794639.9999995,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1310157630.0000002,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 22957009.999999996,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 27450590.000000004,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 436961310.00000006,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 216451610.00000003,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 24497650.000000004,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 250.44181667828107,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9518721418449636,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 172.84665962402258,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1329.6462509101793,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46981.7819133741,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 558.7103354423323,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 680.1456995329079,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 391856740,
             "unit": "ns"
           }
         ]
