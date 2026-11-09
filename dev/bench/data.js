@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794192387411,
+  "lastUpdate": 1794192898926,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -8069,6 +8069,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 237.25214813489214,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "94d7fba8cd7203ac1ceef8a6adb3817d331dba52",
+          "message": "Drop unused image avif feature (#325) (#326)\n\n- Disable default features on `image` and enable raster formats (`png`, `jpeg`, `gif`, `webp`, `bmp`, `ico`), removing the unused `ravif`/`rav1e` AV1 encoder and its unmaintained `paste 1.0.15` dependency (`RUSTSEC-2024-0436`) along with 53 other transitive crates (`247 -> 193`).\n- Add `test_embedded_logos_decode_with_configured_image_features` to verify all embedded distro PNGs decode cleanly.\n- Bump version to 0.21.4 and regenerate `docs/retch.1`.\n\nCloses #325\n\nAssisted-By: Gemini 4 Argon",
+          "timestamp": "2026-11-08T18:45:49-08:00",
+          "tree_id": "5e5731a0f2166fd496e2d9e38ff308ff7bf15c8d",
+          "url": "https://github.com/l1a/retch/commit/94d7fba8cd7203ac1ceef8a6adb3817d331dba52"
+        },
+        "date": 1794192898857,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 1847256.1000000003,
+            "unit": "ns",
+            "extra": "v0.21.4"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 252028680.6,
+            "unit": "ns",
+            "extra": "v0.21.4"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 251884748.00000006,
+            "unit": "ns",
+            "extra": "v0.21.4"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1106037.0999999999,
+            "unit": "ns",
+            "extra": "v0.21.4"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2864414.9000000004,
+            "unit": "ns",
+            "extra": "v0.21.4"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 436762244.6,
+            "unit": "ns",
+            "extra": "v0.21.4"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 204361800.00000003,
+            "unit": "ns",
+            "extra": "v0.21.4"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1734084.9000000001,
+            "unit": "ns",
+            "extra": "v0.21.4"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 262380502.3,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 892.8863174060934,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 120.41673979231027,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 7.173537520561821,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 75.46229583422004,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8292.973036084433,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 406531.8204301808,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 58075.765339143574,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 15623.586527339017,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 54939.99903434337,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 429.70416653092053,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 270.21740419875175,
             "unit": "ns"
           }
         ]
