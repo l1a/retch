@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794253959813,
+  "lastUpdate": 1794253961144,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -13747,6 +13747,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 244.65803772174507,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a6d756be1f7a6c7730a7f15a161076ab3224135",
+          "message": "Add semantic colorization to field values (#327)\n\nColorize percentages, temperatures, and status tokens across retch's\noutput fields in `src/display.rs` (`colorize_field_value`) before\nwrapping with `Theme::color_value`:\n\n- Usage percentages (`CPU Usage`, `Memory Usage`, `Swap`, `Disk`):\n  `< 50%` green, `50..80%` yellow, `>= 80%` red.\n- Health/charge/signal percentages (`Battery`, `Wi-Fi`, `Wi-Fi Link`,\n  `Bluetooth`, `Gamepad`): `>= 50%` green, `20..50%` yellow, `< 20%` red.\n- Level percentages (`Brightness`, `Audio`): green.\n- Temperatures (`Temp`, `Weather`): hardware thermal thresholds\n  (`< 60°C` green, `60..80°C` yellow, `>= 80°C` red) and ambient weather\n  thresholds (`°C` and `°F`).\n- Status tokens (`Bluetooth` `On`/`Off`, `Battery`\n  `charging`/`full`/`discharging`/`not charging`, `Power Adapter`\n  `connected`/`not connected`/`unknown`, `Player`\n  `Playing`/`Paused`/`Buffering`/`Stopped`, `Zpool`\n  `ONLINE`/`DEGRADED`/`FAULTED`).\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-11-09T11:44:53-08:00",
+          "tree_id": "6a0b6f924d7477d1eca7ee8294c89a64c1e9464d",
+          "url": "https://github.com/l1a/retch/commit/3a6d756be1f7a6c7730a7f15a161076ab3224135"
+        },
+        "date": 1794253961100,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2285773.6999999997,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 257378405.30000007,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252330633.79999998,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1284708.7000000002,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3797547.7000000007,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 340718547.4000001,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205709118.3,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2362236.3,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 267762664.725,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 992.6705804541189,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 123.60537230250638,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9471069990579624,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 68.26075840066285,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8929.014643116816,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 429431.189563302,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 5664.764911888871,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4064.2003487606207,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 55803.36334828747,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 399.24622924671837,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 257.49485813581356,
             "unit": "ns"
           }
         ]
