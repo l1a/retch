@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794253961144,
+  "lastUpdate": 1794253961471,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18761,6 +18761,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 417.86251998073215,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a6d756be1f7a6c7730a7f15a161076ab3224135",
+          "message": "Add semantic colorization to field values (#327)\n\nColorize percentages, temperatures, and status tokens across retch's\noutput fields in `src/display.rs` (`colorize_field_value`) before\nwrapping with `Theme::color_value`:\n\n- Usage percentages (`CPU Usage`, `Memory Usage`, `Swap`, `Disk`):\n  `< 50%` green, `50..80%` yellow, `>= 80%` red.\n- Health/charge/signal percentages (`Battery`, `Wi-Fi`, `Wi-Fi Link`,\n  `Bluetooth`, `Gamepad`): `>= 50%` green, `20..50%` yellow, `< 20%` red.\n- Level percentages (`Brightness`, `Audio`): green.\n- Temperatures (`Temp`, `Weather`): hardware thermal thresholds\n  (`< 60°C` green, `60..80°C` yellow, `>= 80°C` red) and ambient weather\n  thresholds (`°C` and `°F`).\n- Status tokens (`Bluetooth` `On`/`Off`, `Battery`\n  `charging`/`full`/`discharging`/`not charging`, `Power Adapter`\n  `connected`/`not connected`/`unknown`, `Player`\n  `Playing`/`Paused`/`Buffering`/`Stopped`, `Zpool`\n  `ONLINE`/`DEGRADED`/`FAULTED`).\n\nAssisted-By: Claude Opus 4.6",
+          "timestamp": "2026-11-09T11:44:53-08:00",
+          "tree_id": "6a0b6f924d7477d1eca7ee8294c89a64c1e9464d",
+          "url": "https://github.com/l1a/retch/commit/3a6d756be1f7a6c7730a7f15a161076ab3224135"
+        },
+        "date": 1794253961404,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 388087125.00000006,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1002356220.8999999,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 916983816.4999999,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 21469000,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 294376246,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 465478175.00000006,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 462747162.40000004,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 11707641.700000001,
+            "unit": "ns",
+            "extra": "v0.21.5"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 399964270.85,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 573.6689059415215,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 243.18276783667153,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.912158170900951,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 140.2328522933159,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 22213.989148598987,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1803.9517996048367,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 359.3357813317158,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 196985.6225292178,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 720.5761544779205,
             "unit": "ns"
           }
         ]
