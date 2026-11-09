@@ -151,10 +151,10 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.21.4)
+## Current State (v0.21.5)
 
-`main` carries **`retch-cli` 0.21.4** / **`retch-sysinfo` 0.1.107**. Newest released tag is
-**`v0.21.3`**.
+`main` carries **`retch-cli` 0.21.5** / **`retch-sysinfo` 0.1.107**. Newest released tag is
+**`v0.21.4`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
@@ -162,6 +162,9 @@ and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
 
+- **v0.21.5: Semantic ANSI colorization for percentages, temperatures, and status tokens (`src/display.rs`).**
+  - `colorize_field_value()` in `src/display.rs` applies standard SGR foreground colors (`\x1b[32m` green, `\x1b[33m` yellow, `\x1b[31m` red, closed by `\x1b[39m`) to percentages (`CPU Usage`, `Memory Usage`, `Swap`, `Disk` with lower-is-better thresholds `< 50%` / `50..80%` / `>= 80%`; `Battery`, `Wi-Fi`, `Wi-Fi Link`, `Bluetooth`, `Gamepad` with higher-is-better thresholds `>= 50%` / `20..50%` / `< 20%`; `Brightness` and `Audio` in green), temperatures (`Temp` `< 60°C` / `60..80°C` / `>= 80°C`; `Weather` ambient `°C`/`°F`), and state tokens (`Bluetooth` `On`/`Off`, `Battery` `charging`/`full`/`discharging`/`not charging`, `Power Adapter` `connected`/`not connected`/`unknown`, `Player` `Playing`/`Paused`/`Buffering`/`Stopped`, `Zpool` `ONLINE`/`DEGRADED`/`FAULTED`).
+  - Applied in `display::print_line` after `sanitize_terminal_text` and before `Theme::color_value` (`colorize_nested`), keeping `retch-sysinfo` and `consolidate_temps` uncolored while composing with theme colors and `strip_sgr`.
 - **v0.21.4: Drop unused `image` default `avif`/`exr` features to eliminate `paste` (`RUSTSEC-2024-0436`, #325).**
   - `image = "0.25"` enabled `default-formats` (`avif`, `exr`, `dds`, `hdr`, etc.), where `avif` pulls in the `ravif`/`rav1e` AV1 encoder and its unmaintained `paste 1.0.15` proc-macro dependency (`RUSTSEC-2024-0436`) even though `image`'s `avif` feature only provides AVIF encoding (not decoding) and `retch` only decodes raster logos and encodes `ImageFormat::Png`. Setting `default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "ico"]` removes `paste`, `ravif`, `rav1e`, and `exr` (54 transitive crates, `247 -> 193`) from `Cargo.lock`.
 - **v0.21.3: Workflow and gate hardening across the four-repo fleet.**

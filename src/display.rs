@@ -188,6 +188,347 @@ fn sanitize_terminal_text(s: &str) -> String {
     out
 }
 
+/// Wrap `s` in standard SGR green (`\x1b[32m...\x1b[39m`).
+fn sgr_green(s: &str) -> String {
+    format!("\x1b[32m{s}\x1b[39m")
+}
+
+/// Wrap `s` in standard SGR yellow (`\x1b[33m...\x1b[39m`).
+fn sgr_yellow(s: &str) -> String {
+    format!("\x1b[33m{s}\x1b[39m")
+}
+
+/// Wrap `s` in standard SGR red (`\x1b[31m...\x1b[39m`).
+fn sgr_red(s: &str) -> String {
+    format!("\x1b[31m{s}\x1b[39m")
+}
+
+/// Semantic direction for percentage thresholds.
+#[derive(Clone, Copy)]
+enum PctKind {
+    /// Resource utilization where lower is better (`< 50%` green, `50..80%` yellow, `>= 80%` red).
+    Usage,
+    /// Charge, health, or link quality where higher is better (`>= 50%` green, `20..50%` yellow, `< 20%` red).
+    HealthOrSignal,
+    /// Informational level (brightness, audio volume) rendered in green.
+    Level,
+}
+
+impl PctKind {
+    fn colorize(self, token: &str, val: f64) -> String {
+        match self {
+            PctKind::Usage => {
+                if val < 50.0 {
+                    sgr_green(token)
+                } else if val < 80.0 {
+                    sgr_yellow(token)
+                } else {
+                    sgr_red(token)
+                }
+            }
+            PctKind::HealthOrSignal => {
+                if val >= 50.0 {
+                    sgr_green(token)
+                } else if val >= 20.0 {
+                    sgr_yellow(token)
+                } else {
+                    sgr_red(token)
+                }
+            }
+            PctKind::Level => sgr_green(token),
+        }
+    }
+}
+
+/// Colorize `<number>%` tokens in `s` according to `kind`.
+///
+/// When `allow_top_level` is `false`, only percentages inside parentheses (`paren_depth > 0`)
+/// are colored so arbitrary identifiers at top level (e.g. an SSID, Bluetooth device name, or
+/// mount path before the parenthesized details) are never modified.
+fn colorize_percentages(s: &str, kind: PctKind, allow_top_level: bool) -> String {
+    let bytes = s.as_bytes();
+    let mut out = String::with_capacity(s.len() + 16);
+    let mut copied_to = 0;
+    let mut paren_depth: usize = 0;
+    let mut i = 0;
+
+    while i < bytes.len() {
+        let b = bytes[i];
+        if b == b'(' {
+            paren_depth += 1;
+            i += 1;
+            continue;
+        }
+        if b == b')' {
+            paren_depth = paren_depth.saturating_sub(1);
+            i += 1;
+            continue;
+        }
+
+        let valid_left = i == 0 || bytes[i - 1].is_ascii_whitespace() || bytes[i - 1] == b'(';
+        if valid_left && b.is_ascii_digit() && (allow_top_level || paren_depth > 0) {
+            let start = i;
+            while i < bytes.len() && bytes[i].is_ascii_digit() {
+                i += 1;
+            }
+            if i + 1 < bytes.len() && bytes[i] == b'.' && bytes[i + 1].is_ascii_digit() {
+                i += 1;
+                while i < bytes.len() && bytes[i].is_ascii_digit() {
+                    i += 1;
+                }
+            }
+            if i < bytes.len() && bytes[i] == b'%' {
+                let end = i + 1;
+                let valid_right = end == bytes.len()
+                    || bytes[end].is_ascii_whitespace()
+                    || matches!(bytes[end], b')' | b',' | b';');
+                if valid_right {
+                    let num_str = &s[start..i];
+                    if let Ok(val) = num_str.parse::<f64>() {
+                        out.push_str(&s[copied_to..start]);
+                        out.push_str(&kind.colorize(&s[start..end], val));
+                        copied_to = end;
+                        i = end;
+                        continue;
+                    }
+                }
+            }
+            continue;
+        }
+
+        i += 1;
+    }
+
+    out.push_str(&s[copied_to..]);
+    out
+}
+
+/// Colorize a hardware temperature line (`"<label>: <val>°C"`): `< 60°C` green, `60..80°C` yellow, `>= 80°C` red.
+fn colorize_sensor_temp(s: &str) -> String {
+    let Some((label_part, val_part)) = s.rsplit_once(':') else {
+        return s.to_string();
+    };
+    let trimmed = val_part.trim();
+    let Some(num_str) = trimmed.strip_suffix("°C") else {
+        return s.to_string();
+    };
+    let Ok(val) = num_str.trim().parse::<f32>() else {
+        return s.to_string();
+    };
+    let colored = if val < 60.0 {
+        sgr_green(trimmed)
+    } else if val < 80.0 {
+        sgr_yellow(trimmed)
+    } else {
+        sgr_red(trimmed)
+    };
+    format!("{label_part}: {colored}")
+}
+
+/// Colorize ambient temperature tokens (`<num>°C` or `<num>°F`) in a `Weather` string.
+///
+/// Ambient thresholds in Celsius (converting `°F` via `(f - 32) * 5 / 9`):
+/// `< 0°C` (`< 32°F`) freezing → yellow, `0..30°C` (`32..86°F`) mild → green,
+/// `30..38°C` (`86..100.4°F`) hot → yellow, `>= 38°C` (`>= 100.4°F`) extreme heat → red.
+fn colorize_weather_temp(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out = String::with_capacity(s.len() + 16);
+    let mut copied_to = 0;
+    let mut i = 0;
+
+    while i < bytes.len() {
+        let valid_left = i == 0 || bytes[i - 1].is_ascii_whitespace() || bytes[i - 1] == b'(';
+        let is_sign =
+            matches!(bytes[i], b'+' | b'-') && i + 1 < bytes.len() && bytes[i + 1].is_ascii_digit();
+        if valid_left && (bytes[i].is_ascii_digit() || is_sign) {
+            let start = i;
+            if is_sign {
+                i += 1;
+            }
+            while i < bytes.len() && bytes[i].is_ascii_digit() {
+                i += 1;
+            }
+            if i + 1 < bytes.len() && bytes[i] == b'.' && bytes[i + 1].is_ascii_digit() {
+                i += 1;
+                while i < bytes.len() && bytes[i].is_ascii_digit() {
+                    i += 1;
+                }
+            }
+            let rest = &s[i..];
+            let unit = if rest.starts_with("°C") {
+                Some(('C', "°C".len()))
+            } else if rest.starts_with("°F") {
+                Some(('F', "°F".len()))
+            } else {
+                None
+            };
+            if let Some((u, unit_len)) = unit {
+                let end = i + unit_len;
+                let valid_right = end == bytes.len()
+                    || bytes[end].is_ascii_whitespace()
+                    || matches!(bytes[end], b')' | b',' | b';');
+                if valid_right {
+                    if let Ok(raw_val) = s[start..i].parse::<f32>() {
+                        let temp_c = if u == 'F' {
+                            (raw_val - 32.0) * 5.0 / 9.0
+                        } else {
+                            raw_val
+                        };
+                        let token = &s[start..end];
+                        let colored = if temp_c < 0.0 {
+                            sgr_yellow(token)
+                        } else if temp_c < 30.0 {
+                            sgr_green(token)
+                        } else if temp_c < 38.0 {
+                            sgr_yellow(token)
+                        } else {
+                            sgr_red(token)
+                        };
+                        out.push_str(&s[copied_to..start]);
+                        out.push_str(&colored);
+                        copied_to = end;
+                        i = end;
+                        continue;
+                    }
+                }
+            }
+            continue;
+        }
+        i += 1;
+    }
+
+    out.push_str(&s[copied_to..]);
+    out
+}
+
+/// Colorize battery charge/health percentages and parenthesized state items.
+///
+/// State items inside the first `( ... )` group are matched as whole comma-separated entries
+/// so `"20m until full"` never has `"full"` partially matched and `"not charging"` is matched
+/// as a single yellow state rather than green `"charging"`.
+fn colorize_battery_value(s: &str) -> String {
+    let with_states = if let Some(open) = s.find('(') {
+        if let Some(rel_close) = s[open + 1..].find(')') {
+            let close = open + 1 + rel_close;
+            let inner = &s[open + 1..close];
+            let colored_items: Vec<String> = inner
+                .split(", ")
+                .map(|item| match item.trim() {
+                    "charging" | "full" => sgr_green(item.trim()),
+                    "discharging" | "not charging" => sgr_yellow(item.trim()),
+                    _ => item.to_string(),
+                })
+                .collect();
+            format!(
+                "{}({}){}",
+                &s[..open],
+                colored_items.join(", "),
+                &s[close + 1..]
+            )
+        } else {
+            s.to_string()
+        }
+    } else {
+        s.to_string()
+    };
+    colorize_percentages(&with_states, PctKind::HealthOrSignal, true)
+}
+
+/// Colorize Bluetooth controller state (`On` / `Off`) and connected device battery percentages.
+fn colorize_bluetooth_value(s: &str) -> String {
+    let with_state = if s == "On" {
+        sgr_green("On")
+    } else if let Some(rest) = s.strip_prefix("On ") {
+        format!("{} {rest}", sgr_green("On"))
+    } else if s == "Off" {
+        sgr_red("Off")
+    } else if let Some(rest) = s.strip_prefix("Off ") {
+        format!("{} {rest}", sgr_red("Off"))
+    } else {
+        s.to_string()
+    };
+    colorize_percentages(&with_state, PctKind::HealthOrSignal, false)
+}
+
+/// Colorize power adapter connection state (`connected`, `not connected`, `unknown`).
+fn colorize_power_adapter_value(s: &str) -> String {
+    if let Some(prefix) = s.strip_suffix("(not connected)") {
+        format!("{prefix}({})", sgr_red("not connected"))
+    } else if let Some(prefix) = s.strip_suffix("(connected)") {
+        format!("{prefix}({})", sgr_green("connected"))
+    } else if let Some(prefix) = s.strip_suffix("(unknown)") {
+        format!("{prefix}({})", sgr_yellow("unknown"))
+    } else {
+        match s.trim() {
+            "connected" => sgr_green(s.trim()),
+            "not connected" => sgr_red(s.trim()),
+            "unknown" => sgr_yellow(s.trim()),
+            _ => s.to_string(),
+        }
+    }
+}
+
+/// Colorize media player playback state (`(Playing)`, `(Paused)`, `(Buffering)`, `(Stopped)`).
+fn colorize_player_value(s: &str) -> String {
+    for (suffix, color_fn) in [
+        ("(Playing)", sgr_green as fn(&str) -> String),
+        ("(Paused)", sgr_yellow),
+        ("(Buffering)", sgr_yellow),
+        ("(Stopped)", sgr_red),
+    ] {
+        if let Some(prefix) = s.strip_suffix(suffix) {
+            let inner = &suffix[1..suffix.len() - 1];
+            return format!("{prefix}({})", color_fn(inner));
+        }
+    }
+    s.to_string()
+}
+
+/// Colorize ZFS pool health state (`(ONLINE)`, `(DEGRADED)`, `(FAULTED)`, etc.).
+fn colorize_zpool_value(s: &str) -> String {
+    for (suffix, color_fn) in [
+        ("(ONLINE)", sgr_green as fn(&str) -> String),
+        ("(DEGRADED)", sgr_yellow),
+        ("(FAULTED)", sgr_red),
+        ("(OFFLINE)", sgr_red),
+        ("(UNAVAIL)", sgr_red),
+        ("(REMOVED)", sgr_red),
+        ("(SUSPENDED)", sgr_red),
+    ] {
+        if let Some(prefix) = s.strip_suffix(suffix) {
+            let inner = &suffix[1..suffix.len() - 1];
+            return format!("{prefix}({})", color_fn(inner));
+        }
+    }
+    s.to_string()
+}
+
+/// Apply semantic SGR coloring to percentages, temperatures, and status tokens within a
+/// sanitized field value before the theme wraps it with [`Theme::color_value`].
+///
+/// Because [`Theme::color_value`] delegates to [`colorize_nested`], every `\x1b[39m` emitted
+/// here automatically restores the active theme's outer value color (or active-interface
+/// highlight), and [`strip_sgr`] strips all SGR codes cleanly when color is disabled.
+fn colorize_field_value(label: &str, value: &str) -> String {
+    match label {
+        "CPU Usage" => colorize_percentages(value, PctKind::Usage, true),
+        "Memory Usage" | "Swap" | "Disk" => colorize_percentages(value, PctKind::Usage, false),
+        "Battery" => colorize_battery_value(value),
+        "Wi-Fi" | "Wi-Fi Link" | "Gamepad" => {
+            colorize_percentages(value, PctKind::HealthOrSignal, false)
+        }
+        "Bluetooth" => colorize_bluetooth_value(value),
+        "Brightness" => colorize_percentages(value, PctKind::Level, true),
+        "Audio" => colorize_percentages(value, PctKind::Level, false),
+        "Temp" => colorize_sensor_temp(value),
+        "Weather" => colorize_weather_temp(value),
+        "Power Adapter" => colorize_power_adapter_value(value),
+        "Player" => colorize_player_value(value),
+        "Zpool" => colorize_zpool_value(value),
+        _ => value.to_string(),
+    }
+}
+
 /// Maximum size in bytes for a user-supplied custom logo image (`~/.config/retch/logo.png`).
 #[cfg(feature = "graphics")]
 const MAX_USER_LOGO_BYTES: u64 = 16 * 1024 * 1024;
@@ -720,11 +1061,12 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     let mut print_line = |label: &str, value: &str| {
         if should_show(label) {
             let safe_value = sanitize_terminal_text(value);
+            let colored_value = colorize_field_value(label, &safe_value);
             info_lines.push(format!(
                 "{:>width$}{} {}",
                 theme.color_label(label),
                 theme.color_separator(":"),
-                theme.color_value(&safe_value),
+                theme.color_value(&colored_value),
                 width = label_width
             ));
         }
@@ -2147,5 +2489,245 @@ mod tests {
             sanitize_terminal_text("Host\rSpoof\x08\x00\x7f\u{009b}name"),
             "HostSpoofname"
         );
+    }
+
+    // ── semantic value colorization ───────────────────────────────────────────
+
+    #[test]
+    fn test_colorize_usage_percentages_thresholds() {
+        // CPU Usage: top-level percentage (lower is better: <50 green, 50..80 yellow, >=80 red)
+        assert_eq!(
+            colorize_field_value("CPU Usage", "5.1% (load: 2.17, 2.03, 1.88)"),
+            "\x1b[32m5.1%\x1b[39m (load: 2.17, 2.03, 1.88)"
+        );
+        assert_eq!(
+            colorize_field_value("CPU Usage", "49.9%"),
+            "\x1b[32m49.9%\x1b[39m"
+        );
+        assert_eq!(
+            colorize_field_value("CPU Usage", "50.0%"),
+            "\x1b[33m50.0%\x1b[39m"
+        );
+        assert_eq!(
+            colorize_field_value("CPU Usage", "79.9%"),
+            "\x1b[33m79.9%\x1b[39m"
+        );
+        assert_eq!(
+            colorize_field_value("CPU Usage", "80.0%"),
+            "\x1b[31m80.0%\x1b[39m"
+        );
+        assert_eq!(
+            colorize_field_value("CPU Usage", "100%"),
+            "\x1b[31m100%\x1b[39m"
+        );
+
+        // Memory Usage, Swap, Disk: parenthesized percentage only
+        assert_eq!(
+            colorize_field_value("Memory Usage", "12.5 / 121.5 GB (10%)"),
+            "12.5 / 121.5 GB (\x1b[32m10%\x1b[39m)"
+        );
+        assert_eq!(
+            colorize_field_value("Swap", "0.0 / 8.0 GB (0%)"),
+            "0.0 / 8.0 GB (\x1b[32m0%\x1b[39m)"
+        );
+        assert_eq!(colorize_field_value("Swap", "No swap"), "No swap");
+        assert_eq!(
+            colorize_field_value("Disk", "/ (btrfs): 405.2 GB free / 951.3 GB (57%)"),
+            "/ (btrfs): 405.2 GB free / 951.3 GB (\x1b[33m57%\x1b[39m)"
+        );
+        assert_eq!(
+            colorize_field_value("Disk", "/var (ext4): 10.0 GB free / 100.0 GB (90%)"),
+            "/var (ext4): 10.0 GB free / 100.0 GB (\x1b[31m90%\x1b[39m)"
+        );
+        // Top-level % in a mountpoint path must NOT be colored for Disk
+        assert_eq!(
+            colorize_field_value("Disk", "/mnt/100% (ext4): 80.0 GB free / 100.0 GB (20%)"),
+            "/mnt/100% (ext4): 80.0 GB free / 100.0 GB (\x1b[32m20%\x1b[39m)"
+        );
+    }
+
+    #[test]
+    fn test_colorize_battery_states_and_percentages() {
+        // Higher is better for charge and health: >=50 green, 20..50 yellow, <20 red.
+        // Also verifies "20m until full" does NOT have "full" partially colored!
+        assert_eq!(
+            colorize_field_value(
+                "Battery",
+                "79% (20m until full, charging, 97% health) [ASUSTeK ASUS Battery]"
+            ),
+            "\x1b[32m79%\x1b[39m (20m until full, \x1b[32mcharging\x1b[39m, \x1b[32m97%\x1b[39m health) [ASUSTeK ASUS Battery]"
+        );
+        assert_eq!(
+            colorize_field_value("Battery", "35% (1h 10m remaining, discharging, 88% health)"),
+            "\x1b[33m35%\x1b[39m (1h 10m remaining, \x1b[33mdischarging\x1b[39m, \x1b[32m88%\x1b[39m health)"
+        );
+        assert_eq!(
+            colorize_field_value("Battery", "15% (not charging, 45% health)"),
+            "\x1b[31m15%\x1b[39m (\x1b[33mnot charging\x1b[39m, \x1b[33m45%\x1b[39m health)"
+        );
+        assert_eq!(
+            colorize_field_value("Battery", "100% (full, 19% health)"),
+            "\x1b[32m100%\x1b[39m (\x1b[32mfull\x1b[39m, \x1b[31m19%\x1b[39m health)"
+        );
+    }
+
+    #[test]
+    fn test_colorize_wifi_and_bluetooth_and_levels() {
+        // Wi-Fi Link signal quality: higher is better, only inside parentheses
+        assert_eq!(
+            colorize_field_value(
+                "Wi-Fi Link",
+                "GT (802.11be, 6.1 GHz ch37 [↑72.0 Mbps], 66%)"
+            ),
+            "GT (802.11be, 6.1 GHz ch37 [↑72.0 Mbps], \x1b[32m66%\x1b[39m)"
+        );
+        assert_eq!(
+            colorize_field_value("Wi-Fi Link", "100% Cafe (802.11ac, 5 GHz, 35%)"),
+            "100% Cafe (802.11ac, 5 GHz, \x1b[33m35%\x1b[39m)"
+        );
+        assert_eq!(
+            colorize_field_value("Wi-Fi", "WeakNet (802.11n, 2.4 GHz, 12%)"),
+            "WeakNet (802.11n, 2.4 GHz, \x1b[31m12%\x1b[39m)"
+        );
+
+        // Bluetooth: leading On/Off + connected device battery %
+        assert_eq!(
+            colorize_field_value(
+                "Bluetooth",
+                "On [hci0] (MediaTek Wireless_Device) - 0 connected"
+            ),
+            "\x1b[32mOn\x1b[39m [hci0] (MediaTek Wireless_Device) - 0 connected"
+        );
+        assert_eq!(
+            colorize_field_value("Bluetooth", "Off (Apple Bluetooth)"),
+            "\x1b[31mOff\x1b[39m (Apple Bluetooth)"
+        );
+        assert_eq!(
+            colorize_field_value(
+                "Bluetooth",
+                "On (Apple BCM_4388) - 1 connected (AirPods Pro (85%))"
+            ),
+            "\x1b[32mOn\x1b[39m (Apple BCM_4388) - 1 connected (AirPods Pro (\x1b[32m85%\x1b[39m))"
+        );
+
+        // Brightness & Audio: level percentages in green
+        assert_eq!(
+            colorize_field_value("Brightness", "100%"),
+            "\x1b[32m100%\x1b[39m"
+        );
+        assert_eq!(
+            colorize_field_value("Brightness", "80% (LG HDR 4K) [External]"),
+            "\x1b[32m80%\x1b[39m (LG HDR 4K) [External]"
+        );
+        assert_eq!(
+            colorize_field_value("Audio", "CoreAudio (Realtek USB2.0 Audio (25%) *)"),
+            "CoreAudio (Realtek USB2.0 Audio (\x1b[32m25%\x1b[39m) *)"
+        );
+    }
+
+    #[test]
+    fn test_colorize_temperatures_and_weather() {
+        // Hardware sensor temperatures: <60 green, 60..80 yellow, >=80 red
+        assert_eq!(
+            colorize_field_value("Temp", "CPU: 56°C"),
+            "CPU: \x1b[32m56°C\x1b[39m"
+        );
+        assert_eq!(
+            colorize_field_value("Temp", "amdgpu edge: 60°C"),
+            "amdgpu edge: \x1b[33m60°C\x1b[39m"
+        );
+        assert_eq!(
+            colorize_field_value("Temp", "k10temp Tctl: 83°C"),
+            "k10temp Tctl: \x1b[31m83°C\x1b[39m"
+        );
+
+        // Weather temperatures (°C and °F)
+        assert_eq!(
+            colorize_field_value("Weather", "Newbury Park, California: ☀️ 79°F"),
+            "Newbury Park, California: ☀️ \x1b[32m79°F\x1b[39m"
+        );
+        assert_eq!(
+            colorize_field_value("Weather", "London: ☁️ 15°C"),
+            "London: ☁️ \x1b[32m15°C\x1b[39m"
+        );
+        assert_eq!(
+            colorize_field_value("Weather", "Oslo: ❄️ -5°C"),
+            "Oslo: ❄️ \x1b[33m-5°C\x1b[39m"
+        );
+        assert_eq!(
+            colorize_field_value("Weather", "Phoenix: ☀️ 104°F"),
+            "Phoenix: ☀️ \x1b[31m104°F\x1b[39m"
+        );
+    }
+
+    #[test]
+    fn test_colorize_power_adapter_player_and_zpool_states() {
+        // Power Adapter
+        assert_eq!(
+            colorize_field_value("Power Adapter", "96W USB-C Power Adapter (connected)"),
+            "96W USB-C Power Adapter (\x1b[32mconnected\x1b[39m)"
+        );
+        assert_eq!(
+            colorize_field_value("Power Adapter", "AC Adapter (not connected)"),
+            "AC Adapter (\x1b[31mnot connected\x1b[39m)"
+        );
+        assert_eq!(
+            colorize_field_value("Power Adapter", "connected"),
+            "\x1b[32mconnected\x1b[39m"
+        );
+        assert_eq!(
+            colorize_field_value("Power Adapter", "AC Adapter (unknown)"),
+            "AC Adapter (\x1b[33munknown\x1b[39m)"
+        );
+
+        // Player
+        assert_eq!(
+            colorize_field_value("Player", "Spotify (Playing)"),
+            "Spotify (\x1b[32mPlaying\x1b[39m)"
+        );
+        assert_eq!(
+            colorize_field_value("Player", "Firefox (Paused)"),
+            "Firefox (\x1b[33mPaused\x1b[39m)"
+        );
+        assert_eq!(
+            colorize_field_value("Player", "mpv (Buffering)"),
+            "mpv (\x1b[33mBuffering\x1b[39m)"
+        );
+        assert_eq!(
+            colorize_field_value("Player", "VLC (Stopped)"),
+            "VLC (\x1b[31mStopped\x1b[39m)"
+        );
+
+        // Zpool
+        assert_eq!(
+            colorize_field_value("Zpool", "tank: 1.2 / 4.0 TB (ONLINE)"),
+            "tank: 1.2 / 4.0 TB (\x1b[32mONLINE\x1b[39m)"
+        );
+        assert_eq!(
+            colorize_field_value("Zpool", "tank: 1.2 / 4.0 TB (DEGRADED)"),
+            "tank: 1.2 / 4.0 TB (\x1b[33mDEGRADED\x1b[39m)"
+        );
+        assert_eq!(
+            colorize_field_value("Zpool", "tank: 1.2 / 4.0 TB (FAULTED)"),
+            "tank: 1.2 / 4.0 TB (\x1b[31mFAULTED\x1b[39m)"
+        );
+    }
+
+    #[test]
+    fn test_colorize_field_value_composes_with_theme_and_strip_sgr() {
+        let theme = Theme::neutral();
+        let raw = "79% (20m until full, charging, 97% health) [ASUSTeK ASUS Battery]";
+        let colored = colorize_field_value("Battery", raw);
+        let themed = theme.color_value(&colored);
+
+        // Stripping SGR restores the exact original string and preserves visible column width.
+        assert_eq!(strip_sgr(&themed), raw);
+        assert_eq!(visible_len(&themed), visible_len(raw));
+
+        // Every nested `\x1b[39m` inside `colored` is followed by the outer theme value prefix
+        // (`\x1b[38;2;255;255;255m`) so the brackets, parens, and surrounding words stay themed.
+        assert!(themed.contains("\x1b[32m79%\x1b[39m\x1b[38;2;255;255;255m (20m until full, "));
+        assert!(themed.contains("\x1b[32mcharging\x1b[39m\x1b[38;2;255;255;255m, "));
+        assert!(themed.contains("\x1b[32m97%\x1b[39m\x1b[38;2;255;255;255m health)"));
     }
 }
