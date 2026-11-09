@@ -151,10 +151,10 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.21.3)
+## Current State (v0.21.4)
 
-`main` carries **`retch-cli` 0.21.3** / **`retch-sysinfo` 0.1.107**. Newest released tag is
-**`v0.21.1`**.
+`main` carries **`retch-cli` 0.21.4** / **`retch-sysinfo` 0.1.107**. Newest released tag is
+**`v0.21.3`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
@@ -162,6 +162,8 @@ and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
 
+- **v0.21.4: Drop unused `image` default `avif`/`exr` features to eliminate `paste` (`RUSTSEC-2024-0436`, #325).**
+  - `image = "0.25"` enabled `default-formats` (`avif`, `exr`, `dds`, `hdr`, etc.), where `avif` pulls in the `ravif`/`rav1e` AV1 encoder and its unmaintained `paste 1.0.15` proc-macro dependency (`RUSTSEC-2024-0436`) even though `image`'s `avif` feature only provides AVIF encoding (not decoding) and `retch` only decodes raster logos and encodes `ImageFormat::Png`. Setting `default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "ico"]` removes `paste`, `ravif`, `rav1e`, and `exr` (54 transitive crates, `247 -> 193`) from `Cargo.lock`.
 - **v0.21.3: Workflow and gate hardening across the four-repo fleet.**
   - `scripts/man_pages.py --check` now always validates the `.TH` version/title header and LF line endings in both the worktree and `HEAD` even when `mandown` is not installed locally, while `ci.yml` installs `mandown` (`cargo install --locked mandown`) so CI runs the full byte-for-byte re-render check.
   - `copr.yml` installs `git` before `actions/checkout` in `fedora:latest`, `security.yml` grants `issues: write` to `actions-rust-lang/audit`, `claude.yml` enforces `author_association` and refuses fork PRs at the job/step level, and `claude-code-review.yml` passes `github_token: ${{ secrets.GITHUB_TOKEN }}` to `code-review@claude-code-plugins`.
