@@ -1028,6 +1028,20 @@ mod tests {
         assert!(logo.is_some());
     }
 
+    #[cfg(feature = "graphics")]
+    #[test]
+    fn test_embedded_logos_decode_with_configured_image_features() {
+        for (id, _) in KNOWN_LOGOS {
+            let bytes = get_embedded_logo(Some(id)).expect("embedded logo bytes present");
+            let img = image::load_from_memory(bytes)
+                .unwrap_or_else(|e| panic!("failed to decode embedded logo for {id}: {e}"));
+            assert!(img.width() > 0 && img.height() > 0, "{id} decoded to 0x0");
+        }
+        let tux = get_embedded_logo(None).expect("tux fallback bytes present");
+        let img = image::load_from_memory(tux).expect("failed to decode tux fallback PNG");
+        assert!(img.width() > 0 && img.height() > 0);
+    }
+
     #[test]
     fn test_get_ascii_logo_new_distros() {
         let pop = get_ascii_logo(Some("pop"));

@@ -6,7 +6,7 @@ members = [
 
 [package]
 name = "retch-cli"
-version = "0.21.3"
+version = "0.21.4"
 edition = "2021"
 authors = ["Ken Tobias"]
 description = "A fast, feature-rich system information fetcher written in Rust (similar to fastfetch or neofetch)"
@@ -31,7 +31,7 @@ clap_complete_nushell = "4.6"
 dirs = "7.0"
 anyhow = "1.0"
 owo-colors = "4.0"
-image = { version = "0.25", optional = true }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "ico"], optional = true }
 base64 = { version = "0.23", optional = true }
 icy_sixel = { version = "0.7", optional = true }
 terminal_size = "0.4"
