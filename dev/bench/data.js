@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794179718441,
+  "lastUpdate": 1794192387411,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1440,6 +1440,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 738409500.1,
             "extra": "v0.21.3; battery"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "94d7fba8cd7203ac1ceef8a6adb3817d331dba52",
+          "message": "Drop unused image avif feature (#325) (#326)\n\n- Disable default features on `image` and enable raster formats (`png`, `jpeg`, `gif`, `webp`, `bmp`, `ico`), removing the unused `ravif`/`rav1e` AV1 encoder and its unmaintained `paste 1.0.15` dependency (`RUSTSEC-2024-0436`) along with 53 other transitive crates (`247 -> 193`).\n- Add `test_embedded_logos_decode_with_configured_image_features` to verify all embedded distro PNGs decode cleanly.\n- Bump version to 0.21.4 and regenerate `docs/retch.1`.\n\nCloses #325\n\nAssisted-By: Gemini 4 Argon",
+          "timestamp": "2026-11-08T18:45:49-08:00",
+          "tree_id": "5e5731a0f2166fd496e2d9e38ff308ff7bf15c8d",
+          "url": "https://github.com/l1a/retch/commit/94d7fba8cd7203ac1ceef8a6adb3817d331dba52"
+        },
+        "date": 1794192387411,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 3142543.2,
+            "extra": "v0.21.4; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 7120975.6,
+            "extra": "v0.21.4; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 1314268.4000000001,
+            "extra": "v0.21.4; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 1586550.6,
+            "extra": "v0.21.4; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 214637760.9,
+            "extra": "v0.21.4; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 610394152.7,
+            "extra": "v0.21.4; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 363349750.40000004,
+            "extra": "v0.21.4; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 718553430.5,
+            "extra": "v0.21.4; AC"
           }
         ]
       }
