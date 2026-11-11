@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794436878723,
+  "lastUpdate": 1794436879093,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -23823,6 +23823,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 242208010,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "16d2694368ee606809217c08d2db577669bc3d0f",
+          "message": "Support Zellij terminal Kitty logos and font (#329)\n\n- Detect Kitty graphics protocol support inside Zellij 0.45+ and\n  `zellij terminal` 0.46+ via `ZELLIJ_DESKTOP_TERMINAL` and a cached\n  `/dev/tty` Kitty APC query (`a=q,i=31`) paired with Primary DA1\n  (`\\x1b[c`), flushing stale TTY input (`tcflush(TCIFLUSH)`), draining\n  through the trailing `\\x1b[?...c` barrier so unread reply bytes never\n  leak onto the shell prompt, and guarding `tcgetpgrp == getpgrp` to\n  avoid `SIGTTIN`/`SIGTTOU` in background jobs.\n- Emit Kitty image uploads in 4096-byte `m=1`/`m=0` chunks with `q=2`\n  (`quiet=2`), and add `print_graphical_logo_at_cursor` (`C=1,q=2`, no\n  trailing newline) for side-by-side layout so right-margin placements\n  inside `\\x1b7`..`\\x1b8` do not advance canonical rows and scroll the\n  pane.\n- Parse Zellij 0.46 `terminal { font / font_size }` KDL blocks in\n  `crates/sysinfo/src/terminal.rs` using a structural KDL tokenizer and\n  read only the single active Zellij config (`$ZELLIJ_CONFIG_FILE`,\n  `$ZELLIJ_CONFIG_DIR/config.kdl`, or the first existing platform default\n  config directory matching `zellij_utils::home` without falling through).\n- Fold Dependabot #328 bumping `anthropics/claude-code-action` from\n  `1.0.268` to `1.0.269`.\n- Bump `retch-cli` to `0.21.6` and `retch-sysinfo` to `0.1.108`,\n  regenerate `docs/retch.1`, and update `NOTES.md`.\n\nAssisted-By: Gemini 4 Carbon",
+          "timestamp": "2026-11-11T14:31:50-08:00",
+          "tree_id": "15aa6d83bb148bf1de84bcb4503726bdf272ea73",
+          "url": "https://github.com/l1a/retch/commit/16d2694368ee606809217c08d2db577669bc3d0f"
+        },
+        "date": 1794436879032,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 27224010,
+            "unit": "ns",
+            "extra": "v0.21.6"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2343968740,
+            "unit": "ns",
+            "extra": "v0.21.6"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1298290100,
+            "unit": "ns",
+            "extra": "v0.21.6"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 19399560.000000004,
+            "unit": "ns",
+            "extra": "v0.21.6"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 24049610.000000004,
+            "unit": "ns",
+            "extra": "v0.21.6"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 288379300,
+            "unit": "ns",
+            "extra": "v0.21.6"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 229151950.00000003,
+            "unit": "ns",
+            "extra": "v0.21.6"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 21344160.000000004,
+            "unit": "ns",
+            "extra": "v0.21.6"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 292.95310228320807,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.391699125350696,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 202.27684964916034,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1332.5306709258994,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 40261.155294570526,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 722.6505932021997,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 781.8117509810386,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 252774480,
             "unit": "ns"
           }
         ]
