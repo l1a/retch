@@ -513,6 +513,13 @@ pub(crate) fn detect_terminal(sys: &System) -> Option<String> {
 pub(crate) fn detect_terminal_font(terminal: Option<&str>) -> Option<String> {
     let term = terminal?;
     let term_lower = term.to_lowercase();
+    if term_lower.contains("zellij") {
+        let home = dirs::home_dir();
+        if let Some(content) = read_active_zellij_config(home.as_deref()) {
+            return parse_zellij_font(&content);
+        }
+        return None;
+    }
     let home = dirs::home_dir()?;
 
     if term_lower.contains("kitty") {
@@ -1296,28 +1303,674 @@ pub(crate) fn parse_ghostty_theme(content: &str) -> Option<String> {
     None
 }
 
-/// Parse `theme "<name>"` from a Zellij `~/.config/zellij/config.kdl` file.
+/// Platform rules for Zellij's default config directory search order (`zellij_utils::home`).
+/// Non-host OS variants are constructed by cross-platform unit tests.
 #[allow(dead_code)]
-pub(crate) fn parse_zellij_theme(content: &str) -> Option<String> {
-    for line in content.lines() {
-        let line = line.trim();
-        if line.starts_with("//") || line.starts_with('#') || line.is_empty() {
-            continue;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ZellijConfigPlatform {
+    /// Linux, BSD, and other non-macOS Unix targets:
+    /// `$HOME/.config/zellij` -> `$XDG_CONFIG_HOME/zellij` (`config_dir/zellij`) -> `/etc/zellij`.
+    UnixOther,
+    /// macOS (`target_os = "macos"`):
+    /// `$HOME/.config/zellij` -> `~/Library/Application Support/org.Zellij-Contributors.Zellij` -> `/etc/zellij`.
+    MacOs,
+    /// Windows (`windows`):
+    /// `%APPDATA%\Zellij\config` -> `C:\ProgramData\Zellij`.
+    Windows,
+}
+
+impl ZellijConfigPlatform {
+    const fn current() -> Self {
+        #[cfg(target_os = "macos")]
+        {
+            Self::MacOs
         }
-        if let Some(rest) = line.strip_prefix("theme ") {
-            let val = rest
-                .split("//")
-                .next()
-                .unwrap_or("")
-                .trim()
-                .trim_matches('"')
-                .trim_matches('\'');
-            if !val.is_empty() && !val.contains('{') {
-                return Some(val.to_string());
+        #[cfg(windows)]
+        {
+            Self::Windows
+        }
+        #[cfg(all(not(target_os = "macos"), not(windows)))]
+        {
+            Self::UnixOther
+        }
+    }
+}
+
+/// Builds Zellij's candidate default config directories in exact upstream priority order
+/// (`zellij_utils::home::default_config_dirs`).
+fn default_zellij_config_dirs<E>(
+    platform: ZellijConfigPlatform,
+    env: E,
+    config_dir: Option<&std::path::Path>,
+    home: Option<&std::path::Path>,
+) -> Vec<std::path::PathBuf>
+where
+    E: Fn(&str) -> Option<String>,
+{
+    let mut dirs = Vec::with_capacity(3);
+    let mut push_unique = |candidate: std::path::PathBuf| {
+        if !dirs.contains(&candidate) {
+            dirs.push(candidate);
+        }
+    };
+
+    match platform {
+        ZellijConfigPlatform::UnixOther => {
+            // Zellij checks `home_config_dir()` (`$HOME/.config/zellij`) *before* `xdg_config_dir()`.
+            if let Some(h) = home {
+                push_unique(h.join(".config/zellij"));
             }
+            if let Some(xdg) = env("XDG_CONFIG_HOME")
+                .map(std::path::PathBuf::from)
+                .filter(|p| p.is_absolute())
+            {
+                push_unique(xdg.join("zellij"));
+            } else if let Some(cfg) = config_dir {
+                push_unique(cfg.join("zellij"));
+            }
+            push_unique(std::path::PathBuf::from("/etc/zellij"));
+        }
+        ZellijConfigPlatform::MacOs => {
+            // On macOS, Zellij checks `$HOME/.config/zellij` first, then `directories::ProjectDirs`
+            // (`~/Library/Application Support/org.Zellij-Contributors.Zellij`), then `/etc/zellij`.
+            if let Some(h) = home {
+                push_unique(h.join(".config/zellij"));
+            }
+            if let Some(cfg) = config_dir {
+                push_unique(cfg.join("org.Zellij-Contributors.Zellij"));
+            } else if let Some(h) = home {
+                push_unique(h.join("Library/Application Support/org.Zellij-Contributors.Zellij"));
+            }
+            push_unique(std::path::PathBuf::from("/etc/zellij"));
+        }
+        ZellijConfigPlatform::Windows => {
+            // On Windows, `directories::ProjectDirs::from("", "", "Zellij").config_dir()` resolves
+            // to `%APPDATA%\Zellij\config`, followed by `C:\ProgramData\Zellij`.
+            if let Some(cfg) = config_dir {
+                push_unique(cfg.join("Zellij").join("config"));
+            }
+            push_unique(std::path::PathBuf::from(r"C:\ProgramData\Zellij"));
+        }
+    }
+
+    dirs
+}
+
+/// Resolves and reads the single active Zellij configuration file, matching Zellij's own startup
+/// precedence without falling through across candidate files when the active file omits a key:
+/// 1. `$ZELLIJ_CONFIG_FILE` (if set and non-empty)
+/// 2. `$ZELLIJ_CONFIG_DIR/config.kdl` (if set and non-empty)
+/// 3. `find_default_config_dir()` — stops at the **first existing candidate directory** for the
+///    platform and reads `config.kdl` inside it (returning `None` if that directory has no
+///    `config.kdl`, without consulting lower-priority directories).
+fn read_active_zellij_config_with<E, D, R>(
+    platform: ZellijConfigPlatform,
+    env: E,
+    config_dir: Option<&std::path::Path>,
+    home: Option<&std::path::Path>,
+    mut dir_exists: D,
+    mut read_file: R,
+) -> Option<String>
+where
+    E: Fn(&str) -> Option<String>,
+    D: FnMut(&std::path::Path) -> bool,
+    R: FnMut(&std::path::Path) -> Option<String>,
+{
+    if let Some(file) = env("ZELLIJ_CONFIG_FILE") {
+        if !file.is_empty() {
+            return read_file(std::path::Path::new(&file));
+        }
+    }
+    if let Some(dir) = env("ZELLIJ_CONFIG_DIR") {
+        if !dir.is_empty() {
+            return read_file(&std::path::Path::new(&dir).join("config.kdl"));
+        }
+    }
+    for dir in default_zellij_config_dirs(platform, &env, config_dir, home) {
+        if dir_exists(&dir) {
+            return read_file(&dir.join("config.kdl"));
         }
     }
     None
+}
+
+/// Reads the single active Zellij `config.kdl` from the process environment and filesystem.
+pub(crate) fn read_active_zellij_config(home: Option<&std::path::Path>) -> Option<String> {
+    let cfg_dir = dirs::config_dir();
+    read_active_zellij_config_with(
+        ZellijConfigPlatform::current(),
+        |k| std::env::var(k).ok(),
+        cfg_dir.as_deref(),
+        home,
+        |p| p.exists(),
+        read_bounded_regular_file,
+    )
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum KdlToken {
+    Ident(String),
+    Str(String),
+    Slashdash,
+    LBrace,
+    RBrace,
+    Semi,
+    Newline,
+    Equals,
+}
+
+/// Tokenize a KDL configuration document into structural tokens while stripping `//` line
+/// comments, nestable `/* ... */` block comments, `\` line continuations, and `(type)`
+/// annotations, and decoding `"..."` / `r#"..."#` / `#"..."#` strings.
+fn tokenize_kdl(content: &str) -> Vec<KdlToken> {
+    let bytes = content.as_bytes();
+    let len = bytes.len();
+    let mut tokens = Vec::new();
+    let mut i = 0usize;
+
+    let try_raw_string = |start: usize| -> Option<(String, usize)> {
+        let mut p = start;
+        if bytes.get(p) == Some(&b'r') {
+            p += 1;
+            let hash_start = p;
+            while bytes.get(p) == Some(&b'#') {
+                p += 1;
+            }
+            let hashes = p - hash_start;
+            if bytes.get(p) != Some(&b'"') {
+                return None;
+            }
+            p += 1;
+            let body_start = p;
+            while p < len {
+                if bytes[p] == b'"'
+                    && p + 1 + hashes <= len
+                    && bytes[p + 1..p + 1 + hashes].iter().all(|&b| b == b'#')
+                {
+                    return Some((content[body_start..p].to_string(), p + 1 + hashes));
+                }
+                p += 1;
+            }
+            Some((content[body_start..].to_string(), len))
+        } else if bytes.get(p) == Some(&b'#') {
+            let hash_start = p;
+            while bytes.get(p) == Some(&b'#') {
+                p += 1;
+            }
+            let hashes = p - hash_start;
+            if hashes == 0 || bytes.get(p) != Some(&b'"') {
+                return None;
+            }
+            p += 1;
+            let body_start = p;
+            while p < len {
+                if bytes[p] == b'"'
+                    && p + 1 + hashes <= len
+                    && bytes[p + 1..p + 1 + hashes].iter().all(|&b| b == b'#')
+                {
+                    return Some((content[body_start..p].to_string(), p + 1 + hashes));
+                }
+                p += 1;
+            }
+            Some((content[body_start..].to_string(), len))
+        } else {
+            None
+        }
+    };
+
+    while i < len {
+        match bytes[i] {
+            b' ' | b'\t' => {
+                i += 1;
+            }
+            b'\r' | b'\n' => {
+                if bytes[i] == b'\r' && bytes.get(i + 1) == Some(&b'\n') {
+                    i += 2;
+                } else {
+                    i += 1;
+                }
+                if !matches!(tokens.last(), Some(KdlToken::Newline)) {
+                    tokens.push(KdlToken::Newline);
+                }
+            }
+            b'\\' => {
+                // KDL line continuation: skip horizontal whitespace, optional comment, and newline.
+                let mut p = i + 1;
+                while matches!(bytes.get(p), Some(b' ' | b'\t')) {
+                    p += 1;
+                }
+                if bytes.get(p) == Some(&b'/') && bytes.get(p + 1) == Some(&b'/') {
+                    p += 2;
+                    while p < len && !matches!(bytes[p], b'\r' | b'\n') {
+                        p += 1;
+                    }
+                } else if bytes.get(p) == Some(&b'/') && bytes.get(p + 1) == Some(&b'*') {
+                    let mut depth = 1usize;
+                    p += 2;
+                    while p < len && depth > 0 {
+                        if bytes[p] == b'/' && bytes.get(p + 1) == Some(&b'*') {
+                            depth += 1;
+                            p += 2;
+                        } else if bytes[p] == b'*' && bytes.get(p + 1) == Some(&b'/') {
+                            depth -= 1;
+                            p += 2;
+                        } else {
+                            p += 1;
+                        }
+                    }
+                    while matches!(bytes.get(p), Some(b' ' | b'\t')) {
+                        p += 1;
+                    }
+                }
+                if bytes.get(p) == Some(&b'\r') && bytes.get(p + 1) == Some(&b'\n') {
+                    i = p + 2;
+                } else if matches!(bytes.get(p), Some(b'\r' | b'\n')) {
+                    i = p + 1;
+                } else {
+                    i += 1;
+                }
+            }
+            b'/' if bytes.get(i + 1) == Some(&b'/') => {
+                i += 2;
+                while i < len && !matches!(bytes[i], b'\r' | b'\n') {
+                    i += 1;
+                }
+            }
+            b'/' if bytes.get(i + 1) == Some(&b'*') => {
+                let mut depth = 1usize;
+                i += 2;
+                while i < len && depth > 0 {
+                    if bytes[i] == b'/' && bytes.get(i + 1) == Some(&b'*') {
+                        depth += 1;
+                        i += 2;
+                    } else if bytes[i] == b'*' && bytes.get(i + 1) == Some(&b'/') {
+                        depth -= 1;
+                        i += 2;
+                    } else {
+                        i += 1;
+                    }
+                }
+            }
+            b'/' if bytes.get(i + 1) == Some(&b'-') => {
+                i += 2;
+                tokens.push(KdlToken::Slashdash);
+            }
+            b'(' => {
+                // Skip KDL `(type)` annotation.
+                let mut depth = 1usize;
+                i += 1;
+                while i < len && depth > 0 {
+                    if bytes[i] == b'(' {
+                        depth += 1;
+                    } else if bytes[i] == b')' {
+                        depth -= 1;
+                    }
+                    i += 1;
+                }
+            }
+            b'{' => {
+                i += 1;
+                tokens.push(KdlToken::LBrace);
+            }
+            b'}' => {
+                i += 1;
+                tokens.push(KdlToken::RBrace);
+            }
+            b';' => {
+                i += 1;
+                tokens.push(KdlToken::Semi);
+            }
+            b'=' => {
+                i += 1;
+                tokens.push(KdlToken::Equals);
+            }
+            b'"' => {
+                i += 1;
+                let mut out = String::new();
+                let mut escaped = false;
+                for ch in content[i..].chars() {
+                    i += ch.len_utf8();
+                    if escaped {
+                        match ch {
+                            'n' => out.push('\n'),
+                            'r' => out.push('\r'),
+                            't' => out.push('\t'),
+                            '\\' => out.push('\\'),
+                            '"' => out.push('"'),
+                            '/' => out.push('/'),
+                            other => out.push(other),
+                        }
+                        escaped = false;
+                    } else if ch == '\\' {
+                        escaped = true;
+                    } else if ch == '"' {
+                        break;
+                    } else {
+                        out.push(ch);
+                    }
+                }
+                tokens.push(KdlToken::Str(out));
+            }
+            b'r' | b'#' => {
+                if let Some((raw, next_i)) = try_raw_string(i) {
+                    tokens.push(KdlToken::Str(raw));
+                    i = next_i;
+                    continue;
+                }
+                if bytes[i] == b'#'
+                    && (tokens.is_empty() || matches!(tokens.last(), Some(KdlToken::Newline)))
+                    && matches!(bytes.get(i + 1), None | Some(b' ' | b'\t' | b'\r' | b'\n'))
+                {
+                    while i < len && !matches!(bytes[i], b'\r' | b'\n') {
+                        i += 1;
+                    }
+                    continue;
+                }
+                let start = i;
+                while i < len
+                    && !matches!(
+                        bytes[i],
+                        b' ' | b'\t'
+                            | b'\r'
+                            | b'\n'
+                            | b'{'
+                            | b'}'
+                            | b';'
+                            | b'='
+                            | b'"'
+                            | b'('
+                            | b')'
+                    )
+                    && !(bytes[i] == b'/' && matches!(bytes.get(i + 1), Some(b'/' | b'*')))
+                {
+                    i += 1;
+                }
+                tokens.push(KdlToken::Ident(content[start..i].to_string()));
+            }
+            _ => {
+                let start = i;
+                while i < len
+                    && !matches!(
+                        bytes[i],
+                        b' ' | b'\t'
+                            | b'\r'
+                            | b'\n'
+                            | b'{'
+                            | b'}'
+                            | b';'
+                            | b'='
+                            | b'"'
+                            | b'('
+                            | b')'
+                    )
+                    && !(bytes[i] == b'/' && matches!(bytes.get(i + 1), Some(b'/' | b'*')))
+                {
+                    i += 1;
+                }
+                if i > start {
+                    tokens.push(KdlToken::Ident(content[start..i].to_string()));
+                } else {
+                    i += 1;
+                }
+            }
+        }
+    }
+
+    tokens
+}
+
+/// Skip a `{ ... }` block starting at `tokens[*pos] == KdlToken::LBrace`.
+fn skip_kdl_brace_block(tokens: &[KdlToken], pos: &mut usize) {
+    if !matches!(tokens.get(*pos), Some(KdlToken::LBrace)) {
+        return;
+    }
+    *pos += 1;
+    let mut depth = 1usize;
+    while *pos < tokens.len() && depth > 0 {
+        match tokens[*pos] {
+            KdlToken::LBrace => depth += 1,
+            KdlToken::RBrace => depth -= 1,
+            _ => {}
+        }
+        *pos += 1;
+    }
+}
+
+/// Returns true when `ident` looks like a bare KDL sibling node name rather than a numeric or
+/// boolean/null literal argument.
+fn is_bare_kdl_node_ident(ident: &str) -> bool {
+    ident
+        .bytes()
+        .next()
+        .is_some_and(|b| b.is_ascii_alphabetic() || b == b'_')
+        && !matches!(ident, "true" | "false" | "null")
+}
+
+/// Walk active (non-slashdashed) KDL nodes iteratively, invoking `visit(stack, name, entries,
+/// has_children)` where `stack` holds the enclosing block names from outermost to innermost.
+fn visit_kdl_nodes<F>(content: &str, mut visit: F)
+where
+    F: FnMut(&[String], &str, &[(Option<String>, String)], bool),
+{
+    let tokens = tokenize_kdl(content);
+    let mut stack: Vec<String> = Vec::new();
+    let mut pos = 0usize;
+
+    while pos < tokens.len() {
+        match tokens[pos] {
+            KdlToken::Newline | KdlToken::Semi => {
+                pos += 1;
+                continue;
+            }
+            KdlToken::RBrace => {
+                stack.pop();
+                pos += 1;
+                continue;
+            }
+            _ => {}
+        }
+
+        let mut node_commented = false;
+        while matches!(tokens.get(pos), Some(KdlToken::Slashdash)) {
+            node_commented = true;
+            pos += 1;
+            while matches!(tokens.get(pos), Some(KdlToken::Newline)) {
+                pos += 1;
+            }
+        }
+        if pos >= tokens.len() {
+            break;
+        }
+
+        if matches!(tokens[pos], KdlToken::LBrace) {
+            if node_commented {
+                skip_kdl_brace_block(&tokens, &mut pos);
+            } else {
+                stack.push(String::new());
+                pos += 1;
+            }
+            continue;
+        }
+        if matches!(tokens[pos], KdlToken::RBrace | KdlToken::Semi) {
+            continue;
+        }
+
+        let node_name = match &tokens[pos] {
+            KdlToken::Ident(s) | KdlToken::Str(s) => s.clone(),
+            _ => {
+                pos += 1;
+                continue;
+            }
+        };
+        pos += 1;
+
+        let mut entries: Vec<(Option<String>, String)> = Vec::new();
+        let mut entries_seen = 0usize;
+        let mut has_children = false;
+        let mut enter_children = false;
+
+        while pos < tokens.len() {
+            match &tokens[pos] {
+                KdlToken::Newline | KdlToken::Semi => {
+                    pos += 1;
+                    break;
+                }
+                KdlToken::RBrace => break,
+                KdlToken::LBrace => {
+                    has_children = true;
+                    if node_commented {
+                        skip_kdl_brace_block(&tokens, &mut pos);
+                    } else {
+                        enter_children = true;
+                        pos += 1;
+                    }
+                    break;
+                }
+                KdlToken::Slashdash => {
+                    pos += 1;
+                    while matches!(tokens.get(pos), Some(KdlToken::Newline)) {
+                        pos += 1;
+                    }
+                    if matches!(tokens.get(pos), Some(KdlToken::LBrace)) {
+                        skip_kdl_brace_block(&tokens, &mut pos);
+                    } else if matches!(tokens.get(pos), Some(KdlToken::Ident(_) | KdlToken::Str(_)))
+                        && matches!(tokens.get(pos + 1), Some(KdlToken::Equals))
+                    {
+                        pos += 2;
+                        if matches!(tokens.get(pos), Some(KdlToken::Ident(_) | KdlToken::Str(_))) {
+                            pos += 1;
+                        }
+                    } else if matches!(tokens.get(pos), Some(KdlToken::Ident(_) | KdlToken::Str(_)))
+                    {
+                        pos += 1;
+                    }
+                }
+                KdlToken::Ident(key) | KdlToken::Str(key)
+                    if matches!(tokens.get(pos + 1), Some(KdlToken::Equals)) =>
+                {
+                    let key = key.clone();
+                    pos += 2;
+                    if let Some(KdlToken::Ident(val) | KdlToken::Str(val)) = tokens.get(pos) {
+                        if !node_commented {
+                            entries.push((Some(key), val.clone()));
+                        }
+                        entries_seen += 1;
+                        pos += 1;
+                    }
+                }
+                KdlToken::Ident(ident) if entries_seen >= 1 && is_bare_kdl_node_ident(ident) => {
+                    // Same-line sibling KDL node without an intervening `;` (e.g.
+                    // `terminal { font "JetBrains Mono" font_size 13 }`): finish the current
+                    // node so the outer loop visits `ident` as the next sibling statement.
+                    break;
+                }
+                KdlToken::Ident(val) | KdlToken::Str(val) => {
+                    if !node_commented {
+                        entries.push((None, val.clone()));
+                    }
+                    entries_seen += 1;
+                    pos += 1;
+                }
+                KdlToken::Equals => {
+                    pos += 1;
+                }
+            }
+        }
+
+        if !node_commented {
+            visit(&stack, &node_name, &entries, has_children);
+            if enter_children {
+                stack.push(node_name);
+            }
+        }
+    }
+}
+
+/// Validate a Zellij `font_size` value (positive finite integer or floating-point number).
+fn clean_zellij_font_size(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed
+        .parse::<f32>()
+        .is_ok_and(|n| n.is_finite() && n > 0.0)
+    {
+        Some(trimmed.to_string())
+    } else {
+        None
+    }
+}
+
+/// Parse `font` and `font_size` from the top-level `terminal { ... }` section of a Zellij 0.46+
+/// `config.kdl` file.
+///
+/// Tracks KDL brace depth and `/-` / `/* ... */` / `//` comments so `web_client { ... }`, nested
+/// `terminal { theme { ... } }` blocks, and slashdashed nodes (including `/-` followed by a
+/// newline) are ignored, while supporting both multi-line and single-line `terminal` blocks. When
+/// only `font_size` is set inside `terminal { ... }`, falls back to Zellij's bundled
+/// `Iosevka Term` family.
+pub(crate) fn parse_zellij_font(content: &str) -> Option<String> {
+    let mut family: Option<String> = None;
+    let mut size: Option<String> = None;
+
+    visit_kdl_nodes(content, |stack, name, entries, has_children| {
+        if stack.is_empty() && name == "terminal" {
+            for (prop, val) in entries {
+                match prop.as_deref() {
+                    Some("font") if family.is_none() => {
+                        let clean = val.trim();
+                        if !clean.is_empty() {
+                            family = Some(clean.to_string());
+                        }
+                    }
+                    Some("font_size") if size.is_none() => {
+                        size = clean_zellij_font_size(val);
+                    }
+                    _ => {}
+                }
+            }
+            return;
+        }
+
+        if stack.len() == 1 && stack[0] == "terminal" && !has_children {
+            let first_arg = entries
+                .iter()
+                .find_map(|(k, v)| k.is_none().then_some(v.as_str()));
+            if name == "font" && family.is_none() {
+                if let Some(clean) = first_arg.map(str::trim).filter(|s| !s.is_empty()) {
+                    family = Some(clean.to_string());
+                }
+            } else if name == "font_size" && size.is_none() {
+                if let Some(arg) = first_arg {
+                    size = clean_zellij_font_size(arg);
+                }
+            }
+        }
+    });
+
+    match (family, size) {
+        (Some(f), Some(s)) => Some(format!("{f} ({s})")),
+        (Some(f), None) => Some(f),
+        (None, Some(s)) => Some(format!("Iosevka Term ({s})")),
+        (None, None) => None,
+    }
+}
+
+/// Parse top-level `theme "<name>"` from a Zellij `config.kdl` file.
+pub(crate) fn parse_zellij_theme(content: &str) -> Option<String> {
+    let mut found: Option<String> = None;
+    visit_kdl_nodes(content, |stack, name, entries, has_children| {
+        if found.is_none() && stack.is_empty() && name == "theme" && !has_children {
+            if let Some(val) = entries
+                .iter()
+                .find_map(|(k, v)| k.is_none().then_some(v.as_str()))
+            {
+                let clean = val.trim().trim_matches('\'');
+                if !clean.is_empty() {
+                    found = Some(clean.to_string());
+                }
+            }
+        }
+    });
+    found
 }
 
 pub(crate) fn detect_terminal_theme(terminal: Option<&str>) -> Option<String> {
@@ -1429,13 +2082,8 @@ pub(crate) fn detect_terminal_theme(terminal: Option<&str>) -> Option<String> {
             }
         }
     } else if term_lower.contains("zellij") {
-        if let Some(ref h) = home {
-            let conf_path = h.join(".config/zellij/config.kdl");
-            if let Some(content) = read_bounded_regular_file(&conf_path) {
-                if let Some(theme) = parse_zellij_theme(&content) {
-                    return Some(theme);
-                }
-            }
+        if let Some(content) = read_active_zellij_config(home.as_deref()) {
+            return parse_zellij_theme(&content);
         }
     }
 
@@ -1906,10 +2554,302 @@ theme = catppuccin-mocha
 // Zellij configuration
 theme \"catppuccin-mocha\"
 default_layout \"compact\"
+web_client {
+    font \"monospace\"
+    font_size 14
+}
+terminal {
+    font \"JetBrainsMono Nerd Font\"
+    font_bold \"JetBrainsMono Bold\"
+    font_size 13
+    theme {
+        foreground \"#cdd6f4\"
+        background \"#1e1e2e\"
+    }
+}
 ";
         assert_eq!(
             parse_zellij_theme(zellij_kdl).as_deref(),
             Some("catppuccin-mocha")
+        );
+        assert_eq!(
+            parse_zellij_font(zellij_kdl).as_deref(),
+            Some("JetBrainsMono Nerd Font (13)")
+        );
+
+        // `terminal { theme { ... } }` without a top-level `theme "<name>"` must not misreport `{`.
+        let zellij_nested_theme_only = "\
+terminal {
+    theme {
+        foreground \"#cdd6f4\"
+    }
+    /- font \"Ignored Slashdash\"
+    font \"Fira Code\"; font_size 12.5
+}
+";
+        assert_eq!(parse_zellij_theme(zellij_nested_theme_only), None);
+        assert_eq!(
+            parse_zellij_font(zellij_nested_theme_only).as_deref(),
+            Some("Fira Code (12.5)")
+        );
+
+        // Only `font_size` configured -> Zellij's bundled `Iosevka Term` family.
+        let zellij_size_only = "terminal {\n    font \"\"\n    font_size 15\n}\n";
+        assert_eq!(
+            parse_zellij_font(zellij_size_only).as_deref(),
+            Some("Iosevka Term (15)")
+        );
+
+        // Commented-out default dump (`zellij setup --dump-config`), multi-line `/-` slashdash,
+        // slashdashed `{ ... }` children blocks, nested `/* ... */` block comments, or
+        // `web_client` alone -> None.
+        let zellij_commented = "\
+web_client {
+    font \"monospace\"
+    font_size 14
+}
+// terminal {
+//     font \"Iosevka Term\"
+//     font_size 12
+// }
+/- terminal {
+    font \"Hack\"
+    font_size 16
+}
+/-
+terminal {
+    font \"Cross-Line Slashdash\"
+    font_size 17
+}
+terminal /- {
+    font \"Slashdashed Children\"
+    font_size 18
+}
+/* outer /* nested */ comment
+terminal {
+    font \"Block Commented\"
+    font_size 19
+}
+*/
+/-
+theme \"commented-theme\"
+";
+        assert_eq!(parse_zellij_font(zellij_commented), None);
+        assert_eq!(parse_zellij_theme(zellij_commented), None);
+
+        // Regression for same-line KDL keys, argument-level `/-` slashdash, raw strings, and `\`
+        // line continuations.
+        assert_eq!(
+            parse_zellij_font("terminal { font \"JetBrains Mono\" font_size 13 }\n").as_deref(),
+            Some("JetBrains Mono (13)")
+        );
+        assert_eq!(
+            parse_zellij_font("terminal { font \"JetBrains Mono\"; font_size 13; }\n").as_deref(),
+            Some("JetBrains Mono (13)")
+        );
+        assert_eq!(
+            parse_zellij_font(
+                "terminal \\\n{\n    font /- \"Old\" r#\"Cascadia Code\"#\n    font_size 14\n}\n"
+            )
+            .as_deref(),
+            Some("Cascadia Code (14)")
+        );
+
+        // Regression for Zellij config path order and inactive-config isolation across Linux,
+        // macOS, and Windows (`zellij_utils::home::find_default_config_dir`):
+        // - `$ZELLIJ_CONFIG_FILE` and `$ZELLIJ_CONFIG_DIR` never fall back.
+        // - On both Linux and macOS, `$HOME/.config/zellij` beats `$XDG_CONFIG_HOME/zellij` and
+        //   `~/Library/Application Support/org.Zellij-Contributors.Zellij`, followed by `/etc/zellij`.
+        // - Stopping at the first existing directory means an existing `~/.config/zellij` with no
+        //   `config.kdl` returns `None` instead of reading a lower-priority directory.
+        let win_roaming = std::path::Path::new(r"C:\Users\u\AppData\Roaming");
+        let win_appdata_zellij = win_roaming.join("Zellij").join("config");
+        let win_programdata_zellij = std::path::PathBuf::from(r"C:\ProgramData\Zellij");
+        let files = [
+            (
+                std::path::PathBuf::from("/custom/empty.kdl"),
+                "// active override with no font or theme\ndefault_layout \"compact\"\n",
+            ),
+            (
+                std::path::PathBuf::from("/home/u/.config/zellij/config.kdl"),
+                "theme \"home-theme\"\nterminal { font \"Home Font\" font_size 11 }\n",
+            ),
+            (
+                std::path::PathBuf::from("/Users/u/.config/zellij/config.kdl"),
+                "theme \"mac-home\"\nterminal { font \"JetBrains Mono\" font_size 14 }\n",
+            ),
+            (
+                std::path::PathBuf::from("/xdg/zellij/config.kdl"),
+                "theme \"xdg-theme\"\nterminal { font \"XDG Font\" font_size 12 }\n",
+            ),
+            (
+                std::path::PathBuf::from(
+                    "/Users/u/Library/Application Support/org.Zellij-Contributors.Zellij/config.kdl",
+                ),
+                "theme \"mac-app-support\"\nterminal { font \"SF Mono\" font_size 13 }\n",
+            ),
+            (
+                std::path::PathBuf::from("/etc/zellij/config.kdl"),
+                "theme \"etc-theme\"\nterminal { font \"System Font\" font_size 10 }\n",
+            ),
+            (
+                win_appdata_zellij.join("config.kdl"),
+                "theme \"win-theme\"\nterminal { font \"Cascadia Mono\" font_size 12 }\n",
+            ),
+            (
+                win_programdata_zellij.join("config.kdl"),
+                "theme \"win-system\"\nterminal { font \"Consolas\" font_size 11 }\n",
+            ),
+        ];
+        let reader = |p: &std::path::Path| -> Option<String> {
+            files
+                .iter()
+                .find(|(k, _)| k == p)
+                .map(|(_, v)| (*v).to_string())
+        };
+        let dirs_present = |dirs: &[&str]| {
+            let owned: Vec<std::path::PathBuf> =
+                dirs.iter().map(std::path::PathBuf::from).collect();
+            move |p: &std::path::Path| owned.iter().any(|d| d == p)
+        };
+
+        let via_env_file = read_active_zellij_config_with(
+            ZellijConfigPlatform::UnixOther,
+            env_of(&[("ZELLIJ_CONFIG_FILE", "/custom/empty.kdl")]),
+            Some(std::path::Path::new("/xdg")),
+            Some(std::path::Path::new("/home/u")),
+            dirs_present(&["/home/u/.config/zellij", "/xdg/zellij"]),
+            reader,
+        )
+        .unwrap();
+        assert_eq!(parse_zellij_font(&via_env_file), None);
+        assert_eq!(parse_zellij_theme(&via_env_file), None);
+
+        // Unreadable explicit `ZELLIJ_CONFIG_FILE` must not silently fall back to `~/.config`.
+        assert_eq!(
+            read_active_zellij_config_with(
+                ZellijConfigPlatform::UnixOther,
+                env_of(&[("ZELLIJ_CONFIG_FILE", "/custom/missing.kdl")]),
+                Some(std::path::Path::new("/xdg")),
+                Some(std::path::Path::new("/home/u")),
+                dirs_present(&["/home/u/.config/zellij", "/xdg/zellij"]),
+                reader,
+            ),
+            None
+        );
+
+        // Linux with `XDG_CONFIG_HOME=/xdg`: `$HOME/.config/zellij` still wins when it exists!
+        let linux_home_wins = read_active_zellij_config_with(
+            ZellijConfigPlatform::UnixOther,
+            env_of(&[("XDG_CONFIG_HOME", "/xdg")]),
+            Some(std::path::Path::new("/xdg")),
+            Some(std::path::Path::new("/home/u")),
+            dirs_present(&["/home/u/.config/zellij", "/xdg/zellij", "/etc/zellij"]),
+            reader,
+        )
+        .unwrap();
+        assert_eq!(
+            parse_zellij_font(&linux_home_wins).as_deref(),
+            Some("Home Font (11)")
+        );
+
+        // Linux when `$HOME/.config/zellij` does not exist -> `$XDG_CONFIG_HOME/zellij` is used.
+        let linux_xdg_second = read_active_zellij_config_with(
+            ZellijConfigPlatform::UnixOther,
+            env_of(&[("XDG_CONFIG_HOME", "/xdg")]),
+            Some(std::path::Path::new("/xdg")),
+            Some(std::path::Path::new("/home/u")),
+            dirs_present(&["/xdg/zellij", "/etc/zellij"]),
+            reader,
+        )
+        .unwrap();
+        assert_eq!(
+            parse_zellij_font(&linux_xdg_second).as_deref(),
+            Some("XDG Font (12)")
+        );
+
+        // Existing `~/.config/zellij` directory WITHOUT a `config.kdl` inside it stops directory
+        // discovery (`None`) and must NOT fall through to `/xdg/zellij` or `/etc/zellij`.
+        assert_eq!(
+            read_active_zellij_config_with(
+                ZellijConfigPlatform::UnixOther,
+                env_of(&[("XDG_CONFIG_HOME", "/xdg")]),
+                Some(std::path::Path::new("/xdg")),
+                Some(std::path::Path::new("/home/NoFile")),
+                dirs_present(&["/home/NoFile/.config/zellij", "/xdg/zellij", "/etc/zellij"]),
+                reader,
+            ),
+            None
+        );
+
+        // macOS: `$HOME/.config/zellij` wins over `org.Zellij-Contributors.Zellij`, which wins
+        // over `/etc/zellij`.
+        let mac_home_wins = read_active_zellij_config_with(
+            ZellijConfigPlatform::MacOs,
+            env_of(&[]),
+            Some(std::path::Path::new("/Users/u/Library/Application Support")),
+            Some(std::path::Path::new("/Users/u")),
+            dirs_present(&[
+                "/Users/u/.config/zellij",
+                "/Users/u/Library/Application Support/org.Zellij-Contributors.Zellij",
+                "/etc/zellij",
+            ]),
+            reader,
+        )
+        .unwrap();
+        assert_eq!(
+            parse_zellij_font(&mac_home_wins).as_deref(),
+            Some("JetBrains Mono (14)")
+        );
+
+        let mac_app_support = read_active_zellij_config_with(
+            ZellijConfigPlatform::MacOs,
+            env_of(&[]),
+            Some(std::path::Path::new("/Users/u/Library/Application Support")),
+            Some(std::path::Path::new("/Users/u")),
+            dirs_present(&[
+                "/Users/u/Library/Application Support/org.Zellij-Contributors.Zellij",
+                "/etc/zellij",
+            ]),
+            reader,
+        )
+        .unwrap();
+        assert_eq!(
+            parse_zellij_font(&mac_app_support).as_deref(),
+            Some("SF Mono (13)")
+        );
+        assert_eq!(
+            parse_zellij_theme(&mac_app_support).as_deref(),
+            Some("mac-app-support")
+        );
+
+        // Windows: `%APPDATA%\Zellij\config` first, then `C:\ProgramData\Zellij`.
+        let win_cfg = read_active_zellij_config_with(
+            ZellijConfigPlatform::Windows,
+            env_of(&[]),
+            Some(win_roaming),
+            None,
+            |p| p == win_appdata_zellij || p == win_programdata_zellij,
+            reader,
+        )
+        .unwrap();
+        assert_eq!(
+            parse_zellij_font(&win_cfg).as_deref(),
+            Some("Cascadia Mono (12)")
+        );
+
+        let win_sys = read_active_zellij_config_with(
+            ZellijConfigPlatform::Windows,
+            env_of(&[]),
+            Some(win_roaming),
+            None,
+            |p| p == win_programdata_zellij,
+            reader,
+        )
+        .unwrap();
+        assert_eq!(
+            parse_zellij_font(&win_sys).as_deref(),
+            Some("Consolas (11)")
         );
 
         // Detached multiplexer fallback in resolve_terminal
