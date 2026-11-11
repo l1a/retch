@@ -257,15 +257,341 @@ fn is_rio_terminal() -> bool {
         .unwrap_or(false)
 }
 
+/// Returns true when `ZELLIJ_DESKTOP_TERMINAL` explicitly advertises Zellij's native terminal.
+fn is_zellij_desktop_env() -> bool {
+    std::env::var("ZELLIJ_DESKTOP_TERMINAL")
+        .map(|v| !v.is_empty() && v != "0")
+        .unwrap_or(false)
+}
+
+/// Returns true when running inside a Zellij multiplexer or `zellij terminal` pane.
+///
+/// `zellij terminal` spawns `zellij --server` with `TERM=xterm-256color`, `ZELLIJ=0`,
+/// `ZELLIJ_SESSION_NAME=<name>`, and `ZELLIJ_PANE_ID=<id>` in child panes, while sending
+/// `KittyGraphicsSupport` over its internal client-to-server IPC rather than exporting a
+/// terminal-specific environment variable into child shells.
+fn in_zellij_session() -> bool {
+    ["ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID"]
+        .iter()
+        .any(|var| std::env::var(var).map(|v| !v.is_empty()).unwrap_or(false))
+}
+
+/// Returns true when `buf` contains a complete Primary Device Attributes (`\x1b[?...c`) reply.
+#[cfg(any(unix, test))]
+fn has_primary_da1(buf: &[u8]) -> bool {
+    let mut i = 0;
+    while i + 3 < buf.len() {
+        if buf[i] == 0x1b && buf[i + 1] == b'[' && buf[i + 2] == b'?' {
+            let mut j = i + 3;
+            while j < buf.len() && (0x30..=0x3f).contains(&buf[j]) {
+                j += 1;
+            }
+            while j < buf.len() && (0x20..=0x2f).contains(&buf[j]) {
+                j += 1;
+            }
+            if j < buf.len() && buf[j] == b'c' {
+                return true;
+            }
+        }
+        i += 1;
+    }
+    false
+}
+
+/// Scans `buf` for a complete Kitty graphics APC reply carrying `i=31` (matching our
+/// `KITTY_GRAPHICS_QUERY`) and returns `(is_ok, reply_end)` for the last matching reply.
+///
+/// If an unterminated APC sequence is still streaming in at the tail of `buf`, returns `None`
+/// until its terminator (`ESC \`, `ST`, or `BEL`) arrives.
+#[cfg(any(unix, test))]
+fn find_kitty_query_reply(buf: &[u8]) -> Option<(bool, usize)> {
+    let mut found: Option<(bool, usize)> = None;
+    let mut i = 0;
+    while i + 2 < buf.len() {
+        let apc_body_start =
+            if i + 3 <= buf.len() && buf[i] == 0x1b && buf[i + 1] == b'_' && buf[i + 2] == b'G' {
+                Some(i + 3)
+            } else if buf[i] == 0x9f && buf[i + 1] == b'G' {
+                Some(i + 2)
+            } else {
+                None
+            };
+
+        if let Some(start) = apc_body_start {
+            let mut end = start;
+            let mut term_len = 0usize;
+            while end < buf.len() {
+                if buf[end] == 0x1b && end + 1 < buf.len() && buf[end + 1] == b'\\' {
+                    term_len = 2;
+                    break;
+                }
+                if buf[end] == 0x9c || buf[end] == 0x07 {
+                    term_len = 1;
+                    break;
+                }
+                end += 1;
+            }
+            if term_len == 0 {
+                return None;
+            }
+            let body = &buf[start..end];
+            if let Some(semi) = body.iter().position(|&b| b == b';') {
+                let has_our_id = body[..semi].split(|&b| b == b',').any(|kv| kv == b"i=31");
+                if has_our_id {
+                    let is_ok = &body[semi + 1..] == b"OK";
+                    found = Some((is_ok, end + term_len));
+                }
+            }
+            i = end + term_len;
+        } else {
+            i += 1;
+        }
+    }
+    found
+}
+
+/// Evaluates accumulated bytes from a Kitty graphics query (`a=q,i=31`) followed by Primary DA1
+/// (`\x1b[c`).
+///
+/// Returns `None` until the trailing Primary DA1 (`\x1b[?...c`) barrier has arrived *after* any
+/// `i=31` Kitty APC reply, so the caller never stops reading early on an out-of-order/stale DA1
+/// and never leaves unread reply bytes in the PTY input buffer.
+#[cfg(any(unix, test))]
+fn parse_kitty_query_response(buf: &[u8]) -> Option<bool> {
+    if let Some((is_ok, reply_end)) = find_kitty_query_reply(buf) {
+        if has_primary_da1(&buf[reply_end..]) {
+            Some(is_ok)
+        } else {
+            None
+        }
+    } else if has_primary_da1(buf) {
+        Some(false)
+    } else {
+        None
+    }
+}
+
+/// Outcome of a single non-blocking poll + read iteration on `/dev/tty`.
+#[cfg(any(unix, test))]
+#[derive(Debug)]
+enum TtyPollStep {
+    Data(usize),
+    TimedOut,
+    Closed,
+}
+
+/// Collects terminal query reply bytes until Primary DA1 (`\x1b[?...c`) arrives or the timeout /
+/// byte budget expires.
+///
+/// Uses `initial_timeout` while waiting for the first `ESC` (`0x1b`) byte so non-answering
+/// terminals fail fast, then extends the deadline by `drain_timeout` from the moment `0x1b` is
+/// observed so a Kitty `OK` arriving near `initial_timeout` still drains its trailing Primary DA1
+/// response instead of leaving unread CSI bytes on the PTY. Returns `true` strictly when BOTH the
+/// Kitty `OK` APC reply and the trailing Primary DA1 barrier were consumed.
+#[cfg(any(unix, test))]
+fn collect_kitty_query_reply<E, S>(
+    initial_timeout: std::time::Duration,
+    drain_timeout: std::time::Duration,
+    max_bytes: usize,
+    mut elapsed: E,
+    mut step: S,
+) -> bool
+where
+    E: FnMut() -> std::time::Duration,
+    S: FnMut(std::time::Duration, &mut [u8]) -> TtyPollStep,
+{
+    let mut drain_deadline: Option<std::time::Duration> = None;
+    let mut buf = Vec::with_capacity(128);
+    let mut chunk = [0u8; 128];
+
+    while buf.len() < max_bytes {
+        let now = elapsed();
+        let active_deadline = drain_deadline.unwrap_or(initial_timeout);
+        let Some(remaining) = active_deadline.checked_sub(now) else {
+            break;
+        };
+        if remaining.is_zero() {
+            break;
+        }
+
+        let max_read = chunk.len().min(max_bytes - buf.len());
+        match step(remaining, &mut chunk[..max_read]) {
+            TtyPollStep::Data(0) | TtyPollStep::TimedOut | TtyPollStep::Closed => break,
+            TtyPollStep::Data(n) => {
+                buf.extend_from_slice(&chunk[..n]);
+                if drain_deadline.is_none() && buf.contains(&0x1b) {
+                    drain_deadline = Some(elapsed().saturating_add(drain_timeout));
+                }
+                if let Some(supported) = parse_kitty_query_response(&buf) {
+                    return supported;
+                }
+            }
+        }
+    }
+
+    parse_kitty_query_response(&buf).unwrap_or(false)
+}
+
+/// Probes the controlling terminal for Kitty graphics support via a non-displaying 1×1 query
+/// (`a=q`) paired with Primary DA1 (`\x1b[c`).
+///
+/// Inside Zellij 0.45+ / `zellij terminal` 0.46+, `zellij-server` answers both sequences
+/// synchronously from in-memory pane state (`\x1b_Gi=31;OK\x1b\` when backed by `zellij terminal`
+/// or a Kitty-capable host terminal, `\x1b_Gi=31;ENOTSUPPORTED:...\x1b\` when backed by a
+/// non-Kitty terminal, or DA1 alone when `support_kitty_graphics_protocol` is disabled).
+fn probe_kitty_graphics_tty() -> bool {
+    #[cfg(unix)]
+    {
+        use std::io::{Read, Write};
+        use std::mem::MaybeUninit;
+        use std::os::fd::AsRawFd;
+        use std::os::unix::fs::OpenOptionsExt;
+        use std::time::{Duration, Instant};
+
+        const KITTY_GRAPHICS_QUERY: &[u8] = b"\x1b_Ga=q,i=31,s=1,v=1,t=d,f=24;AAAA\x1b\\\x1b[c";
+        const QUERY_TIMEOUT: Duration = Duration::from_millis(100);
+        const DRAIN_TIMEOUT: Duration = Duration::from_millis(150);
+        const MAX_REPLY_BYTES: usize = 4096;
+
+        struct TermiosGuard {
+            fd: libc::c_int,
+            orig: libc::termios,
+        }
+
+        impl Drop for TermiosGuard {
+            fn drop(&mut self) {
+                // SAFETY: `self.fd` remains open for the lifetime of `tty` below, and `self.orig`
+                // was initialized by a successful `tcgetattr` on the same descriptor.
+                unsafe {
+                    let _ = libc::tcsetattr(self.fd, libc::TCSANOW, &self.orig);
+                }
+            }
+        }
+
+        let Ok(mut tty) = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .custom_flags(libc::O_NOCTTY | libc::O_CLOEXEC)
+            .open("/dev/tty")
+        else {
+            return false;
+        };
+
+        let fd = tty.as_raw_fd();
+
+        // Do not touch termios or read from `/dev/tty` when running in a background process
+        // group; otherwise the kernel would stop the process with SIGTTOU / SIGTTIN.
+        // SAFETY: `tcgetpgrp` and `getpgrp` take an open fd / no args and have no memory hazards.
+        let is_foreground = unsafe {
+            let fg_pgid = libc::tcgetpgrp(fd);
+            fg_pgid > 0 && fg_pgid == libc::getpgrp()
+        };
+        if !is_foreground {
+            return false;
+        }
+
+        // SAFETY: `orig` is zero-initialized and populated by `tcgetattr` before any read of its fields.
+        let mut orig: libc::termios = unsafe { MaybeUninit::zeroed().assume_init() };
+        // SAFETY: `fd` is a valid open TTY descriptor and `orig` points to writable `termios` storage.
+        if unsafe { libc::tcgetattr(fd, &mut orig) } != 0 {
+            return false;
+        }
+
+        let mut raw = orig;
+        raw.c_lflag &= !(libc::ICANON | libc::ECHO);
+        raw.c_cc[libc::VMIN] = 0;
+        raw.c_cc[libc::VTIME] = 0;
+
+        // SAFETY: `fd` is valid and `raw` is derived from `tcgetattr` on `fd`.
+        if unsafe { libc::tcsetattr(fd, libc::TCSANOW, &raw) } != 0 {
+            return false;
+        }
+        let _guard = TermiosGuard { fd, orig };
+
+        // Discard any unread bytes (such as a leftover DA1 reply or typeahead from an earlier
+        // command) sitting in the kernel TTY input queue before sending our own Kitty + DA1 query.
+        // Use `TCSANOW` + `TCIFLUSH` rather than `TCSAFLUSH` so unread slave output never blocks.
+        // SAFETY: `fd` is a valid open TTY descriptor.
+        unsafe {
+            let _ = libc::tcflush(fd, libc::TCIFLUSH);
+        }
+
+        if tty.write_all(KITTY_GRAPHICS_QUERY).is_err() || tty.flush().is_err() {
+            return false;
+        }
+
+        let start = Instant::now();
+        collect_kitty_query_reply(
+            QUERY_TIMEOUT,
+            DRAIN_TIMEOUT,
+            MAX_REPLY_BYTES,
+            || start.elapsed(),
+            |remaining, dst| loop {
+                let timeout_ms =
+                    (remaining.as_millis().min(libc::c_int::MAX as u128) as libc::c_int).max(1);
+                let mut pfd = libc::pollfd {
+                    fd,
+                    events: libc::POLLIN,
+                    revents: 0,
+                };
+                // SAFETY: `pfd` is a valid stack `pollfd` of length 1 referencing open `fd`.
+                let ready = unsafe { libc::poll(&mut pfd, 1, timeout_ms) };
+                if ready < 0 {
+                    if std::io::Error::last_os_error().kind() == std::io::ErrorKind::Interrupted {
+                        continue;
+                    }
+                    return TtyPollStep::Closed;
+                }
+                if ready == 0 || (pfd.revents & libc::POLLIN) == 0 {
+                    return TtyPollStep::TimedOut;
+                }
+                match tty.read(dst) {
+                    Ok(0) => return TtyPollStep::Closed,
+                    Ok(n) => return TtyPollStep::Data(n),
+                    Err(e)
+                        if matches!(
+                            e.kind(),
+                            std::io::ErrorKind::Interrupted | std::io::ErrorKind::WouldBlock
+                        ) =>
+                    {
+                        continue;
+                    }
+                    Err(_) => return TtyPollStep::Closed,
+                }
+            },
+        )
+    }
+
+    #[cfg(not(unix))]
+    {
+        false
+    }
+}
+
+static ZELLIJ_KITTY_SUPPORTED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+
+/// Cached Kitty graphics capability check for the active Zellij session.
+fn zellij_supports_kitty() -> bool {
+    *ZELLIJ_KITTY_SUPPORTED.get_or_init(probe_kitty_graphics_tty)
+}
+
 /// Checks if the terminal supports the Kitty inline image protocol.
 pub fn supports_kitty() -> bool {
-    std::env::var("TERM")
+    if std::env::var("TERM")
         .map(|t| t == "xterm-kitty")
         .unwrap_or(false)
         || std::env::var("TERMINAL_EMULATOR")
             .map(|t| t == "iterm-kitty" || t == "iTerm.app")
             .unwrap_or(false)
         || is_rio_terminal()
+        || is_zellij_desktop_env()
+    {
+        return true;
+    }
+
+    in_zellij_session()
+        && std::io::IsTerminal::is_terminal(&std::io::stdout())
+        && zellij_supports_kitty()
 }
 
 /// Checks if the terminal supports the iTerm2 inline image protocol.
@@ -695,9 +1021,50 @@ pub fn print_iterm2_logo(_image_data: &[u8]) {
     println!("[iTerm2 logo support requires --features graphics]");
 }
 
-/// Renders a raw image buffer using the Kitty graphics protocol.
+/// Maximum base64 payload bytes per Kitty graphics protocol APC chunk.
+#[cfg_attr(not(feature = "graphics"), allow(dead_code))]
+const KITTY_MAX_CHUNK_BYTES: usize = 4096;
+
+/// Formats a base64-encoded Kitty graphics payload into one or more ST-terminated APC chunks.
+///
+/// Payloads up to [`KITTY_MAX_CHUNK_BYTES`] are emitted in a single escape sequence; larger
+/// payloads use `m=1` continuation chunks terminated by a final `m=0` chunk, matching the Kitty
+/// graphics protocol specification and Zellij's `KittyCommandParser`.
+#[cfg_attr(not(feature = "graphics"), allow(dead_code))]
+fn format_kitty_escape_chunks(encoded: &str, params: &str) -> String {
+    if encoded.len() <= KITTY_MAX_CHUNK_BYTES {
+        return format!("\x1b_G{params};{encoded}\x1b\\");
+    }
+
+    let chunks: Vec<&[u8]> = encoded.as_bytes().chunks(KITTY_MAX_CHUNK_BYTES).collect();
+    let last_idx = chunks.len() - 1;
+    let mut out = String::with_capacity(encoded.len() + params.len() + chunks.len() * 14);
+
+    for (idx, chunk) in chunks.into_iter().enumerate() {
+        // Base64 is strictly ASCII, so splitting at any byte offset is a valid UTF-8 boundary.
+        let part = std::str::from_utf8(chunk).unwrap_or("");
+        if idx == 0 {
+            out.push_str("\x1b_G");
+            out.push_str(params);
+            out.push_str(",m=1;");
+        } else if idx == last_idx {
+            out.push_str("\x1b_Gm=0;");
+        } else {
+            out.push_str("\x1b_Gm=1;");
+        }
+        out.push_str(part);
+        out.push_str("\x1b\\");
+    }
+    out
+}
+
+/// Builds the Kitty graphics protocol sequence for `image_data`.
+///
+/// Always includes `q=2` (`quiet=2`) so terminals and multiplexers such as Zellij suppress
+/// `\x1b_Gi=...;OK\x1b\` replies on the PTY. When `suppress_cursor_movement` is true (`C=1`),
+/// the terminal leaves the cursor where it started instead of advancing across the placement.
 #[cfg(feature = "graphics")]
-pub fn print_graphical_logo(image_data: &[u8]) {
+fn encode_kitty_logo(image_data: &[u8], suppress_cursor_movement: bool) -> String {
     use base64::Engine;
 
     let (width, height) = image::load_from_memory(image_data)
@@ -705,20 +1072,39 @@ pub fn print_graphical_logo(image_data: &[u8]) {
         .unwrap_or((0, 0));
 
     let encoded = base64::engine::general_purpose::STANDARD.encode(image_data);
+    let cursor_flag = if suppress_cursor_movement { ",C=1" } else { "" };
 
-    if width > 0 && height > 0 {
+    let params = if width > 0 && height > 0 {
         // Kitty *forces* the image into whatever placement rectangle it is given, so the
         // spec carries only the limiting dimension and lets Kitty derive the other from the
         // image's aspect ratio. The old hardcoded `c=26,r=10` is what squashed the 3.56:1
         // Fedora logo into a roughly 1:1 box.
         let spec = kitty_placement_spec(logo_cells_for(width, height));
-        println!(
-            "\x1b_Gf=100,s={},v={},{},a=T;{}\x1b\\",
-            width, height, spec, encoded
-        );
+        format!("f=100,q=2{cursor_flag},s={width},v={height},{spec},a=T")
     } else {
-        println!("\x1b_Gf=100,a=T;{}", encoded);
-    }
+        format!("f=100,q=2{cursor_flag},a=T")
+    };
+
+    format_kitty_escape_chunks(&encoded, &params)
+}
+
+/// Renders a raw image buffer using the Kitty graphics protocol and advances to the next line.
+#[cfg(feature = "graphics")]
+pub fn print_graphical_logo(image_data: &[u8]) {
+    println!("{}", encode_kitty_logo(image_data, false));
+}
+
+/// Renders a raw image buffer at the current cursor position using the Kitty graphics protocol
+/// with cursor movement suppressed (`C=1`) and no trailing newline.
+///
+/// Used by side-by-side rendering inside `\x1b7`..`\x1b8` where the logo reaches the terminal's
+/// right margin: without `C=1` and without suppressing `println!`, terminals such as Zellij
+/// advance `rows + 1` lines and scroll the viewport by a row before `\x1b8` restores the cursor.
+#[cfg(feature = "graphics")]
+pub fn print_graphical_logo_at_cursor(image_data: &[u8]) {
+    use std::io::Write;
+    print!("{}", encode_kitty_logo(image_data, true));
+    let _ = std::io::stdout().flush();
 }
 
 /// Renders a raw image buffer (e.g. PNG bytes) using the Sixel graphics protocol.
@@ -761,6 +1147,12 @@ pub fn print_sixel_rgba(rgba: &[u8], width: u32, height: u32) {
 #[cfg(not(feature = "graphics"))]
 pub fn print_graphical_logo(_image_data: &[u8]) {
     println!("[Graphical logo support requires --features graphics]");
+}
+
+/// Placeholder for cursor-preserving graphical logo rendering when `graphics` is disabled.
+#[cfg(not(feature = "graphics"))]
+pub fn print_graphical_logo_at_cursor(_image_data: &[u8]) {
+    print!("[Graphical logo support requires --features graphics]");
 }
 
 /// Placeholder for sixel logo rendering when the `graphics` feature is disabled.
@@ -897,7 +1289,21 @@ mod tests {
 
     #[test]
     fn test_supports_kitty_heuristics() {
-        let _guard = EnvGuard::new(&["TERM", "TERMINAL_EMULATOR", "TERM_PROGRAM"]);
+        // Guard and clear all Zellij session variables alongside TERM* so running `cargo test`
+        // inside `zellij terminal` never leaks the host session or probes `/dev/tty`.
+        let _guard = EnvGuard::new(&[
+            "TERM",
+            "TERMINAL_EMULATOR",
+            "TERM_PROGRAM",
+            "ZELLIJ",
+            "ZELLIJ_SESSION_NAME",
+            "ZELLIJ_PANE_ID",
+            "ZELLIJ_DESKTOP_TERMINAL",
+        ]);
+        std::env::remove_var("ZELLIJ");
+        std::env::remove_var("ZELLIJ_SESSION_NAME");
+        std::env::remove_var("ZELLIJ_PANE_ID");
+        std::env::remove_var("ZELLIJ_DESKTOP_TERMINAL");
 
         // Test TERM=xterm-kitty
         std::env::set_var("TERM", "xterm-kitty");
@@ -919,9 +1325,203 @@ mod tests {
         std::env::set_var("TERM_PROGRAM", "rio");
         assert!(supports_kitty());
 
-        // Test clear env -> false
+        // Test ZELLIJ_DESKTOP_TERMINAL=1 vs 0/empty
         std::env::remove_var("TERM_PROGRAM");
+        std::env::set_var("ZELLIJ_DESKTOP_TERMINAL", "1");
+        assert!(supports_kitty());
+        std::env::set_var("ZELLIJ_DESKTOP_TERMINAL", "0");
         assert!(!supports_kitty());
+        std::env::set_var("ZELLIJ_DESKTOP_TERMINAL", "");
+        assert!(!supports_kitty());
+
+        // Test clear env -> false
+        std::env::remove_var("ZELLIJ_DESKTOP_TERMINAL");
+        assert!(!supports_kitty());
+    }
+
+    #[test]
+    fn test_in_zellij_session_env_detection() {
+        let _guard = EnvGuard::new(&["ZELLIJ", "ZELLIJ_SESSION_NAME", "ZELLIJ_PANE_ID"]);
+        std::env::remove_var("ZELLIJ");
+        std::env::remove_var("ZELLIJ_SESSION_NAME");
+        std::env::remove_var("ZELLIJ_PANE_ID");
+        assert!(!in_zellij_session());
+
+        // `zellij terminal` sets ZELLIJ_SESSION_NAME on server spawn and ZELLIJ=0 in panes.
+        std::env::set_var("ZELLIJ", "0");
+        assert!(in_zellij_session());
+
+        std::env::remove_var("ZELLIJ");
+        std::env::set_var("ZELLIJ_SESSION_NAME", "worthy-llama");
+        assert!(in_zellij_session());
+
+        std::env::remove_var("ZELLIJ_SESSION_NAME");
+        std::env::set_var("ZELLIJ_PANE_ID", "0");
+        assert!(in_zellij_session());
+    }
+
+    #[test]
+    fn test_parse_kitty_query_response_waits_for_da1_barrier() {
+        // Incomplete: Kitty OK arrived, but Primary DA1 `\x1b[?...c` has not yet arrived.
+        // Returning `Some(true)` here would leak `62;4;52c` onto the shell prompt.
+        let partial_ok = b"\x1b_Gi=31;OK\x1b\\";
+        assert_eq!(parse_kitty_query_response(partial_ok), None);
+
+        let partial_da1 = b"\x1b_Gi=31;OK\x1b\\\x1b[?62;4";
+        assert_eq!(parse_kitty_query_response(partial_da1), None);
+
+        // Complete: `zellij terminal` 0.46+ / Kitty-backed Zellij 0.45+ reply + DA1.
+        let zellij_ok = b"\x1b_Gi=31;OK\x1b\\\x1b[?62;4;52c";
+        assert_eq!(parse_kitty_query_response(zellij_ok), Some(true));
+
+        // BEL-terminated APC reply + DA1.
+        let bel_ok = b"\x1b_Gi=31;OK\x07\x1b[?62;52c";
+        assert_eq!(parse_kitty_query_response(bel_ok), Some(true));
+
+        // Zellij running inside a non-Kitty terminal (e.g. Foot / Alacritty).
+        let not_supported =
+            b"\x1b_Gi=31;ENOTSUPPORTED:kitty graphics not supported by host terminal\x1b\\\x1b[?62;4;52c";
+        assert_eq!(parse_kitty_query_response(not_supported), Some(false));
+
+        // Older Zellij or `support_kitty_graphics_protocol false`: APC ignored, DA1 answered.
+        let da1_only = b"\x1b[?62;4c";
+        assert_eq!(parse_kitty_query_response(da1_only), Some(false));
+
+        // Foreign APC image id (`i=1;OK`) must not be mistaken for our `i=31` query reply.
+        let foreign_apc = b"\x1b_Gi=1;OK\x1b\\\x1b[?62;4c";
+        assert_eq!(parse_kitty_query_response(foreign_apc), Some(false));
+
+        // A stale DA1 arriving *before* our `i=31;OK` reply must NOT satisfy the trailing barrier;
+        // `parse_kitty_query_response` must keep waiting (`None`) until DA1 arrives *after* `i=31`.
+        let stale_da1_then_ok = b"\x1b[?62;4c\x1b_Gi=31;OK\x1b\\";
+        assert_eq!(parse_kitty_query_response(stale_da1_then_ok), None);
+        let stale_da1_then_ok_and_real_da1 = b"\x1b[?62;4c\x1b_Gi=31;OK\x1b\\\x1b[?62;4;52c";
+        assert_eq!(
+            parse_kitty_query_response(stale_da1_then_ok_and_real_da1),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn test_collect_kitty_query_reply_drains_da1_and_rejects_missing_barrier() {
+        use std::cell::Cell;
+        use std::time::Duration;
+
+        let initial = Duration::from_millis(100);
+        let drain = Duration::from_millis(150);
+
+        // 1. Regression for `Timeout skips DA1 drain`: Kitty `OK` arrives at 98ms (right before
+        // `initial` expires) and Primary DA1 arrives at 115ms. The collector must extend its
+        // deadline by `drain` upon seeing `0x1b`, read through DA1, and return `true`.
+        let clock = Cell::new(Duration::ZERO);
+        let mut call = 0usize;
+        let mut observed_timeouts = Vec::new();
+        let ok_then_late_da1 = collect_kitty_query_reply(
+            initial,
+            drain,
+            4096,
+            || clock.get(),
+            |remaining, dst| {
+                observed_timeouts.push(remaining);
+                call += 1;
+                match call {
+                    1 => {
+                        clock.set(Duration::from_millis(98));
+                        let bytes = b"\x1b_Gi=31;OK\x1b\\";
+                        dst[..bytes.len()].copy_from_slice(bytes);
+                        TtyPollStep::Data(bytes.len())
+                    }
+                    2 => {
+                        clock.set(Duration::from_millis(115));
+                        let bytes = b"\x1b[?62;4;52c";
+                        dst[..bytes.len()].copy_from_slice(bytes);
+                        TtyPollStep::Data(bytes.len())
+                    }
+                    _ => TtyPollStep::Closed,
+                }
+            },
+        );
+        assert!(ok_then_late_da1);
+        assert_eq!(
+            observed_timeouts,
+            vec![Duration::from_millis(100), Duration::from_millis(150)]
+        );
+
+        // 2. If `OK` arrives without a trailing DA1 before timeout or EOF, the collector must
+        // attempt to drain for the full `drain` window and still return `false`.
+        let clock = Cell::new(Duration::ZERO);
+        let mut call = 0usize;
+        let mut drain_poll_seen = false;
+        let ok_without_da1 = collect_kitty_query_reply(
+            initial,
+            drain,
+            4096,
+            || clock.get(),
+            |remaining, dst| {
+                call += 1;
+                match call {
+                    1 => {
+                        clock.set(Duration::from_millis(40));
+                        let bytes = b"\x1b_Gi=31;OK\x1b\\";
+                        dst[..bytes.len()].copy_from_slice(bytes);
+                        TtyPollStep::Data(bytes.len())
+                    }
+                    2 => {
+                        drain_poll_seen = remaining == drain;
+                        clock.set(Duration::from_millis(190));
+                        TtyPollStep::TimedOut
+                    }
+                    _ => TtyPollStep::Closed,
+                }
+            },
+        );
+        assert!(drain_poll_seen, "expected extended drain poll after 0x1b");
+        assert!(!ok_without_da1);
+
+        // 3. Non-answering terminal (no `0x1b` received) stops after `initial` without extending.
+        let clock = Cell::new(Duration::ZERO);
+        let mut polls = 0usize;
+        let silent = collect_kitty_query_reply(
+            initial,
+            drain,
+            4096,
+            || clock.get(),
+            |remaining, _dst| {
+                polls += 1;
+                assert_eq!(remaining, initial);
+                clock.set(initial);
+                TtyPollStep::TimedOut
+            },
+        );
+        assert!(!silent);
+        assert_eq!(polls, 1);
+    }
+
+    #[test]
+    fn test_format_kitty_escape_chunks() {
+        // Small payload (<= 4096 bytes): single chunk, no `m=` key.
+        let single = format_kitty_escape_chunks("QUJDRA==", "f=100,q=2,C=1,c=45,a=T");
+        assert_eq!(single, "\x1b_Gf=100,q=2,C=1,c=45,a=T;QUJDRA==\x1b\\");
+
+        // Exact 4096-byte boundary: still a single chunk.
+        let exact = "A".repeat(KITTY_MAX_CHUNK_BYTES);
+        let exact_out = format_kitty_escape_chunks(&exact, "f=100,q=2,a=T");
+        assert_eq!(exact_out, format!("\x1b_Gf=100,q=2,a=T;{exact}\x1b\\"));
+
+        // Multi-chunk payload (> 4096 bytes): `m=1` on first and middle chunks, `m=0` on last.
+        let payload = format!(
+            "{}{}{}",
+            "A".repeat(KITTY_MAX_CHUNK_BYTES),
+            "B".repeat(KITTY_MAX_CHUNK_BYTES),
+            "CCCC"
+        );
+        let chunked = format_kitty_escape_chunks(&payload, "f=100,q=2,C=1,s=384,v=108,c=45,a=T");
+        let expected = format!(
+            "\x1b_Gf=100,q=2,C=1,s=384,v=108,c=45,a=T,m=1;{}\x1b\\\x1b_Gm=1;{}\x1b\\\x1b_Gm=0;CCCC\x1b\\",
+            "A".repeat(KITTY_MAX_CHUNK_BYTES),
+            "B".repeat(KITTY_MAX_CHUNK_BYTES),
+        );
+        assert_eq!(chunked, expected);
     }
 
     #[test]

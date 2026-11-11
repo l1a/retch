@@ -1570,7 +1570,7 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
                     logo_column,
                     &formatted_info_lines,
                     logo_rows,
-                    || logo::print_graphical_logo(&bytes),
+                    || logo::print_graphical_logo_at_cursor(&bytes),
                 );
             }
             ActiveLogo::Iterm2(bytes, _, logo_rows) => {

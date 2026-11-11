@@ -151,16 +151,42 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.21.5)
+## Current State (v0.21.6)
 
-`main` carries **`retch-cli` 0.21.5** / **`retch-sysinfo` 0.1.107**. Newest released tag is
-**`v0.21.4`**.
+`main` carries **`retch-cli` 0.21.6** / **`retch-sysinfo` 0.1.108**. Newest released tag is
+**`v0.21.5`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.21.6: Zellij desktop terminal (`zellij terminal` 0.46+) Kitty graphics logo rendering and
+  `Terminal Font` KDL config parsing (`src/logo.rs`, `src/display.rs`,
+  `crates/sysinfo/src/terminal.rs`).**
+  - **Kitty graphics detection & placement inside Zellij (`src/logo.rs`, `src/display.rs`):**
+    `zellij terminal` spawns `zellij --server` with `TERM=xterm-256color`, `ZELLIJ=0`, and
+    `ZELLIJ_SESSION_NAME=<name>` in child panes while advertising Kitty graphics capability over
+    internal client-to-server IPC rather than pane environment variables. When inside a Zellij
+    session with a terminal `stdout`, `supports_kitty()` now probes `/dev/tty` once (`OnceLock`)
+    after flushing stale TTY input (`tcflush(TCIFLUSH)`), sending a non-displaying Kitty graphics
+    query (`a=q,i=31`) followed by Primary DA1 (`\x1b[c`), and draining through the trailing
+    `\x1b[?...c` barrier before returning. Kitty logo uploads now emit 4096-byte
+    `m=1`/`m=0` chunks with `q=2` (`quiet=2`), and side-by-side layout calls
+    `print_graphical_logo_at_cursor` (`C=1,q=2`, no trailing newline) so right-margin placements
+    inside `\x1b7`..`\x1b8` do not advance canonical rows and scroll the pane.
+  - **Zellij 0.46 `terminal { font / font_size }` config parsing (`crates/sysinfo/src/terminal.rs`):**
+    `parse_zellij_font()` walks structural KDL tokens (`tokenize_kdl` / `visit_kdl_nodes`,
+    handling same-line sibling keys, `/-` slashdash comments, nested `/* ... */` block comments,
+    and raw strings) so `font` and `font_size` are read strictly from the top-level
+    `terminal { ... }` block (defaulting family to `Iosevka Term` when only `font_size` is
+    configured), and both `detect_terminal_font` and `detect_terminal_theme` resolve only the
+    single active Zellij config via `read_active_zellij_config()` (`$ZELLIJ_CONFIG_FILE`, else
+    `$ZELLIJ_CONFIG_DIR/config.kdl`, else the first existing platform default directory in
+    `~/.config/zellij` -> `$XDG_CONFIG_HOME/zellij` or `~/Library/Application Support/org.Zellij-Contributors.Zellij`
+    -> `/etc/zellij`, or `%APPDATA%\Zellij\config` -> `C:\ProgramData\Zellij` on Windows, without
+    falling through across directories).
 
 - **v0.21.5: Semantic ANSI colorization for percentages, temperatures, and status tokens (`src/display.rs`).**
   - `colorize_field_value()` in `src/display.rs` applies standard SGR foreground colors (`\x1b[32m` green, `\x1b[33m` yellow, `\x1b[31m` red, closed by `\x1b[39m`) to percentages (`CPU Usage`, `Memory Usage`, `Swap`, `Disk` with lower-is-better thresholds `< 50%` / `50..80%` / `>= 80%`; `Battery`, `Wi-Fi`, `Wi-Fi Link`, `Bluetooth`, `Gamepad` with higher-is-better thresholds `>= 50%` / `20..50%` / `< 20%`; `Brightness` and `Audio` in green), temperatures (`Temp` `< 60°C` / `60..80°C` / `>= 80°C`; `Weather` ambient `°C`/`°F`), and state tokens (`Bluetooth` `On`/`Off`, `Battery` `charging`/`full`/`discharging`/`not charging`, `Power Adapter` `connected`/`not connected`/`unknown`, `Player` `Playing`/`Paused`/`Buffering`/`Stopped`, `Zpool` `ONLINE`/`DEGRADED`/`FAULTED`).
