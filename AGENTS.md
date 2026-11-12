@@ -379,10 +379,12 @@ Always run the following `retch` commands with `BypassSandbox: true` on the **fi
   - `just pr` / `PR_CONFIRM=y just pr`, `just open-pr` (in Antigravity's PTY, always pass `--fill` or `--title ... --body-file ...`, e.g. `PR_CONFIRM=y just open-pr --fill`, because `[ -t 0 ]` is true in `run_command` and bare `gh pr create` hangs on an interactive prompt), `just merge-pr`, `just prune-branches`
   - `just audit`, `just publish-check`, `just publish`, `just aur-publish` / `just publish-aur`, `just brew-publish` / `just publish-brew`, `just scoop-publish` / `just publish-scoop`, `just github-metadata`, `just bench-upload`, `just bench-page`
   - `just logos`, `just install-tag`
+- **Workspace-writing `just` recipes (`docs/retch.1`, `Cargo.lock`, `.git/hooks` fail in the sandbox with `Read-only file system (os error 30)`):**
+  - `just man`, `just fmt`, `just fastfetch-configs`, `just install-hooks`, and `just build` / `just test` / `just check` whenever `Cargo.lock` or `target/` needs writes.
 - **Cargo network operations:** `cargo update` (use `cargo --config net.retry=0 update` with `BypassSandbox: true`), `cargo fetch`, `cargo publish`, `cargo audit`, and the first build after `Cargo.lock` updates a crate not yet cached in `~/.cargo/registry/cache/`.
 - **Live `./target/debug/retch` hardware/session probes** when testing fields that query host sockets/devices unmounted in the sandbox (Wayland/X11/DBus/PipeWire/NetworkManager/udev).
 - **Commands that DO work in the sandbox (`BypassSandbox: false`):**
-  - `just build`, `just build-release`, `just test`, `just fmt`, `just fmt-check`, `just lint`, `just clippy`, `just check`, `just man`, `just man-check`, `just packaging-check`, `just standard-check`, `just render-check`, `just aur-check`, `just copr-check`, `just brew-check`, `just scoop-check`, `just metadata-check`, `just text-check`, `just wip-check`, `just bench-check`, `just fastfetch-configs`, `just install-hooks`
+  - Read-only `just` check recipes once `target/` and `Cargo.lock` are up to date: `just fmt-check`, `just man-check`, `just packaging-check`, `just standard-check`, `just render-check`, `just aur-check`, `just copr-check`, `just brew-check`, `just scoop-check`, `just metadata-check`, `just text-check`, `just wip-check`, `just bench-check`
   - Read-only `git` commands: `git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git for-each-ref`
 
 ---
