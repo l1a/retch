@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794517583844,
+  "lastUpdate": 1794517584356,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -24393,6 +24393,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 252774480,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "63327ddf38550d08904964d6f1699aa0b49e5f0f",
+          "message": "Update rustix to 1.1.6 for RUSTSEC-2026-0486 (#331)\n\nUpdate transitive dependency `rustix` (`terminal_size -> rustix`) from\n`1.1.4` to `1.1.6` to resolve `RUSTSEC-2026-0486` (`GHSA-jh2m-fhpj-3vr7`,\nunsoundness in `rustix::fs` extended-attribute functions when passed a\nzero-length buffer).\n\nBump `retch-cli` to `0.21.7`, regenerate `docs/retch.1`, update\n`NOTES.md`, and record workspace-writing `just` recipes under\n`AGENTS.md` §6 (`Sandbox Exceptions`).\n\nCloses #330\n\nAssisted-By: Gemini 4 Argon",
+          "timestamp": "2026-11-12T12:58:30-08:00",
+          "tree_id": "6018256747aa362be25743330986ca728d24d332",
+          "url": "https://github.com/l1a/retch/commit/63327ddf38550d08904964d6f1699aa0b49e5f0f"
+        },
+        "date": 1794517584286,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 31341740,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2362254120,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1291379850,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 14978330.000000002,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 20055230,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 308359890,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 177029910,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 16018240,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 239.9657679543024,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.960134238353239,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 151.15799508343284,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1040.3933897905376,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 31367.51482501174,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 527.5908380403245,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 592.7313256772406,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 287714440,
             "unit": "ns"
           }
         ]
