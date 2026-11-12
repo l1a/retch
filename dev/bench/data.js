@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794436879463,
+  "lastUpdate": 1794517178748,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1584,6 +1584,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 723594856.9000001,
             "extra": "v0.21.6; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "63327ddf38550d08904964d6f1699aa0b49e5f0f",
+          "message": "Update rustix to 1.1.6 for RUSTSEC-2026-0486 (#331)\n\nUpdate transitive dependency `rustix` (`terminal_size -> rustix`) from\n`1.1.4` to `1.1.6` to resolve `RUSTSEC-2026-0486` (`GHSA-jh2m-fhpj-3vr7`,\nunsoundness in `rustix::fs` extended-attribute functions when passed a\nzero-length buffer).\n\nBump `retch-cli` to `0.21.7`, regenerate `docs/retch.1`, update\n`NOTES.md`, and record workspace-writing `just` recipes under\n`AGENTS.md` §6 (`Sandbox Exceptions`).\n\nCloses #330\n\nAssisted-By: Gemini 4 Argon",
+          "timestamp": "2026-11-12T12:58:30-08:00",
+          "tree_id": "6018256747aa362be25743330986ca728d24d332",
+          "url": "https://github.com/l1a/retch/commit/63327ddf38550d08904964d6f1699aa0b49e5f0f"
+        },
+        "date": 1794517178748,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 5010728.899999999,
+            "extra": "v0.21.7; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 10717707.9,
+            "extra": "v0.21.7; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 2407114.1000000006,
+            "extra": "v0.21.7; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 5395842.3,
+            "extra": "v0.21.7; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 219273697.6,
+            "extra": "v0.21.7; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 619444414.7000002,
+            "extra": "v0.21.7; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 1207271267.1,
+            "extra": "v0.21.7; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 1758178496.2,
+            "extra": "v0.21.7; AC"
           }
         ]
       }
