@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794517582053,
+  "lastUpdate": 1794517583298,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -14419,6 +14419,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 239.22181252607106,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "63327ddf38550d08904964d6f1699aa0b49e5f0f",
+          "message": "Update rustix to 1.1.6 for RUSTSEC-2026-0486 (#331)\n\nUpdate transitive dependency `rustix` (`terminal_size -> rustix`) from\n`1.1.4` to `1.1.6` to resolve `RUSTSEC-2026-0486` (`GHSA-jh2m-fhpj-3vr7`,\nunsoundness in `rustix::fs` extended-attribute functions when passed a\nzero-length buffer).\n\nBump `retch-cli` to `0.21.7`, regenerate `docs/retch.1`, update\n`NOTES.md`, and record workspace-writing `just` recipes under\n`AGENTS.md` §6 (`Sandbox Exceptions`).\n\nCloses #330\n\nAssisted-By: Gemini 4 Argon",
+          "timestamp": "2026-11-12T12:58:30-08:00",
+          "tree_id": "6018256747aa362be25743330986ca728d24d332",
+          "url": "https://github.com/l1a/retch/commit/63327ddf38550d08904964d6f1699aa0b49e5f0f"
+        },
+        "date": 1794517583229,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2165753.7000000007,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 271700690.4,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252292696.1,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1320071.4000000004,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3648407.7000000007,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 346419614.0000001,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205218563.9,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2306959.3,
+            "unit": "ns",
+            "extra": "v0.21.7"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 293735186.05,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1008.2378791182075,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 128.67888302518188,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9474285452124582,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 76.15579912393301,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8839.323129107428,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 426065.737121372,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 5621.032342542664,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 3999.536403863808,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 55918.76092749464,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 395.1306546117583,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 254.35137181762897,
             "unit": "ns"
           }
         ]
