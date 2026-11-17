@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794945208160,
+  "lastUpdate": 1794945208444,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -24841,6 +24841,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 287714440,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d0a5f1b9b954b88f8babed2fbd1816a16c6431d1",
+          "message": "Add color config, fields fix, and nix template (#332)\n\n- Add `color` (`\"auto\"` | `\"always\"` | `\"never\"`) to `config.toml` and CLI\n  merge (`--color` > `config.toml` > `auto`) in `src/{cli,config,display,main}.rs`.\n- Handle `TERM=dumb` in `src/{logo,display}.rs` by suppressing colour under\n  `auto` and disabling Kitty/iTerm2/Sixel graphics detection and TTY probes.\n- Consolidate field filtering into `fields::resolve_allowed_fields` so\n  `--fields` filters `--short`, `--long`, and `--full` output while keeping\n  their expanded detail formatting (`src/{fields,display,main}.rs`).\n- Convert `packaging/nixpkgs/package.nix` into a zero-drift `@VERSION@` /\n  `@SRC_HASH@` / `@CARGO_HASH@` template installing committed `docs/retch.1`,\n  override `version` from `Cargo.toml` in `packaging/nixpkgs/test.nix`, add\n  offline `just nix-check` (`scripts/nix_check.py`) wired into\n  `just packaging-check` and `.github/workflows/ci.yml`, add `--target nix`\n  to `scripts/render_packaging.py`, and harden `scripts/calculate_nix_hashes.py`.\n- Bump `retch-cli` to `0.21.8`, regenerate `docs/retch.1`, update\n  `README.md`, `NOTES.md`, `AGENTS.md`, and add unit/CLI integration tests.\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-17T11:38:11-08:00",
+          "tree_id": "6fd5007b618a2b587b13ab1c6a6245444c484b17",
+          "url": "https://github.com/l1a/retch/commit/d0a5f1b9b954b88f8babed2fbd1816a16c6431d1"
+        },
+        "date": 1794945208402,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 27800350,
+            "unit": "ns",
+            "extra": "v0.21.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2348763619.9999995,
+            "unit": "ns",
+            "extra": "v0.21.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1296289150,
+            "unit": "ns",
+            "extra": "v0.21.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 20226270,
+            "unit": "ns",
+            "extra": "v0.21.8"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 24909870.000000004,
+            "unit": "ns",
+            "extra": "v0.21.8"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 403872490,
+            "unit": "ns",
+            "extra": "v0.21.8"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 240537360.00000003,
+            "unit": "ns",
+            "extra": "v0.21.8"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 22147680,
+            "unit": "ns",
+            "extra": "v0.21.8"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 314.1203292341095,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.3510587970530405,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 208.77209784554148,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1388.7764488536702,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 40143.682422869235,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 757.8803880135363,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 805.514550439005,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 373017055,
             "unit": "ns"
           }
         ]
