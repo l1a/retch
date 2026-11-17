@@ -151,9 +151,9 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.21.7)
+## Current State (v0.21.8)
 
-`main` carries **`retch-cli` 0.21.7** / **`retch-sysinfo` 0.1.108**. Newest released tag is
+`main` carries **`retch-cli` 0.21.8** / **`retch-sysinfo` 0.1.108**. Newest released tag is
 **`v0.21.6`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
@@ -161,6 +161,11 @@ deliberately omitted platform-specific items in §6a and §6c). What is open is 
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.21.8: `color` config key & `TERM=dumb`, `--fields` filtering across mode flags, and zero-drift Nixpkgs template (`src/{cli,config,fields,display,logo,main}.rs`, `packaging/nixpkgs/package.nix`, `scripts/{nix_check,render_packaging,calculate_nix_hashes}.py`).**
+  - **`color` in `config.toml` & `TERM=dumb`:** Added `color` (`"auto"` | `"always"` | `"never"`) to `Config`, merged as `cli.color.or(config.color)` so `--color` overrides config and config `always`/`never` overrides `NO_COLOR` and `TERM=dumb`. Under `TERM=dumb`, `logo::is_dumb_term()` suppresses colour under `auto` and disables Kitty/iTerm2/Sixel graphics detection and `/dev/tty` probes.
+  - **`--fields` with `--short`/`--long`/`--full`:** Consolidated field filtering into `fields::resolve_allowed_fields(cli, config)` with precedence `--fields` CLI list > `--short`/`--long`/`--full` mode list > `config.fields` > `Mode::Standard`, so `--fields` filters output while mode flags continue to control detail granularity for `temp`, `disk`, and `net`.
+  - **Zero-drift `packaging/nixpkgs/package.nix`:** Converted `packaging/nixpkgs/package.nix` into a `@VERSION@` / `@SRC_HASH@` / `@CARGO_HASH@` template installing committed `docs/retch.1` via `installManPage`. Added offline `just nix-check` (`scripts/nix_check.py`, wired into `just packaging-check` / `just check`) alongside `--target nix` in `scripts/render_packaging.py` and `--out` support in `scripts/calculate_nix_hashes.py`.
 
 - **v0.21.6: Zellij desktop terminal (`zellij terminal` 0.46+) Kitty graphics logo rendering and
   `Terminal Font` KDL config parsing (`src/logo.rs`, `src/display.rs`,
@@ -1019,8 +1024,6 @@ Recent work worth knowing about, beyond what `git log` says:
   source to stay quiet, because one source lives in the other crate and because `print_line`
   right-aligns the *coloured* label. Without colour the ASCII logo is stripped and Chafa falls
   back to it; Kitty/iTerm2/Sixel images are kept — a picture is not text colour.
-- **Open follow-up from v0.18.0**: a `color` key in `config.toml` (no-color.org permits config
-  to override `NO_COLOR`) and `TERM=dumb` handling.
 
 ---
 
@@ -1096,9 +1099,6 @@ Adds over long:
   or replaced except the temp view.
 - **Alternative considered**: `--verbose` instead of `--full`. Rejected — `--full` reads as the
   natural escalation from `--long`, while `--verbose` implies logging noise rather than breadth.
-- **Known wart, not fixed**: `--long`/`--full` override `--fields` (`retch --long --fields cpu`
-  prints all lines). Pre-existing and out of scope when found; worth a decision, since
-  `--fields` reads as a filter.
 
 ---
 
@@ -1162,13 +1162,6 @@ Live items only. Completed items are removed rather than struck through — `git
   it needs three secrets (crates.io token, AUR SSH key, tap push token) and it trades away a
   human's confirmation before each irreversible public act. That is a decision, not a free win.
   The COPR quarter is already done: `copr.yml` fires on the tag.
-- **`packaging/nixpkgs/package.nix` is the one hand-pinned target**, still at 0.6.12 with
-  `cargoHash = lib.fakeHash`, its CI job `if: false`, and no host in the fleet has Nix. This
-  has been carried for well over a dozen PRs. **It needs a decision — track it properly or stop
-  tracking it — not another carry-forward.**
-- **"Real hardware" benchmark section on the wiki.** The published numbers are CI-runner or
-  local figures, which are noisy and unrepresentative. Document retch-vs-fastfetch timings from
-  actual physical machines with CPU/OS context per run.
 - **homebrew-core submission** remains open and is a separate decision from the tap (which
   shipped in v0.17.2). Its notability bar is comparable to the tldr-pages submission that was
   declined.

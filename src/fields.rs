@@ -359,6 +359,36 @@ pub fn fields_for(mode: Mode) -> Vec<String> {
         .collect()
 }
 
+/// Resolve the active field allow-list from CLI arguments and loaded configuration.
+///
+/// Precedence:
+/// 1. Explicit `--fields` on the command line always wins, even when combined with
+///    `--short`, `--long`, or `--full` (which still control detail level for `temp`,
+///    `disk`, and `net`).
+/// 2. Explicit CLI mode flags (`--full`, `--long`, `--short`) select their stratum,
+///    overriding `fields` in `config.toml`.
+/// 3. `fields` in `config.toml` (when present).
+/// 4. [`Mode::Standard`] default stratum.
+pub fn resolve_allowed_fields(
+    cli: &crate::cli::Cli,
+    config: &crate::config::Config,
+) -> Vec<String> {
+    if let Some(parsed) = cli.parsed_fields() {
+        return parsed.into_iter().map(|s| s.to_lowercase()).collect();
+    }
+    if cli.full {
+        fields_for(Mode::Full)
+    } else if cli.long {
+        fields_for(Mode::Long)
+    } else if cli.short {
+        fields_for(Mode::Short)
+    } else if let Some(fields) = &config.fields {
+        fields.iter().map(|s| s.to_lowercase()).collect()
+    } else {
+        fields_for(Mode::Standard)
+    }
+}
+
 /// Returns every field key, in table order.
 pub fn all_keys() -> Vec<&'static str> {
     FIELDS.iter().map(|f| f.key).collect()
@@ -530,6 +560,62 @@ mod tests {
         assert!(
             !block.contains(",\n# ]"),
             "trailing comma before closing bracket"
+        );
+    }
+
+    #[test]
+    fn test_resolve_allowed_fields_precedence() {
+        use crate::cli::Cli;
+        use crate::config::Config;
+        use clap::Parser;
+
+        let config_with_fields = Config {
+            fields: Some(vec!["OS".to_string(), "Memory".to_string()]),
+            ..Default::default()
+        };
+
+        // 1. Explicit --fields overrides --short, --long, --full, and config.fields.
+        for flag in ["--short", "--long", "--full"] {
+            let cli = Cli::try_parse_from(["retch", flag, "--fields", "CPU, Temp"]).unwrap();
+            let merged = config_with_fields.merge_with_cli(&cli);
+            assert_eq!(
+                resolve_allowed_fields(&cli, &merged),
+                vec!["cpu".to_string(), "temp".to_string()],
+                "{flag} must not override explicit --fields"
+            );
+        }
+
+        // 2. Empty/whitespace-only --fields falls through to the mode flag / config.
+        let cli = Cli::try_parse_from(["retch", "--short", "--fields", " , "]).unwrap();
+        let merged = config_with_fields.merge_with_cli(&cli);
+        assert_eq!(
+            resolve_allowed_fields(&cli, &merged),
+            fields_for(Mode::Short)
+        );
+
+        // 3. Mode flags without --fields override config.fields.
+        for (flag, mode) in [
+            ("--short", Mode::Short),
+            ("--long", Mode::Long),
+            ("--full", Mode::Full),
+        ] {
+            let cli = Cli::try_parse_from(["retch", flag]).unwrap();
+            assert_eq!(
+                resolve_allowed_fields(&cli, &config_with_fields),
+                fields_for(mode),
+                "{flag} should override config.fields"
+            );
+        }
+
+        // 4. Default mode uses config.fields when present, otherwise Mode::Standard.
+        let cli = Cli::try_parse_from(["retch"]).unwrap();
+        assert_eq!(
+            resolve_allowed_fields(&cli, &config_with_fields),
+            vec!["os".to_string(), "memory".to_string()]
+        );
+        assert_eq!(
+            resolve_allowed_fields(&cli, &Config::default()),
+            fields_for(Mode::Standard)
         );
     }
 }

@@ -11,7 +11,7 @@ use retch_cli::cli::{Cli, CompletionShell};
 use retch_cli::config::Config;
 use retch_cli::display;
 use retch_cli::fetch::{CollectOptions, SystemInfo};
-use retch_cli::fields::{self, Mode};
+use retch_cli::fields;
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -157,20 +157,9 @@ fn main() -> anyhow::Result<()> {
     let config = Config::load(cli.config.as_deref())?;
     let config = config.merge_with_cli(&cli);
 
-    // Determine which fields are active to collect only necessary data.
-    // Strata allow-lists are derived from the single field registry (src/fields.rs);
-    // an explicit `config.fields` list bypasses the strata entirely.
-    let allowed_fields = if cli.full {
-        Some(fields::fields_for(Mode::Full))
-    } else if cli.long {
-        Some(fields::fields_for(Mode::Long))
-    } else if cli.short {
-        Some(fields::fields_for(Mode::Short))
-    } else if let Some(fields) = &config.fields {
-        Some(fields.iter().map(|s| s.to_lowercase()).collect())
-    } else {
-        Some(fields::fields_for(Mode::Standard))
-    };
+    // Determine which fields are active to collect only necessary data, using the
+    // single field-precedence helper shared with `display.rs`.
+    let allowed_fields = Some(fields::resolve_allowed_fields(&cli, &config));
 
     // Collect system information
     let info = SystemInfo::collect(CollectOptions {
@@ -206,6 +195,10 @@ fn default_config_content() -> String {
 # Other options: "neutral", "dark", "light", "custom",
 # or popular themes: "catppuccin-mocha", "solarized-dark", etc.
 # theme = "auto"
+
+# When to emit ANSI colour: "auto" (default), "always", or "never".
+# "always" and "never" override the NO_COLOR environment variable.
+# color = "auto"
 
 # Custom theme color overrides (used when theme = "custom" or when partial overrides are provided)
 # Colors can be named (e.g. "bright_cyan") or hex (e.g. "#89b4fa")

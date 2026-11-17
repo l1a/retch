@@ -49,7 +49,7 @@ Licensed **GPL-3.0-or-later**.
   - **Disks & Temp**: Measures active disk mounts (hiding loopback/temporary volumes) and temperature sensors.
   - **Disk & Network Throughput**: `disk-io` and `net-io` rates, measured over the run's own collection window rather than a dedicated sleep (Linux, Windows, macOS).
   - **Graphics APIs**: Vulkan, OpenGL and OpenCL versions from the installed loaders (Linux, Windows, macOS; full mode). Each is simply absent when its loader is not installed.
-  - **Physical Memory (`phys-mem`)**: Per-DIMM type, capacity, and speed via `dmidecode` (Linux, requires root), the IOKit device tree on Apple Silicon (`system_profiler` on Intel Macs), or the SMBIOS table read natively (Windows, no PowerShell and no admin). On Linux, shows the module's actual running speed alongside its rated speed when they differ (e.g. `4800 MT/s (rated 6000 MT/s)`, as when XMP/EXPO isn't enabled).
+  - **Physical Memory (`phys-mem`)**: Per-DIMM type, capacity, and speed unprivileged via `/run/udev/data/+dmi:id` with `dmidecode` as root fallback on Linux, the IOKit device tree on Apple Silicon (`system_profiler` on Intel Macs), or the SMBIOS table read natively (Windows, no PowerShell and no admin). On Linux, shows the module's actual running speed alongside its rated speed when they differ (e.g. `4800 MT/s (rated 6000 MT/s)`, as when XMP/EXPO isn't enabled).
 - **Advanced Networking & Wireless**:
   - **Network Interfaces**: Outputs IPv4 & IPv6 addresses for active interfaces.
   - **Wi-Fi**: Details SSID, band frequency, channel, link rates (RX/TX on Linux, TX-only on macOS), adapter hardware, and Wi-Fi 7 Multi-Link Operation (MLO) bands.
@@ -189,7 +189,7 @@ programs.retch.settings = {
 };
 ```
 
-*(Nixpkgs package derivation expression is available in [packaging/nixpkgs](packaging/nixpkgs/package.nix)).*
+*(Nixpkgs package derivation template is available in [packaging/nixpkgs](packaging/nixpkgs/package.nix) and rendered at release time via `scripts/render_packaging.py --target nix` or `scripts/calculate_nix_hashes.py`).*
 
 ### From source
 
@@ -240,14 +240,16 @@ retch --long    # diagnostics: CPU usage, firmware, thermals, shell, network, ba
 retch --full    # everything: theme, gamepad, weather, FUSE mounts, all sensors
 ```
 
+Combine any mode with `--fields` to filter output while keeping that mode's detail level (for example `retch --long --fields temp,disk,net`).
+
 Force the ASCII logo (even where graphical logos are supported):
 
 ```sh
 retch --ascii-logo
 ```
 
-Colour is used only when stdout is a terminal and `NO_COLOR` is unset, so piped output is plain.
-Force it either way:
+Colour is used only when stdout is a terminal, `NO_COLOR` is unset or empty, and `TERM` is not `dumb` (unless overridden in `config.toml` via `color = "always"` / `"never"`), so piped or dumb-terminal output is plain.
+Force it on the command line either way:
 
 ```sh
 retch --color always | less -R
@@ -291,11 +293,11 @@ RETCH_TIMING=1 retch --long >/dev/null
 
 | | Field |
 |---|---|
-| **Root only** | `phys-mem` (reads the DMI tables, mode `0400 root`); the snapshot count in `btrfs` (`btrfs subvolume list -s`) |
+| **Root (or udev)** | `phys-mem` reads `/run/udev/data/+dmi:id` unprivileged on systemd/udev Linux, falling back to `dmidecode` (`/sys/firmware/dmi/tables/DMI`, mode `0400 root`) as root; the snapshot count in `btrfs` (`btrfs subvolume list -s`) needs root |
 | **User only** | `editor` (`$VISUAL`/`$EDITOR`), `desktop` and `wm` (`XDG_CURRENT_DESKTOP` and friends) |
 
-Everything else is identical either way, so run retch normally unless you specifically want
-the DIMM breakdown or btrfs snapshot counts.
+Everything else is identical either way, so run retch normally unless you specifically need
+the `dmidecode` fallback or btrfs snapshot counts.
 
 ## Shell Completions
 
@@ -361,6 +363,10 @@ Here is an example of the settings you can configure in `config.toml`:
 # "catppuccin-latte", "catppuccin-frappe", "catppuccin-macchiato", "catppuccin-mocha",
 # "solarized-dark", "solarized-light".
 theme = "auto"
+
+# When to use colour: "auto" (default), "always", or "never".
+# Overrides NO_COLOR and TERM=dumb; overridden by --color.
+# color = "auto"
 
 # Whether to show the distribution ASCII/graphical logo
 show_logo = true

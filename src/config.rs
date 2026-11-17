@@ -17,6 +17,8 @@ use std::path::PathBuf;
 pub struct Config {
     /// The name of the theme to use (e.g., "dark", "catppuccin-mocha").
     pub theme: Option<String>,
+    /// When to emit ANSI colour: "auto", "always", or "never".
+    pub color: Option<crate::cli::ColorChoice>,
     /// Whether to display the distro logo.
     pub show_logo: Option<bool>,
     /// Whether to force ASCII-only logo output.
@@ -120,6 +122,9 @@ impl Config {
         if let Some(theme) = &cli.theme {
             merged.theme = Some(theme.clone());
         }
+        if let Some(color) = cli.color {
+            merged.color = Some(color);
+        }
         if cli.no_logo {
             merged.show_logo = Some(false);
         }
@@ -132,13 +137,7 @@ impl Config {
         if let Some(logo) = &cli.logo {
             merged.logo = Some(logo.clone());
         }
-        if let Some(fields_str) = &cli.fields {
-            // Split comma-separated string into Vec<String>
-            let fields = fields_str
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect::<Vec<String>>();
+        if let Some(fields) = cli.parsed_fields() {
             merged.fields = Some(fields);
         }
         if let Some(loc) = &cli.weather_location {
@@ -166,6 +165,7 @@ impl Config {
 
         let checks = [
             ("theme", DEFAULT_THEME_BLOCK),
+            ("color", DEFAULT_COLOR_BLOCK),
             ("show_logo", DEFAULT_SHOW_LOGO_BLOCK),
             ("ascii_only", DEFAULT_ASCII_ONLY_BLOCK),
             ("chafa", DEFAULT_CHAFA_BLOCK),
@@ -205,6 +205,10 @@ const DEFAULT_THEME_BLOCK: &str = r##"# Theme to use. Defaults to "auto" (follow
 # Other options: "neutral", "dark", "light", "custom",
 # or popular themes: "catppuccin-mocha", "solarized-dark", etc.
 # theme = "auto""##;
+
+const DEFAULT_COLOR_BLOCK: &str = r##"# When to emit ANSI colour: "auto" (default), "always", or "never".
+# "always" and "never" override the NO_COLOR environment variable.
+# color = "auto""##;
 
 const DEFAULT_CUSTOM_THEME_BLOCK: &str = r##"# Custom theme color overrides (used when theme = "custom" or when partial overrides are provided)
 # Colors can be named (e.g. "bright_cyan") or hex (e.g. "#89b4fa")
@@ -277,13 +281,24 @@ mod tests {
 
     #[test]
     fn test_config_merge_with_cli() {
+        use crate::cli::ColorChoice;
         let config = Config {
             theme: Some("dark".to_string()),
+            color: Some(ColorChoice::Always),
             show_logo: Some(true),
             ascii_only: Some(false),
             fields: Some(vec!["os".to_string(), "kernel".to_string()]),
             ..Default::default()
         };
+
+        // Test color override and preservation
+        let cli = Cli::try_parse_from(["retch"]).unwrap();
+        let merged = config.merge_with_cli(&cli);
+        assert_eq!(merged.color, Some(ColorChoice::Always));
+
+        let cli = Cli::try_parse_from(["retch", "--color", "never"]).unwrap();
+        let merged = config.merge_with_cli(&cli);
+        assert_eq!(merged.color, Some(ColorChoice::Never));
 
         // Test theme override
         let cli = Cli::try_parse_from(["retch", "--theme", "light"]).unwrap();
@@ -359,7 +374,7 @@ mod tests {
 
     #[test]
     fn test_merge_defaults_all_present() {
-        let existing = "theme = \"dark\"\nshow_logo = true\nascii_only = false\nchafa = false\nlogo = \"fedora\"\nfields = [\"os\"]\nweather_location = \"London\"\nweather_unit = \"fahrenheit\"\n[custom_theme]\nlabel_color = \"red\"\n";
+        let existing = "theme = \"dark\"\ncolor = \"auto\"\nshow_logo = true\nascii_only = false\nchafa = false\nlogo = \"fedora\"\nfields = [\"os\"]\nweather_location = \"London\"\nweather_unit = \"fahrenheit\"\n[custom_theme]\nlabel_color = \"red\"\n";
         let (merged, additions) = Config::merge_defaults(existing);
         assert!(additions.is_empty());
         assert_eq!(merged.trim(), existing.trim());
@@ -367,7 +382,7 @@ mod tests {
 
     #[test]
     fn test_merge_defaults_commented_ignored() {
-        let existing = "# theme = \"auto\"\n# show_logo = true\n# ascii_only = false\n# chafa = false\n# logo = \"arch\"\n# fields = []\n# weather_location = \"\"\n# weather_unit = \"fahrenheit\"\n# [custom_theme]\n";
+        let existing = "# theme = \"auto\"\n# color = \"auto\"\n# show_logo = true\n# ascii_only = false\n# chafa = false\n# logo = \"arch\"\n# fields = []\n# weather_location = \"\"\n# weather_unit = \"fahrenheit\"\n# [custom_theme]\n";
         let (merged, additions) = Config::merge_defaults(existing);
         assert!(additions.is_empty());
         assert_eq!(merged.trim(), existing.trim());
@@ -380,6 +395,7 @@ mod tests {
         assert_eq!(
             additions,
             vec![
+                "color",
                 "show_logo",
                 "ascii_only",
                 "chafa",
@@ -391,12 +407,27 @@ mod tests {
             ]
         );
         assert!(merged.contains("theme = \"light\""));
+        assert!(merged.contains("color = \"auto\""));
         assert!(merged.contains("show_logo = true"));
         assert!(merged.contains("ascii_only = false"));
         assert!(merged.contains("chafa = false"));
         assert!(merged.contains("logo = \"arch\""));
         assert!(merged.contains("fields = ["));
         assert!(merged.contains("[custom_theme]"));
+    }
+
+    #[test]
+    fn test_config_color_parsing() {
+        use crate::cli::ColorChoice;
+        for (raw, expected) in [
+            ("color = \"auto\"\n", ColorChoice::Auto),
+            ("color = \"always\"\n", ColorChoice::Always),
+            ("color = \"never\"\n", ColorChoice::Never),
+        ] {
+            let cfg: Config = toml::from_str(raw).unwrap();
+            assert_eq!(cfg.color, Some(expected), "failed for {raw:?}");
+        }
+        assert!(toml::from_str::<Config>("color = \"bogus\"\n").is_err());
     }
 
     #[test]

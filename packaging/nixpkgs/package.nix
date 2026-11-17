@@ -3,46 +3,35 @@
 , fetchFromGitHub
 , pkg-config
 , installShellFiles
-, mandown
 }:
 
+# TEMPLATE — do not write a concrete version or hash into this file.
+#
+# Like packaging/{aur,copr,homebrew,scoop}, this derivation records no released version
+# and no checksum in the repository. `scripts/render_packaging.py --target nix` and
+# `scripts/calculate_nix_hashes.py` substitute the sentinel placeholders for `version`,
+# `src.hash` and `cargoHash` at release time, and `just nix-check` (`scripts/nix_check.py`)
+# asserts the template stays unpinned on every `just check`.
 rustPlatform.buildRustPackage rec {
   pname = "retch";
-  version = "0.6.12";
+  version = "@VERSION@";
 
   src = fetchFromGitHub {
     owner = "l1a";
     repo = "retch";
     rev = "v${version}";
-    # Computed by the release CI's nix-prefetch-url on the v0.6.12 tarball, independently
-    # of the substitution bug described below, so this value is trustworthy.
-    hash = "sha256-08nsxpti3GNFsK8zv2tQ+6iMQrgGBRnwzjG8nTOIM1g=";
+    hash = "@SRC_HASH@";
   };
 
-  # Deliberately left as the placeholder: the v0.6.12 release notes' cargoHash is WRONG.
-  # calculate_nix_hashes.py only substituted `lib.fakeHash`, so once this file held literal
-  # hashes the temp build silently kept the previous release's values, failed on a
-  # source-hash mismatch instead of the intended cargoHash mismatch, and the old lenient
-  # parser reported that stale source hash as the cargoHash — which is why the published
-  # v0.6.12 cargoHash equals v0.6.8's `hash`. Both defects are fixed in that script now, but
-  # the correct value cannot be recomputed without Nix (unavailable on the current dev box).
-  # Run `just nix-update` on a machine with Nix to fill this in.
-  cargoHash = lib.fakeHash;
+  cargoHash = "@CARGO_HASH@";
 
   nativeBuildInputs = [
     pkg-config
     installShellFiles
-    mandown
   ];
 
-  postBuild = ''
-    # Generate man page
-    DATE="June 2026"
-    mandown docs/retch.1.md RETCH 1 | sed -e 's/\\fB\\fB/\\fB/g' -e 's/\\fP\\fP/\\fP/g' -e "s/\\.TH \"RETCH\" 1/\\.TH \"RETCH\" \"1\" \"$DATE\" \"retch ${version}\" \"System Information Fetcher\"/" > docs/retch.1
-  '';
-
   postInstall = ''
-    # Install man page
+    # Install the committed man page from the release tarball (verified by `just man-check`)
     installManPage docs/retch.1
 
     # Generate and install shell completions

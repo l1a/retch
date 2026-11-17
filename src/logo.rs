@@ -575,8 +575,22 @@ fn zellij_supports_kitty() -> bool {
     *ZELLIJ_KITTY_SUPPORTED.get_or_init(probe_kitty_graphics_tty)
 }
 
+/// Returns true when `$TERM` is `"dumb"` (ASCII case-insensitive).
+///
+/// Dumb terminals (e.g. Emacs `M-x shell` / `eshell` or non-ANSI automation harnesses)
+/// do not interpret cursor positioning, inline graphics protocols, or `/dev/tty` DA1 queries.
+pub fn is_dumb_term(term: Option<&std::ffi::OsStr>) -> bool {
+    term.and_then(|t| t.to_str())
+        .map(|t| t.eq_ignore_ascii_case("dumb"))
+        .unwrap_or(false)
+}
+
 /// Checks if the terminal supports the Kitty inline image protocol.
 pub fn supports_kitty() -> bool {
+    if is_dumb_term(std::env::var_os("TERM").as_deref()) {
+        return false;
+    }
+
     if std::env::var("TERM")
         .map(|t| t == "xterm-kitty")
         .unwrap_or(false)
@@ -596,6 +610,10 @@ pub fn supports_kitty() -> bool {
 
 /// Checks if the terminal supports the iTerm2 inline image protocol.
 pub fn supports_iterm2() -> bool {
+    if is_dumb_term(std::env::var_os("TERM").as_deref()) {
+        return false;
+    }
+
     if let Ok(prog) = std::env::var("TERM_PROGRAM") {
         if prog == "iTerm.app" || prog == "WezTerm" {
             return true;
@@ -606,6 +624,10 @@ pub fn supports_iterm2() -> bool {
 
 /// Checks if the terminal supports Sixel graphics (heuristic based on environment).
 pub fn supports_sixel() -> bool {
+    if is_dumb_term(std::env::var_os("TERM").as_deref()) {
+        return false;
+    }
+
     if let Ok(term) = std::env::var("TERM") {
         let term = term.to_lowercase();
         if term.contains("sixel") || term.contains("foot") || term.contains("mlterm") {
@@ -1874,5 +1896,38 @@ mod tests {
         // Chafa and the graphical protocols must budget the same footprint.
         assert_eq!(chafa_size_arg(), format!("{LOGO_MAX_COLS}x{LOGO_MAX_ROWS}"));
         assert_eq!(chafa_size_arg(), "45x10");
+    }
+
+    #[test]
+    fn test_is_dumb_term() {
+        use std::ffi::OsStr;
+        assert!(is_dumb_term(Some(OsStr::new("dumb"))));
+        assert!(is_dumb_term(Some(OsStr::new("DUMB"))));
+        assert!(!is_dumb_term(Some(OsStr::new("xterm-256color"))));
+        assert!(!is_dumb_term(Some(OsStr::new(""))));
+        assert!(!is_dumb_term(None));
+    }
+
+    #[test]
+    fn test_dumb_term_disables_graphics_protocols() {
+        let _guard = EnvGuard::new(&[
+            "TERM",
+            "TERMINAL_EMULATOR",
+            "TERM_PROGRAM",
+            "WT_SESSION",
+            "ZELLIJ",
+            "ZELLIJ_SESSION_NAME",
+            "ZELLIJ_PANE_ID",
+            "ZELLIJ_DESKTOP_TERMINAL",
+        ]);
+        std::env::set_var("TERM", "dumb");
+        std::env::set_var("TERM_PROGRAM", "rio");
+        std::env::set_var("TERMINAL_EMULATOR", "iterm-kitty");
+        std::env::set_var("WT_SESSION", "active");
+        std::env::set_var("ZELLIJ_DESKTOP_TERMINAL", "1");
+
+        assert!(!supports_kitty());
+        assert!(!supports_iterm2());
+        assert!(!supports_sixel());
     }
 }

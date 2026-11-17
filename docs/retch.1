@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "" "retch 0.21.7" "System Information Fetcher"
+.TH "RETCH" "1" "" "retch 0.21.8" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -43,7 +43,7 @@ Disable the logo entirely\.
 .RE
 \fB\-\-color\fP \fIWHEN\fP
 .RS
-When to use colour: `\f[CR]auto\fP` (the default), `\f[CR]always\fP` or `\f[CR]never\fP`\. `\f[CR]auto\fP` colours only when stdout is a terminal and `\f[CR]NO_COLOR\fP` is unset or empty\. See \fBCOLOR\fP\.
+When to use colour: `\f[CR]auto\fP`, `\f[CR]always\fP` or `\f[CR]never\fP` (default: `\f[CR]color\fP` in \fIconfig\.toml\fP, or `\f[CR]auto\fP`)\. Under `\f[CR]auto\fP`, colour is enabled only when stdout is a terminal, `\f[CR]NO_COLOR\fP` is unset or empty, and `\f[CR]TERM\fP` is not `\f[CR]dumb\fP`\. See \fBCOLOR\fP\.
 .RE
 \fB\-\-logo\fP \fILOGO\fP
 .RS
@@ -87,7 +87,7 @@ Merge default configuration settings (as comments) into an existing config file 
 .RE
 \fB\-\-fields\fP \fIFIELDS\fP
 .RS
-Comma\-separated list of fields to display, overriding the config file's default list\.
+Comma\-separated list of fields to display, overriding \fIconfig\.toml\fP's default list and filtering `\f[CR]\-\-short\fP`, `\f[CR]\-\-long\fP` and `\f[CR]\-\-full\fP` output to the listed fields while preserving their expanded detail formatting\.
 .RE
 \fB\-s, \-\-short\fP
 .RS
@@ -151,6 +151,8 @@ retch \-\-write\-config
 .RS
 .IP \(bu 4
 \fBtheme\fP: Theme name to use\. (default: `\f[CR]"auto"\fP`)\.
+.IP \(bu 4
+\fBcolor\fP: When to use colour: `\f[CR]"auto"\fP` (default), `\f[CR]"always"\fP`, or `\f[CR]"never"\fP`\. Overrides `\f[CR]NO_COLOR\fP` and `\f[CR]TERM=dumb\fP`, and is overridden by `\f[CR]\-\-color\fP`\. See \fBCOLOR\fP\.
 .IP \(bu 4
 \fBshow_logo\fP: Boolean indicating whether to show the logo (default: `\f[CR]true\fP`)\.
 .IP \(bu 4
@@ -223,7 +225,7 @@ Sixel and Chafa output, but not in ASCII mode\.
 .IP \(bu 4
 `\f[CR]memory\fP`: System RAM usage and capacity\.
 .IP \(bu 4
-`\f[CR]phys\-mem\fP`: Physical RAM slot details \-\- type (DDR5, LPDDR5, etc\.), speed, and per\-slot capacity\. On Linux, shows the module's actual running speed alongside its rated speed when they differ (e\.g\. `\f[CR]4800 MT/s (rated 6000 MT/s)\fP`, as when XMP/EXPO isn't enabled), parsed from dmidecode's "Configured Memory Speed"\. Requires root (`\f[CR]sudo\fP`) to read DMI memory tables via `\f[CR]dmidecode\fP`\. On Windows, reads the SMBIOS table natively via `\f[CR]GetSystemFirmwareTable\fP`; no PowerShell and no elevation\.
+`\f[CR]phys\-mem\fP`: Physical RAM slot details \-\- type (DDR5, LPDDR5, etc\.), speed, and per\-slot capacity\. On Linux, reads `\f[CR]/run/udev/data/+dmi:id\fP` unprivileged first and falls back to `\f[CR]dmidecode\fP` as root (`\f[CR]sudo\fP`) when udev DMI memory properties are absent; shows the module's actual running speed alongside its rated speed when they differ (e\.g\. `\f[CR]4800 MT/s (rated 6000 MT/s)\fP`, as when XMP/EXPO isn't enabled)\. On Windows, reads the SMBIOS table natively via `\f[CR]GetSystemFirmwareTable\fP`; no PowerShell and no elevation\. On macOS, reads the I/O Registry natively\.
 .IP \(bu 4
 `\f[CR]swap\fP`: System SWAP usage and capacity\.
 .IP \(bu 4
@@ -340,17 +342,17 @@ accent_color = "bright_green"
 
 .SH "COLOR"
 .PP
-By default (`\f[CR]\-\-color auto\fP`) \fBretch\fP colours its output only when stdout is a terminal, so
-piped or redirected output is plain text\. Setting the `\f[CR]NO_COLOR\fP` environment variable to any
-non\-empty value turns colour off as well, following https://no\-color\.org\.
-.PP
-`\f[CR]\-\-color always\fP` and `\f[CR]\-\-color never\fP` override both\. `\f[CR]always\fP` keeps colour in a pipe, e\.g\.
-`\f[CR]retch \-\-color always | less \-R\fP`\.
+By default (`\f[CR]color = "auto"\fP` / `\f[CR]\-\-color auto\fP`) \fBretch\fP colours its output only when stdout
+is a terminal, `\f[CR]NO_COLOR\fP` is unset or empty (following https://no\-color\.org), and `\f[CR]TERM\fP` is
+not `\f[CR]dumb\fP`\. Setting `\f[CR]color = "always"\fP` or `\f[CR]"never"\fP` in \fIconfig\.toml\fP overrides both `\f[CR]NO_COLOR\fP`
+and `\f[CR]TERM=dumb\fP`, and passing `\f[CR]\-\-color\fP` on the command line overrides \fIconfig\.toml\fP\. `\f[CR]always\fP`
+keeps colour in a pipe, e\.g\. `\f[CR]retch \-\-color always | less \-R\fP`\.
 .PP
 With colour off, the ASCII logo is printed without colour, and a Chafa logo (whose symbols
 only make sense in colour) falls back to the ASCII one\. Kitty, iTerm2 and Sixel image logos
-are pictures rather than coloured text, so they are still shown\. `\f[CR]\-\-print\-logos\fP` is a logo
-showcase and always prints in colour\.
+are pictures rather than coloured text, so they still appear under `\f[CR]\-\-color never\fP` or
+`\f[CR]NO_COLOR\fP`, whereas `\f[CR]TERM=dumb\fP` suppresses graphical terminal probes and image logos
+completely\. `\f[CR]\-\-print\-logos\fP` is a logo showcase and always prints in colour\.
 
 .SH "LOGOS"
 .PP
@@ -398,10 +400,10 @@ than reported as zero, so a missing line never reads as an idle device\.
 Running \fBretch\fP under \fBsudo\fP(8) exchanges one set of fields for another rather than
 simply adding to them, because sudo's default `\f[CR]env_reset\fP` clears most of the environment\.
 .PP
-Available only as root:
+Root\-privileged or enriched as root:
 .RS
 .IP \(bu 4
-`\f[CR]phys\-mem\fP` \-\- the per\-DIMM breakdown reads the DMI tables (`\f[CR]/sys/firmware/dmi/tables/DMI\fP`, mode 0400)\.
+`\f[CR]phys\-mem\fP` \-\- reads `\f[CR]/run/udev/data/+dmi:id\fP` unprivileged on systemd/udev hosts when populated; falls back to `\f[CR]dmidecode\fP` (reading `\f[CR]/sys/firmware/dmi/tables/DMI\fP`, mode 0400) as root when udev DMI memory properties are unavailable\.
 .IP \(bu 4
 `\f[CR]btrfs\fP` \-\- the snapshot count requires `\f[CR]btrfs subvolume list \-s\fP`\. It is omitted, never shown as zero, when it cannot be read\.
 .RE
@@ -419,7 +421,11 @@ All other fields are identical either way\.
 .SH "ENVIRONMENT"
 \fBNO_COLOR\fP
 .RS
-When set to a non\-empty value, `\f[CR]\-\-color auto\fP` produces no colour\. See \fBCOLOR\fP\.
+When set to a non\-empty value, `\f[CR]auto\fP` colour produces no colour\. Overridden by `\f[CR]color\fP` in \fIconfig\.toml\fP and by `\f[CR]\-\-color always\fP`\. See \fBCOLOR\fP\.
+.RE
+\fBTERM\fP
+.RS
+When set to `\f[CR]dumb\fP`, `\f[CR]auto\fP` colour produces no colour and graphical logo protocols (Kitty, iTerm2, Sixel) and terminal queries are disabled\. Colour under `\f[CR]TERM=dumb\fP` can still be forced via `\f[CR]color = "always"\fP` or `\f[CR]\-\-color always\fP`\. See \fBCOLOR\fP\.
 .RE
 \fBRETCH_TIMING\fP
 .RS

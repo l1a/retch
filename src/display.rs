@@ -8,7 +8,7 @@
 use crate::cli::{Cli, ColorChoice};
 use crate::config::Config;
 use crate::fetch::SystemInfo;
-use crate::fields::{self, Mode};
+use crate::fields;
 use crate::logo;
 use crate::theme::{colorize_nested, Theme, ACTIVE_IFACE_PREFIX};
 use retch_sysinfo::network::NetworkInterface;
@@ -51,22 +51,26 @@ fn wants_ascii_logo(cli_ascii_logo: bool, config_ascii_only: Option<bool>) -> bo
 
 /// Decide whether to emit ANSI colour.
 ///
-/// `--color=always` and `--color=never` are final. Otherwise (the flag omitted, or `auto`)
-/// colour needs a terminal on stdout and a `NO_COLOR` that is unset or empty — the
-/// no-color.org rule is "present and not an empty string", so `NO_COLOR=` keeps colour on.
+/// `always` and `never` (from `--color` or `config.toml`'s `color` key, with CLI taking
+/// precedence) are final. Otherwise (`auto` or omitted), colour needs a terminal on stdout,
+/// `$TERM` not equal to `dumb`, and `NO_COLOR` unset or empty — the no-color.org rule is
+/// "present and not an empty string", so `NO_COLOR=` keeps colour on.
 ///
 /// Before this existed retch coloured unconditionally, piped or not, which is why the
 /// Homebrew formula's test had to strip escapes itself before matching `OS:`.
 fn should_use_color(
     choice: Option<ColorChoice>,
     no_color: Option<&std::ffi::OsStr>,
+    term: Option<&std::ffi::OsStr>,
     stdout_is_tty: bool,
 ) -> bool {
     match choice {
         Some(ColorChoice::Always) => true,
         Some(ColorChoice::Never) => false,
         Some(ColorChoice::Auto) | None => {
-            stdout_is_tty && no_color.map(|v| v.is_empty()).unwrap_or(true)
+            stdout_is_tty
+                && !logo::is_dumb_term(term)
+                && no_color.map(|v| v.is_empty()).unwrap_or(true)
         }
     }
 }
@@ -1005,9 +1009,11 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     // Use isatty() directly — terminal_size() can return Some() when a pager
     // (e.g. bat) allocates a PTY, giving a false positive.
     let stdout_is_tty = std::io::IsTerminal::is_terminal(&std::io::stdout());
+    let color_choice = cli.color.or(_config.color);
     let use_color = should_use_color(
-        cli.color,
+        color_choice,
         std::env::var_os("NO_COLOR").as_deref(),
+        std::env::var_os("TERM").as_deref(),
         stdout_is_tty,
     );
 
@@ -1018,21 +1024,9 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         stdout_is_tty,
     );
 
-    // Determine which fields to show. Strata allow-lists are derived from the
-    // single field registry (src/fields.rs) — the same source `main.rs` uses for
-    // collection, so display and collection can no longer drift apart. An explicit
-    // `config.fields` list bypasses the strata.
-    let allowed_fields: Option<Vec<String>> = if cli.full {
-        Some(fields::fields_for(Mode::Full))
-    } else if cli.long {
-        Some(fields::fields_for(Mode::Long))
-    } else if cli.short {
-        Some(fields::fields_for(Mode::Short))
-    } else if let Some(fields) = &_config.fields {
-        Some(fields.iter().map(|s| s.to_lowercase()).collect())
-    } else {
-        Some(fields::fields_for(Mode::Standard))
-    };
+    // Determine which fields to show using the shared precedence helper (`src/fields.rs`)
+    // so collection (`main.rs`) and display stay in sync.
+    let allowed_fields: Option<Vec<String>> = Some(fields::resolve_allowed_fields(cli, _config));
 
     let should_show = |label: &str| -> bool {
         match &allowed_fields {
@@ -2394,28 +2388,53 @@ mod tests {
     #[test]
     fn test_should_use_color_explicit_choice_beats_everything() {
         let set = Some(std::ffi::OsStr::new("1"));
+        let dumb = Some(std::ffi::OsStr::new("dumb"));
+        let xterm = Some(std::ffi::OsStr::new("xterm-256color"));
         for tty in [true, false] {
             for env in [None, set] {
-                assert!(should_use_color(Some(ColorChoice::Always), env, tty));
-                assert!(!should_use_color(Some(ColorChoice::Never), env, tty));
+                for term in [None, xterm, dumb] {
+                    assert!(should_use_color(Some(ColorChoice::Always), env, term, tty));
+                    assert!(!should_use_color(Some(ColorChoice::Never), env, term, tty));
+                }
             }
         }
     }
 
     #[test]
     fn test_should_use_color_auto_needs_tty_and_no_no_color() {
+        let xterm = Some(std::ffi::OsStr::new("xterm-256color"));
         for choice in [None, Some(ColorChoice::Auto)] {
-            assert!(should_use_color(choice, None, true));
-            assert!(!should_use_color(choice, None, false), "piped output");
+            assert!(should_use_color(choice, None, xterm, true));
             assert!(
-                !should_use_color(choice, Some(std::ffi::OsStr::new("1")), true),
+                !should_use_color(choice, None, xterm, false),
+                "piped output"
+            );
+            assert!(
+                !should_use_color(choice, Some(std::ffi::OsStr::new("1")), xterm, true),
                 "NO_COLOR set"
             );
             // no-color.org: "present and not an empty string". An empty value is not a
             // request, so colour stays on.
             assert!(
-                should_use_color(choice, Some(std::ffi::OsStr::new("")), true),
+                should_use_color(choice, Some(std::ffi::OsStr::new("")), xterm, true),
                 "NO_COLOR empty"
+            );
+        }
+    }
+
+    #[test]
+    fn test_should_use_color_dumb_term_disables_auto_color() {
+        for dumb in ["dumb", "DUMB"] {
+            let term = Some(std::ffi::OsStr::new(dumb));
+            for choice in [None, Some(ColorChoice::Auto)] {
+                assert!(
+                    !should_use_color(choice, None, term, true),
+                    "TERM={dumb} must disable colour in auto mode"
+                );
+            }
+            assert!(
+                should_use_color(Some(ColorChoice::Always), None, term, true),
+                "always overrides TERM={dumb}"
             );
         }
     }
