@@ -40,6 +40,9 @@ jobs:
           python3 scripts/brew_check.py
           python3 scripts/scoop_check.py --self-test
           python3 scripts/scoop_check.py
+          python3 scripts/nix_check.py --self-test
+          python3 scripts/nix_check.py
+          python3 scripts/calculate_nix_hashes.py --self-test
           python3 scripts/metadata_check.py --self-test
           python3 scripts/metadata_check.py
           python3 scripts/text_check.py --self-test

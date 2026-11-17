@@ -83,7 +83,7 @@ pub struct Cli {
     #[arg(long)]
     pub merge_config: bool,
 
-    /// Fields to display (comma separated). Overrides config
+    /// Fields to display (comma separated). Filters output mode and overrides config
     #[arg(long)]
     pub fields: Option<String>,
 
@@ -99,20 +99,37 @@ pub struct Cli {
     #[arg(long, value_enum)]
     pub completions: Option<CompletionShell>,
 
-    /// When to use colour: "auto" (a terminal, and NO_COLOR unset), "always" or "never"
+    /// When to use colour: "auto" (a non-dumb terminal, and NO_COLOR unset), "always" or "never". Overrides config
     #[arg(long, value_enum, value_name = "WHEN")]
     pub color: Option<ColorChoice>,
 }
 
-/// When to emit ANSI colour, from `--color`.
+impl Cli {
+    /// Parses the comma-separated `--fields` argument into trimmed, non-empty field names.
+    ///
+    /// Returns `None` when `--fields` was omitted or contained only separators/whitespace.
+    pub fn parsed_fields(&self) -> Option<Vec<String>> {
+        let fields_str = self.fields.as_deref()?;
+        let parsed: Vec<String> = fields_str
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        (!parsed.is_empty()).then_some(parsed)
+    }
+}
+
+/// When to emit ANSI colour, from `--color` or `config.toml`'s `color` key.
 ///
-/// Omitting the flag is the same as `auto`. Only `always` and `never` override the
-/// `NO_COLOR` environment variable, because `auto` means "decide from the environment".
-#[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
+/// Omitting both is the same as `auto`. Only `always` and `never` override the
+/// `NO_COLOR` environment variable and `TERM=dumb`, because `auto` means "decide from the
+/// environment".
+#[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum ColorChoice {
-    /// Colour when stdout is a terminal and `NO_COLOR` is unset or empty.
+    /// Colour when stdout is a terminal, `TERM` is not `dumb`, and `NO_COLOR` is unset or empty.
     Auto,
-    /// Always colour, even when piped or when `NO_COLOR` is set.
+    /// Always colour, even when piped, `TERM=dumb`, or `NO_COLOR` is set.
     Always,
     /// Never colour.
     Never,

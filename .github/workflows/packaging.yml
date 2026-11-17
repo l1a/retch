@@ -31,6 +31,7 @@ on:
       # whether a packaging file may be committed, it WRITES the files that get published to
       # the AUR, COPR and the Homebrew tap. `scripts/*_check.py` does not match it.
       - 'scripts/render_packaging.py'
+      - 'scripts/calculate_nix_hashes.py'
       # .copr/Makefile is what GENERATES the SRPM, and until v0.9.10 no PR-triggered
       # workflow watched it: copr.yml watches '.copr/**' but only on push to main, so a PR
       # touching only that file got no packaging verification whatsoever. That is not

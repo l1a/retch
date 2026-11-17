@@ -2,36 +2,44 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Ken Tobias
 
+import argparse
 import os
-import sys
 import re
 import shutil
-import urllib.request
 import subprocess
+import sys
 import tempfile
-import base64
-import codecs
 import time
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+PACKAGE_NIX = REPO / "packaging" / "nixpkgs" / "package.nix"
+
+
+class AnchorError(ValueError):
+    """Raised when a required Nix assignment anchor is missing from package.nix."""
+
 
 def to_sri(hash_str):
     # Run nix hash to-sri to convert hash format to SRI
     res = run_cmd(["nix", "hash", "to-sri", "--type", "sha256", hash_str.strip()])
     return res.stdout.strip()
 
+
 def substitute_package_nix(content, version, src_hash, cargo_hash):
     """Return `package.nix` content with version/hash/cargoHash replaced.
 
-    Each pattern matches BOTH the `lib.fakeHash` placeholder and an already-filled
-    `"sha256-..."` literal, and both hash patterns are line-anchored so `hash` can never
-    match the tail of `cargoHash`.
+    Each pattern matches BOTH template sentinels (`"@VERSION@"`, `"@SRC_HASH@"`,
+    `"@CARGO_HASH@"`), `lib.fakeHash`, and an already-filled `"sha256-..."` literal,
+    and both hash patterns are line-anchored so `hash` can never match `cargoHash`.
 
     This matters: the original version matched only `lib.fakeHash`, so once package.nix
     had been filled in with real values every substitution silently became a no-op. The
     temp build then still carried the *previous release's* hashes, failed on a source-hash
     mismatch instead of the intended cargoHash mismatch, and the caller reported that stale
     source hash as the new cargoHash — which is how v0.6.12 shipped a `cargoHash` equal to
-    v0.6.8's `hash`. A substitution that matches nothing is now a hard error rather than a
-    silent stale build.
+    v0.6.8's `hash`. A substitution that matches nothing now raises `AnchorError` rather
+    than leaving a silent stale build.
     """
     hash_value = r'(?:lib\.fakeHash|"[^"]*")'
     substitutions = (
@@ -46,12 +54,10 @@ def substitute_package_nix(content, version, src_hash, cargo_hash):
     for label, pattern, replacement in substitutions:
         content, count = re.subn(pattern, replacement, content)
         if count == 0:
-            print(
-                f"Error: no '{label}' assignment found in packaging/nixpkgs/package.nix; "
-                "the substitution anchors are out of date.",
-                file=sys.stderr,
+            raise AnchorError(
+                f"no '{label}' assignment found in packaging/nixpkgs/package.nix; "
+                "the substitution anchors are out of date."
             )
-            sys.exit(1)
     return content
 
 
@@ -93,22 +99,95 @@ def run_cmd(cmd, check=True):
         sys.exit(res.returncode)
     return res
 
+def _self_test() -> int:
+    failures: list[str] = []
+
+    def check(name: str, cond: bool, detail: str = "") -> None:
+        if not cond:
+            failures.append(f"{name}: {detail}")
+
+    if not PACKAGE_NIX.is_file():
+        print(f"Error: {PACKAGE_NIX} does not exist", file=sys.stderr)
+        return 1
+
+    template = PACKAGE_NIX.read_text(encoding="utf-8")
+    src1 = "sha256-08nsxpti3GNFsK8zv2tQ+6iMQrgGBRnwzjG8nTOIM1g="
+    cargo1 = "sha256-19otxpti3GNFsK8zv2tQ+6iMQrgGBRnwzjG8nTOIM2h="
+    src2 = "sha256-20puxpti3GNFsK8zv2tQ+6iMQrgGBRnwzjG8nTOIM3i="
+    cargo2 = "sha256-31qvxpti3GNFsK8zv2tQ+6iMQrgGBRnwzjG8nTOIM4j="
+
+    rendered1 = substitute_package_nix(template, "1.2.3", src1, cargo1)
+    check("first render version", '  version = "1.2.3";' in rendered1, rendered1)
+    check("first render src hash", f'    hash = "{src1}";' in rendered1, rendered1)
+    check("first render cargoHash", f'  cargoHash = "{cargo1}";' in rendered1, rendered1)
+    check("first render no sentinels", "@VERSION@" not in rendered1 and "@SRC_HASH@" not in rendered1 and "@CARGO_HASH@" not in rendered1, rendered1)
+
+    rendered2 = substitute_package_nix(rendered1, "1.2.4", src2, cargo2)
+    check("second render version", '  version = "1.2.4";' in rendered2, rendered2)
+    check("second render src hash", f'    hash = "{src2}";' in rendered2, rendered2)
+    check("second render cargoHash", f'  cargoHash = "{cargo2}";' in rendered2, rendered2)
+
+    try:
+        substitute_package_nix(template.replace('  version = "@VERSION@";\n', ""), "1.2.3", src1, cargo1)
+        check("missing version anchor raises", False, "substitute_package_nix did not raise AnchorError")
+    except AnchorError:
+        pass
+
+    dummy_sri = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    good_err = (
+        "error: hash mismatch in fixed-output derivation '/nix/store/...-retch-1.2.3-vendor.drv':\n"
+        f"         specified: {dummy_sri}\n"
+        f"            got:    {cargo1}\n"
+    )
+    check(
+        "extract_cargo_hash matches valid mismatch",
+        extract_cargo_hash(good_err, dummy_sri) == cargo1,
+        f"got {extract_cargo_hash(good_err, dummy_sri)!r}",
+    )
+
+    unrelated_err = (
+        "error: hash mismatch in fixed-output derivation '/nix/store/...-source.drv':\n"
+        f"         specified: {src1}\n"
+        f"            got:    {src2}\n"
+    )
+    check(
+        "extract_cargo_hash refuses unrelated source mismatch",
+        extract_cargo_hash(unrelated_err, dummy_sri) is None,
+        f"got {extract_cargo_hash(unrelated_err, dummy_sri)!r}",
+    )
+
+    if failures:
+        for f in failures:
+            print(f"  FAIL {f}", file=sys.stderr)
+        print(f"calculate_nix_hashes.py self-test FAILED ({len(failures)})", file=sys.stderr)
+        return 1
+    print("calculate_nix_hashes.py self-test passed")
+    return 0
+
+
 def main():
+    ap = argparse.ArgumentParser(description="Calculate Nixpkgs source and Cargo vendor hashes for retch.")
+    ap.add_argument("version", nargs="?", help="Release version (default: GITHUB_REF_NAME or Cargo.toml)")
+    ap.add_argument("--out", help="Write rendered package.nix to this path when running locally")
+    ap.add_argument("--self-test", action="store_true", help="Run offline built-in self-tests and exit")
+    args = ap.parse_args()
+
+    if args.self_test:
+        sys.exit(_self_test())
+
     if not shutil.which("nix-prefetch-url"):
         print("Error: nix-prefetch-url is not installed or not in PATH.", file=sys.stderr)
         print("Please install Nix to use this script.", file=sys.stderr)
         sys.exit(1)
 
     # 1. Determine version
-    version = None
-    if len(sys.argv) > 1:
-        version = sys.argv[1]
-    elif "GITHUB_REF_NAME" in os.environ and os.environ["GITHUB_REF_NAME"].startswith("v"):
+    version = args.version
+    if not version and "GITHUB_REF_NAME" in os.environ and os.environ["GITHUB_REF_NAME"].startswith("v"):
         version = os.environ["GITHUB_REF_NAME"][1:]
-    else:
+    if not version:
         # Read from Cargo.toml
         try:
-            with open("Cargo.toml", "r") as f:
+            with open(REPO / "Cargo.toml", "r", encoding="utf-8") as f:
                 for line in f:
                     if line.startswith("version ="):
                         version = line.split("=")[1].strip().replace('"', '')
@@ -147,16 +226,18 @@ def main():
     print("Calculating cargo vendor hash...")
     with tempfile.TemporaryDirectory() as tmpdir:
         temp_package = os.path.join(tmpdir, "package.nix")
-        
-        # Read the current package.nix
-        with open("packaging/nixpkgs/package.nix", "r") as f:
-            content = f.read()
+
+        orig_content = PACKAGE_NIX.read_text(encoding="utf-8")
 
         # Use dummy valid SRI hash to trigger cargoHash mismatch
         dummy_sri = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-        content = substitute_package_nix(content, version, src_hash_sri, dummy_sri)
+        try:
+            content = substitute_package_nix(orig_content, version, src_hash_sri, dummy_sri)
+        except AnchorError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            sys.exit(1)
 
-        with open(temp_package, "w") as f:
+        with open(temp_package, "w", encoding="utf-8", newline="\n") as f:
             f.write(content)
 
         # Run nix-build to trigger hash mismatch error
@@ -180,35 +261,32 @@ def main():
 
         print(f"Cargo Hash: {cargo_hash}")
 
-        # 4. Update the package.nix file in-place if running locally
+        # 4. Print output block and optionally write a rendered file (without dirtying the template)
+        print("\n" + "="*40)
+        print("NIXPKGS PACKAGE SNIPPET FOR RELEASE NOTES")
+        print("="*40)
+        print(f"version = \"{version}\";")
+        print(f"hash = \"{src_hash_sri}\";")
+        print(f"cargoHash = \"{cargo_hash}\";")
+        print("="*40 + "\n")
+
         if "GITHUB_ACTIONS" not in os.environ:
-            print("Updating packaging/nixpkgs/package.nix in-place...")
-            with open("packaging/nixpkgs/package.nix", "r") as f:
-                orig_content = f.read()
-
-            # Same anchors as the temp build — see substitute_package_nix. This branch had
-            # the identical `lib.fakeHash`-only bug, so a second local run silently left the
-            # previous release's hashes in place.
-            new_content = substitute_package_nix(
-                orig_content, version, src_hash_sri, cargo_hash
-            )
-
-            with open("packaging/nixpkgs/package.nix", "w") as f:
-                f.write(new_content)
-            print("Successfully updated package.nix!")
+            if args.out:
+                try:
+                    new_content = substitute_package_nix(
+                        orig_content, version, src_hash_sri, cargo_hash
+                    )
+                except AnchorError as exc:
+                    print(f"Error: {exc}", file=sys.stderr)
+                    sys.exit(1)
+                out_path = Path(args.out)
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                out_path.write_text(new_content, encoding="utf-8", newline="\n")
+                print(f"Wrote rendered package.nix to {out_path}")
         else:
-            # Print output block for CI release notes
-            print("\n" + "="*40)
-            print("NIXPKGS PACKAGE SNIPPET FOR RELEASE NOTES")
-            print("="*40)
-            print(f"version = \"{version}\";")
-            print(f"hash = \"{src_hash_sri}\";")
-            print(f"cargoHash = \"{cargo_hash}\";")
-            print("="*40 + "\n")
-
             # Write values to GitHub output if running in Github Actions
             if "GITHUB_OUTPUT" in os.environ:
-                with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
                     f.write(f"version={version}\n")
                     f.write(f"src_hash={src_hash_sri}\n")
                     f.write(f"cargo_hash={cargo_hash}\n")

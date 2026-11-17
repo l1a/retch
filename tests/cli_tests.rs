@@ -82,6 +82,7 @@ fn test_cli_generate_config() {
     assert!(success);
     assert!(stderr.is_empty());
     assert!(stdout.contains("# Theme to use"));
+    assert!(stdout.contains("# color = \"auto\""));
     assert!(stdout.contains("# show_logo = true"));
 }
 
@@ -353,4 +354,121 @@ fn test_host_is_listed_first() {
             "expected Host before OS for {args:?} (host at {host}, os at {os})"
         );
     }
+}
+
+#[test]
+fn test_cli_fields_filters_long_and_full_modes() {
+    for mode_flag in ["--long", "--full"] {
+        let (stdout, stderr, success) = run_retch(&[mode_flag, "--fields", "os", "--no-logo"]);
+        assert!(
+            success,
+            "retch {mode_flag} --fields os failed: stderr={stderr}"
+        );
+        let plain = strip_ansi(&stdout);
+        assert!(
+            plain.contains("OS:"),
+            "expected OS line for {mode_flag} --fields os: {plain:?}"
+        );
+        assert!(
+            !plain.contains("Host:") && !plain.contains("Kernel:"),
+            "{mode_flag} leaked unfiltered fields with --fields os: {plain:?}"
+        );
+    }
+}
+
+#[test]
+fn test_config_color_and_dumb_term() {
+    struct TempFile(std::path::PathBuf);
+    impl Drop for TempFile {
+        fn drop(&mut self) {
+            let _ = fs::remove_file(&self.0);
+        }
+    }
+
+    let always_cfg = TempFile(
+        std::env::temp_dir().join(format!("retch_color_always_{}.toml", std::process::id())),
+    );
+    fs::write(&always_cfg.0, "color = \"always\"\n").unwrap();
+    let always_path = always_cfg.0.to_str().unwrap();
+
+    let run_with = |args: &[&str], no_color: Option<&str>, term: Option<&str>| -> String {
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_retch"));
+        cmd.args(args);
+        match no_color {
+            Some(v) => cmd.env("NO_COLOR", v),
+            None => cmd.env_remove("NO_COLOR"),
+        };
+        match term {
+            Some(v) => cmd.env("TERM", v),
+            None => cmd.env_remove("TERM"),
+        };
+        let out = cmd.output().expect("Failed to execute retch binary");
+        assert!(
+            out.status.success(),
+            "retch {args:?} failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    };
+
+    // `color = "always"` in config.toml forces colour into a pipe and overrides NO_COLOR + TERM=dumb.
+    let forced = run_with(
+        &["--config", always_path, "--fields", "os", "--no-logo"],
+        Some("1"),
+        Some("dumb"),
+    );
+    assert!(
+        forced.contains('\x1b'),
+        "config color=always must emit ANSI escapes: {forced:?}"
+    );
+    assert!(forced.contains("OS"), "{forced:?}");
+
+    // CLI `--color=never` overrides `color = "always"` in config.toml.
+    let cli_never = run_with(
+        &[
+            "--config",
+            always_path,
+            "--color=never",
+            "--fields",
+            "os",
+            "--no-logo",
+        ],
+        None,
+        Some("xterm-256color"),
+    );
+    assert!(
+        !cli_never.contains('\x1b'),
+        "CLI --color=never must override config color=always: {cli_never:?}"
+    );
+
+    // `color = "never"` in config.toml disables colour unless CLI passes `--color=always`.
+    let never_cfg = TempFile(
+        std::env::temp_dir().join(format!("retch_color_never_{}.toml", std::process::id())),
+    );
+    fs::write(&never_cfg.0, "color = \"never\"\n").unwrap();
+    let never_path = never_cfg.0.to_str().unwrap();
+
+    let cfg_never = run_with(
+        &["--config", never_path, "--fields", "os", "--no-logo"],
+        None,
+        Some("xterm-256color"),
+    );
+    assert!(!cfg_never.contains('\x1b'), "{cfg_never:?}");
+
+    let cli_always = run_with(
+        &[
+            "--config",
+            never_path,
+            "--color=always",
+            "--fields",
+            "os",
+            "--no-logo",
+        ],
+        Some("1"),
+        Some("dumb"),
+    );
+    assert!(
+        cli_always.contains('\x1b'),
+        "CLI --color=always must override config color=never: {cli_always:?}"
+    );
 }

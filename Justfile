@@ -144,7 +144,7 @@ render-check:
     @"{{PY}}" scripts/render_packaging.py --self-test
 
 # Umbrella recipe for all offline packaging guards (cross-repo standard name)
-packaging-check: render-check aur-check copr-check brew-check scoop-check metadata-check
+packaging-check: render-check aur-check copr-check brew-check scoop-check nix-check metadata-check
 
 # Verify the committed man page matches docs/retch.1.md and Cargo.toml (worktree + HEAD)
 man-check:
@@ -611,6 +611,12 @@ brew-check:
 scoop-check:
     @{{PY}} scripts/scoop_check.py --self-test
     @{{PY}} scripts/scoop_check.py
+
+# Verify packaging/nixpkgs/package.nix is still a template recording no version (offline)
+nix-check:
+    @{{PY}} scripts/nix_check.py --self-test
+    @{{PY}} scripts/nix_check.py
+    @{{PY}} scripts/calculate_nix_hashes.py --self-test
 
 # Every channel's description and licence agrees with packaging/metadata.toml (offline)
 metadata-check:

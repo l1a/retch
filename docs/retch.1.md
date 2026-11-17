@@ -34,7 +34,7 @@ retch - a fast, feature-rich system information fetcher
 :   Disable the logo entirely.
 
 **--color** *WHEN*
-:   When to use colour: `auto` (the default), `always` or `never`. `auto` colours only when stdout is a terminal and `NO_COLOR` is unset or empty. See **COLOR**.
+:   When to use colour: `auto`, `always` or `never` (default: `color` in *config.toml*, or `auto`). Under `auto`, colour is enabled only when stdout is a terminal, `NO_COLOR` is unset or empty, and `TERM` is not `dumb`. See **COLOR**.
 
 **--logo** *LOGO*
 :   Force a specific distribution logo by name/ID (e.g. `pop`, `manjaro`, `endeavouros`, `opensuse`, `ubuntu`, `fedora`, `macos`, `windows`).
@@ -67,7 +67,7 @@ retch - a fast, feature-rich system information fetcher
 :   Merge default configuration settings (as comments) into an existing config file at the default path (or custom path if `--config` is supplied).
 
 **--fields** *FIELDS*
-:   Comma-separated list of fields to display, overriding the config file's default list.
+:   Comma-separated list of fields to display, overriding *config.toml*'s default list and filtering `--short`, `--long` and `--full` output to the listed fields while preserving their expanded detail formatting.
 
 **-s, --short**
 :   Short output mode. Equivalent to `--mode short`. Shows: OS, Kernel, Host, CPU, GPU, Memory, Disk, Net.
@@ -106,6 +106,7 @@ default path with:
 ## Available Configuration Keys
 
 - **theme**: Theme name to use. (default: `"auto"`).
+- **color**: When to use colour: `"auto"` (default), `"always"`, or `"never"`. Overrides `NO_COLOR` and `TERM=dumb`, and is overridden by `--color`. See **COLOR**.
 - **show_logo**: Boolean indicating whether to show the logo (default: `true`).
 - **ascii_only**: Boolean: always draw the ASCII logo, like `--ascii-logo` (default: `false`).
 - **chafa**: Boolean: draw the logo as Chafa symbols, like `--chafa-logo` (default: `false`).
@@ -142,7 +143,7 @@ default path with:
   - `keyboard`: Connected keyboard names. On Linux, from `/proc/bus/input/devices`; a device is listed only when its class is unambiguous, because peripherals paired through a Logitech Unifying/Bolt receiver are presented by the kernel with a merged capability set that is byte-identical for a keyboard and a mouse, so those are resolved via the HID++ driver's battery model name and, failing that, listed in neither `keyboard` nor `mouse` rather than guessed into the wrong one. On macOS, from IOKit `IOHIDDevice` interfaces on HID usage page 1 with usage 6; macOS publishes one interface per role, so the ambiguity Linux has to resolve does not arise, and a composite device such as an internal keyboard-and-trackpad is correctly listed under both fields. On Windows, from `SetupAPI` `GUID_DEVCLASS_KEYBOARD` devices, preferring `DEVPKEY_Device_BusReportedDeviceDesc` over generic `HID Keyboard Device` descriptions when available. Linux, macOS and Windows. Long mode and above.
   - `mouse`: Connected pointing devices — mice, touchpads, and tablets — de-duplicated by name. On Linux, from `/proc/bus/input/devices`, subject to the same ambiguity rule as `keyboard`. On macOS, from IOKit `IOHIDDevice` interfaces on HID usage page 1 with usage 2. On Windows, from `SetupAPI` `GUID_DEVCLASS_MOUSE` devices, preferring `DEVPKEY_Device_BusReportedDeviceDesc` over generic `HID-compliant mouse` descriptions when available. Linux, macOS and Windows. Long mode and above.
   - `memory`: System RAM usage and capacity.
-  - `phys-mem`: Physical RAM slot details — type (DDR5, LPDDR5, etc.), speed, and per-slot capacity. On Linux, shows the module's actual running speed alongside its rated speed when they differ (e.g. `4800 MT/s (rated 6000 MT/s)`, as when XMP/EXPO isn't enabled), parsed from dmidecode's "Configured Memory Speed". Requires root (`sudo`) to read DMI memory tables via `dmidecode`. On Windows, reads the SMBIOS table natively via `GetSystemFirmwareTable`; no PowerShell and no elevation.
+  - `phys-mem`: Physical RAM slot details — type (DDR5, LPDDR5, etc.), speed, and per-slot capacity. On Linux, reads `/run/udev/data/+dmi:id` unprivileged first and falls back to `dmidecode` as root (`sudo`) when udev DMI memory properties are absent; shows the module's actual running speed alongside its rated speed when they differ (e.g. `4800 MT/s (rated 6000 MT/s)`, as when XMP/EXPO isn't enabled). On Windows, reads the SMBIOS table natively via `GetSystemFirmwareTable`; no PowerShell and no elevation. On macOS, reads the I/O Registry natively.
   - `swap`: System SWAP usage and capacity.
   - `uptime`: System uptime.
   - `procs`: Active process count.
@@ -208,17 +209,17 @@ Example:
 
 # COLOR
 
-By default (`--color auto`) **retch** colours its output only when stdout is a terminal, so
-piped or redirected output is plain text. Setting the `NO_COLOR` environment variable to any
-non-empty value turns colour off as well, following <https://no-color.org>.
-
-`--color always` and `--color never` override both. `always` keeps colour in a pipe, e.g.
-`retch --color always | less -R`.
+By default (`color = "auto"` / `--color auto`) **retch** colours its output only when stdout
+is a terminal, `NO_COLOR` is unset or empty (following <https://no-color.org>), and `TERM` is
+not `dumb`. Setting `color = "always"` or `"never"` in *config.toml* overrides both `NO_COLOR`
+and `TERM=dumb`, and passing `--color` on the command line overrides *config.toml*. `always`
+keeps colour in a pipe, e.g. `retch --color always | less -R`.
 
 With colour off, the ASCII logo is printed without colour, and a Chafa logo (whose symbols
 only make sense in colour) falls back to the ASCII one. Kitty, iTerm2 and Sixel image logos
-are pictures rather than coloured text, so they are still shown. `--print-logos` is a logo
-showcase and always prints in colour.
+are pictures rather than coloured text, so they still appear under `--color never` or
+`NO_COLOR`, whereas `TERM=dumb` suppresses graphical terminal probes and image logos
+completely. `--print-logos` is a logo showcase and always prints in colour.
 
 # LOGOS
 
@@ -259,9 +260,9 @@ than reported as zero, so a missing line never reads as an idle device.
 Running **retch** under **sudo**(8) exchanges one set of fields for another rather than
 simply adding to them, because sudo's default `env_reset` clears most of the environment.
 
-Available only as root:
+Root-privileged or enriched as root:
 
-- `phys-mem` — the per-DIMM breakdown reads the DMI tables (`/sys/firmware/dmi/tables/DMI`, mode 0400).
+- `phys-mem` — reads `/run/udev/data/+dmi:id` unprivileged on systemd/udev hosts when populated; falls back to `dmidecode` (reading `/sys/firmware/dmi/tables/DMI`, mode 0400) as root when udev DMI memory properties are unavailable.
 - `btrfs` — the snapshot count requires `btrfs subvolume list -s`. It is omitted, never shown as zero, when it cannot be read.
 
 Available only as the logged-in user:
@@ -274,7 +275,10 @@ All other fields are identical either way.
 # ENVIRONMENT
 
 **NO_COLOR**
-:   When set to a non-empty value, `--color auto` produces no colour. See **COLOR**.
+:   When set to a non-empty value, `auto` colour produces no colour. Overridden by `color` in *config.toml* and by `--color always`. See **COLOR**.
+
+**TERM**
+:   When set to `dumb`, `auto` colour produces no colour and graphical logo protocols (Kitty, iTerm2, Sixel) and terminal queries are disabled. Colour under `TERM=dumb` can still be forced via `color = "always"` or `--color always`. See **COLOR**.
 
 **RETCH_TIMING**
 :   When set to a non-empty value other than `0`, print one line per probe to standard error: the probe's name, when it started (milliseconds from the start of collection) and how long it took. Standard output is unchanged. Meant for finding where a slow run spends its time: fields are collected concurrently, so the start offsets show which probes overlapped and which ran one after another. Example: `RETCH_TIMING=1 retch --long >/dev/null`.
