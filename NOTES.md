@@ -151,16 +151,20 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.21.8)
+## Current State (v0.21.9)
 
-`main` carries **`retch-cli` 0.21.8** / **`retch-sysinfo` 0.1.108**. Newest released tag is
-**`v0.21.6`**.
+`main` carries **`retch-cli` 0.21.9** / **`retch-sysinfo` 0.1.109**. Newest released tag is
+**`v0.21.8`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.21.9: Replace unmaintained `chrono` (`RUSTSEC-2026-0543`, #333) and fold Dependabot PRs (#334, #335).**
+  - **Zero-dependency `boot_time` ISO 8601 formatter (`crates/sysinfo/src/fetch.rs`):** Replaced `chrono::Local` with pure proleptic Gregorian offset helpers (`civil_to_epoch_secs`, `format_local_iso8601`) fed by `libc::localtime_r` on Unix and `FileTimeToSystemTime` + `SystemTimeToTzSpecificLocalTime` (`win_cpu::unix_secs_to_local_system_time`) on Windows, removing `chrono` (`0.4.45`) and its transitive dependencies (`iana-time-zone*`, `android_system_properties`, `core-foundation-sys`, `log`) from `Cargo.lock`.
+  - **Dependabot updates folded (#334, #335):** Bumped `rusqlite` `0.41 -> 0.42` (`0.42.0`), `sysinfo` `0.40.1 -> 0.40.4`, and `thiserror` `2.0.18 -> 2.0.21`, updated `anthropics/claude-code-action` and `cachix/install-nix-action` SHAs across `.github/workflows/`, and pinned `--permission-mode acceptEdits` in `.github/workflows/claude.yml` so `--allowedTools` stays a strict boundary under `claude-code-action`'s new `auto` default.
 
 - **v0.21.8: `color` config key & `TERM=dumb`, `--fields` filtering across mode flags, and zero-drift Nixpkgs template (`src/{cli,config,fields,display,logo,main}.rs`, `packaging/nixpkgs/package.nix`, `scripts/{nix_check,render_packaging,calculate_nix_hashes}.py`).**
   - **`color` in `config.toml` & `TERM=dumb`:** Added `color` (`"auto"` | `"always"` | `"never"`) to `Config`, merged as `cli.color.or(config.color)` so `--color` overrides config and config `always`/`never` overrides `NO_COLOR` and `TERM=dumb`. Under `TERM=dumb`, `logo::is_dumb_term()` suppresses colour under `auto` and disables Kitty/iTerm2/Sixel graphics detection and `/dev/tty` probes.
@@ -1771,6 +1775,12 @@ nobody asked.
   `started_at`/`completed_at` then shows the shape directly, and per-step timings say whether
   the cost is build or work — which decides whether caching or parallelism is the bigger win.
   Reading the YAML tells you the intent; the API tells you what happened.
+- **`claude-code-action` auto-mode default (v0.21.9):** Bumping `anthropics/claude-code-action`
+  past `#2004` (`f3b070c`) switched `@claude` mention runs without `allowed_bots` or
+  `allowed_non_write_users` from `--permission-mode acceptEdits` to `--permission-mode auto`,
+  allowing a classifier to approve tool calls outside `--allowedTools`. Keep `--permission-mode
+  acceptEdits` explicitly in `.github/workflows/claude.yml` (`claude_args`) whenever `--allowedTools`
+  is intended as a strict boundary.
 
 ---
 
@@ -1786,7 +1796,6 @@ nobody asked.
 - `rusqlite` — RPM package counting. It bundles SQLite, so a bump changes the engine that has to
   honour `immutable=1`; the unit tests only assert string construction. Check
   `retch --fields packages` unprivileged after any bump.
-- `chrono` — Date/time formatting
 - `dirs` — Home and config directory resolution (`home_dir`/`config_dir`; a direct dependency of
   **both** crates, which is why a major bump widens two manifests)
 - `unicode-width` — Terminal column measurement for layout

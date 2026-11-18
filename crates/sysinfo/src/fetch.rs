@@ -7,7 +7,6 @@
 //! about the OS, hardware, and environment.
 
 use crate::gpu;
-use chrono::TimeZone;
 use sysinfo::{Components, System};
 // `Users` is only used for the non-Windows user count; on Windows the WTS-based
 // `win_users` path is used instead, so importing it there would be an unused import.
@@ -1052,12 +1051,7 @@ impl SystemInfo {
         sort_temps_cpu_first(&mut temps);
 
         let boot_timestamp = crate::timing::timed("boot-time", || System::boot_time().unwrap_or(0));
-        let boot_dt = chrono::Local
-            .timestamp_opt(boot_timestamp as i64, 0)
-            .single()
-            .map(|dt| dt.format("%Y-%m-%dT%H:%M:%S%:z").to_string())
-            .unwrap_or_else(|| boot_timestamp.to_string());
-        let boot_time = boot_dt;
+        let boot_time = format_boot_time(boot_timestamp);
 
         // Environment-based info. (`shell` is collected inside the concurrent scope above.)
         // `terminal-font` and `terminal-theme` both inspect the running terminal name, so
@@ -3494,6 +3488,22 @@ mod win_cpu {
         }
     }
 
+    /// `SYSTEMTIME` (`minwinbase.h`, 16 bytes).
+    #[repr(C)]
+    #[derive(Clone, Copy, Default)]
+    pub struct SystemTime {
+        pub w_year: u16,
+        pub w_month: u16,
+        #[allow(dead_code)]
+        pub w_day_of_week: u16,
+        pub w_day: u16,
+        pub w_hour: u16,
+        pub w_minute: u16,
+        pub w_second: u16,
+        #[allow(dead_code)]
+        pub w_milliseconds: u16,
+    }
+
     /// `JOBOBJECT_BASIC_ACCOUNTING_INFORMATION` (`winnt.h`, 48 bytes).
     #[repr(C)]
     struct JobObjectBasicAccountingInformation {
@@ -3548,6 +3558,12 @@ mod win_cpu {
             relationship_type: u32,
             buffer: *mut u8,
             returned_length: *mut u32,
+        ) -> i32;
+        fn FileTimeToSystemTime(file_time: *const FileTime, system_time: *mut SystemTime) -> i32;
+        fn SystemTimeToTzSpecificLocalTime(
+            time_zone_info: *const c_void,
+            universal_time: *const SystemTime,
+            local_time: *mut SystemTime,
         ) -> i32;
     }
 
@@ -3723,6 +3739,32 @@ mod win_cpu {
         }
     }
 
+    /// Converts a Unix epoch timestamp (seconds since `1970-01-01T00:00:00Z`) to a local
+    /// `SYSTEMTIME` using the active Windows time zone rules.
+    pub fn unix_secs_to_local_system_time(unix_secs: u64) -> Option<SystemTime> {
+        // Windows FILETIME counts 100 ns intervals since 1601-01-01T00:00:00Z
+        // (11,644,473,600 seconds before the Unix epoch).
+        let ticks = unix_secs
+            .checked_add(11_644_473_600)?
+            .checked_mul(10_000_000)?;
+        let ft = FileTime {
+            low: ticks as u32,
+            high: (ticks >> 32) as u32,
+        };
+        let mut utc_st = SystemTime::default();
+        // SAFETY: `ft` is a valid `FILETIME`, and `utc_st` is a valid writable `SYSTEMTIME`.
+        if unsafe { FileTimeToSystemTime(&ft, &mut utc_st) } == 0 {
+            return None;
+        }
+        let mut local_st = SystemTime::default();
+        // SAFETY: `ptr::null()` selects the active local time zone; `utc_st` and `local_st`
+        // are valid `SYSTEMTIME` structs.
+        if unsafe { SystemTimeToTzSpecificLocalTime(ptr::null(), &utc_st, &mut local_st) } == 0 {
+            return None;
+        }
+        Some(local_st)
+    }
+
     #[cfg(test)]
     mod layout {
         use std::mem::size_of;
@@ -3731,10 +3773,120 @@ mod win_cpu {
         #[test]
         fn filetime_size() {
             assert_eq!(size_of::<super::FileTime>(), 8);
+            assert_eq!(size_of::<super::SystemTime>(), 16);
             assert_eq!(size_of::<super::JobObjectBasicAccountingInformation>(), 48);
             assert_eq!(size_of::<super::ProcessorPowerInformation>(), 24);
         }
     }
+}
+
+/// Converts a proleptic Gregorian civil date-time to seconds since `1970-01-01T00:00:00`
+/// using Howard Hinnant's `days_from_civil` formula.
+///
+/// Used purely to recover the UTC offset `local_secs - utc_epoch_secs` from the OS's
+/// local-time breakdown without pulling in a full date-time crate.
+#[cfg(any(unix, target_os = "windows", test))]
+fn civil_to_epoch_secs(
+    year: i32,
+    month: u32,
+    day: u32,
+    hour: u32,
+    min: u32,
+    sec: u32,
+) -> Option<i64> {
+    if !(1..=12).contains(&month) || !(1..=31).contains(&day) || hour > 23 || min > 59 || sec > 60 {
+        return None;
+    }
+    let y = i64::from(year) - if month <= 2 { 1 } else { 0 };
+    let era = if y >= 0 { y } else { y - 399 } / 400;
+    let yoe = (y - era * 400) as u64;
+    let m = u64::from(month);
+    let d = u64::from(day);
+    let doy = (153 * (if m > 2 { m - 3 } else { m + 9 }) + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146_097 + (doe as i64) - 719_468;
+    Some(days * 86_400 + i64::from(hour) * 3_600 + i64::from(min) * 60 + i64::from(sec.min(59)))
+}
+
+/// Formats a UTC `epoch_secs` and its local civil breakdown as ISO 8601
+/// (`YYYY-MM-DDTHH:MM:SS±HH:MM`), returning `None` if fields are out of range or the derived
+/// UTC offset exceeds ±24 hours.
+#[cfg(any(unix, target_os = "windows", test))]
+fn format_local_iso8601(
+    epoch_secs: i64,
+    year: i32,
+    month: u32,
+    day: u32,
+    hour: u32,
+    min: u32,
+    sec: u32,
+) -> Option<String> {
+    if !(0..=9999).contains(&year) {
+        return None;
+    }
+    let clamped_sec = sec.min(59);
+    let local_secs = civil_to_epoch_secs(year, month, day, hour, min, clamped_sec)?;
+    let offset_secs = local_secs.checked_sub(epoch_secs)?;
+    if offset_secs.abs() >= 86_400 {
+        return None;
+    }
+    let sign = if offset_secs >= 0 { '+' } else { '-' };
+    let abs_off = offset_secs.unsigned_abs();
+    let off_hours = abs_off / 3_600;
+    let off_mins = (abs_off / 60) % 60;
+    Some(format!(
+        "{year:04}-{month:02}-{day:02}T{hour:02}:{min:02}:{clamped_sec:02}{sign}{off_hours:02}:{off_mins:02}"
+    ))
+}
+
+/// Converts a Unix epoch `boot_timestamp` into an ISO 8601 local timestamp using the OS
+/// time zone database (`localtime_r` on Unix, `SystemTimeToTzSpecificLocalTime` on Windows).
+fn format_boot_time_opt(boot_timestamp: u64) -> Option<String> {
+    #[cfg(unix)]
+    {
+        let epoch_i64 = i64::try_from(boot_timestamp).ok()?;
+        let t = libc::time_t::try_from(boot_timestamp).ok()?;
+        // SAFETY: `libc::tm` is a C struct of integers and pointers for which an all-zero
+        // bit pattern is valid prior to `localtime_r` initializing every field.
+        let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+        // SAFETY: `t` is a valid `time_t` value and `tm` is a writable `libc::tm` struct.
+        let res = unsafe { libc::localtime_r(&t, &mut tm) };
+        if res.is_null() {
+            return None;
+        }
+        let year = tm.tm_year.checked_add(1900)?;
+        let month = u32::try_from(tm.tm_mon.checked_add(1)?).ok()?;
+        let day = u32::try_from(tm.tm_mday).ok()?;
+        let hour = u32::try_from(tm.tm_hour).ok()?;
+        let min = u32::try_from(tm.tm_min).ok()?;
+        let sec = u32::try_from(tm.tm_sec).ok()?;
+        format_local_iso8601(epoch_i64, year, month, day, hour, min, sec)
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let epoch_i64 = i64::try_from(boot_timestamp).ok()?;
+        let st = win_cpu::unix_secs_to_local_system_time(boot_timestamp)?;
+        format_local_iso8601(
+            epoch_i64,
+            i32::from(st.w_year),
+            u32::from(st.w_month),
+            u32::from(st.w_day),
+            u32::from(st.w_hour),
+            u32::from(st.w_minute),
+            u32::from(st.w_second),
+        )
+    }
+    #[cfg(not(any(unix, target_os = "windows")))]
+    {
+        let _ = boot_timestamp;
+        None
+    }
+}
+
+/// Formats a Unix epoch `boot_timestamp` as local ISO 8601 (`YYYY-MM-DDTHH:MM:SS±HH:MM`),
+/// falling back to the raw decimal timestamp if conversion fails.
+fn format_boot_time(boot_timestamp: u64) -> String {
+    format_boot_time_opt(boot_timestamp).unwrap_or_else(|| boot_timestamp.to_string())
 }
 
 #[cfg(test)]
@@ -4861,5 +5013,74 @@ ID=fedora
             format_efi_bootmgr(Some("GRUB 2.12"), Some((desc.as_str(), fp.as_deref()))).as_deref(),
             Some("GRUB 2.12 (Fedora - \\EFI\\fedora\\shimx64.efi)")
         );
+    }
+
+    #[test]
+    fn test_civil_to_epoch_secs_and_iso8601_offsets() {
+        // Unix epoch in UTC (+00:00)
+        assert_eq!(civil_to_epoch_secs(1970, 1, 1, 0, 0, 0), Some(0));
+        assert_eq!(
+            format_local_iso8601(0, 1970, 1, 1, 0, 0, 0).as_deref(),
+            Some("1970-01-01T00:00:00+00:00")
+        );
+
+        // Negative offset crossing midnight backward (America/Los_Angeles -08:00)
+        assert_eq!(
+            format_local_iso8601(0, 1969, 12, 31, 16, 0, 0).as_deref(),
+            Some("1969-12-31T16:00:00-08:00")
+        );
+
+        // Positive whole-hour, half-hour, quarter-hour, and extreme offsets
+        assert_eq!(
+            format_local_iso8601(1_700_000_000, 2023, 11, 15, 3, 43, 20).as_deref(),
+            Some("2023-11-15T03:43:20+05:30")
+        );
+        assert_eq!(
+            format_local_iso8601(1_700_000_000, 2023, 11, 15, 3, 58, 20).as_deref(),
+            Some("2023-11-15T03:58:20+05:45")
+        );
+        assert_eq!(
+            format_local_iso8601(1_700_000_000, 2023, 11, 15, 12, 13, 20).as_deref(),
+            Some("2023-11-15T12:13:20+14:00")
+        );
+
+        // Leap day (2024-02-29T00:00:00Z = 1_709_164_800)
+        assert_eq!(
+            civil_to_epoch_secs(2024, 2, 29, 0, 0, 0),
+            Some(1_709_164_800)
+        );
+        assert_eq!(
+            format_local_iso8601(1_709_164_800, 2024, 2, 29, 0, 0, 0).as_deref(),
+            Some("2024-02-29T00:00:00+00:00")
+        );
+
+        // Leap second clamped to :59 cleanly without failing
+        assert_eq!(
+            format_local_iso8601(1_700_000_039, 2023, 11, 14, 22, 13, 60).as_deref(),
+            Some("2023-11-14T22:13:59+00:00")
+        );
+
+        // Invalid fields / offsets >= 24 hours rejected
+        assert_eq!(civil_to_epoch_secs(2024, 0, 1, 0, 0, 0), None);
+        assert_eq!(civil_to_epoch_secs(2024, 13, 1, 0, 0, 0), None);
+        assert_eq!(civil_to_epoch_secs(2024, 1, 32, 0, 0, 0), None);
+        assert_eq!(civil_to_epoch_secs(2024, 1, 1, 24, 0, 0), None);
+        assert_eq!(civil_to_epoch_secs(2024, 1, 1, 0, 60, 0), None);
+        assert_eq!(civil_to_epoch_secs(2024, 1, 1, 0, 0, 61), None);
+        assert_eq!(format_local_iso8601(0, 1970, 1, 2, 0, 0, 0), None);
+        assert_eq!(format_local_iso8601(0, 1969, 12, 31, 0, 0, 0), None);
+        assert_eq!(format_local_iso8601(0, -1, 1, 1, 0, 0, 0), None);
+    }
+
+    #[test]
+    fn test_format_boot_time_produces_iso8601() {
+        let formatted = format_boot_time(1_700_000_000);
+        assert_eq!(formatted.len(), 25, "unexpected format: {formatted}");
+        assert_eq!(&formatted[10..11], "T", "missing T: {formatted}");
+        assert!(
+            matches!(&formatted[19..20], "+" | "-"),
+            "missing offset sign: {formatted}"
+        );
+        assert_eq!(&formatted[22..23], ":", "missing offset colon: {formatted}");
     }
 }
