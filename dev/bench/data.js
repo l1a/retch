@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794945208678,
+  "lastUpdate": 1794985901032,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1728,6 +1728,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 719117856.5,
             "extra": "v0.21.8; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "b7ed033beb165093b00ff90da387675cb01aaed4",
+          "message": "Remove unmaintained chrono and update deps (#336)\n\n- Replace `chrono::Local` boot-time formatting in `crates/sysinfo/src/fetch.rs`\n  with pure proleptic Gregorian offset helpers (`civil_to_epoch_secs`,\n  `format_local_iso8601`) backed by `libc::localtime_r` on Unix and\n  `FileTimeToSystemTime` + `SystemTimeToTzSpecificLocalTime` (`win_cpu`) on\n  Windows, adding unit tests (`test_civil_to_epoch_secs_and_iso8601_offsets`,\n  `test_format_boot_time_produces_iso8601`) and a 16-byte `SystemTime` layout\n  guard.\n- Drop `chrono` from `crates/sysinfo/Cargo.toml` and `Cargo.lock` (resolving\n  `RUSTSEC-2026-0543` and removing `chrono 0.4.45` plus `iana-time-zone*`,\n  `android_system_properties`, `core-foundation-sys`, `log`, and duplicate\n  `hashbrown`).\n- Fold Dependabot PR #334 (`rusqlite` 0.41 -> 0.42, `sysinfo` 0.40.1 -> 0.40.4,\n  `thiserror` 2.0.18 -> 2.0.21) and PR #335 (`anthropics/claude-code-action`\n  and `cachix/install-nix-action` workflow SHAs).\n- Bump `retch-sysinfo` to `0.1.109` and `retch-cli` to `0.21.9`, regenerate\n  `docs/retch.1`, and update `NOTES.md`.\n\nFixes #333\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-17T23:11:02-08:00",
+          "tree_id": "bd985e46122875b57968cb677ee5b6e304c7dc48",
+          "url": "https://github.com/l1a/retch/commit/b7ed033beb165093b00ff90da387675cb01aaed4"
+        },
+        "date": 1794985901032,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 5509994.2,
+            "extra": "v0.21.9; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 13858986.5,
+            "extra": "v0.21.9; battery"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 2389749.5999999996,
+            "extra": "v0.21.9; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2334061.5000000005,
+            "extra": "v0.21.9; battery"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 238783440.59999996,
+            "extra": "v0.21.9; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 618120061.2,
+            "extra": "v0.21.9; battery"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 445663363.70000005,
+            "extra": "v0.21.9; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 735534847.8000001,
+            "extra": "v0.21.9; battery"
           }
         ]
       }
