@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794986449002,
+  "lastUpdate": 1794986449304,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -20471,6 +20471,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 687.8489185244026,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b7ed033beb165093b00ff90da387675cb01aaed4",
+          "message": "Remove unmaintained chrono and update deps (#336)\n\n- Replace `chrono::Local` boot-time formatting in `crates/sysinfo/src/fetch.rs`\n  with pure proleptic Gregorian offset helpers (`civil_to_epoch_secs`,\n  `format_local_iso8601`) backed by `libc::localtime_r` on Unix and\n  `FileTimeToSystemTime` + `SystemTimeToTzSpecificLocalTime` (`win_cpu`) on\n  Windows, adding unit tests (`test_civil_to_epoch_secs_and_iso8601_offsets`,\n  `test_format_boot_time_produces_iso8601`) and a 16-byte `SystemTime` layout\n  guard.\n- Drop `chrono` from `crates/sysinfo/Cargo.toml` and `Cargo.lock` (resolving\n  `RUSTSEC-2026-0543` and removing `chrono 0.4.45` plus `iana-time-zone*`,\n  `android_system_properties`, `core-foundation-sys`, `log`, and duplicate\n  `hashbrown`).\n- Fold Dependabot PR #334 (`rusqlite` 0.41 -> 0.42, `sysinfo` 0.40.1 -> 0.40.4,\n  `thiserror` 2.0.18 -> 2.0.21) and PR #335 (`anthropics/claude-code-action`\n  and `cachix/install-nix-action` workflow SHAs).\n- Bump `retch-sysinfo` to `0.1.109` and `retch-cli` to `0.21.9`, regenerate\n  `docs/retch.1`, and update `NOTES.md`.\n\nFixes #333\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-17T23:11:02-08:00",
+          "tree_id": "bd985e46122875b57968cb677ee5b6e304c7dc48",
+          "url": "https://github.com/l1a/retch/commit/b7ed033beb165093b00ff90da387675cb01aaed4"
+        },
+        "date": 1794986449254,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 362295904.1000001,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1003056324.9,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1003344491.6000003,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 16400991.600000001,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 288450166.7,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 464285991.7,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 339246387.50000006,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 9414891.700000001,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 356851078.125,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 495.87244140287714,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 141.37124361334946,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.3701393150235965,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 89.77543267861179,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 11392.398333517962,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1116.768921640008,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 338.6461101169847,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 86583.2624681708,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 469.8008877123766,
             "unit": "ns"
           }
         ]
