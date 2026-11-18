@@ -658,8 +658,8 @@ pub fn detect_displays() -> Vec<String> {
             .map(|(_, _, s)| s)
             .collect();
 
-        // Fallback to xrandr only if sysfs yielded no connected displays
-        if displays.is_empty() {
+        // Fallback to xrandr only if sysfs yielded no connected displays and an X11 DISPLAY is set
+        if displays.is_empty() && std::env::var_os("DISPLAY").is_some_and(|v| !v.is_empty()) {
             if let Ok(output) = std::process::Command::new("xrandr")
                 .arg("--current")
                 .output()

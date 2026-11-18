@@ -4,7 +4,7 @@
 //! Network interface detection, IP resolution, Wi-Fi, and related helpers.
 
 use owo_colors::OwoColorize;
-#[cfg(not(target_os = "windows"))]
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
 use sysinfo::Networks;
 
 #[cfg(target_os = "windows")]
@@ -33,11 +33,18 @@ pub fn detect_active_interface_and_local_ip() -> (Option<String>, Option<String>
     let active_interface = {
         #[cfg(target_os = "linux")]
         {
-            let native_iface = std::fs::read_to_string("/proc/net/route")
-                .ok()
-                .and_then(|content| parse_proc_net_route(&content));
+            let (route_read_ok, native_iface) = match std::fs::read_to_string("/proc/net/route") {
+                Ok(content) => (true, parse_proc_net_route(&content)),
+                Err(_) => (false, None),
+            };
 
             native_iface.or_else(|| {
+                // `/proc/net/route` is the kernel's IPv4 main routing table; when it was
+                // readable with no default route AND the UDP routing probe found no
+                // outbound route (`local_ip.is_none()`), skip spawning `ip route show default`.
+                if route_read_ok && local_ip.is_none() {
+                    return None;
+                }
                 std::process::Command::new("ip")
                     .args(["route", "show", "default"])
                     .output()
@@ -243,6 +250,468 @@ fn build_network_interface(
     }
 }
 
+/// Parses an ASCII unsigned integer from sysfs counter bytes (stops at the first non-digit).
+#[cfg(any(target_os = "linux", test))]
+fn parse_sysfs_u64(bytes: &[u8]) -> u64 {
+    let mut val = 0u64;
+    for &b in bytes {
+        if !b.is_ascii_digit() {
+            break;
+        }
+        val = val.saturating_mul(10).saturating_add(u64::from(b - b'0'));
+    }
+    val
+}
+
+/// Reads a single sysfs file into a small stack buffer and passes its bytes to `parse`.
+#[cfg(any(target_os = "linux", test))]
+fn read_sysfs_small<T>(path: &std::path::Path, default: T, parse: impl FnOnce(&[u8]) -> T) -> T {
+    use std::io::Read;
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return default;
+    };
+    let mut buf = [0u8; 64];
+    match file.read(&mut buf) {
+        Ok(n) => parse(&buf[..n]),
+        Err(_) => default,
+    }
+}
+
+/// Parses Linux `/proc/net/if_inet6` entries into per-interface IPv6 addresses.
+///
+/// Format: `<32-hex-char addr> <ifindex> <prefixlen> <scope> <flags> <ifname>`.
+#[cfg(any(target_os = "linux", test))]
+fn parse_proc_net_if_inet6(
+    content: &str,
+) -> std::collections::HashMap<String, Vec<std::net::IpAddr>> {
+    let mut map: std::collections::HashMap<String, Vec<std::net::IpAddr>> =
+        std::collections::HashMap::new();
+    for line in content.lines() {
+        let mut parts = line.split_whitespace();
+        let (Some(hex), _, _, _, _, Some(ifname)) = (
+            parts.next(),
+            parts.next(),
+            parts.next(),
+            parts.next(),
+            parts.next(),
+            parts.next(),
+        ) else {
+            continue;
+        };
+        if hex.len() != 32 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+            continue;
+        }
+        let mut octets = [0u8; 16];
+        for (i, slot) in octets.iter_mut().enumerate() {
+            let Ok(byte) = u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16) else {
+                octets = [0u8; 16];
+                break;
+            };
+            *slot = byte;
+        }
+        let ip = std::net::IpAddr::V6(std::net::Ipv6Addr::from(octets));
+        let list = map.entry(ifname.to_string()).or_default();
+        if !list.contains(&ip) {
+            list.push(ip);
+        }
+    }
+    map
+}
+
+/// Queries the primary IPv4 address for Linux interface `name` via `SIOCGIFADDR` using stack
+/// structs only (no raw heap pointers or linked-list walks).
+#[cfg(target_os = "linux")]
+fn linux_iface_ipv4(sock_fd: libc::c_int, name: &str) -> Option<std::net::IpAddr> {
+    let bytes = name.as_bytes();
+    if bytes.is_empty() || bytes.len() >= libc::IFNAMSIZ {
+        return None;
+    }
+    // SAFETY: `libc::ifreq` is a plain C struct/union of integer arrays where all-zeroes is valid.
+    let mut ifr: libc::ifreq = unsafe { std::mem::zeroed() };
+    for (dst, &b) in ifr.ifr_name.iter_mut().zip(bytes.iter()) {
+        *dst = b as libc::c_char;
+    }
+    // SAFETY: `sock_fd` is an open IPv4 socket descriptor and `&mut ifr` points to a valid
+    // stack-allocated `libc::ifreq` whose `ifr_name` is NUL-terminated.
+    let rc = unsafe { libc::ioctl(sock_fd, libc::SIOCGIFADDR as _, &mut ifr) };
+    if rc != 0 {
+        return None;
+    }
+    // SAFETY: a successful `SIOCGIFADDR` populates `ifr_ifru.ifru_addr` with a `sockaddr_in`
+    // whose IPv4 address octets sit at `sa_data[2..6]`.
+    let sa = unsafe { ifr.ifr_ifru.ifru_addr };
+    if i32::from(sa.sa_family) != libc::AF_INET {
+        return None;
+    }
+    Some(std::net::IpAddr::V4(std::net::Ipv4Addr::new(
+        sa.sa_data[2] as u8,
+        sa.sa_data[3] as u8,
+        sa.sa_data[4] as u8,
+        sa.sa_data[5] as u8,
+    )))
+}
+
+/// Result of parsing a single `recv` batch of Linux `NETLINK_ROUTE` `RTM_GETADDR` messages.
+#[cfg(any(target_os = "linux", test))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum NetlinkParseState {
+    More,
+    Done,
+    Error,
+}
+
+/// Parses raw Linux `NETLINK_ROUTE` `RTM_GETADDR` response bytes into `(ifindex, Ipv4Addr)` pairs
+/// using bounds-checked slices (no raw pointer dereferences).
+#[cfg(any(target_os = "linux", test))]
+fn parse_netlink_ipv4_batch(
+    mut buf: &[u8],
+    out: &mut Vec<(u32, std::net::Ipv4Addr)>,
+) -> NetlinkParseState {
+    const NLMSG_HDRLEN: usize = 16;
+    const IFADDRMSG_LEN: usize = 8;
+    const RTA_HDRLEN: usize = 4;
+    const NLMSG_ERROR: u16 = 2;
+    const NLMSG_DONE: u16 = 3;
+    const RTM_NEWADDR: u16 = 20;
+    const IFA_ADDRESS: u16 = 1;
+    const IFA_LOCAL: u16 = 2;
+    const LINUX_AF_INET: u8 = 2;
+
+    while buf.len() >= NLMSG_HDRLEN {
+        let nlmsg_len = u32::from_ne_bytes([buf[0], buf[1], buf[2], buf[3]]) as usize;
+        if nlmsg_len < NLMSG_HDRLEN || nlmsg_len > buf.len() {
+            return NetlinkParseState::Error;
+        }
+        let nlmsg_type = u16::from_ne_bytes([buf[4], buf[5]]);
+        if nlmsg_type == NLMSG_DONE {
+            return NetlinkParseState::Done;
+        }
+        if nlmsg_type == NLMSG_ERROR {
+            return NetlinkParseState::Error;
+        }
+
+        if nlmsg_type == RTM_NEWADDR && nlmsg_len >= NLMSG_HDRLEN + IFADDRMSG_LEN {
+            let msg = &buf[NLMSG_HDRLEN..nlmsg_len];
+            let ifa_family = msg[0];
+            let ifa_index = u32::from_ne_bytes([msg[4], msg[5], msg[6], msg[7]]);
+            if ifa_family == LINUX_AF_INET {
+                let mut attrs = &msg[IFADDRMSG_LEN..];
+                let mut ifa_address = None;
+                let mut ifa_local = None;
+                while attrs.len() >= RTA_HDRLEN {
+                    let rta_len = u16::from_ne_bytes([attrs[0], attrs[1]]) as usize;
+                    let rta_type = u16::from_ne_bytes([attrs[2], attrs[3]]);
+                    if rta_len < RTA_HDRLEN || rta_len > attrs.len() {
+                        break;
+                    }
+                    if rta_len >= RTA_HDRLEN + 4 {
+                        let ip = std::net::Ipv4Addr::new(attrs[4], attrs[5], attrs[6], attrs[7]);
+                        match rta_type {
+                            IFA_LOCAL => ifa_local = Some(ip),
+                            IFA_ADDRESS => ifa_address = Some(ip),
+                            _ => {}
+                        }
+                    }
+                    let aligned = (rta_len + 3) & !3;
+                    if aligned >= attrs.len() {
+                        break;
+                    }
+                    attrs = &attrs[aligned..];
+                }
+                if let Some(ip) = ifa_local.or(ifa_address) {
+                    out.push((ifa_index, ip));
+                }
+            }
+        }
+
+        let aligned_msg = (nlmsg_len.saturating_add(3)) & !3;
+        if aligned_msg >= buf.len() {
+            break;
+        }
+        buf = &buf[aligned_msg..];
+    }
+
+    NetlinkParseState::More
+}
+
+/// Dumps all Linux IPv4 interface addresses via `NETLINK_ROUTE` `RTM_GETADDR`.
+///
+/// Returns `None` if opening or reading the netlink socket fails so callers can fall back to
+/// `SIOCGIFADDR`.
+#[cfg(target_os = "linux")]
+fn linux_netlink_ipv4_addrs() -> Option<Vec<(u32, std::net::Ipv4Addr)>> {
+    use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
+
+    // SAFETY: `libc::socket` with fixed Netlink constants creates a fresh descriptor checked
+    // immediately for `< 0` before wrapping in `OwnedFd`.
+    let raw_fd = unsafe {
+        libc::socket(
+            libc::AF_NETLINK,
+            libc::SOCK_RAW | libc::SOCK_CLOEXEC,
+            libc::NETLINK_ROUTE,
+        )
+    };
+    if raw_fd < 0 {
+        return None;
+    }
+    // SAFETY: `raw_fd >= 0` is uniquely owned and will be closed on drop.
+    let fd = unsafe { OwnedFd::from_raw_fd(raw_fd) };
+
+    // struct nlmsghdr (16B) + struct ifaddrmsg (8B) in native endianness:
+    // nlmsg_len=24, nlmsg_type=RTM_GETADDR (22), nlmsg_flags=NLM_F_REQUEST|NLM_F_DUMP (0x301),
+    // seq=1, pid=0, ifa_family=AF_INET.
+    let mut req = [0u8; 24];
+    req[0..4].copy_from_slice(&24u32.to_ne_bytes());
+    req[4..6].copy_from_slice(&22u16.to_ne_bytes());
+    req[6..8].copy_from_slice(&0x0301u16.to_ne_bytes());
+    req[8..12].copy_from_slice(&1u32.to_ne_bytes());
+    req[16] = libc::AF_INET as u8;
+
+    // SAFETY: `req` is a 24-byte stack buffer valid for `req.len()` bytes; `fd` is open.
+    let sent = unsafe { libc::send(fd.as_raw_fd(), req.as_ptr().cast(), req.len(), 0) };
+    if sent != req.len() as isize {
+        return None;
+    }
+
+    let mut addrs = Vec::new();
+    let mut buf = [0u8; 32 * 1024];
+    for _ in 0..64 {
+        // SAFETY: `buf` is a writable 32 KiB stack buffer; `fd` is open.
+        let n = unsafe { libc::recv(fd.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len(), 0) };
+        if n < 0 {
+            if std::io::Error::last_os_error().kind() == std::io::ErrorKind::Interrupted {
+                continue;
+            }
+            return None;
+        }
+        if n == 0 {
+            break;
+        }
+        match parse_netlink_ipv4_batch(&buf[..n as usize], &mut addrs) {
+            NetlinkParseState::More => {}
+            NetlinkParseState::Done => return Some(addrs),
+            NetlinkParseState::Error => return None,
+        }
+    }
+
+    None
+}
+
+/// Collects Linux network interface summaries under `sys_net` together with all their IPv4/IPv6
+/// addresses via `NETLINK_ROUTE` (with `SIOCGIFADDR` fallback) + `/proc/net/if_inet6`.
+#[cfg(target_os = "linux")]
+fn collect_linux_networks_native(
+    sys_net: &std::path::Path,
+    active_interface: Option<&str>,
+    local_ip: Option<&str>,
+    only_active: bool,
+) -> Vec<NetworkInterface> {
+    if only_active {
+        if let Some(active) = active_interface {
+            if !active.is_empty() && !active.contains('/') && active != "." && active != ".." {
+                let iface_dir = sys_net.join(active);
+                if iface_dir.is_dir() {
+                    let mut iface_ips = collect_interface_ips_linux(sys_net, &[active]);
+                    let ips = iface_ips.remove(active).unwrap_or_default();
+                    return vec![read_linux_net_iface(
+                        &iface_dir,
+                        active,
+                        ips,
+                        active_interface,
+                        local_ip,
+                    )];
+                }
+            }
+        }
+    }
+
+    let Ok(entries) = std::fs::read_dir(sys_net) else {
+        return Vec::new();
+    };
+    let iface_dirs: Vec<(String, std::path::PathBuf)> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            path.is_dir()
+                .then(|| (entry.file_name().to_string_lossy().into_owned(), path))
+        })
+        .collect();
+    let names: Vec<&str> = iface_dirs.iter().map(|(n, _)| n.as_str()).collect();
+    let mut iface_ips = collect_interface_ips_linux(sys_net, &names);
+    let mut interfaces: Vec<NetworkInterface> = iface_dirs
+        .iter()
+        .map(|(name, path)| {
+            let ips = iface_ips.remove(name).unwrap_or_default();
+            read_linux_net_iface(path, name, ips, active_interface, local_ip)
+        })
+        .collect();
+    interfaces.sort_by(|a, b| interface_sort_key(&a.name).cmp(&interface_sort_key(&b.name)));
+    interfaces
+}
+
+/// Collects per-interface IPv4/IPv6 addresses on Linux without raw linked-list pointers:
+/// IPv6 addresses come from `/proc/net/if_inet6`, and all IPv4 addresses come from
+/// `NETLINK_ROUTE` `RTM_GETADDR` mapped by `<sys_net>/<iface>/ifindex` (falling back to
+/// `SIOCGIFADDR` only if Netlink is unavailable).
+#[cfg(target_os = "linux")]
+fn collect_interface_ips_linux(
+    sys_net: &std::path::Path,
+    iface_names: &[&str],
+) -> std::collections::HashMap<String, Vec<std::net::IpAddr>> {
+    use std::os::fd::AsRawFd;
+
+    let mut map = std::fs::read_to_string("/proc/net/if_inet6")
+        .ok()
+        .map(|content| parse_proc_net_if_inet6(&content))
+        .unwrap_or_default();
+
+    if let Some(netlink_v4) = linux_netlink_ipv4_addrs() {
+        for &name in iface_names {
+            let ifindex = u32::try_from(read_sysfs_small(
+                &sys_net.join(name).join("ifindex"),
+                0,
+                parse_sysfs_u64,
+            ))
+            .unwrap_or(0);
+            if ifindex == 0 {
+                continue;
+            }
+            let mut v4_addrs: Vec<std::net::IpAddr> = Vec::new();
+            for &(idx, ip) in &netlink_v4 {
+                if idx == ifindex {
+                    let ip_addr = std::net::IpAddr::V4(ip);
+                    if !v4_addrs.contains(&ip_addr) {
+                        v4_addrs.push(ip_addr);
+                    }
+                }
+            }
+            if !v4_addrs.is_empty() {
+                let entry = map.entry(name.to_string()).or_default();
+                for ip in v4_addrs.into_iter().rev() {
+                    if !entry.contains(&ip) {
+                        entry.insert(0, ip);
+                    }
+                }
+            }
+        }
+        return map;
+    }
+
+    if let Ok(sock) = std::net::UdpSocket::bind("0.0.0.0:0") {
+        let fd = sock.as_raw_fd();
+        for &name in iface_names {
+            if let Some(v4) = linux_iface_ipv4(fd, name) {
+                let entry = map.entry(name.to_string()).or_default();
+                if !entry.contains(&v4) {
+                    entry.insert(0, v4);
+                }
+            }
+        }
+    }
+
+    map
+}
+
+/// Builds one [`NetworkInterface`] from a Linux `/sys/class/net/<iface>` directory reading only
+/// `operstate`, `statistics/rx_bytes`, and `statistics/tx_bytes`.
+#[cfg(any(target_os = "linux", test))]
+fn read_linux_net_iface(
+    iface_dir: &std::path::Path,
+    name: &str,
+    ips: Vec<std::net::IpAddr>,
+    active_interface: Option<&str>,
+    local_ip: Option<&str>,
+) -> NetworkInterface {
+    let oper_up = read_sysfs_small(&iface_dir.join("operstate"), false, |b| {
+        b.trim_ascii() == b"up"
+    });
+    let stats_dir = iface_dir.join("statistics");
+    let total_rx = read_sysfs_small(&stats_dir.join("rx_bytes"), 0, parse_sysfs_u64);
+    let total_tx = read_sysfs_small(&stats_dir.join("tx_bytes"), 0, parse_sysfs_u64);
+    build_network_interface(
+        name,
+        oper_up,
+        total_rx,
+        total_tx,
+        ips.into_iter(),
+        active_interface,
+        local_ip,
+    )
+}
+
+/// Testable Linux network interface reader under `sys_net` accepting a pre-populated IP map.
+#[cfg(test)]
+fn detect_linux_networks_in(
+    sys_net: &std::path::Path,
+    iface_ips: &mut std::collections::HashMap<String, Vec<std::net::IpAddr>>,
+    active_interface: Option<&str>,
+    local_ip: Option<&str>,
+    only_active: bool,
+) -> Vec<NetworkInterface> {
+    if only_active {
+        if let Some(active) = active_interface {
+            if !active.is_empty() && !active.contains('/') && active != "." && active != ".." {
+                let iface_dir = sys_net.join(active);
+                if iface_dir.is_dir() {
+                    let ips = iface_ips.remove(active).unwrap_or_default();
+                    return vec![read_linux_net_iface(
+                        &iface_dir,
+                        active,
+                        ips,
+                        active_interface,
+                        local_ip,
+                    )];
+                }
+            }
+        }
+    }
+
+    let Ok(entries) = std::fs::read_dir(sys_net) else {
+        return Vec::new();
+    };
+    let mut interfaces = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let ips = iface_ips.remove(&name).unwrap_or_default();
+        interfaces.push(read_linux_net_iface(
+            &path,
+            &name,
+            ips,
+            active_interface,
+            local_ip,
+        ));
+    }
+    interfaces.sort_by(|a, b| interface_sort_key(&a.name).cmp(&interface_sort_key(&b.name)));
+    interfaces
+}
+
+/// Collects network interfaces for `SystemInfo::collect`, reading only the active interface on
+/// Linux when `!all_interfaces` (`--short` and default modes) to minimize sysfs I/O.
+pub(crate) fn detect_networks_for_mode(
+    active_interface: Option<&str>,
+    local_ip: Option<&str>,
+    all_interfaces: bool,
+) -> Vec<NetworkInterface> {
+    #[cfg(target_os = "linux")]
+    {
+        collect_linux_networks_native(
+            std::path::Path::new("/sys/class/net"),
+            active_interface,
+            local_ip,
+            !all_interfaces,
+        )
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = all_interfaces;
+        detect_networks(active_interface, local_ip)
+    }
+}
+
 pub fn detect_networks(
     active_interface: Option<&str>,
     local_ip: Option<&str>,
@@ -270,7 +739,12 @@ pub fn detect_networks(
         interfaces
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
+    {
+        detect_networks_for_mode(active_interface, local_ip, true)
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
     {
         let mut interfaces: Vec<NetworkInterface> = Networks::new_with_refreshed_list()
             .map(|networks| {
@@ -2393,5 +2867,154 @@ mod tests {
             assert_eq!(offset_of!(IpAdapterAddresses, OperStatus), 104);
             assert_eq!(size_of::<IpAdapterAddresses>(), 112);
         }
+    }
+
+    #[test]
+    fn detect_linux_networks_in_reads_all_or_active_only() {
+        use std::collections::HashMap;
+        use std::net::IpAddr;
+
+        assert_eq!(parse_sysfs_u64(b"12345\n"), 12345);
+        assert_eq!(parse_sysfs_u64(b"0"), 0);
+        assert_eq!(parse_sysfs_u64(b"invalid"), 0);
+
+        let root = std::env::temp_dir().join(format!("retch-net-sysfs-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+
+        for (name, oper, rx, tx) in [
+            ("eth0", "up\n", "1048576\n", "2048\n"),
+            ("lo", "unknown\n", "4096\n", "4096\n"),
+            ("eth1", "down\n", "0\n", "0\n"),
+        ] {
+            let stats = root.join(name).join("statistics");
+            std::fs::create_dir_all(&stats).unwrap();
+            std::fs::write(root.join(name).join("operstate"), oper).unwrap();
+            std::fs::write(stats.join("rx_bytes"), rx).unwrap();
+            std::fs::write(stats.join("tx_bytes"), tx).unwrap();
+        }
+        // Regular non-directory sysfs file (like bonding_masters) must be skipped cleanly.
+        std::fs::write(root.join("bonding_masters"), "\n").unwrap();
+
+        let mut ips_all: HashMap<String, Vec<IpAddr>> =
+            HashMap::from([("eth0".to_string(), vec!["192.168.1.10".parse().unwrap()])]);
+        let all = detect_linux_networks_in(&root, &mut ips_all, Some("eth0"), None, false);
+        assert_eq!(
+            all.iter().map(|n| n.name.as_str()).collect::<Vec<_>>(),
+            vec!["eth0", "eth1", "lo"]
+        );
+        assert!(all[0].is_up);
+        assert!(!all[1].is_up);
+
+        let mut ips_active: HashMap<String, Vec<IpAddr>> =
+            HashMap::from([("eth0".to_string(), vec!["192.168.1.10".parse().unwrap()])]);
+        let only = detect_linux_networks_in(&root, &mut ips_active, Some("eth0"), None, true);
+        assert_eq!(only.len(), 1);
+        assert_eq!(only[0].name, "eth0");
+        assert!(only[0].line.contains("192.168.1.10"));
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn parse_proc_net_if_inet6_parses_addresses_per_interface() {
+        let sample = "\
+fe8000000000000025b27a8ac665bc5b 04 40 20 80     eth0
+00000000000000000000000000000001 01 80 10 80       lo
+fd5f565d81eb3c2b6c1d8cc611f2342a 04 40 00 00     eth0
+malformed_short 04 40 00 00 eth0
+";
+        let map = parse_proc_net_if_inet6(sample);
+        assert_eq!(
+            map.get("lo"),
+            Some(&vec!["::1".parse::<std::net::IpAddr>().unwrap()])
+        );
+        assert_eq!(
+            map.get("eth0"),
+            Some(&vec![
+                "fe80::25b2:7a8a:c665:bc5b".parse().unwrap(),
+                "fd5f:565d:81eb:3c2b:6c1d:8cc6:11f2:342a".parse().unwrap(),
+            ])
+        );
+    }
+
+    #[test]
+    fn parse_netlink_ipv4_batch_collects_multiple_ipv4s_and_prefers_ifa_local() {
+        use std::net::Ipv4Addr;
+
+        fn push_rtattr(buf: &mut Vec<u8>, rta_type: u16, payload: &[u8]) {
+            let rta_len = (4 + payload.len()) as u16;
+            buf.extend_from_slice(&rta_len.to_ne_bytes());
+            buf.extend_from_slice(&rta_type.to_ne_bytes());
+            buf.extend_from_slice(payload);
+            while buf.len() % 4 != 0 {
+                buf.push(0);
+            }
+        }
+
+        fn push_rtm_newaddr(buf: &mut Vec<u8>, ifa_family: u8, ifa_index: u32, attrs: &[u8]) {
+            let nlmsg_len = (16 + 8 + attrs.len()) as u32;
+            buf.extend_from_slice(&nlmsg_len.to_ne_bytes());
+            buf.extend_from_slice(&20u16.to_ne_bytes()); // RTM_NEWADDR
+            buf.extend_from_slice(&0u16.to_ne_bytes());
+            buf.extend_from_slice(&1u32.to_ne_bytes());
+            buf.extend_from_slice(&0u32.to_ne_bytes());
+            buf.extend_from_slice(&[ifa_family, 24, 0, 0]);
+            buf.extend_from_slice(&ifa_index.to_ne_bytes());
+            buf.extend_from_slice(attrs);
+            while buf.len() % 4 != 0 {
+                buf.push(0);
+            }
+        }
+
+        let mut msg = Vec::new();
+
+        // Primary IPv4 on ifindex 2
+        let mut a1 = Vec::new();
+        push_rtattr(&mut a1, 1, &[192, 168, 1, 10]); // IFA_ADDRESS
+        push_rtattr(&mut a1, 2, &[192, 168, 1, 10]); // IFA_LOCAL
+        push_rtm_newaddr(&mut msg, 2, 2, &a1);
+
+        // Secondary / alias IPv4 on the same ifindex 2
+        let mut a2 = Vec::new();
+        push_rtattr(&mut a2, 1, &[192, 168, 1, 20]);
+        push_rtattr(&mut a2, 2, &[192, 168, 1, 20]);
+        push_rtm_newaddr(&mut msg, 2, 2, &a2);
+
+        // Point-to-point interface ifindex 5: peer IFA_ADDRESS differs from local IFA_LOCAL
+        let mut a3 = Vec::new();
+        push_rtattr(&mut a3, 1, &[10, 8, 0, 1]); // peer
+        push_rtattr(&mut a3, 2, &[10, 8, 0, 2]); // local
+        push_rtm_newaddr(&mut msg, 2, 5, &a3);
+
+        // Non-IPv4 record (family 10) must be ignored
+        let mut a4 = Vec::new();
+        push_rtattr(&mut a4, 1, &[0u8; 16]);
+        push_rtm_newaddr(&mut msg, 10, 2, &a4);
+
+        // NLMSG_DONE
+        msg.extend_from_slice(&16u32.to_ne_bytes());
+        msg.extend_from_slice(&3u16.to_ne_bytes());
+        msg.extend_from_slice(&[0u8; 10]);
+
+        let mut parsed = Vec::new();
+        assert_eq!(
+            parse_netlink_ipv4_batch(&msg, &mut parsed),
+            NetlinkParseState::Done
+        );
+        assert_eq!(
+            parsed,
+            vec![
+                (2, Ipv4Addr::new(192, 168, 1, 10)),
+                (2, Ipv4Addr::new(192, 168, 1, 20)),
+                (5, Ipv4Addr::new(10, 8, 0, 2)),
+            ]
+        );
+
+        // Truncated header returns More (or Error when nlmsg_len exceeds buffer)
+        let mut partial = Vec::new();
+        assert_eq!(
+            parse_netlink_ipv4_batch(&msg[..20], &mut partial),
+            NetlinkParseState::Error
+        );
     }
 }

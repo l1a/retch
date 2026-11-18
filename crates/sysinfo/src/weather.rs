@@ -64,18 +64,55 @@ impl WeatherUnit {
 /// never block or garble the rest of the output.
 pub(crate) fn detect_weather(location: Option<&str>, unit: WeatherUnit) -> Option<String> {
     let location = location.map(str::trim).filter(|l| !l.is_empty());
-    let body = curl_get(&wttr_url(location, unit))?;
+    let body = fetch_wttr_body(location, unit)?;
     parse_wttr(&body, unit, location.is_some())
+}
+
+/// Path and query string for a wttr.in request.
+fn wttr_path_and_query(location: Option<&str>, unit: WeatherUnit) -> String {
+    format!(
+        "/{}?format=%l|%c|%t&{}",
+        location.map(url_encode).unwrap_or_default(),
+        unit.wttr_flag()
+    )
 }
 
 /// The one request: location (empty for IP-based), then `%l` location, `%c` condition
 /// emoji and `%t` temperature, `|`-separated, in the requested unit.
 fn wttr_url(location: Option<&str>, unit: WeatherUnit) -> String {
-    format!(
-        "http://wttr.in/{}?format=%l|%c|%t&{}",
-        location.map(url_encode).unwrap_or_default(),
-        unit.wttr_flag()
-    )
+    format!("http://wttr.in{}", wttr_path_and_query(location, unit))
+}
+
+const WEATHER_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(4);
+const WEATHER_CONNECT_BUDGET: std::time::Duration = std::time::Duration::from_secs(2);
+const WEATHER_CONNECT_ATTEMPT_CAP: std::time::Duration = std::time::Duration::from_secs(1);
+
+/// Fetches the raw wttr.in response body over plain HTTP/1.1 in-process, falling back to
+/// `curl` only when a proxy is configured or a direct TCP attempt fails/redirects, all within
+/// a single [`WEATHER_TIMEOUT`] wall-clock budget.
+fn fetch_wttr_body(location: Option<&str>, unit: WeatherUnit) -> Option<String> {
+    let deadline = std::time::Instant::now() + WEATHER_TIMEOUT;
+    let path_and_query = wttr_path_and_query(location, unit);
+    match http_get_wttr(&path_and_query, deadline) {
+        HttpOutcome::Ok(body) => Some(body),
+        HttpOutcome::HttpError => None,
+        HttpOutcome::Fallback => {
+            let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+            let max_secs = remaining_curl_timeout_secs(remaining)?;
+            curl_get(&wttr_url(location, unit), max_secs)
+        }
+    }
+}
+
+/// Converts remaining wall-clock budget into an integer `--max-time` argument for `curl`,
+/// returning `None` once under 1 second remains so total latency stays within [`WEATHER_TIMEOUT`].
+fn remaining_curl_timeout_secs(remaining: std::time::Duration) -> Option<u64> {
+    if remaining >= std::time::Duration::from_millis(3900) {
+        Some(WEATHER_TIMEOUT.as_secs())
+    } else {
+        let secs = remaining.as_secs();
+        (secs >= 1).then_some(secs)
+    }
 }
 
 /// Parses `location|emoji |+67°F` into `location: emoji 67°F`.
@@ -145,10 +182,291 @@ fn is_us(country: &str) -> bool {
     )
 }
 
-/// Run `curl -sf --max-time 4 <url>` and return stdout on success, `None` on any failure.
-fn curl_get(url: &str) -> Option<String> {
+/// Result of an in-process HTTP/1.1 `GET` attempt to `wttr.in`.
+#[derive(Debug, PartialEq, Eq)]
+enum HttpOutcome {
+    /// HTTP 200 with decoded response body.
+    Ok(String),
+    /// Server returned an authoritative HTTP error (4xx/5xx); do not retry with `curl`.
+    HttpError,
+    /// Proxy configured, redirect received, or transport/framing failure; fall back to `curl`.
+    Fallback,
+}
+
+/// Returns `true` if a standard HTTP proxy environment variable is set and non-empty.
+fn has_http_proxy() -> bool {
+    ["http_proxy", "HTTP_PROXY", "all_proxy", "ALL_PROXY"]
+        .into_iter()
+        .any(|k| std::env::var_os(k).is_some_and(|v| !v.is_empty()))
+}
+
+/// Runs a blocking resolver closure on a detached helper thread so a stalled `getaddrinfo`
+/// cannot block the caller past `timeout`.
+fn resolve_with_timeout<F>(
+    timeout: std::time::Duration,
+    resolver: F,
+) -> Option<Vec<std::net::SocketAddr>>
+where
+    F: FnOnce() -> Option<Vec<std::net::SocketAddr>> + Send + 'static,
+{
+    if timeout.is_zero() {
+        return None;
+    }
+    let (tx, rx) = std::sync::mpsc::sync_channel(1);
+    std::thread::spawn(move || {
+        let _ = tx.send(resolver());
+    });
+    rx.recv_timeout(timeout).ok().flatten()
+}
+
+/// Sends a single plain HTTP/1.1 `GET` request to `wttr.in:80` over a direct `TcpStream`
+/// with `TCP_NODELAY` enabled, bounded by `deadline`, avoiding `curl` fork+exec overhead.
+fn http_get_wttr(path_and_query: &str, deadline: std::time::Instant) -> HttpOutcome {
+    use std::net::ToSocketAddrs;
+
+    if has_http_proxy() {
+        return HttpOutcome::Fallback;
+    }
+
+    let now = std::time::Instant::now();
+    let connect_deadline = deadline.min(now + WEATHER_CONNECT_BUDGET);
+    let dns_budget = connect_deadline.saturating_duration_since(now);
+    let Some(mut addrs) = resolve_with_timeout(dns_budget, || {
+        ("wttr.in", 80)
+            .to_socket_addrs()
+            .ok()
+            .map(Iterator::collect)
+    }) else {
+        return HttpOutcome::Fallback;
+    };
+    if addrs.is_empty() {
+        return HttpOutcome::Fallback;
+    }
+    // Try IPv4 endpoints before IPv6 so broken IPv6 routing does not stall connect_timeout.
+    addrs.sort_by_key(|a| u8::from(a.is_ipv6()));
+
+    http_get_wttr_addrs("wttr.in", path_and_query, addrs, connect_deadline, deadline)
+}
+
+/// Connects to the first reachable address in `addrs` before `connect_deadline`, then sends and
+/// parses one HTTP/1.1 `GET` request before `deadline`.
+fn http_get_wttr_addrs(
+    host: &str,
+    path_and_query: &str,
+    addrs: Vec<std::net::SocketAddr>,
+    connect_deadline: std::time::Instant,
+    deadline: std::time::Instant,
+) -> HttpOutcome {
+    use std::net::TcpStream;
+
+    let mut stream = None;
+    for addr in addrs.into_iter().take(4) {
+        let remaining = connect_deadline.saturating_duration_since(std::time::Instant::now());
+        if remaining.is_zero() {
+            break;
+        }
+        if let Ok(s) = TcpStream::connect_timeout(&addr, remaining.min(WEATHER_CONNECT_ATTEMPT_CAP))
+        {
+            stream = Some(s);
+            break;
+        }
+    }
+    let Some(stream) = stream else {
+        return HttpOutcome::Fallback;
+    };
+
+    read_http_response(stream, host, path_and_query, deadline)
+}
+
+/// Writes the HTTP/1.1 `GET` request on `stream` and reads until completion, clean EOF, or error.
+///
+/// Any transport error or deadline expiration while reading returns `HttpOutcome::Fallback`
+/// unconditionally so truncated unframed responses are never mistaken for complete bodies.
+fn read_http_response(
+    mut stream: std::net::TcpStream,
+    host: &str,
+    path_and_query: &str,
+    deadline: std::time::Instant,
+) -> HttpOutcome {
+    use std::io::{Read, Write};
+
+    let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+    if remaining.is_zero() {
+        return HttpOutcome::Fallback;
+    }
+    let _ = stream.set_nodelay(true);
+    let _ = stream.set_write_timeout(Some(remaining));
+
+    let request = format!(
+        "GET {path_and_query} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: curl/8.0\r\nAccept: */*\r\nConnection: close\r\n\r\n"
+    );
+    if stream.write_all(request.as_bytes()).is_err() {
+        return HttpOutcome::Fallback;
+    }
+
+    let mut raw = Vec::with_capacity(512);
+    let mut chunk = [0u8; 1024];
+    loop {
+        let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+        if remaining.is_zero() {
+            return HttpOutcome::Fallback;
+        }
+        let _ = stream.set_read_timeout(Some(remaining));
+        match stream.read(&mut chunk) {
+            Ok(0) => break,
+            Ok(n) => {
+                raw.extend_from_slice(&chunk[..n]);
+                if raw.len() > 64 * 1024 {
+                    return HttpOutcome::Fallback;
+                }
+                if is_http_response_complete(&raw) {
+                    break;
+                }
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(_) => return HttpOutcome::Fallback,
+        }
+    }
+
+    parse_http_response(&raw)
+}
+
+/// Finds the end of the HTTP header block and splits `(header_bytes, body_bytes)`.
+fn split_http_headers(raw: &[u8]) -> Option<(&[u8], &[u8])> {
+    raw.windows(4)
+        .position(|w| w == b"\r\n\r\n")
+        .map(|pos| (&raw[..pos], &raw[pos + 4..]))
+}
+
+/// Returns `true` when headers have arrived and either `Content-Length` bytes or the
+/// terminating chunk (`0\r\n\r\n`) is already present in `raw`.
+fn is_http_response_complete(raw: &[u8]) -> bool {
+    let Some((headers_raw, body)) = split_http_headers(raw) else {
+        return false;
+    };
+    let Ok(headers_str) = std::str::from_utf8(headers_raw) else {
+        return false;
+    };
+    let mut chunked = false;
+    let mut content_len: Option<usize> = None;
+    for line in headers_str.lines().skip(1) {
+        if let Some((k, v)) = line.split_once(':') {
+            if k.trim().eq_ignore_ascii_case("transfer-encoding")
+                && v.to_ascii_lowercase().contains("chunked")
+            {
+                chunked = true;
+            } else if k.trim().eq_ignore_ascii_case("content-length") {
+                content_len = v.trim().parse::<usize>().ok();
+            }
+        }
+    }
+    if chunked {
+        decode_chunked_body(body).is_some()
+    } else if let Some(len) = content_len {
+        body.len() >= len
+    } else {
+        false
+    }
+}
+
+/// Decodes an HTTP/1.1 `Transfer-Encoding: chunked` payload, returning `None` if malformed
+/// or incomplete.
+fn decode_chunked_body(mut data: &[u8]) -> Option<Vec<u8>> {
+    let mut out = Vec::new();
+    loop {
+        let line_end = data.windows(2).position(|w| w == b"\r\n")?;
+        let size_str = std::str::from_utf8(&data[..line_end]).ok()?;
+        let size_hex = size_str.split(';').next()?.trim();
+        let size = usize::from_str_radix(size_hex, 16).ok()?;
+        data = &data[line_end + 2..];
+        if size == 0 {
+            // Require the final CRLF (or trailer section ending in CRLF) so partial
+            // reads are not mistaken for complete chunked responses.
+            if data.starts_with(b"\r\n") || data.windows(4).any(|w| w == b"\r\n\r\n") {
+                return Some(out);
+            }
+            return None;
+        }
+        let end = size.checked_add(2)?;
+        if data.len() < end {
+            return None;
+        }
+        out.extend_from_slice(&data[..size]);
+        if &data[size..end] != b"\r\n" {
+            return None;
+        }
+        data = &data[end..];
+    }
+}
+
+/// Parses a raw HTTP response buffer into [`HttpOutcome`].
+fn parse_http_response(raw: &[u8]) -> HttpOutcome {
+    let Some((headers_raw, body)) = split_http_headers(raw) else {
+        return HttpOutcome::Fallback;
+    };
+    let Ok(headers_str) = std::str::from_utf8(headers_raw) else {
+        return HttpOutcome::Fallback;
+    };
+    let Some(status_line) = headers_str.lines().next() else {
+        return HttpOutcome::Fallback;
+    };
+    let Some(status_code) = status_line
+        .split_whitespace()
+        .nth(1)
+        .and_then(|s| s.parse::<u16>().ok())
+    else {
+        return HttpOutcome::Fallback;
+    };
+
+    if (300..400).contains(&status_code) {
+        return HttpOutcome::Fallback;
+    }
+    if status_code >= 400 {
+        return HttpOutcome::HttpError;
+    }
+    if status_code != 200 {
+        return HttpOutcome::Fallback;
+    }
+
+    let mut chunked = false;
+    let mut content_len: Option<usize> = None;
+    for line in headers_str.lines().skip(1) {
+        if let Some((k, v)) = line.split_once(':') {
+            if k.trim().eq_ignore_ascii_case("transfer-encoding")
+                && v.to_ascii_lowercase().contains("chunked")
+            {
+                chunked = true;
+            } else if k.trim().eq_ignore_ascii_case("content-length") {
+                content_len = v.trim().parse::<usize>().ok();
+            }
+        }
+    }
+
+    let decoded = if chunked {
+        match decode_chunked_body(body) {
+            Some(v) => v,
+            None => return HttpOutcome::Fallback,
+        }
+    } else if let Some(len) = content_len {
+        if body.len() < len {
+            return HttpOutcome::Fallback;
+        }
+        body[..len].to_vec()
+    } else {
+        body.to_vec()
+    };
+
+    match String::from_utf8(decoded) {
+        Ok(s) => HttpOutcome::Ok(s),
+        Err(_) => HttpOutcome::Fallback,
+    }
+}
+
+/// Run `curl -sf --max-time <max_time_secs> <url>` and return stdout on success, `None` on any failure.
+fn curl_get(url: &str, max_time_secs: u64) -> Option<String> {
+    let max_time = max_time_secs.to_string();
     let out = std::process::Command::new("curl")
-        .args(["-sf", "--max-time", "4", url])
+        .args(["-sf", "--max-time", &max_time, url])
         .output()
         .ok()?;
     if !out.status.success() {
@@ -359,5 +677,155 @@ mod tests {
         );
         assert_eq!(shorten_location("Paris, France"), "Paris, France");
         assert_eq!(shorten_location("Somewhere"), "Somewhere");
+    }
+
+    #[test]
+    fn parse_http_response_handles_plain_and_chunked_bodies() {
+        let plain = b"HTTP/1.1 200 OK\r\nContent-Length: 43\r\nConnection: close\r\n\r\nNewbury Park, California, US|\xe2\x98\x81\xef\xb8\x8f |+69\xc2\xb0F";
+        assert_eq!(
+            parse_http_response(plain),
+            HttpOutcome::Ok("Newbury Park, California, US|☁️ |+69°F".to_string())
+        );
+
+        let chunked = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n6\r\nLondon\r\nF\r\n|\xe2\x98\x81\xef\xb8\x8f |+15\xc2\xb0C\r\n0\r\n\r\n";
+        assert_eq!(
+            parse_http_response(chunked),
+            HttpOutcome::Ok("London|☁️ |+15°C".to_string())
+        );
+
+        assert_eq!(
+            parse_http_response(b"HTTP/1.1 500 Internal Server Error\r\n\r\nunknown location"),
+            HttpOutcome::HttpError
+        );
+        assert_eq!(
+            parse_http_response(b"HTTP/1.1 302 Found\r\nLocation: https://wttr.in/\r\n\r\n"),
+            HttpOutcome::Fallback
+        );
+        assert_eq!(
+            parse_http_response(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\nshort"),
+            HttpOutcome::Fallback
+        );
+        assert!(is_http_response_complete(plain));
+        assert!(is_http_response_complete(chunked));
+        assert!(!is_http_response_complete(
+            b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n6\r\nLondon\r\n"
+        ));
+    }
+
+    #[test]
+    fn decode_chunked_body_rejects_huge_chunk_sizes() {
+        for huge in [usize::MAX, usize::MAX - 1, usize::MAX - 2] {
+            let body = format!("{huge:X}\r\nx\r\n0\r\n\r\n");
+            assert_eq!(decode_chunked_body(body.as_bytes()), None);
+            let http = format!("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n{body}");
+            assert_eq!(parse_http_response(http.as_bytes()), HttpOutcome::Fallback);
+        }
+        assert_eq!(
+            decode_chunked_body(b"FFFFFFFFFFFFFFFF\r\nx\r\n0\r\n\r\n"),
+            None
+        );
+    }
+
+    #[test]
+    fn resolve_with_timeout_caps_stalled_dns() {
+        use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+        use std::time::{Duration, Instant};
+
+        let start = Instant::now();
+        let timed_out = resolve_with_timeout(Duration::from_millis(40), || {
+            std::thread::sleep(Duration::from_millis(400));
+            Some(vec![SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 80)])
+        });
+        assert_eq!(timed_out, None);
+        assert!(start.elapsed() < Duration::from_millis(250));
+
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 80);
+        let ok = resolve_with_timeout(Duration::from_secs(1), move || Some(vec![addr]));
+        assert_eq!(ok, Some(vec![addr]));
+        assert_eq!(
+            resolve_with_timeout(Duration::ZERO, move || Some(vec![addr])),
+            None
+        );
+    }
+
+    #[test]
+    fn remaining_curl_timeout_secs_respects_budget() {
+        use std::time::Duration;
+
+        assert_eq!(remaining_curl_timeout_secs(Duration::from_secs(4)), Some(4));
+        assert_eq!(
+            remaining_curl_timeout_secs(Duration::from_millis(3950)),
+            Some(4)
+        );
+        assert_eq!(
+            remaining_curl_timeout_secs(Duration::from_millis(2500)),
+            Some(2)
+        );
+        assert_eq!(
+            remaining_curl_timeout_secs(Duration::from_millis(1999)),
+            Some(1)
+        );
+        assert_eq!(
+            remaining_curl_timeout_secs(Duration::from_millis(999)),
+            None
+        );
+    }
+
+    #[test]
+    fn http_get_wttr_handles_unframed_eof_vs_read_timeout() {
+        use std::io::{Read, Write};
+        use std::net::{Shutdown, TcpListener};
+        use std::time::{Duration, Instant};
+
+        // Clean EOF on an unframed (no Content-Length / chunked) body succeeds.
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind loopback");
+        let addr = listener.local_addr().expect("local addr");
+        let server = std::thread::spawn(move || {
+            let (mut conn, _) = listener.accept().expect("accept");
+            let mut req = [0u8; 512];
+            let _ = conn.read(&mut req);
+            conn.write_all(b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\nLondon|\xe2\x98\x81\xef\xb8\x8f |+15\xc2\xb0C")
+                .expect("write");
+            let _ = conn.shutdown(Shutdown::Write);
+        });
+        let deadline = Instant::now() + Duration::from_secs(2);
+        assert_eq!(
+            http_get_wttr_addrs("127.0.0.1", "/?format=x", vec![addr], deadline, deadline),
+            HttpOutcome::Ok("London|☁️ |+15°C".to_string())
+        );
+        server.join().expect("server thread");
+
+        // Stalled unframed body that hits read timeout must fall back, never return truncated Ok.
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind loopback");
+        let addr = listener.local_addr().expect("local addr");
+        let (done_tx, done_rx) = std::sync::mpsc::sync_channel(1);
+        let server = std::thread::spawn(move || {
+            let (mut conn, _) = listener.accept().expect("accept");
+            let mut req = [0u8; 512];
+            let _ = conn.read(&mut req);
+            conn.write_all(b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\nLondon|")
+                .expect("write partial");
+            let _ = done_rx.recv();
+        });
+        let deadline = Instant::now() + Duration::from_millis(80);
+        assert_eq!(
+            http_get_wttr_addrs("127.0.0.1", "/?format=x", vec![addr], deadline, deadline),
+            HttpOutcome::Fallback
+        );
+        let _ = done_tx.send(());
+        server.join().expect("server thread");
+
+        // Expired connect deadline returns Fallback without attempting connections.
+        let expired = Instant::now() - Duration::from_millis(1);
+        assert_eq!(
+            http_get_wttr_addrs(
+                "127.0.0.1",
+                "/?format=x",
+                vec![addr],
+                expired,
+                Instant::now() + Duration::from_secs(1)
+            ),
+            HttpOutcome::Fallback
+        );
     }
 }

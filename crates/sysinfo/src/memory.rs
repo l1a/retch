@@ -301,6 +301,15 @@ pub fn format_dimm_slots(slots: &[DimmSlot]) -> Option<String> {
     Some(parts.join(", "))
 }
 
+/// Returns `true` when either the sysfs DMI table or `/dev/mem` can be opened for reading.
+///
+/// Unprivileged callers and containers without DMI access cannot read SMBIOS tables, so
+/// spawning `dmidecode` there only incurs fork+exec latency to fail on permission denied.
+#[cfg(any(target_os = "linux", test))]
+fn can_read_dmi_tables_in(sys_dmi: &std::path::Path, dev_mem: &std::path::Path) -> bool {
+    std::fs::File::open(sys_dmi).is_ok() || std::fs::File::open(dev_mem).is_ok()
+}
+
 #[cfg(target_os = "linux")]
 fn detect_linux() -> Option<String> {
     // 1. Prefer systemd-udevd's world-readable DMI memory database (`/run/udev/data/+dmi:id`),
@@ -313,7 +322,15 @@ fn detect_linux() -> Option<String> {
         }
     }
 
-    // 2. Fallback: `dmidecode --type 17` (requires root access to `/sys/firmware/dmi/tables/DMI`).
+    // 2. Fallback: `dmidecode --type 17` requires read access to the kernel DMI table or
+    // `/dev/mem`. Fail fast before spawning a subprocess when neither is readable.
+    if !can_read_dmi_tables_in(
+        std::path::Path::new("/sys/firmware/dmi/tables/DMI"),
+        std::path::Path::new("/dev/mem"),
+    ) {
+        return None;
+    }
+
     // Try trusted canonical paths before falling back to a bare `PATH` lookup so
     // `sudo retch` without `secure_path` does not prefer a user-writable `PATH` entry.
     let candidates = [
@@ -329,8 +346,10 @@ fn detect_linux() -> Option<String> {
         else {
             continue;
         };
+        // Stop on the first candidate binary that actually ran: remaining entries are path
+        // aliases (e.g. merged `/sbin` -> `/usr/sbin`) that would fail identically.
         if !output.status.success() {
-            continue;
+            return None;
         }
         let text = String::from_utf8_lossy(&output.stdout);
         let slots = parse_dmidecode_type17(&text);
@@ -1244,5 +1263,23 @@ E:MEMORY_DEVICE_2_TYPE=Unknown
             format_dimm_slots(&slots).as_deref(),
             Some("2× 16 GB LPDDR5 8000 MT/s (rated 8533 MT/s) (Samsung)")
         );
+    }
+
+    #[test]
+    fn test_can_read_dmi_tables_in() {
+        let dir = std::env::temp_dir().join(format!("retch-dmi-check-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let missing_a = dir.join("missing_dmi");
+        let missing_b = dir.join("missing_mem");
+        assert!(!can_read_dmi_tables_in(&missing_a, &missing_b));
+
+        let present_dmi = dir.join("DMI");
+        std::fs::write(&present_dmi, b"dmi").unwrap();
+        assert!(can_read_dmi_tables_in(&present_dmi, &missing_b));
+        assert!(can_read_dmi_tables_in(&missing_a, &present_dmi));
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
