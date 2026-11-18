@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794986449304,
+  "lastUpdate": 1794986449595,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -25411,6 +25411,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 373017055,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b7ed033beb165093b00ff90da387675cb01aaed4",
+          "message": "Remove unmaintained chrono and update deps (#336)\n\n- Replace `chrono::Local` boot-time formatting in `crates/sysinfo/src/fetch.rs`\n  with pure proleptic Gregorian offset helpers (`civil_to_epoch_secs`,\n  `format_local_iso8601`) backed by `libc::localtime_r` on Unix and\n  `FileTimeToSystemTime` + `SystemTimeToTzSpecificLocalTime` (`win_cpu`) on\n  Windows, adding unit tests (`test_civil_to_epoch_secs_and_iso8601_offsets`,\n  `test_format_boot_time_produces_iso8601`) and a 16-byte `SystemTime` layout\n  guard.\n- Drop `chrono` from `crates/sysinfo/Cargo.toml` and `Cargo.lock` (resolving\n  `RUSTSEC-2026-0543` and removing `chrono 0.4.45` plus `iana-time-zone*`,\n  `android_system_properties`, `core-foundation-sys`, `log`, and duplicate\n  `hashbrown`).\n- Fold Dependabot PR #334 (`rusqlite` 0.41 -> 0.42, `sysinfo` 0.40.1 -> 0.40.4,\n  `thiserror` 2.0.18 -> 2.0.21) and PR #335 (`anthropics/claude-code-action`\n  and `cachix/install-nix-action` workflow SHAs).\n- Bump `retch-sysinfo` to `0.1.109` and `retch-cli` to `0.21.9`, regenerate\n  `docs/retch.1`, and update `NOTES.md`.\n\nFixes #333\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-17T23:11:02-08:00",
+          "tree_id": "bd985e46122875b57968cb677ee5b6e304c7dc48",
+          "url": "https://github.com/l1a/retch/commit/b7ed033beb165093b00ff90da387675cb01aaed4"
+        },
+        "date": 1794986449546,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 31224810.000000007,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2333686100,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1296287260.0000002,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 21132990.000000004,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 26440070.000000004,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 406088330.00000006,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 252914450,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 23388320,
+            "unit": "ns",
+            "extra": "v0.21.9"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 304.8071020297483,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.4406657923670485,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 205.15577892454593,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1440.1110392283224,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41754.862390076,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 881.3392203566971,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 889.74086494184,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 368805107.5,
             "unit": "ns"
           }
         ]
