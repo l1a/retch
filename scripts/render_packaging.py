@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 l1a
-"""Render packaging/{aur,copr,homebrew,nix,scoop} for a released version.
+"""Render packaging/{aur,copr,homebrew,scoop} for a released version.
 
 WHY THIS EXISTS
 ---------------
@@ -69,7 +69,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # about it fails loudly instead of shipping verbatim.
 SENTINEL_RE = re.compile(r"@[A-Z0-9_]+@")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-SRI_SHA256_RE = re.compile(r"^sha256-[A-Za-z0-9+/]{43}=$")
 VERSION_RE = re.compile(r"^[0-9]+(\.[0-9]+)+$")
 
 # The %changelog entry the COPR spec gets at render time. A constant rather than
@@ -89,14 +88,12 @@ class Target:
     needs_sha: bool
     needs_arch_shas: bool
     what: str
-    needs_nix_hashes: bool = False
 
 
 TARGETS = {
     "aur": Target("packaging/aur/PKGBUILD", True, False, "AUR PKGBUILD"),
     "copr": Target("packaging/copr/retch.spec", False, False, "COPR spec"),
     "brew": Target("packaging/homebrew/retch.rb", True, False, "Homebrew formula"),
-    "nix": Target("packaging/nixpkgs/package.nix", False, False, "Nixpkgs derivation", needs_nix_hashes=True),
     "scoop": Target("packaging/scoop/retch.json", False, True, "Scoop manifest"),
 }
 
@@ -144,17 +141,6 @@ def validate_sha256(sha: str) -> str:
     if len(set(sha)) == 1:
         raise RenderError(f"sha256 is a single repeated character -- placeholder? {sha!r}")
     return sha
-
-
-def validate_sri_sha256(sri: str, what: str) -> str:
-    if not SRI_SHA256_RE.match(sri):
-        raise RenderError(
-            f"{what}: not a valid SRI sha256 hash (`sha256-<43 base64 chars>=`): {sri!r}"
-        )
-    payload = sri[len("sha256-") : -1]
-    if len(set(payload)) == 1:
-        raise RenderError(f"{what}: SRI sha256 is a repeated-character placeholder: {sri!r}")
-    return sri
 
 
 def substitute(text: str, values: dict[str, str], *, what: str) -> str:
@@ -209,8 +195,6 @@ def render(
     *,
     sha256_x86_64: str | None = None,
     sha256_arm64: str | None = None,
-    src_hash: str | None = None,
-    cargo_hash: str | None = None,
     root: Path = REPO_ROOT,
     stamp: str | None = None,
 ) -> str:
@@ -225,11 +209,11 @@ def render(
     if spec.needs_sha:
         if sha256 is None:
             raise RenderError(f"{spec.what} pins a checksum: --sha256 is required")
-        if any(x is not None for x in (sha256_x86_64, sha256_arm64, src_hash, cargo_hash)):
+        if sha256_x86_64 is not None or sha256_arm64 is not None:
             raise RenderError(f"{spec.what} takes --sha256 only")
         values["SHA256"] = validate_sha256(sha256)
     elif spec.needs_arch_shas:
-        if sha256 is not None or src_hash is not None or cargo_hash is not None:
+        if sha256 is not None:
             raise RenderError(
                 f"{spec.what} pins per-architecture checksums: use --sha256-x86-64 and --sha256-arm64"
             )
@@ -239,18 +223,7 @@ def render(
             )
         values["SHA256_X86_64"] = validate_sha256(sha256_x86_64)
         values["SHA256_ARM64"] = validate_sha256(sha256_arm64)
-    elif spec.needs_nix_hashes:
-        if any(x is not None for x in (sha256, sha256_x86_64, sha256_arm64)):
-            raise RenderError(
-                f"{spec.what} takes --src-hash and --cargo-hash, not hex sha256 flags"
-            )
-        if src_hash is None or cargo_hash is None:
-            raise RenderError(
-                f"{spec.what} pins SRI hashes: --src-hash and --cargo-hash are required"
-            )
-        values["SRC_HASH"] = validate_sri_sha256(src_hash, "--src-hash")
-        values["CARGO_HASH"] = validate_sri_sha256(cargo_hash, "--cargo-hash")
-    elif any(x is not None for x in (sha256, sha256_x86_64, sha256_arm64, src_hash, cargo_hash)):
+    elif sha256 is not None or sha256_x86_64 is not None or sha256_arm64 is not None:
         raise RenderError(f"{spec.what} pins no checksum: sha256 flags are not accepted")
 
     text = template
@@ -267,9 +240,6 @@ def render(
 
 _SHA = "77ccf85843d24ac3216ab31d2584ff4a95869266c59ddb8bc83819425cfc2033"
 _SHA_ARM = "88ddf96954e35bd4327bc42e3695005b06970377d60eec9cd94920536dfd3144"
-_SRI_SRC = "sha256-08nsxpti3GNFsK8zv2tQ+6iMQrgGBRnwzjG8nTOIM1g="
-_SRI_CARGO = "sha256-19otxpti3GNFsK8zv2tQ+6iMQrgGBRnwzjG8nTOIM2h="
-_SRI_DUMMY = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
 
 def _self_test() -> int:
@@ -311,12 +281,6 @@ def _self_test() -> int:
     check("scoop autoupdate kept", "v$version/retch-windows-x86_64.exe#/retch.exe" in scoop,
           "autoupdate $version was lost")
 
-    nix = render("nix", "1.2.3", src_hash=_SRI_SRC, cargo_hash=_SRI_CARGO)
-    check("nix version", 'version = "1.2.3";' in nix, "rendered package.nix has no version 1.2.3")
-    check("nix src hash", f'hash = "{_SRI_SRC}";' in nix, "rendered package.nix has no src hash")
-    check("nix cargo hash", f'cargoHash = "{_SRI_CARGO}";' in nix, "rendered package.nix has no cargo hash")
-    check("nix no sentinel", not SENTINEL_RE.search(nix), "sentinel survived")
-
     copr = render("copr", "1.2.3", stamp="Mon Jan 05 2026")
     check("copr version", "\nVersion:        1.2.3\n" in copr, "rendered spec has no Version: 1.2.3")
     check("copr no sentinel", not SENTINEL_RE.search(copr), "sentinel survived")
@@ -348,12 +312,6 @@ def _self_test() -> int:
     refuses("single sha for scoop", lambda: render("scoop", "1.2.3", _SHA))
     refuses("missing arm64 sha for scoop", lambda: render("scoop", "1.2.3", sha256_x86_64=_SHA))
     refuses("arch sha for brew", lambda: render("brew", "1.2.3", _SHA, sha256_x86_64=_SHA))
-    refuses("missing nix cargo hash", lambda: render("nix", "1.2.3", src_hash=_SRI_SRC))
-    refuses("missing nix src hash", lambda: render("nix", "1.2.3", cargo_hash=_SRI_CARGO))
-    refuses("dummy nix sri hash", lambda: render("nix", "1.2.3", src_hash=_SRI_DUMMY, cargo_hash=_SRI_CARGO))
-    refuses("malformed nix sri hash", lambda: render("nix", "1.2.3", src_hash=_SHA, cargo_hash=_SRI_CARGO))
-    refuses("hex sha for nix", lambda: render("nix", "1.2.3", _SHA, src_hash=_SRI_SRC, cargo_hash=_SRI_CARGO))
-    refuses("nix hash for copr", lambda: render("copr", "1.2.3", src_hash=_SRI_SRC))
     refuses("unknown target", lambda: render("nope", "1.2.3"))
 
     # A template that has LOST its sentinel must fail rather than render unchanged -- the
@@ -396,8 +354,6 @@ def main() -> int:
     ap.add_argument("--sha256", help="sha256 of the release tarball (aur and brew only)")
     ap.add_argument("--sha256-x86-64", help="sha256 of retch-windows-x86_64.exe (scoop only)")
     ap.add_argument("--sha256-arm64", help="sha256 of retch-windows-arm64.exe (scoop only)")
-    ap.add_argument("--src-hash", help="SRI sha256 of the source tarball (nix only)")
-    ap.add_argument("--cargo-hash", help="SRI sha256 of Cargo dependencies (nix only)")
     ap.add_argument("--out", help="write here instead of stdout")
     args = ap.parse_args()
 
@@ -416,8 +372,6 @@ def main() -> int:
             args.sha256,
             sha256_x86_64=args.sha256_x86_64,
             sha256_arm64=args.sha256_arm64,
-            src_hash=args.src_hash,
-            cargo_hash=args.cargo_hash,
         )
     except RenderError as exc:
         print(f"error: {exc}", file=sys.stderr)

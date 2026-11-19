@@ -25,8 +25,7 @@ WHAT IT CHECKS
 All offline, deterministic and free:
 
   1. retch-cli's Cargo.toml `description` BEGINS with `summary`; the PKGBUILD `pkgdesc`, the
-     spec's `Summary:`, the Scoop manifest's `description`, the Nix derivation's and the
-     flake's descriptions EQUAL it.
+     spec's `Summary:`, and the Scoop manifest's `description` EQUAL it.
   2. The Homebrew formula's `desc` equals `brew_desc`, and `brew_desc` obeys `brew audit`'s
      rules (no leading article, no formula name, no trailing full stop, at most 80 chars).
   3. Every licence field names `license`, in its channel's vocabulary.
@@ -75,8 +74,6 @@ FILES = {
     "spec": "packaging/copr/retch.spec",
     "formula": "packaging/homebrew/retch.rb",
     "scoop": "packaging/scoop/retch.json",
-    "package_nix": "packaging/nixpkgs/package.nix",
-    "flake_nix": "flake.nix",
     "readme": "README.md",
     "sysinfo_lib": "crates/sysinfo/src/lib.rs",
 }
@@ -85,10 +82,6 @@ COPR_BEGIN_RE = re.compile(r"^<!-- BEGIN copr-description\b[^>]*-->[ \t]*\n", re
 COPR_END_RE = re.compile(r"^<!-- END copr-description -->[ \t]*(?:\n|$)", re.M)
 MD_LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+[^)]*)?\)")
 SYSINFO_README_DOC = '#![doc = include_str!("../README.md")]'
-
-# Nix names licences by attribute rather than SPDX id. Only identifiers this project could
-# plausibly declare; an unknown one is reported rather than guessed.
-NIX_LICENSE = {"GPL-3.0-or-later": "gpl3Plus", "GPL-3.0-only": "gpl3Only"}
 
 TOPIC_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,49}$")
 GITHUB_DESCRIPTION_MAX = 350
@@ -219,10 +212,6 @@ def check_channels(meta: dict, texts: dict[str, str]) -> list[str]:
         ("spec License", "spec", r"^License:\s*(.+)$", licence),
         ("formula desc", "formula", r'^\s*desc\s+"([^"]*)"', brew_desc),
         ("formula license", "formula", r'^\s*license\s+"([^"]*)"', licence),
-        ("package.nix description", "package_nix", r'^\s*description\s*=\s*"([^"]*)";', summary),
-        # The flake's own description is its FIRST `description =`: a later one belongs to the
-        # Home Manager option set ("Configuration for retch").
-        ("flake.nix description", "flake_nix", r'^\s*description\s*=\s*"([^"]*)";', summary),
     ]
     for where, key, pattern, want in fields:
         try:
@@ -237,16 +226,6 @@ def check_channels(meta: dict, texts: dict[str, str]) -> list[str]:
     else:
         expect("scoop description", scoop.get("description"), summary)
         expect("scoop license", scoop.get("license"), licence)
-
-    nix_licence = NIX_LICENSE.get(licence)
-    if nix_licence is None:
-        problems.append(f"no Nix licence attribute is known for {licence!r}; add it to NIX_LICENSE")
-    else:
-        try:
-            got = _field(texts["package_nix"], r"^\s*license\s*=\s*licenses\.(\w+);", "package.nix license")
-            expect("package.nix license", f"licenses.{got}", f"licenses.{nix_licence}")
-        except ParseError as exc:
-            problems.append(str(exc))
 
     # 2. `brew audit`'s rules for `desc`, checked here because brew only runs on macOS CI.
     if len(brew_desc) > BREW_DESC_MAX:
@@ -386,8 +365,6 @@ _TEXTS = {
     "spec": "Name:           retch\nSummary:        A fast thing written in Rust\nLicense:        GPL-3.0-or-later\n",
     "formula": 'class Retch < Formula\n  desc "Fast thing"\n  license "GPL-3.0-or-later"\nend\n',
     "scoop": '{\n  "description": "A fast thing written in Rust",\n  "license": "GPL-3.0-or-later"\n}\n',
-    "package_nix": '  meta = with lib; {\n    description = "A fast thing written in Rust";\n    license = licenses.gpl3Plus;\n  };\n',
-    "flake_nix": '{\n  description = "A fast thing written in Rust";\n  opts = {\n    description = "Configuration for retch";\n  };\n}\n',
     "readme": (
         "# retch\n\n"
         "<!-- BEGIN copr-description -->\n"
@@ -430,19 +407,10 @@ def _self_test() -> int:
             live = [str(exc)]
         check("live repository clean", live == [], f"got {live}")
 
-    # The four real defects the v0.17.9 review found, each as a fixture.
-    expect_problem("Nix gpl3Only detected", "package_nix", "gpl3Plus", "gpl3Only", "package.nix license")
+    # Historical v0.17.9 review defects on active channels, each as a fixture.
     expect_problem("legacy AUR GPL3 detected", "pkgbuild", "('GPL-3.0-or-later')", "('GPL3')", "PKGBUILD license")
-    expect_problem("stale flake description detected", "flake_nix",
-                   '"A fast thing written in Rust"', '"Fast fetcher, short/long modes."', "flake.nix description")
     expect_problem("indented COPR paragraph detected", "copr_description",
                    "* an item\n", "* an item\n\n    an indented paragraph\n", "code block")
-
-    # The later `description =` in the flake belongs to the HM options, not the flake, so
-    # changing it must produce no problem at all.
-    check("second flake description ignored",
-          check_channels(meta, {**_TEXTS, "flake_nix": _TEXTS["flake_nix"].replace(
-              '"Configuration for retch"', '"Something else"')}) == [], "a later description was checked")
 
     # Every other channel copy, one drift each.
     expect_problem("pkgdesc drift detected", "pkgbuild", "A fast thing written", "A slow thing written", "PKGBUILD pkgdesc")
