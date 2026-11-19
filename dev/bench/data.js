@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795050789223,
+  "lastUpdate": 1795050790360,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -15835,6 +15835,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 242.57860862412522,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7f5a3edfaac34036d38c4bad8a9aea89841e2e3f",
+          "message": "Unify just publish across crates.io, AUR, Homebrew, and Scoop (#338)\n\nUpdate `just publish` to verify a clean working tree, skip\n`retch-cli` if already published on crates.io, and chain\n`just aur-publish`, `just brew-publish`, and `just scoop-publish`.\nMake `VERSION` optional (defaulting to `Cargo.toml`'s version) on\n`aur-publish`, `brew-publish`, and `scoop-publish` (and their\n`publish-*` aliases). Bump versions to 0.21.11 / 0.1.111.\n\nAssisted-By: Gemini 3.1 Pro",
+          "timestamp": "2026-11-18T17:03:15-08:00",
+          "tree_id": "faf0f4923f04b1932159431db3684f218b876c87",
+          "url": "https://github.com/l1a/retch/commit/7f5a3edfaac34036d38c4bad8a9aea89841e2e3f"
+        },
+        "date": 1795050790303,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2095587.8,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 284055545.7,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252258829.10000002,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1215706.0999999999,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2888917.5,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 266213432.70000002,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205402781.7,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1816090.6000000006,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 282686710.2,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 988.9374669343013,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 124.8733543228943,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9472610564209347,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 67.17519577014835,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8934.500025009733,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 373126.48391985387,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 5719.250324428527,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4067.1107314780784,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 55849.40426006552,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 389.79961877353963,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 239.45785682134928,
             "unit": "ns"
           }
         ]
