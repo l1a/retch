@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795047772642,
+  "lastUpdate": 1795049493307,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2738,6 +2738,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 2864948750.1,
             "extra": "v0.21.0; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "1b95647028b1ce318e31760f565e476297e967de",
+          "message": "Unify just publish across crates.io, AUR, Homebrew, and Scoop\n\nUpdate `just publish` to verify a clean working tree, skip\n`retch-cli` if already published on crates.io, and chain\n`just aur-publish`, `just brew-publish`, and `just scoop-publish`.\nMake `VERSION` optional (defaulting to `Cargo.toml`'s version) on\n`aur-publish`, `brew-publish`, and `scoop-publish` (and their\n`publish-*` aliases). Bump versions to 0.21.11 / 0.1.111.\n\nAssisted-By: Gemini 3.1 Pro",
+          "timestamp": "2026-11-18T16:42:57-08:00",
+          "tree_id": "faf0f4923f04b1932159431db3684f218b876c87",
+          "url": "https://github.com/l1a/retch/commit/1b95647028b1ce318e31760f565e476297e967de"
+        },
+        "date": 1795049493307,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 51372616.5,
+            "extra": "v0.21.11; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 134135133.60000001,
+            "extra": "v0.21.11; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 6568537.4,
+            "extra": "v0.21.11; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 14390962.400000004,
+            "extra": "v0.21.11; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 225311400.1,
+            "extra": "v0.21.11; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 655818796.0,
+            "extra": "v0.21.11; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 355533516.59999996,
+            "extra": "v0.21.11; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 653778079.1,
+            "extra": "v0.21.11; AC"
           }
         ]
       }
