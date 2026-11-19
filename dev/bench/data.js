@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795056722084,
+  "lastUpdate": 1795056837312,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3392,13 +3392,13 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch",
             "unit": "ns",
-            "value": 43667680.0,
+            "value": 43667680,
             "extra": "v0.21.12; battery"
           },
           {
             "name": "CLI execution - fastfetch (default)",
             "unit": "ns",
-            "value": 339552740.0,
+            "value": 339552740,
             "extra": "v0.21.12; battery"
           },
           {
@@ -3434,7 +3434,7 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - fastfetch (full)",
             "unit": "ns",
-            "value": 1245863240.0,
+            "value": 1245863240,
             "extra": "v0.21.12; battery"
           }
         ]
@@ -9773,6 +9773,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 270.6703177181665,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ff277052d96ae97a5b217237d29ec9fb131c1ebe",
+          "message": "Remove Nix, Flake, and Nixpkgs packaging (#339)\n\nDrop the unused Nix flake, nixpkgs derivation/test, helper scripts,\nand CI/workflow/Justfile/doc references from `retch` (`dog`, `etr`,\nand `rusticprofile` had no Nix packaging; runtime NixOS distro\ndetection and logos remain intact).\n\n- Remove `flake.nix`, `flake.lock`, `packaging/nixpkgs/{package,test}.nix`,\n  `scripts/calculate_nix_hashes.py`, `scripts/nix_check.py`, and\n  `scripts/nixpkgs_release.py`\n- Update `.github/workflows/{ci,packaging,release}.yml`,\n  `scripts/render_packaging.py`, `scripts/metadata_check.py`,\n  `packaging/metadata.toml`, `Justfile`, `README.md`, `AGENTS.md`, and\n  `NOTES.md`\n- Bump `retch-cli` to `0.21.12` (keeping `retch-sysinfo` at `0.1.111`),\n  update `Cargo.lock`, and regenerate `docs/retch.1`\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-18T18:45:41-08:00",
+          "tree_id": "24191913d99de02c6db4dae6b61676a390fa35c3",
+          "url": "https://github.com/l1a/retch/commit/ff277052d96ae97a5b217237d29ec9fb131c1ebe"
+        },
+        "date": 1795056837232,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 3029817.900000001,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 319922836.00000006,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252555638.4,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1526392.3000000003,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2769905.1,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 397637488.09999996,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 206797698.60000002,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1693442.7000000002,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 353066715.5,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1925.4033697107395,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 135.5229038929902,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.863183387146451,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 74.9956855199009,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 18264.453561768827,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 440634.81533286686,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 12541.096198512136,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 8676.312214771686,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 122550.26343574678,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 433.3952404014832,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 274.23311296198335,
             "unit": "ns"
           }
         ]
