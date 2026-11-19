@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795115255332,
+  "lastUpdate": 1795115255568,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -27835,6 +27835,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 252998027.5,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7f2e42792c6ab7663f12078a5ae866b5d1db0e87",
+          "message": "Add pre-flight checks to just publish (#340)\n\nAddresses unaddressed `cursor[bot]` findings on PR #338 (`Justfile`\nL334 & L338) so `just publish` verifies downstream release assets and\nAUR tooling before irreversibly publishing to `crates.io`:\n\n- Pre-flight check `archive/refs/tags/vX.tar.gz`, both GitHub Release\n  Windows `.exe` binaries (`retch-windows-x86_64.exe`,\n  `retch-windows-arm64.exe`), and (unless `SKIP_AUR=1`) `podman` plus\n  AUR SSH authentication before uploading crates\n- Add `SKIP_AUR=1` gate to skip the AUR pre-flight check and\n  `just aur-publish` when using the split-host AUR workflow\n- Update release-sequence documentation in `Justfile`, `NOTES.md`,\n  `AGENTS.md`, and `retch.wiki` (`Development-Setup.md`)\n- Bump `retch-cli` to `0.21.13` (keeping `retch-sysinfo` at `0.1.111`),\n  update `Cargo.lock`, and regenerate `docs/retch.1`\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-19T10:58:54-08:00",
+          "tree_id": "f44185e7fba463fde1948e0daf6b6912962656c1",
+          "url": "https://github.com/l1a/retch/commit/7f2e42792c6ab7663f12078a5ae866b5d1db0e87"
+        },
+        "date": 1795115255528,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 25487760.000000004,
+            "unit": "ns",
+            "extra": "v0.21.13"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2342134959.9999995,
+            "unit": "ns",
+            "extra": "v0.21.13"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1305455460.0000002,
+            "unit": "ns",
+            "extra": "v0.21.13"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 17423070.000000004,
+            "unit": "ns",
+            "extra": "v0.21.13"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 21539930.000000004,
+            "unit": "ns",
+            "extra": "v0.21.13"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 305443590.00000006,
+            "unit": "ns",
+            "extra": "v0.21.13"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 201644370,
+            "unit": "ns",
+            "extra": "v0.21.13"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 19316670,
+            "unit": "ns",
+            "extra": "v0.21.13"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 258.8667794583321,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 4.563480076762884,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 169.59661961326663,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1321.4966187889322,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47230.078444744286,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 678.4746292211536,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 766.8986193038219,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 262046987.5,
             "unit": "ns"
           }
         ]
