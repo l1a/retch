@@ -329,8 +329,10 @@ Clone `https://github.com/l1a/retch.wiki.git`, edit the relevant pages, and push
       `packaging/homebrew/retch.rb` and `packaging/scoop/retch.json` are **templates**
       carrying `@VERSION@` / `@SHA256@` (or `@SHA256_X86_64@` / `@SHA256_ARM64@`);
       `scripts/render_packaging.py` fills those in at publish time, from the tag. So a
-      release is: tag → `just publish` (which chains crates.io → `just aur-publish` →
-      `just brew-publish` → `just scoop-publish`; COPR rebuilds itself off the tag),
+      release is: tag → wait for `release.yml` → `just publish` (which runs pre-flight
+      checks and chains crates.io → `just aur-publish` → `just brew-publish` →
+      `just scoop-publish`, with `SKIP_AUR=1` optional for split-host AUR setups; COPR
+      rebuilds itself off the tag),
       and nothing is committed afterwards. `main` sits **at** the
       released version until the next feature PR bumps it — which is what makes
       `just publish` on `main` correct, and its HEAD-is-the-tag guard is what enforces
