@@ -336,17 +336,13 @@ Clone `https://github.com/l1a/retch.wiki.git`, edit the relevant pages, and push
       `just publish` on `main` correct, and its HEAD-is-the-tag guard is what enforces
       that rather than trusting it.
 - [ ] If you are touching packaging, the guards run offline in `just check`
-      (`render-check`, `aur-check`, `copr-check`, `brew-check`, `scoop-check`, `nix-check`)
+      (`render-check`, `aur-check`, `copr-check`, `brew-check`, `scoop-check`)
       and assert the templates still record nothing. Do not "fix" one by writing a version
       back into a template.
-- [ ] `packaging/nixpkgs/package.nix` is a zero-drift `@VERSION@` / `@SRC_HASH@` /
-      `@CARGO_HASH@` template guarded by `just nix-check` (`scripts/nix_check.py`) and
-      rendered at release time via `scripts/render_packaging.py --target nix` or
-      `scripts/calculate_nix_hashes.py`.
 - [ ] **Channel text is part of publishing each channel.** `packaging/metadata.toml` holds the
       one-line summary, the Homebrew `desc`, the licence, the GitHub description and topics,
       and the COPR project-page files; `just check` (`metadata-check`) fails when
-      `Cargo.toml`, the PKGBUILD, the spec, the formula, the Scoop manifest or the Nix files
+      `Cargo.toml`, the PKGBUILD, the spec, the formula or the Scoop manifest
       drift from it. Text an artifact carries (crates.io description and README, AUR `pkgdesc`,
       RPM `%description`, the tap's `desc`, the Scoop bucket's `description`) ships with that
       channel's publish step. The COPR project page is pushed by `copr.yml` on the tag, and
@@ -386,7 +382,7 @@ Always run the following `retch` commands with `BypassSandbox: true` on the **fi
 - **Cargo network operations:** `cargo update` (use `cargo --config net.retry=0 update` with `BypassSandbox: true`), `cargo fetch`, `cargo publish`, `cargo audit`, and the first build after `Cargo.lock` updates a crate not yet cached in `~/.cargo/registry/cache/`.
 - **Live `./target/debug/retch` hardware/session probes** when testing fields that query host sockets/devices unmounted in the sandbox (Wayland/X11/DBus/PipeWire/NetworkManager/udev).
 - **Commands that DO work in the sandbox (`BypassSandbox: false`):**
-  - Read-only `just` check recipes once `target/` and `Cargo.lock` are up to date: `just fmt-check`, `just man-check`, `just packaging-check`, `just standard-check`, `just render-check`, `just aur-check`, `just copr-check`, `just brew-check`, `just scoop-check`, `just nix-check`, `just metadata-check`, `just text-check`, `just wip-check`, `just bench-check`
+  - Read-only `just` check recipes once `target/` and `Cargo.lock` are up to date: `just fmt-check`, `just man-check`, `just packaging-check`, `just standard-check`, `just render-check`, `just aur-check`, `just copr-check`, `just brew-check`, `just scoop-check`, `just metadata-check`, `just text-check`, `just wip-check`, `just bench-check`
   - Read-only `git` commands: `git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git for-each-ref`
 
 ---

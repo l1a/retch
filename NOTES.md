@@ -149,12 +149,13 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.21.11)
+## Current State (v0.21.12)
 
-`main` carries **`retch-cli` 0.21.10** / **`retch-sysinfo` 0.1.110**; this branch bumps to
-**`retch-cli` 0.21.11** / **`retch-sysinfo` 0.1.111** (unifying `just publish` to chain
-crates.io + AUR + Homebrew + Scoop with optional `VERSION` defaults). Newest released tag is
-**`v0.21.9`**.
+`main` carries **`retch-cli` 0.21.11** / **`retch-sysinfo` 0.1.111**; this branch bumps
+**`retch-cli` to `0.21.12`** (keeping `retch-sysinfo` at `0.1.111`) and removes Nix / Flake /
+Nixpkgs packaging so `retch` ships on the same 6 channels (`GitHub Releases`, `crates.io`,
+`AUR`, `COPR`, `Homebrew`, `Scoop`) as `dog`, `etr`, and `rusticprofile`. Newest released
+tag is **`v0.21.11`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
@@ -1174,9 +1175,6 @@ Live items only. Completed items are removed rather than struck through — `git
   declined.
 - **macOS code signing & notarization** so users need not `xattr -dr com.apple.quarantine`.
   Requires Apple Developer Program membership and CI secrets.
-- **nixpkgs submission** so retch appears in the
-  [Repology](https://repology.org/project/retch/versions) widget. The Nix flake (contributed by
-  @quixaq) is a starting point.
 
 ---
 

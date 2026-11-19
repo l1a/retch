@@ -144,7 +144,7 @@ render-check:
     @"{{PY}}" scripts/render_packaging.py --self-test
 
 # Umbrella recipe for all offline packaging guards (cross-repo standard name)
-packaging-check: render-check aur-check copr-check brew-check scoop-check nix-check metadata-check
+packaging-check: render-check aur-check copr-check brew-check scoop-check metadata-check
 
 # Verify the committed man page matches docs/retch.1.md and Cargo.toml (worktree + HEAD)
 man-check:
@@ -337,15 +337,6 @@ publish:
     echo "==> Publishing Scoop manifest..."
     just scoop-publish "$CARGO_VER"
     echo "==> crates.io, AUR, Homebrew and Scoop done. COPR builds from the tag via copr.yml."
-
-# Automatically calculate and update Nixpkgs hashes in packaging/nixpkgs/package.nix (requires Nix)
-nix-update VERSION="":
-    @"{{PY}}" scripts/calculate_nix_hashes.py {{VERSION}}
-
-# Tag, wait for CI hashes, update nixpkgs fork, and open a PR — no Nix required.
-# Set NIXPKGS_DIR to override the default ~/git/nixpkgs fork location.
-nixpkgs-release VERSION="":
-    @"{{PY}}" scripts/nixpkgs_release.py {{VERSION}}
 
 # Submit the local tldr page upstream to tldr-pages/tldr (requires gh)
 tldr-release:
@@ -634,12 +625,6 @@ brew-check:
 scoop-check:
     @{{PY}} scripts/scoop_check.py --self-test
     @{{PY}} scripts/scoop_check.py
-
-# Verify packaging/nixpkgs/package.nix is still a template recording no version (offline)
-nix-check:
-    @{{PY}} scripts/nix_check.py --self-test
-    @{{PY}} scripts/nix_check.py
-    @{{PY}} scripts/calculate_nix_hashes.py --self-test
 
 # Every channel's description and licence agrees with packaging/metadata.toml (offline)
 metadata-check:

@@ -10,8 +10,6 @@ on:
       - '**/Cargo.toml'
       - '**/README.md'
       - 'Cargo.lock'
-      - 'flake.nix'
-      - 'flake.lock'
       - 'packaging/**'
       # The recipes that publish packaging/aur (aur-publish / aur-srcinfo / aur-check) live
       # in the Justfile, so a change there can alter the AUR tooling without touching
@@ -31,7 +29,6 @@ on:
       # whether a packaging file may be committed, it WRITES the files that get published to
       # the AUR, COPR and the Homebrew tap. `scripts/*_check.py` does not match it.
       - 'scripts/render_packaging.py'
-      - 'scripts/calculate_nix_hashes.py'
       # .copr/Makefile is what GENERATES the SRPM, and until v0.9.10 no PR-triggered
       # workflow watched it: copr.yml watches '.copr/**' but only on push to main, so a PR
       # touching only that file got no packaging verification whatsoever. That is not
@@ -59,23 +56,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Channel descriptions and licences agree with packaging/metadata.toml
         run: python3 scripts/metadata_check.py --self-test && python3 scripts/metadata_check.py
-
-  nixpkgs:
-    runs-on: ubuntu-latest
-    if: false  # disabled: nixpkgs PR declined due to lack of popularity
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Install Nix
-        uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086 # v31
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
-
-      - name: Build Nixpkgs Derivation
-        run: nix-build packaging/nixpkgs/test.nix
-
-      - name: Build Nix Flake
-        run: nix build .#default
 
   aur:
     runs-on: ubuntu-latest

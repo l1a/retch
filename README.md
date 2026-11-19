@@ -169,28 +169,6 @@ completions from the installed binary with `retch --completions <shell>` (see
 [From source](#from-source) for where each shell looks), or use one of the `just` recipes
 below, which install all three.
 
-### With Nix
-
-```sh
-nix run github:l1a/retch
-```
-
-Or add it to your NixOS / Home Manager configuration using the provided Flake:
-
-```nix
-# flake.nix inputs
-inputs.retch.url = "github:l1a/retch";
-
-# Home Manager module
-programs.retch.enable = true;
-# Optionally configure retch (writes retch's config.toml; see Configuration):
-programs.retch.settings = {
-  theme = "catppuccin";
-};
-```
-
-*(Nixpkgs package derivation template is available in [packaging/nixpkgs](packaging/nixpkgs/package.nix) and rendered at release time via `scripts/render_packaging.py --target nix` or `scripts/calculate_nix_hashes.py`).*
-
 ### From source
 
 Prefer the [`just`](https://github.com/casey/just) recipes: they install the **man page and

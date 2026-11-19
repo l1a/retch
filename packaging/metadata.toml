@@ -2,7 +2,7 @@
 #
 # Most channels carry their text inside the artifact they publish: crates.io reads the
 # published Cargo.toml and README, the AUR the PKGBUILD, COPR's RPM the spec, Homebrew the
-# formula, Nix the derivation. Those files keep their own readable copy -- Cargo.toml cannot be
+# formula, Scoop the manifest. Those files keep their own readable copy -- Cargo.toml cannot be
 # templated, and the rest are read by people -- and `scripts/metadata_check.py`, run by
 # `just check`, fails when any copy drifts from what is written here.
 #
@@ -14,7 +14,7 @@
 # four output modes.
 
 # Cargo.toml's `description` must BEGIN with this (crates.io shows it as the one-liner). The
-# PKGBUILD `pkgdesc`, the spec's `Summary:`, and both Nix descriptions must EQUAL it.
+# PKGBUILD `pkgdesc`, the spec's `Summary:`, and the Scoop manifest description must EQUAL it.
 summary = "A fast, feature-rich system information fetcher written in Rust"
 
 # The Homebrew formula's `desc`. `brew audit` rejects a leading article, the formula's own
@@ -22,8 +22,7 @@ summary = "A fast, feature-rich system information fetcher written in Rust"
 # `summary`.
 brew_desc = "Fast, feature-rich system information fetcher"
 
-# The SPDX identifier every channel must declare, each in its own vocabulary (Nix names
-# licences by attribute: GPL-3.0-or-later is `licenses.gpl3Plus`).
+# The SPDX identifier every channel must declare, each in its own vocabulary.
 license = "GPL-3.0-or-later"
 
 [github]
