@@ -137,25 +137,31 @@ information gathering without any dependency on `clap` or the CLI.
   ```
   git tag -a vX -F <msg-file> --cleanup=verbatim   # see §7.4 on --cleanup
   git push origin vX          # CI builds the GitHub Release; copr.yml fires on the tag
-  just publish                # crates.io -> AUR -> Homebrew -> Scoop. Refuses unless HEAD is the tag.
+  gh run list --workflow release.yml --limit 5     # wait for Windows .exe release assets
+  just publish                # pre-flight checks -> crates.io -> AUR -> Homebrew -> Scoop
+                              #   (SKIP_AUR=1 skips AUR for the split-host AUR workflow)
   just github-metadata        # About box from packaging/metadata.toml
   ```
-  `retch-sysinfo` publishes before `retch-cli`, which pins `=0.1.x`; `just publish` orders them,
-  skips either crate when it is already on the index, and then chains `just aur-publish`,
-  `just brew-publish` and `just scoop-publish`. `just publish-check`'s retch-cli leg
-  *skipping* before a release is expected, not a failure.
+  `retch-sysinfo` publishes before `retch-cli`, which pins `=0.1.x`; `just publish` verifies
+  HEAD matches tag `vX`, the working tree is clean, the tag tarball and both Windows `.exe`
+  GitHub Release assets are reachable, and (unless `SKIP_AUR=1`) `podman` plus AUR SSH auth
+  are available *before* touching crates.io, then skips either crate if already on the index
+  and chains `just aur-publish` (unless `SKIP_AUR=1`), `just brew-publish`, and
+  `just scoop-publish`. `just publish-check`'s retch-cli leg *skipping* before a release is
+  expected, not a failure.
   **Publishing to tldr-pages upstream is on hold** — the submission was declined pending more
   community traction. Keep `docs/retch.md` current; do not run `just tldr-release`.
 
 ---
 
-## Current State (v0.21.12)
+## Current State (v0.21.13)
 
-`main` carries **`retch-cli` 0.21.11** / **`retch-sysinfo` 0.1.111**; this branch bumps
-**`retch-cli` to `0.21.12`** (keeping `retch-sysinfo` at `0.1.111`) and removes Nix / Flake /
-Nixpkgs packaging so `retch` ships on the same 6 channels (`GitHub Releases`, `crates.io`,
-`AUR`, `COPR`, `Homebrew`, `Scoop`) as `dog`, `etr`, and `rusticprofile`. Newest released
-tag is **`v0.21.11`**.
+`main` carries **`retch-cli` 0.21.12** / **`retch-sysinfo` 0.1.111** (newest released tag
+**`v0.21.11`**); this branch bumps **`retch-cli` to `0.21.13`** (keeping `retch-sysinfo` at
+`0.1.111`), adds fail-fast pre-flight checks (`vX` tag tarball, both GitHub Release Windows
+binaries from `release.yml`, and `podman` + AUR SSH auth unless `SKIP_AUR=1`) to `just publish`
+before crates.io uploads, and updates release-sequence documentation across `Justfile`,
+`NOTES.md`, `AGENTS.md`, and `retch.wiki.git`.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
@@ -1664,7 +1670,10 @@ nobody asked.
   changing a step: `just aur-render X "$(mktemp -d)/pkg"` on gimli (outside the Syncthing tree,
   so the `:z` relabel touches nothing synced), scp the PKGBUILD and .SRCINFO back, check the
   sha256 against the tarball's, then the recipe's own clone/commit/push from chani. Do not write
-  `.SRCINFO` by hand to get around it: the AUR rejects a pair that disagrees.
+  `.SRCINFO` by hand to get around it: the AUR rejects a pair that disagrees. `just publish`
+  now checks for `podman` and AUR SSH authentication up front before touching crates.io, and
+  accepts `SKIP_AUR=1` (`SKIP_AUR=1 just publish`) to publish crates.io, Homebrew, and Scoop
+  first when using this split-host workflow.
 - **COPR's results URL now 301s to `packages.redhat.com/api/pulp-content/public-copr/...`.**
   Reading a chroot's `repodata/` with plain `curl -s` returns nothing and looks like an empty
   repo; follow redirects (`curl -L`).

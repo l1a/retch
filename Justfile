@@ -269,11 +269,16 @@ publish-check:
 
 # Publish the current version to crates.io (retch-sysinfo + retch-cli), the AUR, the Homebrew tap, and the Scoop bucket.
 #
+# Pre-flight checks verify HEAD == tag, a clean working tree, the tag source tarball, both
+# GitHub Release Windows binaries (from release.yml), and — unless SKIP_AUR=1 — `podman`
+# plus AUR SSH auth before uploading anything to crates.io.
+#
 # retch-sysinfo and retch-cli are each skipped when their current version is already on the
 # index — a CLI-only release (no library change) is the common case, and if a release is
 # interrupted after crates.io, re-running `just publish` skips crates.io and resumes with AUR,
-# Homebrew, and Scoop. cargo waits for the index after the sysinfo upload, so the cli leg's
-# `=0.1.x` pin resolves on the same run.
+# Homebrew, and Scoop. Set `SKIP_AUR=1` when using the split-host AUR workflow (crates.io,
+# Homebrew, and Scoop run here; AUR pre-flight and `just aur-publish` are skipped). cargo waits
+# for the index after the sysinfo upload, so the cli leg's `=0.1.x` pin resolves on the same run.
 publish:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -315,6 +320,61 @@ publish:
         exit 1
     fi
 
+    # PRE-FLIGHT: verify downstream release assets and AUR host prerequisites BEFORE
+    # publishing to crates.io (which is irreversible).
+    #
+    # `just publish` chains crates.io -> AUR -> Homebrew -> Scoop. AUR and Homebrew
+    # download the tag source tarball, Scoop downloads both Windows .exe binaries from
+    # the GitHub Release built by release.yml, and AUR requires podman (.SRCINFO) plus
+    # an accepted AUR SSH key on the same host (or SKIP_AUR=1 for the split-host flow).
+    # Checking all of those first prevents a half-published release where crates.io goes
+    # live and a downstream channel immediately fails.
+    echo "==> Checking GitHub tag tarball and Windows release assets for v$CARGO_VER..."
+    TARBALL_URL="https://github.com/l1a/retch/archive/refs/tags/v${CARGO_VER}.tar.gz"
+    if ! curl -fsIL -o /dev/null "$TARBALL_URL"; then
+        echo "error: tag tarball not reachable at $TARBALL_URL" >&2
+        echo "       Push tag v$CARGO_VER first: git push origin v$CARGO_VER" >&2
+        exit 1
+    fi
+    RELEASE_BASE="https://github.com/l1a/retch/releases/download/v${CARGO_VER}"
+    for ASSET in retch-windows-x86_64.exe retch-windows-arm64.exe; do
+        if ! curl -fsIL -o /dev/null "$RELEASE_BASE/$ASSET"; then
+            echo "error: GitHub Release asset not ready: $RELEASE_BASE/$ASSET" >&2
+            echo "       Wait for .github/workflows/release.yml to finish building v$CARGO_VER:" >&2
+            echo "       gh run list --workflow release.yml --limit 5" >&2
+            exit 1
+        fi
+    done
+
+    if [ "${SKIP_AUR:-}" != "1" ]; then
+        echo "==> Checking AUR prerequisites (podman + AUR SSH key)..."
+        if ! command -v podman >/dev/null 2>&1; then
+            echo "error: podman not found (required by aur-publish for .SRCINFO)." >&2
+            echo "       Run on a Linux host with podman, or set SKIP_AUR=1 to publish" >&2
+            echo "       crates.io/Homebrew/Scoop here and run the split AUR workflow separately." >&2
+            exit 1
+        fi
+        AUR_OUT=$(ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 aur@aur.archlinux.org help 2>&1 || true)
+        AUR_FIRST_LINE="${AUR_OUT%%$'\n'*}"
+        if grep -qi 'maintenance' <<< "$AUR_OUT"; then
+            echo "error: the AUR is in a maintenance window — it said: $AUR_FIRST_LINE" >&2
+            echo "       Retry later, or set SKIP_AUR=1 to skip AUR for now." >&2
+            exit 1
+        fi
+        if grep -qi 'Permission denied' <<< "$AUR_OUT"; then
+            echo "error: the AUR refused this SSH key; register it at https://aur.archlinux.org/account/" >&2
+            echo "       Or set SKIP_AUR=1 to publish crates.io/Homebrew/Scoop and run the split AUR workflow." >&2
+            exit 1
+        fi
+        if ! grep -qiE 'Commands:|Welcome to AUR|successfully authenticated' <<< "$AUR_OUT"; then
+            echo "error: could not reach the AUR over SSH — it said: $AUR_FIRST_LINE" >&2
+            echo "       Set SKIP_AUR=1 to skip AUR and run the split AUR workflow separately." >&2
+            exit 1
+        fi
+    else
+        echo "==> SKIP_AUR=1: skipping AUR pre-flight check"
+    fi
+
     SYSINFO_VER=$(grep -m1 '^version' crates/sysinfo/Cargo.toml | cut -d '"' -f2)
     if python3 scripts/crates_io_has_version.py retch-sysinfo "$SYSINFO_VER" >/dev/null 2>&1; then
         echo "==> retch-sysinfo $SYSINFO_VER already published — skipping"
@@ -330,13 +390,21 @@ publish:
         cargo publish --manifest-path Cargo.toml
     fi
 
-    echo "==> Publishing AUR package..."
-    just aur-publish "$CARGO_VER"
+    if [ "${SKIP_AUR:-}" = "1" ]; then
+        echo "==> SKIP_AUR=1: skipping AUR publish (run split aur-render / aur-publish workflow separately)"
+    else
+        echo "==> Publishing AUR package..."
+        just aur-publish "$CARGO_VER"
+    fi
     echo "==> Publishing Homebrew formula..."
     just brew-publish "$CARGO_VER"
     echo "==> Publishing Scoop manifest..."
     just scoop-publish "$CARGO_VER"
-    echo "==> crates.io, AUR, Homebrew and Scoop done. COPR builds from the tag via copr.yml."
+    if [ "${SKIP_AUR:-}" = "1" ]; then
+        echo "==> crates.io, Homebrew and Scoop done (AUR skipped via SKIP_AUR=1). COPR builds from the tag via copr.yml."
+    else
+        echo "==> crates.io, AUR, Homebrew and Scoop done. COPR builds from the tag via copr.yml."
+    fi
 
 # Submit the local tldr page upstream to tldr-pages/tldr (requires gh)
 tldr-release:
@@ -950,23 +1018,23 @@ publish-scoop VERSION="": (scoop-publish VERSION)
 # ------------
 #   1. main is green and Cargo.toml says X (bumped by whichever PR landed last)
 #   2. git tag -a vX -m '...' --cleanup=verbatim && git push origin vX
-#        -> the release workflow builds the GitHub Release
+#        -> wait for .github/workflows/release.yml to finish building the GitHub Release
+#           (gh run list --workflow release.yml --limit 5)
 #        -> .github/workflows/copr.yml rebuilds COPR from the tag, and pushes the COPR
 #           project page's description + instructions from packaging/copr/project-*.md
-#   3. just publish              # crates.io; refuses unless HEAD is the tag for X
-#   4. just aur-publish X        # renders + pushes to the AUR      (needs podman)
-#      just brew-publish X       # renders + pushes to the tap
-#      just scoop-publish X      # renders + pushes to the Scoop bucket
-#   5. just github-metadata      # the repo's About box, from packaging/metadata.toml
+#   3. just publish              # pre-flight checks -> crates.io -> AUR -> Homebrew -> Scoop
+#                                #   (SKIP_AUR=1 skips AUR if using the split-host AUR flow;
+#                                #    just aur-publish / brew-publish / scoop-publish stay standalone)
+#   4. just github-metadata      # the repo's About box, from packaging/metadata.toml
 #
-# There is no step that edits a file, and therefore nothing to commit afterwards. Steps 3
-# and 4 still ask before acting: they are public and irreversible.
+# There is no step that edits a file, and therefore nothing to commit afterwards. Step 3 still
+# asks before acting on each public channel: publishes are public and irreversible.
 #
 # CHANNEL TEXT TRAVELS WITH EACH STEP. crates.io, the AUR, COPR's RPM, the tap and the Scoop
 # bucket read their description from the files they publish, and `just check` (metadata-check)
 # keeps those in step with packaging/metadata.toml. Only the COPR project page and GitHub's
 # About box live on the service rather than in a published file -- nothing ever updated them,
-# which is how both went stale -- so they get steps of their own (2 and 5).
+# which is how both went stale -- so they get steps of their own (2 and 4).
 
 # Merge the active PR, switch to main, pull, delete the branch, and update WIP.md (requires gh)
 #
