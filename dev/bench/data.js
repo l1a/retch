@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795047772277,
+  "lastUpdate": 1795047772642,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -31247,6 +31247,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 335589945,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "522ca2cab99feb3c5b32358910f3dce9c73ed7c2",
+          "message": "Eliminate serial and redundant probe bottlenecks (#337)\n\n- memory.rs: check DMI table readability via can_read_dmi_tables_in before spawning dmidecode and stop on the first non-zero binary exit\n- fetch.rs: parallelize cpu-cache, battery, cpu-freq range, terminal, desktop-proc, wm-theme, wallpaper, domain, and --long/--full misc probes; start weather/public-ip first; gate win_cpu/uptime/arch/boot-time; optimize cpu_cache_in and add single-pass parse_linux_cpuinfo and windows_physical_and_hybrid_cores\n- network.rs: replace Linux sysinfo::Networks with /proc/net/if_inet6 + NETLINK_ROUTE RTM_GETADDR (with SIOCGIFADDR fallback) and 3-file sysfs reads plus single-interface fast path; skip ip route spawns when offline\n- weather.rs: send plain HTTP/1.1 requests directly over TcpStream with TCP_NODELAY within a unified 4s DNS/connect/read/curl timeout budget, checked chunk-length bounds, and safe unframed fallback on read errors\n- display.rs: gate xrandr on DISPLAY and skip GTK/KDE theme disk reads when ANSI color is disabled\n- AGENTS.md: add rule forbidding personal machine hostnames in public GitHub content\n- Bump versions to 0.21.10 / 0.1.110, update NOTES.md, and regenerate docs/retch.1\n\nAssisted-By: Gemini 2.5 Pro",
+          "timestamp": "2026-11-18T16:15:01-08:00",
+          "tree_id": "733bd152873174ac6b250a99ea50a1f16734fe8a",
+          "url": "https://github.com/l1a/retch/commit/522ca2cab99feb3c5b32358910f3dce9c73ed7c2"
+        },
+        "date": 1795047772582,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 47581520.00000001,
+            "unit": "ns",
+            "extra": "v0.21.10"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2383833220,
+            "unit": "ns",
+            "extra": "v0.21.10"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1305059630.0000002,
+            "unit": "ns",
+            "extra": "v0.21.10"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 24351370.000000004,
+            "unit": "ns",
+            "extra": "v0.21.10"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 28339490.000000004,
+            "unit": "ns",
+            "extra": "v0.21.10"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 283466760.00000006,
+            "unit": "ns",
+            "extra": "v0.21.10"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 223171380,
+            "unit": "ns",
+            "extra": "v0.21.10"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 25617860,
+            "unit": "ns",
+            "extra": "v0.21.10"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 252.6586499092413,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.949592289048577,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 171.03521275451342,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1320.4004973780943,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 49833.919268878526,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 562.3634979699548,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 685.9854448719766,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 241959095,
             "unit": "ns"
           }
         ]
