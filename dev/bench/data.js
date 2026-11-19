@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795056837695,
+  "lastUpdate": 1795056838072,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -21989,6 +21989,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 427.5515651178354,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ff277052d96ae97a5b217237d29ec9fb131c1ebe",
+          "message": "Remove Nix, Flake, and Nixpkgs packaging (#339)\n\nDrop the unused Nix flake, nixpkgs derivation/test, helper scripts,\nand CI/workflow/Justfile/doc references from `retch` (`dog`, `etr`,\nand `rusticprofile` had no Nix packaging; runtime NixOS distro\ndetection and logos remain intact).\n\n- Remove `flake.nix`, `flake.lock`, `packaging/nixpkgs/{package,test}.nix`,\n  `scripts/calculate_nix_hashes.py`, `scripts/nix_check.py`, and\n  `scripts/nixpkgs_release.py`\n- Update `.github/workflows/{ci,packaging,release}.yml`,\n  `scripts/render_packaging.py`, `scripts/metadata_check.py`,\n  `packaging/metadata.toml`, `Justfile`, `README.md`, `AGENTS.md`, and\n  `NOTES.md`\n- Bump `retch-cli` to `0.21.12` (keeping `retch-sysinfo` at `0.1.111`),\n  update `Cargo.lock`, and regenerate `docs/retch.1`\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-18T18:45:41-08:00",
+          "tree_id": "24191913d99de02c6db4dae6b61676a390fa35c3",
+          "url": "https://github.com/l1a/retch/commit/ff277052d96ae97a5b217237d29ec9fb131c1ebe"
+        },
+        "date": 1795056838004,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 363697479.00000006,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1123062987.4,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1021836100,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 25109245.900000002,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 311391054.3,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 403718825.00000006,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 417143687.6,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 20754545.900000002,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 244384768.7,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 661.5851672056509,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 183.96265591105856,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.471577476595262,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 105.65264199111311,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 18936.198738603154,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1550.9990067470503,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 391.71178997983804,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 160696.3800630871,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 598.6786691483823,
             "unit": "ns"
           }
         ]
