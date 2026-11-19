@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795050791022,
+  "lastUpdate": 1795050792335,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -32001,6 +32001,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 241959095,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7f5a3edfaac34036d38c4bad8a9aea89841e2e3f",
+          "message": "Unify just publish across crates.io, AUR, Homebrew, and Scoop (#338)\n\nUpdate `just publish` to verify a clean working tree, skip\n`retch-cli` if already published on crates.io, and chain\n`just aur-publish`, `just brew-publish`, and `just scoop-publish`.\nMake `VERSION` optional (defaulting to `Cargo.toml`'s version) on\n`aur-publish`, `brew-publish`, and `scoop-publish` (and their\n`publish-*` aliases). Bump versions to 0.21.11 / 0.1.111.\n\nAssisted-By: Gemini 3.1 Pro",
+          "timestamp": "2026-11-18T17:03:15-08:00",
+          "tree_id": "faf0f4923f04b1932159431db3684f218b876c87",
+          "url": "https://github.com/l1a/retch/commit/7f5a3edfaac34036d38c4bad8a9aea89841e2e3f"
+        },
+        "date": 1795050792278,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 47197570,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2394620290,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1308273540,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 22315930,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 26290180.000000004,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 277178730.00000006,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 208143020,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 24484730,
+            "unit": "ns",
+            "extra": "v0.21.11"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 252.25718807948655,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9535892016781933,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 170.59817969955088,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1330.3572699080169,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47657.622284199446,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 564.0100088216179,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 682.514889049047,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 240494625,
             "unit": "ns"
           }
         ]
