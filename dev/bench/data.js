@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795056837312,
+  "lastUpdate": 1795056837695,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -16243,6 +16243,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 239.45785682134928,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ff277052d96ae97a5b217237d29ec9fb131c1ebe",
+          "message": "Remove Nix, Flake, and Nixpkgs packaging (#339)\n\nDrop the unused Nix flake, nixpkgs derivation/test, helper scripts,\nand CI/workflow/Justfile/doc references from `retch` (`dog`, `etr`,\nand `rusticprofile` had no Nix packaging; runtime NixOS distro\ndetection and logos remain intact).\n\n- Remove `flake.nix`, `flake.lock`, `packaging/nixpkgs/{package,test}.nix`,\n  `scripts/calculate_nix_hashes.py`, `scripts/nix_check.py`, and\n  `scripts/nixpkgs_release.py`\n- Update `.github/workflows/{ci,packaging,release}.yml`,\n  `scripts/render_packaging.py`, `scripts/metadata_check.py`,\n  `packaging/metadata.toml`, `Justfile`, `README.md`, `AGENTS.md`, and\n  `NOTES.md`\n- Bump `retch-cli` to `0.21.12` (keeping `retch-sysinfo` at `0.1.111`),\n  update `Cargo.lock`, and regenerate `docs/retch.1`\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-18T18:45:41-08:00",
+          "tree_id": "24191913d99de02c6db4dae6b61676a390fa35c3",
+          "url": "https://github.com/l1a/retch/commit/ff277052d96ae97a5b217237d29ec9fb131c1ebe"
+        },
+        "date": 1795056837623,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2311998.4000000004,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 276724131.7,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252384897.39999998,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1372910.0000000002,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3065706.400000001,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 428716882.90000004,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205932238.50000003,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2063790.5,
+            "unit": "ns",
+            "extra": "v0.21.12"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 359080204.75,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 984.1961474307558,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 125.17737498156184,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9475247695617064,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 67.24881260285747,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8916.159305948453,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 369327.49501537497,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 5669.62032809387,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4017.2533869823883,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 55477.60167947903,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 390.44322374099715,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 257.834476684861,
             "unit": "ns"
           }
         ]
