@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794986449891,
+  "lastUpdate": 1795047336059,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -1800,6 +1800,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 735534847.8000001,
             "extra": "v0.21.9; battery"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "522ca2cab99feb3c5b32358910f3dce9c73ed7c2",
+          "message": "Eliminate serial and redundant probe bottlenecks (#337)\n\n- memory.rs: check DMI table readability via can_read_dmi_tables_in before spawning dmidecode and stop on the first non-zero binary exit\n- fetch.rs: parallelize cpu-cache, battery, cpu-freq range, terminal, desktop-proc, wm-theme, wallpaper, domain, and --long/--full misc probes; start weather/public-ip first; gate win_cpu/uptime/arch/boot-time; optimize cpu_cache_in and add single-pass parse_linux_cpuinfo and windows_physical_and_hybrid_cores\n- network.rs: replace Linux sysinfo::Networks with /proc/net/if_inet6 + NETLINK_ROUTE RTM_GETADDR (with SIOCGIFADDR fallback) and 3-file sysfs reads plus single-interface fast path; skip ip route spawns when offline\n- weather.rs: send plain HTTP/1.1 requests directly over TcpStream with TCP_NODELAY within a unified 4s DNS/connect/read/curl timeout budget, checked chunk-length bounds, and safe unframed fallback on read errors\n- display.rs: gate xrandr on DISPLAY and skip GTK/KDE theme disk reads when ANSI color is disabled\n- AGENTS.md: add rule forbidding personal machine hostnames in public GitHub content\n- Bump versions to 0.21.10 / 0.1.110, update NOTES.md, and regenerate docs/retch.1\n\nAssisted-By: Gemini 2.5 Pro",
+          "timestamp": "2026-11-18T16:15:01-08:00",
+          "tree_id": "733bd152873174ac6b250a99ea50a1f16734fe8a",
+          "url": "https://github.com/l1a/retch/commit/522ca2cab99feb3c5b32358910f3dce9c73ed7c2"
+        },
+        "date": 1795047336059,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 2217858.2,
+            "extra": "v0.21.10; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 9444716.699999997,
+            "extra": "v0.21.10; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 1305615.6,
+            "extra": "v0.21.10; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 1494671.0000000002,
+            "extra": "v0.21.10; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 207038540.29999998,
+            "extra": "v0.21.10; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 613556732.1999999,
+            "extra": "v0.21.10; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 336937139.59999996,
+            "extra": "v0.21.10; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 721233160.4000001,
+            "extra": "v0.21.10; AC"
           }
         ]
       }
