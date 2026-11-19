@@ -137,23 +137,23 @@ information gathering without any dependency on `clap` or the CLI.
   ```
   git tag -a vX -F <msg-file> --cleanup=verbatim   # see §7.4 on --cleanup
   git push origin vX          # CI builds the GitHub Release; copr.yml fires on the tag
-  just publish                # crates.io. Refuses unless HEAD is the tag.
-  just aur-publish X          # renders + pushes to the AUR (needs podman; see §7.4). AUR_CONFIRM=y
-  just brew-publish X         # renders + pushes to the tap. BREW_CONFIRM=y
-  just scoop-publish X        # renders + pushes to the Scoop bucket. SCOOP_CONFIRM=y
+  just publish                # crates.io -> AUR -> Homebrew -> Scoop. Refuses unless HEAD is the tag.
   just github-metadata        # About box from packaging/metadata.toml
   ```
-  `retch-sysinfo` publishes before `retch-cli`, which pins `=0.1.x`; `just publish` orders them
-  and skips sysinfo when it is already on the index. `just publish-check`'s retch-cli leg
+  `retch-sysinfo` publishes before `retch-cli`, which pins `=0.1.x`; `just publish` orders them,
+  skips either crate when it is already on the index, and then chains `just aur-publish`,
+  `just brew-publish` and `just scoop-publish`. `just publish-check`'s retch-cli leg
   *skipping* before a release is expected, not a failure.
   **Publishing to tldr-pages upstream is on hold** — the submission was declined pending more
   community traction. Keep `docs/retch.md` current; do not run `just tldr-release`.
 
 ---
 
-## Current State (v0.21.10)
+## Current State (v0.21.11)
 
-`main` carries **`retch-cli` 0.21.10** / **`retch-sysinfo` 0.1.110**. Newest released tag is
+`main` carries **`retch-cli` 0.21.10** / **`retch-sysinfo` 0.1.110**; this branch bumps to
+**`retch-cli` 0.21.11** / **`retch-sysinfo` 0.1.111** (unifying `just publish` to chain
+crates.io + AUR + Homebrew + Scoop with optional `VERSION` defaults). Newest released tag is
 **`v0.21.9`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the

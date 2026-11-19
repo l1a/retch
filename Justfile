@@ -267,12 +267,13 @@ publish-check:
         echo "  first, after which the cli leg resolves normally."
     fi
 
-# Publish both crates to crates.io (sysinfo first, then CLI).
+# Publish the current version to crates.io (retch-sysinfo + retch-cli), the AUR, the Homebrew tap, and the Scoop bucket.
 #
-# retch-sysinfo is skipped when its current version is already on the index — a CLI-only
-# release (no library change) is the common case, and re-publishing an existing version is
-# an error rather than a no-op. cargo waits for the index after the sysinfo upload, so the
-# cli leg's `=0.1.x` pin resolves on the same run.
+# retch-sysinfo and retch-cli are each skipped when their current version is already on the
+# index — a CLI-only release (no library change) is the common case, and if a release is
+# interrupted after crates.io, re-running `just publish` skips crates.io and resumes with AUR,
+# Homebrew, and Scoop. cargo waits for the index after the sysinfo upload, so the cli leg's
+# `=0.1.x` pin resolves on the same run.
 publish:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -308,15 +309,34 @@ publish:
         echo "==> PUBLISH_ANY_REF=1: skipping the HEAD-is-the-tag check"
     fi
 
+    echo "==> Verifying working tree is clean..."
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        echo "error: working tree has uncommitted changes. Commit or discard them first." >&2
+        exit 1
+    fi
+
     SYSINFO_VER=$(grep -m1 '^version' crates/sysinfo/Cargo.toml | cut -d '"' -f2)
     if python3 scripts/crates_io_has_version.py retch-sysinfo "$SYSINFO_VER" >/dev/null 2>&1; then
-        echo "==> retch-sysinfo $SYSINFO_VER already published — skipping (CLI-only release)"
+        echo "==> retch-sysinfo $SYSINFO_VER already published — skipping"
     else
         echo "==> publishing retch-sysinfo $SYSINFO_VER"
         cargo publish --manifest-path crates/sysinfo/Cargo.toml
     fi
-    echo "==> publishing retch-cli"
-    cargo publish --manifest-path Cargo.toml
+
+    if python3 scripts/crates_io_has_version.py retch-cli "$CARGO_VER" >/dev/null 2>&1; then
+        echo "==> retch-cli $CARGO_VER already published — skipping"
+    else
+        echo "==> publishing retch-cli $CARGO_VER"
+        cargo publish --manifest-path Cargo.toml
+    fi
+
+    echo "==> Publishing AUR package..."
+    just aur-publish "$CARGO_VER"
+    echo "==> Publishing Homebrew formula..."
+    just brew-publish "$CARGO_VER"
+    echo "==> Publishing Scoop manifest..."
+    just scoop-publish "$CARGO_VER"
+    echo "==> crates.io, AUR, Homebrew and Scoop done. COPR builds from the tag via copr.yml."
 
 # Automatically calculate and update Nixpkgs hashes in packaging/nixpkgs/package.nix (requires Nix)
 nix-update VERSION="":
@@ -488,8 +508,8 @@ aur-srcinfo DIR:
 # existence. The checksum is COMPUTED here from the tarball that was actually downloaded --
 # never copied from a committed field, which is the class of staleness this replaced.
 #
-# Render packaging/aur for a released tag and push it to the AUR
-aur-publish VERSION:
+# Render packaging/aur for a released tag and push it to the AUR (defaults to Cargo.toml version)
+aur-publish VERSION="":
     #!/usr/bin/env bash
     set -euo pipefail
     BOLD='\033[1m'; GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -498,6 +518,9 @@ aur-publish VERSION:
     info() { echo -e "${YELLOW}[→]${NC} $1"; }
 
     PKGVER="{{VERSION}}"; PKGVER="${PKGVER#v}"
+    if [ -z "$PKGVER" ]; then
+        PKGVER=$(grep -m1 '^version' Cargo.toml | cut -d '"' -f2)
+    fi
     [ -n "$PKGVER" ] || fail "aur-publish needs a version, e.g. just aur-publish 0.17.5"
 
     WORK=$(mktemp -d)
@@ -556,7 +579,7 @@ aur-publish VERSION:
     echo "  https://aur.archlinux.org/packages/retch"
 
 # Alias for `aur-publish`
-publish-aur VERSION: (aur-publish VERSION)
+publish-aur VERSION="": (aur-publish VERSION)
 
 # ===== COPR =====
 #
@@ -710,8 +733,8 @@ github-metadata *ARGS:
 # this is the moment the released version and its checksum come into existence. There is no
 # `brew-bump` any more -- nothing in the repo holds a value to bump.
 #
-# Render the formula for a released tag and push it to the tap at l1a/homebrew-retch
-brew-publish VERSION:
+# Render the formula for a released tag and push it to the tap at l1a/homebrew-retch (defaults to Cargo.toml version)
+brew-publish VERSION="":
     #!/usr/bin/env bash
     set -euo pipefail
     BOLD='\033[1m'; GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -721,6 +744,9 @@ brew-publish VERSION:
 
     TAP_REPO="git@github.com:l1a/homebrew-retch.git"
     VER="{{VERSION}}"; VER="${VER#v}"
+    if [ -z "$VER" ]; then
+        VER=$(grep -m1 '^version' Cargo.toml | cut -d '"' -f2)
+    fi
     [ -n "$VER" ] || fail "brew-publish needs a version, e.g. just brew-publish 0.17.5"
 
     {{PY}} scripts/brew_check.py || fail "packaging/homebrew/retch.rb is not a valid template"
@@ -823,15 +849,15 @@ brew-publish VERSION:
     echo "Verify: brew tap l1a/retch && brew install retch"
 
 # Alias for `brew-publish`
-publish-brew VERSION: (brew-publish VERSION)
+publish-brew VERSION="": (brew-publish VERSION)
 
 #
 # Takes the version for the same reason `aur-publish` and `brew-publish` do: the manifest is a
 # template, and this is the moment the released version and its two binary checksums come into
 # existence.
 #
-# Render the Scoop manifest for a released tag and push it to the bucket at l1a/scoop-retch
-scoop-publish VERSION:
+# Render the Scoop manifest for a released tag and push it to the bucket at l1a/scoop-retch (defaults to Cargo.toml version)
+scoop-publish VERSION="":
     #!/usr/bin/env bash
     set -euo pipefail
     BOLD='\033[1m'; GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -841,6 +867,9 @@ scoop-publish VERSION:
 
     BUCKET_REPO="git@github.com:l1a/scoop-retch.git"
     VER="{{VERSION}}"; VER="${VER#v}"
+    if [ -z "$VER" ]; then
+        VER=$(grep -m1 '^version' Cargo.toml | cut -d '"' -f2)
+    fi
     [ -n "$VER" ] || fail "scoop-publish needs a version, e.g. just scoop-publish 0.20.28"
 
     {{PY}} scripts/scoop_check.py || fail "packaging/scoop/retch.json is not a valid template"
@@ -910,7 +939,7 @@ scoop-publish VERSION:
     echo "Verify: scoop bucket add l1a https://github.com/l1a/scoop-retch && scoop install retch"
 
 # Alias for `scoop-publish`
-publish-scoop VERSION: (scoop-publish VERSION)
+publish-scoop VERSION="": (scoop-publish VERSION)
 
 # ===== RELEASING =====
 #
