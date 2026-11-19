@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795056373972,
+  "lastUpdate": 1795056722084,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3364,6 +3364,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 3044602289.9999995,
             "extra": "v0.20.38; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "ff277052d96ae97a5b217237d29ec9fb131c1ebe",
+          "message": "Remove Nix, Flake, and Nixpkgs packaging (#339)\n\nDrop the unused Nix flake, nixpkgs derivation/test, helper scripts,\nand CI/workflow/Justfile/doc references from `retch` (`dog`, `etr`,\nand `rusticprofile` had no Nix packaging; runtime NixOS distro\ndetection and logos remain intact).\n\n- Remove `flake.nix`, `flake.lock`, `packaging/nixpkgs/{package,test}.nix`,\n  `scripts/calculate_nix_hashes.py`, `scripts/nix_check.py`, and\n  `scripts/nixpkgs_release.py`\n- Update `.github/workflows/{ci,packaging,release}.yml`,\n  `scripts/render_packaging.py`, `scripts/metadata_check.py`,\n  `packaging/metadata.toml`, `Justfile`, `README.md`, `AGENTS.md`, and\n  `NOTES.md`\n- Bump `retch-cli` to `0.21.12` (keeping `retch-sysinfo` at `0.1.111`),\n  update `Cargo.lock`, and regenerate `docs/retch.1`\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-18T18:45:41-08:00",
+          "tree_id": "24191913d99de02c6db4dae6b61676a390fa35c3",
+          "url": "https://github.com/l1a/retch/commit/ff277052d96ae97a5b217237d29ec9fb131c1ebe"
+        },
+        "date": 1795056722084,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 43667680.0,
+            "extra": "v0.21.12; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 339552740.0,
+            "extra": "v0.21.12; battery"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 42548560.00000001,
+            "extra": "v0.21.12; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 75240359.99999999,
+            "extra": "v0.21.12; battery"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 266281649.99999997,
+            "extra": "v0.21.12; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 767682230.0000001,
+            "extra": "v0.21.12; battery"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 566093160.0000001,
+            "extra": "v0.21.12; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 1245863240.0,
+            "extra": "v0.21.12; battery"
           }
         ]
       }
