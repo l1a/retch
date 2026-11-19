@@ -444,15 +444,64 @@ impl SystemInfo {
             }
         };
 
-        // Windows: sample cumulative CPU times before the concurrent probes run, so CPU
-        // usage can be computed over the real collection window below. In a normal run the
-        // window is already long enough; a floor is enforced later only for tiny requests.
+        let want_cpu = should_collect("cpu");
+        let want_cpu_freq =
+            should_collect("cpu-freq") || should_collect("cpu freq") || should_collect("cpu_freq");
+        let want_cpu_usage = should_collect("cpu-usage")
+            || should_collect("cpu usage")
+            || should_collect("cpu_usage");
+        let want_cpu_cache = should_collect("cpu-cache")
+            || should_collect("cpu cache")
+            || should_collect("cpu_cache");
+        let want_uptime = should_collect("uptime");
+        let want_boot_time =
+            want_uptime || should_collect("boot-time") || should_collect("boot time");
+        let want_arch = should_collect("arch");
+        let want_net = should_collect("net");
+        let want_domain = should_collect("domain");
+        let want_domain_search = should_collect("domain-search") || should_collect("domain search");
+        let want_battery = should_collect("battery");
+        let want_init = should_collect("init") || should_collect("init system");
+        let want_chassis = should_collect("chassis");
+        let want_bootmgr = should_collect("bootmgr") || should_collect("boot");
+        let want_login_manager = should_collect("login-manager") || should_collect("lm");
+        let want_brightness = should_collect("brightness");
+        let want_power_adapter = should_collect("power-adapter");
+        let want_tpm = should_collect("tpm");
+        let want_editor = should_collect("editor");
+        let want_terminal = should_collect("terminal");
+        let want_terminal_font = should_collect("terminal font")
+            || should_collect("terminal-font")
+            || should_collect("terminal_font");
+        let want_terminal_theme = should_collect("terminal-theme")
+            || should_collect("terminal theme")
+            || should_collect("terminal_theme");
+        let want_terminal_size = should_collect("terminal size")
+            || should_collect("terminal-size")
+            || should_collect("terminal_size");
+        let want_users = should_collect("users");
+        let want_wm = should_collect("wm") || should_collect("window manager");
+        let want_desktop = should_collect("desktop");
+        let want_wm_theme =
+            should_collect("wm-theme") || should_collect("wm theme") || should_collect("wm_theme");
+        let want_wallpaper = should_collect("wallpaper");
+
+        // Windows: sample cumulative CPU times only when `cpu-usage` is requested so short and
+        // default runs skip Job Object creation and Win32 accounting overhead.
         #[cfg(target_os = "windows")]
-        let cpu_sample0 = win_cpu::sample();
+        let cpu_sample0 = if want_cpu_usage {
+            win_cpu::sample()
+        } else {
+            None
+        };
         #[cfg(target_os = "windows")]
         let cpu_t0 = std::time::Instant::now();
         #[cfg(target_os = "windows")]
-        let cpu_usage_own0 = own_cpu_time();
+        let cpu_usage_own0 = if want_cpu_usage {
+            own_cpu_time()
+        } else {
+            std::time::Duration::ZERO
+        };
 
         // Disk/network I/O are rates, and the kernel only exposes cumulative counters, so
         // they need two samples and an interval. Take the first here — before the
@@ -473,39 +522,104 @@ impl SystemInfo {
         };
         let io_t0 = std::time::Instant::now();
 
+        // Start network-bound HTTP probes first so DNS/TCP handshakes overlap local setup.
+        let weather_location = opts.weather_location.clone();
+        let weather_unit = opts.weather_unit;
+        let weather_handle = if should_collect("weather") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("weather", || {
+                    crate::weather::detect_weather(weather_location.as_deref(), weather_unit)
+                })
+            }))
+        } else {
+            None
+        };
+        let public_ip_handle = if should_collect("public ip") {
+            Some(std::thread::spawn(move || {
+                crate::timing::timed("public-ip", crate::network::detect_public_ip)
+            }))
+        } else {
+            None
+        };
+
         // Probes that borrow nothing start here, before the serial setup below, so the
         // ~0.1-0.35 ms a new thread waits for an idle core to wake (measured on arrakis;
         // C3 exit latency is 350 us) overlaps `sys-init`, `os`, `disk` and the rest instead
         // of following them (v0.20.5). Only the probes that borrow `sys` wait for the
         // scope further down. All are joined there.
-        let sys_needs_cpus =
-            cpu_refresh_kind(should_collect("cpu-freq"), should_collect("cpu-usage")).is_some();
-        // The `cpu` name probe, when `sys` will not load the CPU list anyway: it builds
-        // its own minimal `System`, so it borrows nothing and can start now.
-        let cpu_early_handle = (should_collect("cpu") && !sys_needs_cpus).then(|| {
-            std::thread::spawn(move || {
+        let sys_needs_cpus = cpu_refresh_kind(want_cpu_freq, want_cpu_usage).is_some();
+        // The `cpu` name/topology probe when `sys` will not load the CPU list anyway:
+        // - Linux parses `/proc/cpuinfo` in a single read (also extracting `physical`), falling
+        //   back to `sysinfo` only for ARM implementer/part names or malformed files.
+        // - Windows queries `RelationProcessorCore` once for both `physical` and hybrid tiers.
+        let cpu_early_handle = (want_cpu && !sys_needs_cpus).then(|| {
+            std::thread::spawn(move || -> (String, usize, Option<usize>, Option<String>) {
                 crate::timing::timed("cpu", || {
-                    let (brand, logical) = System::new_with_specifics(
-                        sysinfo::RefreshKind::nothing().with_cpu(own_cpu_refresh_kind()),
-                    )
-                    .map(|own| (cpu_brand(own.cpus()), own.cpus().len()))
-                    .unwrap_or_else(|_| (cpu_brand(&[]), 0));
-                    (brand, logical, hybrid_cores(logical))
+                    #[cfg(target_os = "linux")]
+                    {
+                        if let Some((brand_opt, logical_ci, physical)) =
+                            std::fs::read_to_string("/proc/cpuinfo")
+                                .ok()
+                                .and_then(|c| parse_linux_cpuinfo(&c))
+                        {
+                            let (brand, logical) = match brand_opt {
+                                Some(brand) => (brand, logical_ci),
+                                None => System::new_with_specifics(
+                                    sysinfo::RefreshKind::nothing()
+                                        .with_cpu(own_cpu_refresh_kind()),
+                                )
+                                .map(|own| (cpu_brand(own.cpus()), own.cpus().len()))
+                                .unwrap_or_else(|_| (cpu_brand(&[]), logical_ci)),
+                            };
+                            return (brand, logical, physical, hybrid_cores(logical));
+                        }
+                        let (brand, logical) = System::new_with_specifics(
+                            sysinfo::RefreshKind::nothing().with_cpu(own_cpu_refresh_kind()),
+                        )
+                        .map(|own| (cpu_brand(own.cpus()), own.cpus().len()))
+                        .unwrap_or_else(|_| (cpu_brand(&[]), 0));
+                        (
+                            brand,
+                            logical,
+                            System::physical_core_count().ok(),
+                            hybrid_cores(logical),
+                        )
+                    }
+                    #[cfg(target_os = "windows")]
+                    {
+                        let (brand, logical) = System::new_with_specifics(
+                            sysinfo::RefreshKind::nothing().with_cpu(own_cpu_refresh_kind()),
+                        )
+                        .map(|own| (cpu_brand(own.cpus()), own.cpus().len()))
+                        .unwrap_or_else(|_| (cpu_brand(&[]), 0));
+                        let (physical, hybrid) = windows_physical_and_hybrid_cores(logical);
+                        (brand, logical, physical, hybrid)
+                    }
+                    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+                    {
+                        let (brand, logical) = System::new_with_specifics(
+                            sysinfo::RefreshKind::nothing().with_cpu(own_cpu_refresh_kind()),
+                        )
+                        .map(|own| (cpu_brand(own.cpus()), own.cpus().len()))
+                        .unwrap_or_else(|_| (cpu_brand(&[]), 0));
+                        (brand, logical, None, hybrid_cores(logical))
+                    }
                 })
             })
         });
-        // `NC / NT` needs sysinfo's physical-core count and, on Linux, the hybrid-CPU
-        // check that reads two sysfs files per cpufreq policy: ~0.8 ms together on a
-        // 32-thread machine, all of it serial before the scope until v0.20.3.
-        // The physical-core count is a second `/proc/cpuinfo` read on Linux and
-        // needs nothing else, so it runs beside the name probe, not after it.
-        let cpu_physical_handle = if should_collect("cpu") {
+        let cpu_physical_handle = if want_cpu
+            && ((sys_needs_cpus && !cfg!(target_os = "windows"))
+                || !cfg!(any(target_os = "linux", target_os = "windows")))
+        {
             Some(std::thread::spawn(move || {
                 crate::timing::timed("cpu-physical", || System::physical_core_count().ok())
             }))
         } else {
             None
         };
+        let cpu_cache_handle = want_cpu_cache.then(|| {
+            std::thread::spawn(move || crate::timing::timed("cpu-cache", detect_cpu_cache))
+        });
         let gpu_handle = if should_collect("gpu") {
             Some(std::thread::spawn(move || {
                 crate::timing::timed("gpu", || {
@@ -525,32 +639,59 @@ impl SystemInfo {
         } else {
             None
         };
-        let public_ip_handle = if should_collect("public ip") {
-            Some(std::thread::spawn(move || {
-                crate::timing::timed("public-ip", crate::network::detect_public_ip)
-            }))
-        } else {
-            None
-        };
-        // The interface list needs only this probe's answer, so it is built on the
-        // same thread. Until v0.20.3 it ran serially after the whole scope.
-        let network_ips_handle = if should_collect("net") {
+        // The interface list (and `--long`/`--full` domain queries that depend on `active_interface`)
+        // run together on one worker thread inside the concurrent scope.
+        let long_mode = opts.long;
+        let network_ips_handle = if want_net {
             Some(std::thread::spawn(move || {
                 let (local_ip, active_interface) = crate::timing::timed(
                     "net",
                     crate::network::detect_active_interface_and_local_ip,
                 );
                 let networks = crate::timing::timed("net-detail", || {
-                    crate::network::detect_networks(
+                    crate::network::detect_networks_for_mode(
                         active_interface.as_deref(),
                         local_ip.as_deref(),
+                        long_mode,
                     )
                 });
-                ((local_ip, active_interface), networks)
+                let domain = if want_domain {
+                    crate::timing::timed("domain", || {
+                        crate::network::detect_domain_with_active_iface(active_interface.as_deref())
+                    })
+                } else {
+                    None
+                };
+                let domain_search = if want_domain_search {
+                    crate::timing::timed("domain-search", crate::network::detect_domain_search)
+                } else {
+                    Vec::new()
+                };
+                (
+                    (local_ip, active_interface),
+                    networks,
+                    domain,
+                    domain_search,
+                )
             }))
         } else {
             None
         };
+        let domain_early_handle = (!want_net && (want_domain || want_domain_search)).then(|| {
+            std::thread::spawn(move || {
+                let domain = if want_domain {
+                    crate::timing::timed("domain", crate::network::detect_domain)
+                } else {
+                    None
+                };
+                let domain_search = if want_domain_search {
+                    crate::timing::timed("domain-search", crate::network::detect_domain_search)
+                } else {
+                    Vec::new()
+                };
+                (domain, domain_search)
+            })
+        });
         let motherboard_handle = if should_collect("motherboard") {
             Some(std::thread::spawn(move || {
                 crate::timing::timed("motherboard", crate::motherboard::detect_motherboard)
@@ -635,17 +776,12 @@ impl SystemInfo {
         } else {
             None
         };
-        let weather_location = opts.weather_location.clone();
-        let weather_unit = opts.weather_unit;
-        let weather_handle = if should_collect("weather") {
-            Some(std::thread::spawn(move || {
-                crate::timing::timed("weather", || {
-                    crate::weather::detect_weather(weather_location.as_deref(), weather_unit)
-                })
-            }))
-        } else {
-            None
-        };
+        let battery_handle = want_battery.then(|| {
+            std::thread::spawn(move || crate::timing::timed("battery", format_battery_info))
+        });
+        let cpu_freq_range_handle = want_cpu_freq.then(|| {
+            std::thread::spawn(move || crate::timing::timed("cpu-freq", detect_cpu_freq_range))
+        });
         // `temp` and `wm` borrow nothing from `sys`. Until v0.20.27 they ran serially
         // after the scope waited for weather (~24 ms together on Linux). Starting them
         // here overlaps that cost with weather instead of adding it after.
@@ -660,11 +796,6 @@ impl SystemInfo {
         } else {
             None
         };
-        let want_wm = should_collect("wm") || should_collect("window manager");
-        let want_desktop = should_collect("desktop");
-        let want_wm_theme =
-            should_collect("wm-theme") || should_collect("wm theme") || should_collect("wm_theme");
-        let want_wallpaper = should_collect("wallpaper");
         let wm_handle = if want_wm || want_wm_theme || want_wallpaper {
             Some(std::thread::spawn(|| {
                 crate::timing::timed("wm", crate::wm::detect_wm)
@@ -672,6 +803,125 @@ impl SystemInfo {
         } else {
             None
         };
+        let desktop_from_env = if want_desktop || want_wm_theme || want_wallpaper {
+            std::env::var("XDG_CURRENT_DESKTOP")
+                .or_else(|_| std::env::var("DESKTOP_SESSION"))
+                .or_else(|_| std::env::var("XDG_SESSION_DESKTOP"))
+                .or_else(|_| std::env::var("GDMSESSION"))
+                .ok()
+                .map(|s| normalize_desktop_name(&s))
+                .filter(|s| !s.is_empty())
+        } else {
+            None
+        };
+        let desktop_proc_handle =
+            if (want_desktop || want_wm_theme || want_wallpaper) && desktop_from_env.is_none() {
+                Some(std::thread::spawn(|| {
+                    crate::timing::timed("desktop-proc", detect_desktop_from_proc)
+                }))
+            } else {
+                None
+            };
+        let need_misc_long = want_init
+            || want_chassis
+            || want_bootmgr
+            || want_login_manager
+            || want_brightness
+            || want_power_adapter
+            || want_tpm
+            || want_editor
+            || want_terminal_size
+            || want_users;
+        let misc_long_handle = need_misc_long.then(|| {
+            std::thread::spawn(move || {
+                let init_system = if want_init {
+                    crate::timing::timed("init", detect_init_system)
+                } else {
+                    None
+                };
+                let chassis = if want_chassis {
+                    crate::timing::timed("chassis", detect_chassis)
+                } else {
+                    None
+                };
+                let bootmgr = if want_bootmgr {
+                    crate::timing::timed("bootmgr", detect_bootmgr)
+                } else {
+                    None
+                };
+                let login_manager = if want_login_manager {
+                    crate::timing::timed("login-manager", detect_login_manager)
+                } else {
+                    None
+                };
+                let brightness = if want_brightness {
+                    crate::timing::timed("brightness", detect_brightness)
+                } else {
+                    None
+                };
+                let power_adapter = if want_power_adapter {
+                    crate::timing::timed("power-adapter", detect_power_adapter)
+                } else {
+                    None
+                };
+                let tpm = if want_tpm {
+                    crate::timing::timed("tpm", detect_tpm)
+                } else {
+                    None
+                };
+                let editor = if want_editor {
+                    std::env::var("VISUAL")
+                        .ok()
+                        .filter(|s| !s.is_empty())
+                        .or_else(|| std::env::var("EDITOR").ok().filter(|s| !s.is_empty()))
+                        .and_then(|raw| crate::timing::timed("editor", || resolve_editor(&raw)))
+                } else {
+                    None
+                };
+                let terminal_size = if want_terminal_size {
+                    crate::timing::timed("terminal-size", crate::terminal::detect_terminal_size)
+                } else {
+                    None
+                };
+                let users = if want_users {
+                    #[cfg(target_os = "windows")]
+                    {
+                        crate::win_users::active_user_session_count()
+                    }
+                    #[cfg(not(target_os = "windows"))]
+                    {
+                        crate::timing::timed("users", Users::new_with_refreshed_list)
+                            .map(|users| {
+                                users
+                                    .iter()
+                                    .filter(|user| {
+                                        user.id()
+                                            .to_string()
+                                            .parse::<u32>()
+                                            .map(|uid| uid >= 1000)
+                                            .unwrap_or(false)
+                                    })
+                                    .count()
+                            })
+                            .unwrap_or(0)
+                    }
+                } else {
+                    0
+                };
+                (
+                    init_system,
+                    chassis,
+                    bootmgr,
+                    login_manager,
+                    brightness,
+                    power_adapter,
+                    tpm,
+                    editor,
+                    terminal_size,
+                    users,
+                )
+            })
+        });
         let input_handle = if should_collect("keyboard") || should_collect("mouse") {
             Some(std::thread::spawn(|| {
                 crate::timing::timed("input", crate::input::detect_input_devices)
@@ -722,14 +972,13 @@ impl SystemInfo {
         let mut refresh_kind = sysinfo::RefreshKind::nothing();
         // `cpu-cache` is deliberately absent: `detect_cpu_cache()` reads its own source
         // and never touches `sys`, so it never needed the CPU list.
-        let sys_has_cpus =
-            match cpu_refresh_kind(should_collect("cpu-freq"), should_collect("cpu-usage")) {
-                Some(cpu_kind) => {
-                    refresh_kind = refresh_kind.with_cpu(cpu_kind);
-                    true
-                }
-                None => false,
-            };
+        let sys_has_cpus = match cpu_refresh_kind(want_cpu_freq, want_cpu_usage) {
+            Some(cpu_kind) => {
+                refresh_kind = refresh_kind.with_cpu(cpu_kind);
+                true
+            }
+            None => false,
+        };
         if should_collect("memory")
             || should_collect("swap")
             || should_collect("phys mem")
@@ -754,7 +1003,11 @@ impl SystemInfo {
         // retch's own CPU time at the same moment, so its share of the window can be taken
         // back out of the reading (see `exclude_own_usage`).
         #[cfg(not(target_os = "windows"))]
-        let cpu_usage_own0 = own_cpu_time();
+        let cpu_usage_own0 = if want_cpu_usage {
+            own_cpu_time()
+        } else {
+            std::time::Duration::ZERO
+        };
 
         let os = crate::timing::timed("os", || {
             #[cfg(target_os = "macos")]
@@ -782,8 +1035,8 @@ impl SystemInfo {
         // `cpu`'s name and logical count: from `sys` when it already loaded the CPU list
         // for `cpu-freq`/`cpu-usage` (free here), otherwise read by the concurrent `cpu`
         // probe below, off the serial path.
-        let cpu_from_sys: Option<(String, usize)> = (should_collect("cpu") && sys_has_cpus)
-            .then(|| (cpu_brand(sys.cpus()), sys.cpus().len()));
+        let cpu_from_sys: Option<(String, usize)> =
+            (want_cpu && sys_has_cpus).then(|| (cpu_brand(sys.cpus()), sys.cpus().len()));
         let memory = if should_collect("memory") {
             format_memory_usage(sys.used_memory(), sys.total_memory())
         } else {
@@ -800,10 +1053,14 @@ impl SystemInfo {
             String::new()
         };
 
-        let uptime = format!(
-            "{}s",
-            crate::timing::timed("uptime", || System::uptime().unwrap_or(0))
-        );
+        let uptime = if want_uptime {
+            format!(
+                "{}s",
+                crate::timing::timed("uptime", || System::uptime().unwrap_or(0))
+            )
+        } else {
+            String::new()
+        };
 
         let disks: Vec<String> = if should_collect("disk") {
             let disks_list =
@@ -830,74 +1087,11 @@ impl SystemInfo {
             Vec::new()
         };
 
-        let battery = if should_collect("battery") {
-            crate::timing::timed("battery", crate::battery::get_battery_info).map(|bat| {
-                let pct = bat.percentage;
-                let state = match bat.state {
-                    crate::battery::BatteryState::Charging => "charging",
-                    crate::battery::BatteryState::Discharging => "discharging",
-                    crate::battery::BatteryState::Full => "full",
-                    _ => "not charging",
-                };
-                let vendor = bat.vendor;
-                let model = bat.model;
-
-                // Format time remaining as "Xh Ym" or "Xd Yh"
-                let time_str = match bat.state {
-                    crate::battery::BatteryState::Charging => bat.time_remaining.map(|d| {
-                        let total_mins = d.as_secs() / 60;
-                        let hours = total_mins / 60;
-                        let mins = total_mins % 60;
-                        if hours >= 24 {
-                            let days = hours / 24;
-                            let rem_hours = hours % 24;
-                            format!("{}d {}h until full", days, rem_hours)
-                        } else if hours > 0 {
-                            format!("{}h {}m until full", hours, mins)
-                        } else {
-                            format!("{}m until full", mins)
-                        }
-                    }),
-                    crate::battery::BatteryState::Discharging => bat.time_remaining.map(|d| {
-                        let total_mins = d.as_secs() / 60;
-                        let hours = total_mins / 60;
-                        let mins = total_mins % 60;
-                        if hours >= 24 {
-                            let days = hours / 24;
-                            let rem_hours = hours % 24;
-                            format!("{}d {}h remaining", days, rem_hours)
-                        } else if hours > 0 {
-                            format!("{}h {}m remaining", hours, mins)
-                        } else {
-                            format!("{}m remaining", mins)
-                        }
-                    }),
-                    _ => None,
-                };
-
-                let mut parts = vec![state.to_string()];
-                if let Some(t) = time_str {
-                    parts.insert(0, t);
-                }
-                if let Some(health) = bat.health {
-                    if health < 99.0 {
-                        parts.push(format!("{:.0}% health", health));
-                    }
-                }
-
-                let base = format!("{:.0}% ({})", pct, parts.join(", "));
-
-                match (vendor, model) {
-                    (Some(v), Some(m)) => format!("{} [{} {}]", base, v, m),
-                    (Some(v), None) => format!("{} [{}]", base, v),
-                    _ => base,
-                }
-            })
+        let arch = if want_arch {
+            crate::timing::timed("arch", System::cpu_arch)
         } else {
-            None
+            String::new()
         };
-
-        let arch = crate::timing::timed("arch", System::cpu_arch);
 
         let processes = if should_collect("procs") {
             #[cfg(target_os = "linux")]
@@ -932,7 +1126,8 @@ impl SystemInfo {
             gpu,
             packages,
             public_ip,
-            ((local_ip, active_interface), networks),
+            ((local_ip, active_interface), networks, net_domain, net_domain_search),
+            (early_domain, early_domain_search),
             motherboard,
             bios,
             displays,
@@ -950,27 +1145,58 @@ impl SystemInfo {
             (media, player),
             gpu_apis,
             shell,
-            (cpu, cpu_cores, cpu_hybrid),
+            (cpu, cpu_cores, early_cpu_physical, cpu_hybrid),
             cpu_physical,
+            cpu_cache,
+            battery,
+            cpu_freq_range,
+            (
+                init_system,
+                chassis,
+                bootmgr,
+                login_manager,
+                brightness,
+                power_adapter,
+                tpm,
+                editor,
+                terminal_size,
+                users,
+            ),
+            (terminal, terminal_font, terminal_theme),
+            (detected_wm, detected_desktop, wm_theme, wallpaper),
         ) = crate::timing::timed("scope", || {
+            let mut wm_h = wm_handle;
+            let mut dp_h = desktop_proc_handle;
+            let mut de_env = desktop_from_env;
             std::thread::scope(|s| {
                 // With `cpu-freq`/`cpu-usage`, `sys` already holds the CPU list, so the
-                // name comes from it and only the hybrid check runs here.
-                let cpu_cores_handle = if should_collect("cpu") && sys_has_cpus {
+                // name comes from it and only the hybrid/topology check runs here.
+                let cpu_cores_handle = if want_cpu && sys_has_cpus {
                     let known = cpu_from_sys.clone();
-                    Some(s.spawn(move || {
-                        crate::timing::timed("cpu", || {
-                            let (brand, logical) = known.unwrap_or_else(|| {
-                                System::new_with_specifics(
-                                    sysinfo::RefreshKind::nothing()
-                                        .with_cpu(own_cpu_refresh_kind()),
-                                )
-                                .map(|own| (cpu_brand(own.cpus()), own.cpus().len()))
-                                .unwrap_or_else(|_| (cpu_brand(&[]), 0))
-                            });
-                            (brand, logical, hybrid_cores(logical))
-                        })
-                    }))
+                    Some(
+                        s.spawn(move || -> (String, usize, Option<usize>, Option<String>) {
+                            crate::timing::timed("cpu", || {
+                                let (brand, logical) = known.unwrap_or_else(|| {
+                                    System::new_with_specifics(
+                                        sysinfo::RefreshKind::nothing()
+                                            .with_cpu(own_cpu_refresh_kind()),
+                                    )
+                                    .map(|own| (cpu_brand(own.cpus()), own.cpus().len()))
+                                    .unwrap_or_else(|_| (cpu_brand(&[]), 0))
+                                });
+                                #[cfg(target_os = "windows")]
+                                {
+                                    let (physical, hybrid) =
+                                        windows_physical_and_hybrid_cores(logical);
+                                    (brand, logical, physical, hybrid)
+                                }
+                                #[cfg(not(target_os = "windows"))]
+                                {
+                                    (brand, logical, None, hybrid_cores(logical))
+                                }
+                            })
+                        }),
+                    )
                 } else {
                     None
                 };
@@ -986,6 +1212,65 @@ impl SystemInfo {
                 } else {
                     None
                 };
+                let terminal_handle = if want_terminal || want_terminal_font || want_terminal_theme
+                {
+                    Some(s.spawn(|| {
+                        let detected = crate::timing::timed("terminal", || {
+                            crate::terminal::detect_terminal(&sys)
+                        });
+                        let term_font = if want_terminal_font {
+                            crate::timing::timed("terminal-font", || {
+                                crate::terminal::detect_terminal_font(detected.as_deref())
+                            })
+                        } else {
+                            None
+                        };
+                        let term_theme = if want_terminal_theme {
+                            crate::timing::timed("terminal-theme", || {
+                                crate::terminal::detect_terminal_theme(detected.as_deref())
+                            })
+                        } else {
+                            None
+                        };
+                        let term = if want_terminal { detected } else { None };
+                        (term, term_font, term_theme)
+                    }))
+                } else {
+                    None
+                };
+                let cosmetic_handle = if want_wm_theme || want_wallpaper {
+                    let wm_h = wm_h.take();
+                    let dp_h = dp_h.take();
+                    let de_env = de_env.take();
+                    Some(s.spawn(move || {
+                        let det_wm = wm_h.and_then(|h| h.join().ok().flatten());
+                        let det_desktop =
+                            de_env.or_else(|| dp_h.and_then(|h| h.join().ok().flatten()));
+                        let wm_theme = if want_wm_theme {
+                            crate::timing::timed("wm-theme", || {
+                                crate::theme::detect_wm_theme(
+                                    det_wm.as_deref(),
+                                    det_desktop.as_deref(),
+                                )
+                            })
+                        } else {
+                            None
+                        };
+                        let wallpaper = if want_wallpaper {
+                            crate::timing::timed("wallpaper", || {
+                                crate::theme::detect_wallpaper(
+                                    det_desktop.as_deref(),
+                                    det_wm.as_deref(),
+                                )
+                            })
+                        } else {
+                            None
+                        };
+                        (det_wm, det_desktop, wm_theme, wallpaper)
+                    }))
+                } else {
+                    None
+                };
                 (
                     gpu_handle
                         .map(|h| h.join().unwrap_or_default())
@@ -993,8 +1278,14 @@ impl SystemInfo {
                     packages_handle.and_then(|h| h.join().ok().flatten()),
                     public_ip_handle.and_then(|h| h.join().ok().flatten()),
                     network_ips_handle
-                        .map(|h| h.join().unwrap_or(((None, None), Vec::new())))
-                        .unwrap_or(((None, None), Vec::new())),
+                        .map(|h| {
+                            h.join()
+                                .unwrap_or(((None, None), Vec::new(), None, Vec::new()))
+                        })
+                        .unwrap_or(((None, None), Vec::new(), None, Vec::new())),
+                    domain_early_handle
+                        .map(|h| h.join().unwrap_or((None, Vec::new())))
+                        .unwrap_or((None, Vec::new())),
                     motherboard_handle.and_then(|h| h.join().ok().flatten()),
                     bios_handle.and_then(|h| h.join().ok().flatten()),
                     displays_handle
@@ -1035,12 +1326,36 @@ impl SystemInfo {
                         .or_else(|| cpu_cores_handle.map(|h| h.join().unwrap_or_default()))
                         .unwrap_or_default(),
                     cpu_physical_handle.and_then(|h| h.join().ok().flatten()),
+                    cpu_cache_handle.and_then(|h| h.join().ok().flatten()),
+                    battery_handle.and_then(|h| h.join().ok().flatten()),
+                    cpu_freq_range_handle.and_then(|h| h.join().ok().flatten()),
+                    misc_long_handle
+                        .map(|h| {
+                            h.join().unwrap_or((
+                                None, None, None, None, None, None, None, None, None, 0,
+                            ))
+                        })
+                        .unwrap_or((None, None, None, None, None, None, None, None, None, 0)),
+                    terminal_handle
+                        .map(|h| h.join().unwrap_or((None, None, None)))
+                        .unwrap_or((None, None, None)),
+                    cosmetic_handle
+                        .map(|h| h.join().unwrap_or((None, None, None, None)))
+                        .unwrap_or_else(|| {
+                            (
+                                wm_h.and_then(|h| h.join().ok().flatten()),
+                                de_env.or_else(|| dp_h.and_then(|h| h.join().ok().flatten())),
+                                None,
+                                None,
+                            )
+                        }),
                 )
             })
         });
 
-        let cpu_core_info = if should_collect("cpu") {
-            cpu_hybrid.unwrap_or_else(|| format_cpu_cores_plain(cpu_cores, cpu_physical))
+        let final_cpu_physical = early_cpu_physical.or(cpu_physical);
+        let cpu_core_info = if want_cpu {
+            cpu_hybrid.unwrap_or_else(|| format_cpu_cores_plain(cpu_cores, final_cpu_physical))
         } else {
             String::new()
         };
@@ -1050,65 +1365,21 @@ impl SystemInfo {
             .unwrap_or_default();
         sort_temps_cpu_first(&mut temps);
 
-        let boot_timestamp = crate::timing::timed("boot-time", || System::boot_time().unwrap_or(0));
-        let boot_time = format_boot_time(boot_timestamp);
-
-        // Environment-based info. (`shell` is collected inside the concurrent scope above.)
-        // `terminal-font` and `terminal-theme` both inspect the running terminal name, so
-        // `detect_terminal` runs whenever any of the three is requested, while `SystemInfo.terminal`
-        // is only populated when `terminal` itself was selected.
-        let want_terminal = should_collect("terminal");
-        let want_terminal_font = should_collect("terminal font")
-            || should_collect("terminal-font")
-            || should_collect("terminal_font");
-        let want_terminal_theme = should_collect("terminal-theme")
-            || should_collect("terminal theme")
-            || should_collect("terminal_theme");
-        let detected_terminal = if want_terminal || want_terminal_font || want_terminal_theme {
-            crate::timing::timed("terminal", || crate::terminal::detect_terminal(&sys))
+        let boot_time = if want_boot_time {
+            let boot_timestamp =
+                crate::timing::timed("boot-time", || System::boot_time().unwrap_or(0));
+            format_boot_time(boot_timestamp)
         } else {
-            None
-        };
-        let terminal = if want_terminal {
-            detected_terminal.clone()
-        } else {
-            None
-        };
-        let terminal_font = if want_terminal_font {
-            crate::timing::timed("terminal-font", || {
-                crate::terminal::detect_terminal_font(detected_terminal.as_deref())
-            })
-        } else {
-            None
-        };
-        let detected_desktop = if want_desktop || want_wm_theme || want_wallpaper {
-            std::env::var("XDG_CURRENT_DESKTOP")
-                .or_else(|_| std::env::var("DESKTOP_SESSION"))
-                .or_else(|_| std::env::var("XDG_SESSION_DESKTOP"))
-                .or_else(|_| std::env::var("GDMSESSION"))
-                .ok()
-                .map(|s| normalize_desktop_name(&s))
-                .filter(|s| !s.is_empty())
-                .or_else(|| crate::timing::timed("desktop-proc", detect_desktop_from_proc))
-        } else {
-            None
-        };
-        let desktop = if want_desktop {
-            detected_desktop.clone()
-        } else {
-            None
+            String::new()
         };
 
-        // CPU frequency (current from sysinfo + min/max range from sysfs)
-        let cpu_freq = if should_collect("cpu-freq")
-            || should_collect("cpu freq")
-            || should_collect("cpu_freq")
-        {
+        let desktop = if want_desktop { detected_desktop } else { None };
+
+        // CPU frequency (current from sysinfo + min/max range computed concurrently above)
+        let cpu_freq = if want_cpu_freq {
             sys.cpus().first().map(|c| {
                 let current = format!("{:.2} GHz", c.frequency() as f64 / 1000.0);
-                if let Some((min_khz, max_khz)) =
-                    crate::timing::timed("cpu-freq", detect_cpu_freq_range)
-                {
+                if let Some((min_khz, max_khz)) = cpu_freq_range {
                     let min_ghz = min_khz as f64 / 1_000_000.0;
                     let max_ghz = max_khz as f64 / 1_000_000.0;
                     format!("{} ({:.2} \u{2013} {:.2} GHz)", current, min_ghz, max_ghz)
@@ -1116,16 +1387,6 @@ impl SystemInfo {
                     current
                 }
             })
-        } else {
-            None
-        };
-
-        // CPU cache sizes
-        let cpu_cache = if should_collect("cpu-cache")
-            || should_collect("cpu cache")
-            || should_collect("cpu_cache")
-        {
-            crate::timing::timed("cpu-cache", detect_cpu_cache)
         } else {
             None
         };
@@ -1138,10 +1399,7 @@ impl SystemInfo {
         // pure serial waste (scope 237 ms, then 200 ms more). On Windows we instead diff the
         // GetSystemTimes sample taken before the concurrent scope against a fresh one — the
         // collection window is the delta, so no sleep is added to the run.
-        let cpu_usage = if should_collect("cpu-usage")
-            || should_collect("cpu usage")
-            || should_collect("cpu_usage")
-        {
+        let cpu_usage = if want_cpu_usage {
             #[cfg(not(target_os = "windows"))]
             {
                 let wait =
@@ -1250,48 +1508,12 @@ impl SystemInfo {
             (Vec::new(), Vec::new())
         };
 
-        let init_system = if should_collect("init") || should_collect("init system") {
-            crate::timing::timed("init", detect_init_system)
-        } else {
-            None
-        };
-
-        let chassis = if should_collect("chassis") {
-            crate::timing::timed("chassis", detect_chassis)
-        } else {
-            None
-        };
-
         let locale = if should_collect("locale") {
             std::env::var("LC_ALL")
                 .ok()
                 .filter(|s| !s.is_empty())
                 .or_else(|| std::env::var("LC_MESSAGES").ok().filter(|s| !s.is_empty()))
                 .or_else(|| std::env::var("LANG").ok().filter(|s| !s.is_empty()))
-        } else {
-            None
-        };
-
-        let bootmgr = if should_collect("bootmgr") || should_collect("boot") {
-            crate::timing::timed("bootmgr", detect_bootmgr)
-        } else {
-            None
-        };
-
-        let login_manager = if should_collect("login-manager") || should_collect("lm") {
-            crate::timing::timed("login-manager", detect_login_manager)
-        } else {
-            None
-        };
-
-        let brightness = if should_collect("brightness") {
-            crate::timing::timed("brightness", detect_brightness)
-        } else {
-            None
-        };
-
-        let power_adapter = if should_collect("power-adapter") {
-            crate::timing::timed("power-adapter", detect_power_adapter)
         } else {
             None
         };
@@ -1314,23 +1536,6 @@ impl SystemInfo {
             None => (Vec::new(), Vec::new()),
         };
 
-        let tpm = if should_collect("tpm") {
-            crate::timing::timed("tpm", detect_tpm)
-        } else {
-            None
-        };
-
-        let editor = if should_collect("editor") {
-            std::env::var("VISUAL")
-                .ok()
-                .filter(|s| !s.is_empty())
-                .or_else(|| std::env::var("EDITOR").ok().filter(|s| !s.is_empty()))
-                .and_then(|raw| crate::timing::timed("editor", || resolve_editor(&raw)))
-        } else {
-            None
-        };
-
-        let detected_wm = wm_handle.and_then(|h| h.join().ok().flatten());
         let wm = if want_wm {
             #[cfg(target_os = "macos")]
             {
@@ -1347,87 +1552,15 @@ impl SystemInfo {
         };
 
         let dns = dns_handle.and_then(|h| h.join().ok()).unwrap_or_default();
-
-        let domain = if should_collect("domain") {
-            crate::timing::timed("domain", || {
-                crate::network::detect_domain_with_active_iface(active_interface.as_deref())
-            })
+        let domain = net_domain.or(early_domain);
+        let domain_search = if !net_domain_search.is_empty() {
+            net_domain_search
         } else {
-            None
-        };
-
-        let domain_search = if should_collect("domain-search") || should_collect("domain search") {
-            crate::timing::timed("domain-search", crate::network::detect_domain_search)
-        } else {
-            Vec::new()
-        };
-
-        let terminal_size = if should_collect("terminal size")
-            || should_collect("terminal-size")
-            || should_collect("terminal_size")
-        {
-            crate::timing::timed("terminal-size", crate::terminal::detect_terminal_size)
-        } else {
-            None
+            early_domain_search
         };
 
         // Current logged in user
         let current_user = std::env::var("USER").ok();
-
-        // Number of interactive users. On Unix, count local human accounts (UID >= 1000,
-        // excluding system accounts). On Windows, `sysinfo` keys users by SID (which won't
-        // parse as a UID), so count active interactive login sessions via the WTS API
-        // instead. A 0 result is suppressed at display time (see `display.rs`).
-        let users = if should_collect("users") {
-            #[cfg(target_os = "windows")]
-            {
-                crate::win_users::active_user_session_count()
-            }
-            #[cfg(not(target_os = "windows"))]
-            {
-                crate::timing::timed("users", Users::new_with_refreshed_list)
-                    .map(|users| {
-                        users
-                            .iter()
-                            .filter(|user| {
-                                // UID is exposed via Display
-                                user.id()
-                                    .to_string()
-                                    .parse::<u32>()
-                                    .map(|uid| uid >= 1000)
-                                    .unwrap_or(false)
-                            })
-                            .count()
-                    })
-                    .unwrap_or(0)
-            }
-        } else {
-            0
-        };
-
-        let wm_theme = if want_wm_theme {
-            crate::timing::timed("wm-theme", || {
-                crate::theme::detect_wm_theme(detected_wm.as_deref(), detected_desktop.as_deref())
-            })
-        } else {
-            None
-        };
-
-        let wallpaper = if want_wallpaper {
-            crate::timing::timed("wallpaper", || {
-                crate::theme::detect_wallpaper(detected_desktop.as_deref(), detected_wm.as_deref())
-            })
-        } else {
-            None
-        };
-
-        let terminal_theme = if want_terminal_theme {
-            crate::timing::timed("terminal-theme", || {
-                crate::terminal::detect_terminal_theme(detected_terminal.as_deref())
-            })
-        } else {
-            None
-        };
 
         crate::timing::mark("collect-done");
 
@@ -1664,6 +1797,165 @@ fn format_macos_cpu_cache(levels: &[MacosPerfLevelCache]) -> Option<String> {
     format_cpu_cache_entries(&entries)
 }
 
+/// Parses Linux `/proc/cpuinfo` in a single pass, returning
+/// `(brand_override, logical_cpus, physical_cores)`.
+///
+/// Matches `sysinfo`'s `get_physical_core_count()` logic (`(core_id, physical_id)` pairs,
+/// falling back to per-`processor` entries when `core id` / `physical id` are absent).
+/// Leaves `brand_override` as `None` when ARM `CPU implementer` + `CPU part` IDs are
+/// present so callers still defer to `sysinfo`'s ARM part-number lookup table.
+#[cfg(any(target_os = "linux", test))]
+fn parse_linux_cpuinfo(content: &str) -> Option<(Option<String>, usize, Option<usize>)> {
+    use std::collections::HashSet;
+
+    let mut logical = 0usize;
+    let mut seen_first_proc = false;
+    let mut in_first_proc = false;
+    let mut first_model_name: Option<String> = None;
+    let mut first_has_impl = false;
+    let mut first_has_part = false;
+
+    let mut physical_set: HashSet<String> = HashSet::new();
+    let mut proc_id = "";
+    let mut core_id = "";
+    let mut physical_id = "";
+
+    let flush_core =
+        |set: &mut HashSet<String>, core: &mut &str, phys: &mut &str, cpu: &mut &str| {
+            if !core.is_empty() && !phys.is_empty() {
+                set.insert(format!("{core} {phys}"));
+            } else if !cpu.is_empty() {
+                set.insert((*cpu).to_string());
+            }
+            *core = "";
+            *phys = "";
+            *cpu = "";
+        };
+
+    for line in content.lines() {
+        if line.is_empty() {
+            flush_core(
+                &mut physical_set,
+                &mut core_id,
+                &mut physical_id,
+                &mut proc_id,
+            );
+            in_first_proc = false;
+            continue;
+        }
+        let Some((raw_key, raw_val)) = line.split_once(':') else {
+            continue;
+        };
+        let key = raw_key.trim();
+        let val = raw_val.trim();
+        match key {
+            "processor" => {
+                proc_id = val;
+                if val.parse::<usize>().is_ok() {
+                    logical += 1;
+                    if !seen_first_proc {
+                        seen_first_proc = true;
+                        in_first_proc = true;
+                    } else {
+                        in_first_proc = false;
+                    }
+                }
+            }
+            "core id" => core_id = val,
+            "physical id" => physical_id = val,
+            "model name" if in_first_proc && first_model_name.is_none() => {
+                first_model_name = trim_cpu_brand(val);
+            }
+            "CPU implementer" if in_first_proc => first_has_impl = true,
+            "CPU part" if in_first_proc => first_has_part = true,
+            _ => {}
+        }
+    }
+    flush_core(
+        &mut physical_set,
+        &mut core_id,
+        &mut physical_id,
+        &mut proc_id,
+    );
+
+    if logical == 0 {
+        return None;
+    }
+
+    let brand = if first_has_impl && first_has_part {
+        None
+    } else {
+        first_model_name
+    };
+    let physical = (!physical_set.is_empty()).then_some(physical_set.len());
+    Some((brand, logical, physical))
+}
+
+/// Formats battery state, time remaining, health, and hardware identity from [`crate::battery`].
+fn format_battery_info() -> Option<String> {
+    crate::battery::get_battery_info().map(|bat| {
+        let pct = bat.percentage;
+        let state = match bat.state {
+            crate::battery::BatteryState::Charging => "charging",
+            crate::battery::BatteryState::Discharging => "discharging",
+            crate::battery::BatteryState::Full => "full",
+            _ => "not charging",
+        };
+        let vendor = bat.vendor;
+        let model = bat.model;
+
+        let time_str = match bat.state {
+            crate::battery::BatteryState::Charging => bat.time_remaining.map(|d| {
+                let total_mins = d.as_secs() / 60;
+                let hours = total_mins / 60;
+                let mins = total_mins % 60;
+                if hours >= 24 {
+                    let days = hours / 24;
+                    let rem_hours = hours % 24;
+                    format!("{}d {}h until full", days, rem_hours)
+                } else if hours > 0 {
+                    format!("{}h {}m until full", hours, mins)
+                } else {
+                    format!("{}m until full", mins)
+                }
+            }),
+            crate::battery::BatteryState::Discharging => bat.time_remaining.map(|d| {
+                let total_mins = d.as_secs() / 60;
+                let hours = total_mins / 60;
+                let mins = total_mins % 60;
+                if hours >= 24 {
+                    let days = hours / 24;
+                    let rem_hours = hours % 24;
+                    format!("{}d {}h remaining", days, rem_hours)
+                } else if hours > 0 {
+                    format!("{}h {}m remaining", hours, mins)
+                } else {
+                    format!("{}m remaining", mins)
+                }
+            }),
+            _ => None,
+        };
+
+        let mut parts = vec![state.to_string()];
+        if let Some(t) = time_str {
+            parts.insert(0, t);
+        }
+        if let Some(health) = bat.health {
+            if health < 99.0 {
+                parts.push(format!("{:.0}% health", health));
+            }
+        }
+
+        let base = format!("{:.0}% ({})", pct, parts.join(", "));
+
+        match (vendor, model) {
+            (Some(v), Some(m)) => format!("{} [{} {}]", base, v, m),
+            (Some(v), None) => format!("{} [{}]", base, v),
+            _ => base,
+        }
+    })
+}
+
 /// Parses a Linux sysfs cache `size` string (e.g. `"32K"`, `"16M"`, `"1280K"`) into KiB.
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 fn parse_sysfs_cache_size_kb(size_raw: &str) -> Option<u64> {
@@ -1677,10 +1969,37 @@ fn parse_sysfs_cache_size_kb(size_raw: &str) -> Option<u64> {
     }
 }
 
-/// Walks a Linux `/sys/devices/system/cpu` directory across all `cpu<N>/cache/index*`
-/// entries, deduplicating shared physical cache instances by `(level, type, shared_cpu_list)`
-/// so both per-core instance counts (`Nx`) and hybrid P/E core cache tiers (`+`) are
-/// captured.
+/// Parses a Linux sysfs CPU list range (e.g. `"0-1"`, `"0,12"`, `"0-3,8-11"`) into sorted
+/// logical CPU indices. Returns an empty vector on malformed input.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn parse_cpu_list_range(list: &str) -> Vec<u32> {
+    let mut out = Vec::new();
+    for part in list.trim().split(',') {
+        let part = part.trim();
+        if part.is_empty() {
+            continue;
+        }
+        if let Some((start_s, end_s)) = part.split_once('-') {
+            let (Ok(start), Ok(end)) = (start_s.trim().parse::<u32>(), end_s.trim().parse::<u32>())
+            else {
+                return Vec::new();
+            };
+            if start > end || end - start > 4096 {
+                return Vec::new();
+            }
+            out.extend(start..=end);
+        } else if let Ok(single) = part.parse::<u32>() {
+            out.push(single);
+        } else {
+            return Vec::new();
+        }
+    }
+    out
+}
+
+/// Walks a Linux `/sys/devices/system/cpu` directory across `cpu<N>/cache/index*` entries,
+/// deduplicating shared physical cache instances via `shared_cpu_list` while skipping CPUs and
+/// cache indices already covered by an earlier CPU's `shared_cpu_list`.
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 fn cpu_cache_in(cpu_root: &std::path::Path) -> Option<String> {
     use std::collections::HashSet;
@@ -1704,8 +2023,16 @@ fn cpu_cache_in(cpu_root: &std::path::Path) -> Option<String> {
 
     let mut seen_instances: HashSet<(u32, String, String)> = HashSet::new();
     let mut owned: Vec<(u32, String, u64)> = Vec::new();
+    // Pairs of `(index_dir_name, cpu_idx)` covered by an earlier CPU's `shared_cpu_list` for that
+    // cache index (e.g. L3 `"0-23"` covers `("index3", 1..=23)`).
+    let mut covered_index_cpus: HashSet<(String, u32)> = HashSet::new();
+    // CPUs whose entire set of cache indices was shared with an earlier CPU (e.g. SMT siblings).
+    let mut fully_covered_cpus: HashSet<u32> = HashSet::new();
 
     for (cpu_idx, cpu_path) in cpu_dirs {
+        if fully_covered_cpus.contains(&cpu_idx) {
+            continue;
+        }
         let Ok(indices) = fs::read_dir(cpu_path.join("cache")) else {
             continue;
         };
@@ -1716,7 +2043,22 @@ fn cpu_cache_in(cpu_root: &std::path::Path) -> Option<String> {
             .collect();
         index_paths.sort();
 
+        let mut common_shared: Option<Vec<u32>> = None;
+        let mut skipped_indices: Vec<String> = Vec::new();
+        let mut all_read_had_list = true;
+
         for path in index_paths {
+            let index_name = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(str::to_string);
+            if let Some(ref idx_name) = index_name {
+                if covered_index_cpus.contains(&(idx_name.clone(), cpu_idx)) {
+                    skipped_indices.push(idx_name.clone());
+                    continue;
+                }
+            }
+
             let Ok(level_str) = fs::read_to_string(path.join("level")) else {
                 continue;
             };
@@ -1733,15 +2075,53 @@ fn cpu_cache_in(cpu_root: &std::path::Path) -> Option<String> {
             let Some(size_kb) = parse_sysfs_cache_size_kb(&size_str) else {
                 continue;
             };
-            let shared = fs::read_to_string(path.join("shared_cpu_list"))
-                .or_else(|_| fs::read_to_string(path.join("shared_cpu_map")))
-                .map(|s| s.trim().to_string())
+
+            let shared_list_raw = fs::read_to_string(path.join("shared_cpu_list"))
                 .ok()
-                .filter(|s| !s.is_empty())
-                .unwrap_or_else(|| format!("cpu{cpu_idx}"));
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty());
+
+            let shared = if let Some(list_str) = shared_list_raw {
+                let parsed = parse_cpu_list_range(&list_str);
+                if parsed.is_empty() {
+                    all_read_had_list = false;
+                } else {
+                    if let Some(ref idx_name) = index_name {
+                        for &c in &parsed {
+                            covered_index_cpus.insert((idx_name.clone(), c));
+                        }
+                    }
+                    match &mut common_shared {
+                        None => common_shared = Some(parsed),
+                        Some(common) => common.retain(|c| parsed.contains(c)),
+                    }
+                }
+                list_str
+            } else {
+                all_read_had_list = false;
+                fs::read_to_string(path.join("shared_cpu_map"))
+                    .ok()
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or_else(|| format!("cpu{cpu_idx}"))
+            };
 
             if seen_instances.insert((level, kind.clone(), shared)) {
                 owned.push((level, kind, size_kb));
+            }
+        }
+
+        if all_read_had_list {
+            if let Some(common) = common_shared {
+                for sibling in common {
+                    if sibling != cpu_idx
+                        && skipped_indices
+                            .iter()
+                            .all(|idx| covered_index_cpus.contains(&(idx.clone(), sibling)))
+                    {
+                        fully_covered_cpus.insert(sibling);
+                    }
+                }
             }
         }
     }
@@ -1820,7 +2200,7 @@ fn parse_windows_cache_records(buf: &[u8]) -> Option<String> {
 ///   `GROUP_AFFINITY` starts with `mask: usize` (`KAFFINITY` bitmask of logical processors
 ///   in that core) followed by `group: u16` and `reserved: [u16; 3]`.
 #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
-fn parse_windows_processor_core_classes(buf: &[u8], logical: usize) -> Option<String> {
+fn parse_windows_processor_cores(buf: &[u8]) -> (usize, Option<usize>, Option<String>) {
     const RELATION_PROCESSOR_CORE: u32 = 0;
     const GROUP_MASK_OFFSET: usize = 32;
     const GROUP_AFFINITY_SIZE: usize = std::mem::size_of::<usize>() + 8;
@@ -1829,6 +2209,7 @@ fn parse_windows_processor_core_classes(buf: &[u8], logical: usize) -> Option<St
     let mut class_to_count: std::collections::HashMap<u64, usize> =
         std::collections::HashMap::new();
     let mut total_accounted = 0usize;
+    let mut physical_cores = 0usize;
     let mut offset = 0usize;
 
     while offset + 8 <= buf.len() {
@@ -1862,18 +2243,44 @@ fn parse_windows_processor_core_classes(buf: &[u8], logical: usize) -> Option<St
                 let mask = usize::from_ne_bytes(mask_arr);
                 core_threads += mask.count_ones() as usize;
             }
+            physical_cores += 1;
             if core_threads > 0 {
                 *class_to_count.entry(efficiency_class).or_insert(0) += core_threads;
                 total_accounted += core_threads;
-                if class_to_count.len() > 2 {
-                    return None;
-                }
             }
         }
         offset += size;
     }
 
-    hybrid_label(&class_to_count, total_accounted, logical)
+    let physical = (physical_cores > 0).then_some(physical_cores);
+    let hybrid = if class_to_count.len() <= 2 {
+        hybrid_label(&class_to_count, total_accounted, total_accounted)
+    } else {
+        None
+    };
+    (total_accounted, physical, hybrid)
+}
+
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+fn parse_windows_processor_core_classes(buf: &[u8], logical: usize) -> Option<String> {
+    let (accounted, _, hybrid) = parse_windows_processor_cores(buf);
+    if accounted == logical {
+        hybrid
+    } else {
+        None
+    }
+}
+
+/// Returns `(physical_cores, hybrid_label)` from a single
+/// `GetLogicalProcessorInformationEx(RelationProcessorCore, ...)` query on Windows.
+#[cfg(target_os = "windows")]
+fn windows_physical_and_hybrid_cores(logical: usize) -> (Option<usize>, Option<String>) {
+    if let Some(buf) = win_cpu::query_logical_processor_info_ex(win_cpu::RELATION_PROCESSOR_CORE) {
+        let (accounted, physical, hybrid) = parse_windows_processor_cores(&buf);
+        let hybrid = if accounted == logical { hybrid } else { None };
+        return (physical, hybrid);
+    }
+    (System::physical_core_count().ok(), None)
 }
 
 /// Combines SMBIOS Type 4 `(low_mhz, high_mhz)` speeds and per-core `CallNtPowerInformation`
@@ -4822,6 +5229,10 @@ mod tests {
             parse_windows_processor_core_classes(&hybrid_buf, 16).as_deref(),
             Some("8P + 8E / 16T")
         );
+        assert_eq!(
+            parse_windows_processor_cores(&hybrid_buf),
+            (16, Some(12), Some("8P + 8E / 16T".to_string()))
+        );
 
         // Homogeneous CPU (all class 0, 8 cores × 2 threads = 16T) => None.
         let mut homo_buf = Vec::new();
@@ -4829,6 +5240,10 @@ mod tests {
             homo_buf.extend(make_core_record(0, 0b11 << (i * 2)));
         }
         assert_eq!(parse_windows_processor_core_classes(&homo_buf, 16), None);
+        assert_eq!(
+            parse_windows_processor_cores(&homo_buf),
+            (16, Some(8), None)
+        );
     }
 
     #[test]
@@ -5082,5 +5497,60 @@ ID=fedora
             "missing offset sign: {formatted}"
         );
         assert_eq!(&formatted[22..23], ":", "missing offset colon: {formatted}");
+    }
+
+    #[test]
+    fn test_parse_cpu_list_range() {
+        assert_eq!(parse_cpu_list_range("0-1"), vec![0, 1]);
+        assert_eq!(parse_cpu_list_range("0,12\n"), vec![0, 12]);
+        assert_eq!(parse_cpu_list_range("0-2,8-9"), vec![0, 1, 2, 8, 9]);
+        assert_eq!(parse_cpu_list_range("7"), vec![7]);
+        assert!(parse_cpu_list_range("3-1").is_empty());
+        assert!(parse_cpu_list_range("ff00").is_empty());
+    }
+
+    #[test]
+    fn test_parse_linux_cpuinfo() {
+        let x86_smt = "\
+processor\t: 0
+vendor_id\t: AuthenticAMD
+model name\t: AMD Ryzen 9 7950X 16-Core Processor  
+physical id\t: 0
+core id\t\t: 0
+
+processor\t: 1
+vendor_id\t: AuthenticAMD
+model name\t: AMD Ryzen 9 7950X 16-Core Processor  
+physical id\t: 0
+core id\t\t: 1
+
+processor\t: 2
+vendor_id\t: AuthenticAMD
+model name\t: AMD Ryzen 9 7950X 16-Core Processor  
+physical id\t: 0
+core id\t\t: 0
+";
+        assert_eq!(
+            parse_linux_cpuinfo(x86_smt),
+            Some((
+                Some("AMD Ryzen 9 7950X 16-Core Processor".to_string()),
+                3,
+                Some(2)
+            ))
+        );
+
+        let arm64 = "\
+processor\t: 0
+BogoMIPS\t: 48.00
+CPU implementer\t: 0x41
+CPU part\t: 0xd0c
+
+processor\t: 1
+BogoMIPS\t: 48.00
+CPU implementer\t: 0x41
+CPU part\t: 0xd0c
+";
+        assert_eq!(parse_linux_cpuinfo(arm64), Some((None, 2, Some(2))));
+        assert_eq!(parse_linux_cpuinfo(""), None);
     }
 }

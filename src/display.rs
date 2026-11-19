@@ -988,16 +988,6 @@ fn choose_net_line<'a>(
 
 pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<()> {
     let _config = config;
-    let theme_name = _config.theme.as_deref().or(cli.theme.as_deref());
-    let mut theme = match theme_name {
-        Some(name) => Theme::from_name(name),
-        None => Theme::detect_system_theme(), // Default to system preference
-    };
-
-    // Apply custom theme overrides from config if present
-    if let Some(custom) = &_config.custom_theme {
-        theme = Theme::with_custom_overrides(theme, custom);
-    }
 
     // Determine terminal width.
     let term_size = terminal_size::terminal_size();
@@ -1016,6 +1006,24 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
         std::env::var_os("TERM").as_deref(),
         stdout_is_tty,
     );
+
+    // Skip reading GTK/KDE theme files from disk when ANSI color is disabled.
+    let mut theme = if !use_color {
+        Theme::neutral()
+    } else {
+        let theme_name = _config.theme.as_deref().or(cli.theme.as_deref());
+        match theme_name {
+            Some(name) => Theme::from_name(name),
+            None => Theme::detect_system_theme(), // Default to system preference
+        }
+    };
+
+    // Apply custom theme overrides from config if present
+    if use_color {
+        if let Some(custom) = &_config.custom_theme {
+            theme = Theme::with_custom_overrides(theme, custom);
+        }
+    }
 
     let show_logo = should_show_logo(
         _config.show_logo,

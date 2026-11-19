@@ -151,16 +151,22 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.21.9)
+## Current State (v0.21.10)
 
-`main` carries **`retch-cli` 0.21.9** / **`retch-sysinfo` 0.1.109**. Newest released tag is
-**`v0.21.8`**.
+`main` carries **`retch-cli` 0.21.10** / **`retch-sysinfo` 0.1.110**. Newest released tag is
+**`v0.21.9`**.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.21.10: Eliminate serial probe regressions and redundant sysfs/subprocess bottlenecks across `--short`, `default`, and `--full`.**
+  - **Fail-fast DMI check (`crates/sysinfo/src/memory.rs`):** After checking `/run/udev/data/+dmi:id`, `detect_linux()` verifies `/sys/firmware/dmi/tables/DMI` or `/dev/mem` is readable via `can_read_dmi_tables_in()` before spawning `dmidecode`, and stops after the first executed binary failure rather than retrying 3 more path aliases (eliminated ~7 ms in unprivileged containers).
+  - **`cpu-cache` & post-`scope` concurrency (`crates/sysinfo/src/fetch.rs`):** Moved `cpu-cache`, `battery`, `cpu-freq` range, `terminal`/`terminal-font`/`terminal-theme`, `desktop-proc`, `wm-theme`, `wallpaper`, `domain`/`domain-search`, and `--long`/`--full` misc probes (`init`, `chassis`, `bootmgr`, `login-manager`, `brightness`, `power-adapter`, `tpm`, `editor`, `terminal-size`, `users`) to run concurrently before/inside `std::thread::scope`, started `weather` and `public-ip` first, gated `uptime`/`arch`/`boot-time`/Windows `win_cpu` pre-samples on requested fields, and updated `cpu_cache_in()` to skip SMT siblings and index slices already covered by `shared_cpu_list`.
+  - **Single-pass CPU topology & fast Linux network list (`crates/sysinfo/src/fetch.rs`, `crates/sysinfo/src/network.rs`):** Added single-read `parse_linux_cpuinfo()` and single-query `windows_physical_and_hybrid_cores()` to eliminate duplicate CPU/physical-core queries; replaced Linux `sysinfo::Networks::new_with_refreshed_list()` with `collect_interface_ips_linux()` (`/proc/net/if_inet6` + `SIOCGIFADDR` `ioctl`) + 3-file sysfs reads (`detect_networks_for_mode` reads only the active interface in non-`long` modes); skipped `ip route show default` spawns when `/proc/net/route` was readable and `local_ip.is_none()`.
+  - **In-process HTTP `weather` & no-color theme fast path (`crates/sysinfo/src/weather.rs`, `crates/sysinfo/src/display.rs`, `src/display.rs`):** `weather` sends plain HTTP/1.1 `GET` directly over `TcpStream` (`TCP_NODELAY`, proxy-aware fallback to `curl_get`), `display.rs` skips `xrandr --current` when `DISPLAY` is unset, and CLI rendering skips GTK/KDE theme config disk reads when ANSI color is disabled.
 
 - **v0.21.9: Replace unmaintained `chrono` (`RUSTSEC-2026-0543`, #333) and fold Dependabot PRs (#334, #335).**
   - **Zero-dependency `boot_time` ISO 8601 formatter (`crates/sysinfo/src/fetch.rs`):** Replaced `chrono::Local` with pure proleptic Gregorian offset helpers (`civil_to_epoch_secs`, `format_local_iso8601`) fed by `libc::localtime_r` on Unix and `FileTimeToSystemTime` + `SystemTimeToTzSpecificLocalTime` (`win_cpu::unix_secs_to_local_system_time`) on Windows, removing `chrono` (`0.4.45`) and its transitive dependencies (`iana-time-zone*`, `android_system_properties`, `core-foundation-sys`, `log`) from `Cargo.lock`.
@@ -1156,9 +1162,6 @@ Live items only. Completed items are removed rather than struck through — `git
     corrino (Intel + NVIDIA) it was 8.4 vs 5.8 ms until v0.20.19 (`pci.ids`, see Current
     State), now 3.3 vs 5.8 ms. **Measure on more than one GPU vendor**: arrakis's AMD path
     could not show it.
-  - **default: `phys-mem` is the long pole, ~1.4–2.2 ms** since v0.20.6 (retch ~4x ahead of
-    fastfetch there anyway). On Linux it needs `dmidecode`, which is root-only, so an
-    unprivileged run probably pays for a process spawn that then fails — check first.
 
 - **CI automation of the publish steps.** A tag still does not, by itself, publish to crates.io
   or push to the AUR and the tap. Since v0.17.5 this is a genuine port rather than a redesign —
