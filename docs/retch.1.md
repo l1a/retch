@@ -106,6 +106,7 @@ default path with:
 ## Available Configuration Keys
 
 - **theme**: Theme name to use. (default: `"auto"`).
+- **include**: Path string or array of path strings to other TOML files merged into this config. Relative paths resolve against the including file's directory. Included tables are deep-merged left-to-right as a base; keys in the including file then overlay them. Nested includes are allowed (depth capped). Missing paths and include cycles are errors. Intended for theme fragments rewritten by an external tool (e.g. a Noctalia color template writing `themes/noctalia.toml` while `config.toml` keeps `theme = "custom"` and `include = "themes/noctalia.toml"`).
 - **color**: When to use colour: `"auto"` (default), `"always"`, or `"never"`. Overrides `NO_COLOR` and `TERM=dumb`, and is overridden by `--color`. See **COLOR**.
 - **show_logo**: Boolean indicating whether to show the logo (default: `true`).
 - **ascii_only**: Boolean: always draw the ASCII logo, like `--ascii-logo` (default: `false`).
@@ -206,6 +207,12 @@ Example:
     label_color = "bright_cyan"
     value_color = "#cdd6f4"
     accent_color = "bright_green"
+
+To keep those colors in a separate file (for example one rewritten by a desktop theme
+engine), point `include` at it and leave the rest of `config.toml` alone:
+
+    theme = "custom"
+    include = "themes/noctalia.toml"
 
 # COLOR
 
