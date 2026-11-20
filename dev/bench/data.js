@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795198629285,
+  "lastUpdate": 1795198630677,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -16915,6 +16915,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 234.1876166631355,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8f74fee4c3878900f5a4deaac16c5a5d33e093e8",
+          "message": "Add config.toml include for theme fragments (#341)\n\n* Add config.toml include for theme fragments\n\nSupport include as a string or path list so tools like Noctalia can\nown a separate [custom_theme] file without rewriting config.toml.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n* Fix include docs poisoning --merge-config theme\n\ncontains_key_line treats any commented key= line as present, so the\ninclude example must not use theme = assignment syntax.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n---------\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+          "timestamp": "2026-11-20T10:05:07-08:00",
+          "tree_id": "c46e58f36328113f72a70f93deb90db31ed263c5",
+          "url": "https://github.com/l1a/retch/commit/8f74fee4c3878900f5a4deaac16c5a5d33e093e8"
+        },
+        "date": 1795198630635,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2210537.4,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 255742323,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252350455.50000006,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1315582.0000000002,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3385734.600000001,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 238937734.1,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 210637625.8,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2127586.1000000006,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 272233377.95,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1010.5162160735779,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 124.45448127536429,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.946880133450562,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 69.08006907430766,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8961.139071350563,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 369087.38526763057,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 5760.564946123244,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4058.510855308432,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 55803.32809134129,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 398.91133331971065,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 260.44545756710886,
             "unit": "ns"
           }
         ]
