@@ -986,6 +986,31 @@ fn choose_net_line<'a>(
         .or_else(|| nets.iter().find(|n| n.is_up))
 }
 
+/// Resolve the active [`Theme`] from CLI flags and configuration.
+///
+/// When `--theme <name>` is passed on the CLI with a name other than `"custom"`
+/// (case-insensitive), `[custom_theme]` overrides from config are skipped so the
+/// explicit CLI theme is not silently clobbered (e.g. when `config.toml` includes a
+/// full theme fragment). Omitting `--theme` or passing `--theme custom` still applies
+/// `[custom_theme]`.
+fn resolve_theme(cli_theme: Option<&str>, config: &Config) -> Theme {
+    let theme_name = cli_theme.or(config.theme.as_deref());
+    let base = match theme_name {
+        Some(name) => Theme::from_name(name),
+        None => Theme::detect_system_theme(),
+    };
+    let cli_selected_non_custom = cli_theme
+        .map(|name| !name.eq_ignore_ascii_case("custom"))
+        .unwrap_or(false);
+    if cli_selected_non_custom {
+        base
+    } else if let Some(custom) = &config.custom_theme {
+        Theme::with_custom_overrides(base, custom)
+    } else {
+        base
+    }
+}
+
 pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<()> {
     let _config = config;
 
@@ -1008,22 +1033,11 @@ pub fn display(info: &SystemInfo, cli: &Cli, config: &Config) -> anyhow::Result<
     );
 
     // Skip reading GTK/KDE theme files from disk when ANSI color is disabled.
-    let mut theme = if !use_color {
+    let theme = if !use_color {
         Theme::neutral()
     } else {
-        let theme_name = _config.theme.as_deref().or(cli.theme.as_deref());
-        match theme_name {
-            Some(name) => Theme::from_name(name),
-            None => Theme::detect_system_theme(), // Default to system preference
-        }
+        resolve_theme(cli.theme.as_deref(), _config)
     };
-
-    // Apply custom theme overrides from config if present
-    if use_color {
-        if let Some(custom) = &_config.custom_theme {
-            theme = Theme::with_custom_overrides(theme, custom);
-        }
-    }
 
     let show_logo = should_show_logo(
         _config.show_logo,
@@ -2756,5 +2770,59 @@ mod tests {
         assert!(themed.contains("\x1b[32m79%\x1b[39m\x1b[38;2;255;255;255m (20m until full, "));
         assert!(themed.contains("\x1b[32mcharging\x1b[39m\x1b[38;2;255;255;255m, "));
         assert!(themed.contains("\x1b[32m97%\x1b[39m\x1b[38;2;255;255;255m health)"));
+    }
+
+    #[test]
+    fn test_resolve_theme_cli_precedence_over_custom_theme() {
+        use crate::config::CustomTheme;
+        use owo_colors::Rgb;
+
+        let custom_cfg = Config {
+            theme: Some("custom".to_string()),
+            custom_theme: Some(CustomTheme {
+                label_color: Some("#123456".to_string()),
+                value_color: Some("#abcdef".to_string()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        // Without CLI override, custom_theme applies over config theme.
+        let resolved = resolve_theme(None, &custom_cfg);
+        assert_eq!(resolved.label_color, Rgb(0x12, 0x34, 0x56));
+        assert_eq!(resolved.value_color, Rgb(0xab, 0xcd, 0xef));
+
+        // Partial custom_theme over a built-in config theme preserves both when CLI is omitted.
+        let partial_cfg = Config {
+            theme: Some("catppuccin-mocha".to_string()),
+            custom_theme: Some(CustomTheme {
+                label_color: Some("#123456".to_string()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let resolved_partial = resolve_theme(None, &partial_cfg);
+        assert_eq!(resolved_partial.label_color, Rgb(0x12, 0x34, 0x56));
+        assert_eq!(
+            resolved_partial.value_color,
+            Theme::catppuccin_mocha().value_color
+        );
+
+        // Passing --theme <builtin> ignores config.custom_theme so the requested theme wins.
+        let solarized = resolve_theme(Some("solarized-dark"), &custom_cfg);
+        let expected_solarized = Theme::solarized_dark();
+        assert_eq!(solarized.label_color, expected_solarized.label_color);
+        assert_eq!(solarized.value_color, expected_solarized.value_color);
+        assert_eq!(
+            solarized.separator_color,
+            expected_solarized.separator_color
+        );
+
+        // Passing --theme custom / CUSTOM preserves config.custom_theme.
+        for cli_val in ["custom", "CUSTOM"] {
+            let resolved_custom = resolve_theme(Some(cli_val), &custom_cfg);
+            assert_eq!(resolved_custom.label_color, Rgb(0x12, 0x34, 0x56));
+            assert_eq!(resolved_custom.value_color, Rgb(0xab, 0xcd, 0xef));
+        }
     }
 }

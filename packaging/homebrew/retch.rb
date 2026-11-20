@@ -5,8 +5,8 @@
 #
 # THIS IS A TEMPLATE, NOT A PUBLISHABLE FORMULA.
 # ----------------------------------------------
-# `@VERSION@` and `@SHA256@` are filled in by `scripts/render_packaging.py` at publish
-# time, from the tag being released and the sha256 of the tarball that was actually
+# The version and sha256 placeholders are filled in by `scripts/render_packaging.py` at
+# publish time, from the tag being released and the sha256 of the tarball that was actually
 # downloaded. `just brew-publish <version>` renders it and pushes the *rendered* file to
 # the tap at github.com/l1a/homebrew-retch. Nothing is hand-edited in the tap.
 #
