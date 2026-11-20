@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795198630677,
+  "lastUpdate": 1795198630904,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -22905,6 +22905,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 700.6319747938286,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8f74fee4c3878900f5a4deaac16c5a5d33e093e8",
+          "message": "Add config.toml include for theme fragments (#341)\n\n* Add config.toml include for theme fragments\n\nSupport include as a string or path list so tools like Noctalia can\nown a separate [custom_theme] file without rewriting config.toml.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n* Fix include docs poisoning --merge-config theme\n\ncontains_key_line treats any commented key= line as present, so the\ninclude example must not use theme = assignment syntax.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n---------\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+          "timestamp": "2026-11-20T10:05:07-08:00",
+          "tree_id": "c46e58f36328113f72a70f93deb90db31ed263c5",
+          "url": "https://github.com/l1a/retch/commit/8f74fee4c3878900f5a4deaac16c5a5d33e093e8"
+        },
+        "date": 1795198630864,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 427046662.6,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1183446554,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 982429812.4000002,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 32675437.700000003,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 386830316.6,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 440199929.3,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 409976079.09999996,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 32057575.100000005,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 259233320.825,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 724.5923800139279,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 219.01393903226207,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.6411604750871582,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 162.62467460684525,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 13721.475447598696,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1405.0305796513126,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 516.4334746440737,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 108998.01466280148,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 779.6793616166756,
             "unit": "ns"
           }
         ]
