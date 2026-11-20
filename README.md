@@ -342,6 +342,13 @@ Here is an example of the settings you can configure in `config.toml`:
 # "solarized-dark", "solarized-light".
 theme = "auto"
 
+# Merge another TOML file (string or array). Relative paths are from this file's
+# directory; included tables merge first, then this file overlays them. Useful for
+# a theme fragment an external tool rewrites (e.g. Noctalia):
+#   theme = "custom"
+#   include = "themes/noctalia.toml"
+# include = "themes/noctalia.toml"
+
 # When to use colour: "auto" (default), "always", or "never".
 # Overrides NO_COLOR and TERM=dumb; overridden by --color.
 # color = "auto"

@@ -154,20 +154,29 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.21.13)
+## Current State (v0.22.0)
 
-`main` carries **`retch-cli` 0.21.12** / **`retch-sysinfo` 0.1.111** (newest released tag
-**`v0.21.11`**); this branch bumps **`retch-cli` to `0.21.13`** (keeping `retch-sysinfo` at
-`0.1.111`), adds fail-fast pre-flight checks (`vX` tag tarball, both GitHub Release Windows
-binaries from `release.yml`, and `podman` + AUR SSH auth unless `SKIP_AUR=1`) to `just publish`
-before crates.io uploads, and updates release-sequence documentation across `Justfile`,
-`NOTES.md`, `AGENTS.md`, and `retch.wiki.git`.
+`main` carries **`retch-cli` 0.21.13** / **`retch-sysinfo` 0.1.111`** (newest released tag
+**`v0.21.11`**); this branch bumps **`retch-cli` to `0.22.0`** (keeping `retch-sysinfo` at
+`0.1.111`) and adds `include` support to `config.toml` so a theme fragment can live in a
+separate TOML file (string or array of paths; relative to the including file; deep-merge then
+overlay; cycle/depth/size guards). That is the intended hook for a Noctalia color template:
+`theme = "custom"` + `include = "themes/noctalia.toml"` in the stable config, with the
+template rewriting only the included `[custom_theme]` file.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.22.0: `include` in `config.toml` for theme (and other) fragments (`src/config.rs`).**
+  - `include = "path.toml"` or `include = ["a.toml", "b.toml"]` loads those files before the
+    including file's own keys. Tables deep-merge; scalars replace. Relative paths resolve
+    against the including file's directory. Missing includes and cycles error out; nesting
+    caps at depth 8; each file still has the 1 MiB size limit.
+  - Default/`--merge-config` templates, man page, README, and wiki
+    (`Configuration-and-Theming.md`) document the Noctalia-style split.
 
 - **v0.21.10: Eliminate serial probe regressions and redundant sysfs/subprocess bottlenecks across `--short`, `default`, and `--full`.**
   - **Fail-fast DMI check (`crates/sysinfo/src/memory.rs`):** After checking `/run/udev/data/+dmi:id`, `detect_linux()` verifies `/sys/firmware/dmi/tables/DMI` or `/dev/mem` is readable via `can_read_dmi_tables_in()` before spawning `dmidecode`, and stops after the first executed binary failure rather than retrying 3 more path aliases (eliminated ~7 ms in unprivileged containers).

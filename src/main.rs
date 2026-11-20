@@ -196,6 +196,15 @@ fn default_config_content() -> String {
 # or popular themes: "catppuccin-mocha", "solarized-dark", etc.
 # theme = "auto"
 
+# Merge another TOML file (or list of files) into this config.
+# Relative paths resolve against this file's directory. Included tables are
+# deep-merged first; keys in this file then overlay them. Useful for a theme
+# fragment rewritten by an external tool (e.g. a Noctalia color template):
+#   theme = "custom"
+#   include = "themes/noctalia.toml"
+# include = "themes/noctalia.toml"
+# include = ["base.toml", "themes/noctalia.toml"]
+
 # When to emit ANSI colour: "auto" (default), "always", or "never".
 # "always" and "never" override the NO_COLOR environment variable.
 # color = "auto"

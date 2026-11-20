@@ -5,10 +5,24 @@
 //!
 //! This module handles loading, parsing, and merging of user-defined
 //! TOML configurations with the default settings.
+//!
+//! Config files may pull in other TOML files via an `include` key (a string or
+//! array of strings). Relative paths resolve against the including file's
+//! directory. Included tables are deep-merged left-to-right as a base; keys in
+//! the including file then overlay them. Nested includes are supported up to
+//! [`MAX_INCLUDE_DEPTH`].
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::io::Read;
+use std::path::{Path, PathBuf};
+
+/// Maximum size of a single config or include file (1 MiB).
+const MAX_CONFIG_BYTES: u64 = 1024 * 1024;
+
+/// Maximum nesting depth for `include` chains (root file counts as depth 0).
+const MAX_INCLUDE_DEPTH: usize = 8;
 
 /// Configuration for the retch CLI.
 ///
@@ -59,6 +73,10 @@ impl Config {
     ///
     /// Reads `retch/config.toml` under `dirs::config_dir()`: `$XDG_CONFIG_HOME` or `~/.config`
     /// on Linux, `~/Library/Application Support` on macOS, `%APPDATA%` on Windows.
+    ///
+    /// When the file sets `include` (a path string or array of paths), those TOML
+    /// files are loaded and deep-merged first; keys in this file then overlay them.
+    /// Relative include paths are resolved against the including file's directory.
     pub fn load(custom_path: Option<&str>) -> anyhow::Result<Self> {
         let path = if let Some(p) = custom_path {
             Some(PathBuf::from(p))
@@ -68,36 +86,11 @@ impl Config {
 
         if let Some(path) = path {
             if path.exists() {
-                use std::io::Read;
-                const MAX_CONFIG_BYTES: u64 = 1024 * 1024;
-                let path_meta = fs::metadata(&path)?;
-                anyhow::ensure!(
-                    path_meta.is_file(),
-                    "Config path {} is not a regular file",
-                    path.display()
-                );
-                anyhow::ensure!(
-                    path_meta.len() <= MAX_CONFIG_BYTES,
-                    "Config file {} exceeds maximum size ({} bytes)",
-                    path.display(),
-                    MAX_CONFIG_BYTES
-                );
-                let file = fs::File::open(&path)?;
-                let meta = file.metadata()?;
-                anyhow::ensure!(
-                    meta.is_file(),
-                    "Config path {} is not a regular file",
-                    path.display()
-                );
-                anyhow::ensure!(
-                    meta.len() <= MAX_CONFIG_BYTES,
-                    "Config file {} exceeds maximum size ({} bytes)",
-                    path.display(),
-                    MAX_CONFIG_BYTES
-                );
-                let mut contents = String::with_capacity(meta.len() as usize);
-                file.take(MAX_CONFIG_BYTES).read_to_string(&mut contents)?;
-                let config: Config = toml::from_str(&contents)?;
+                let mut visiting = HashSet::new();
+                let table = load_toml_table(&path, 0, &mut visiting)?;
+                let config: Config = table.try_into().map_err(|e| {
+                    anyhow::anyhow!("Failed to parse config {}: {e}", path.display())
+                })?;
                 return Ok(config);
             }
         }
@@ -165,6 +158,7 @@ impl Config {
 
         let checks = [
             ("theme", DEFAULT_THEME_BLOCK),
+            ("include", DEFAULT_INCLUDE_BLOCK),
             ("color", DEFAULT_COLOR_BLOCK),
             ("show_logo", DEFAULT_SHOW_LOGO_BLOCK),
             ("ascii_only", DEFAULT_ASCII_ONLY_BLOCK),
@@ -205,6 +199,15 @@ const DEFAULT_THEME_BLOCK: &str = r##"# Theme to use. Defaults to "auto" (follow
 # Other options: "neutral", "dark", "light", "custom",
 # or popular themes: "catppuccin-mocha", "solarized-dark", etc.
 # theme = "auto""##;
+
+const DEFAULT_INCLUDE_BLOCK: &str = r##"# Merge another TOML file (or list of files) into this config.
+# Relative paths resolve against this file's directory. Included tables are
+# deep-merged first; keys in this file then overlay them. Useful for a theme
+# fragment rewritten by an external tool (e.g. a Noctalia color template):
+#   theme = "custom"
+#   include = "themes/noctalia.toml"
+# include = "themes/noctalia.toml"
+# include = ["base.toml", "themes/noctalia.toml"]"##;
 
 const DEFAULT_COLOR_BLOCK: &str = r##"# When to emit ANSI colour: "auto" (default), "always", or "never".
 # "always" and "never" override the NO_COLOR environment variable.
@@ -271,6 +274,140 @@ fn contains_custom_theme(content: &str) -> bool {
         }
     }
     false
+}
+
+/// Read a TOML config file, resolving `include` recursively into one table.
+///
+/// `include` accepts a string path or an array of string paths and is stripped
+/// from the result (it is not a [`Config`] field). Relative paths resolve
+/// against `path`'s parent directory. Cycle detection uses canonical paths when
+/// available, otherwise the absolute path as given.
+fn load_toml_table(
+    path: &Path,
+    depth: usize,
+    visiting: &mut HashSet<PathBuf>,
+) -> anyhow::Result<toml::Table> {
+    anyhow::ensure!(
+        depth <= MAX_INCLUDE_DEPTH,
+        "Config include nesting exceeds maximum depth ({MAX_INCLUDE_DEPTH}) at {}",
+        path.display()
+    );
+
+    let identity = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    anyhow::ensure!(
+        visiting.insert(identity.clone()),
+        "Config include cycle detected at {}",
+        path.display()
+    );
+
+    let contents = read_config_bytes(path)?;
+    let mut table: toml::Table = toml::from_str(&contents)
+        .map_err(|e| anyhow::anyhow!("Failed to parse config {}: {e}", path.display()))?;
+
+    let include_paths = take_include_paths(&mut table, path)?;
+    let mut merged = toml::Table::new();
+    if let Some(parent) = path.parent() {
+        for inc in include_paths {
+            let resolved = resolve_include_path(parent, &inc);
+            let included = load_toml_table(&resolved, depth + 1, visiting)?;
+            deep_merge_table(&mut merged, included);
+        }
+    }
+    deep_merge_table(&mut merged, table);
+
+    visiting.remove(&identity);
+    Ok(merged)
+}
+
+/// Read a config/include file with the same size and regularity checks as the
+/// original single-file loader.
+fn read_config_bytes(path: &Path) -> anyhow::Result<String> {
+    let path_meta = fs::metadata(path)?;
+    anyhow::ensure!(
+        path_meta.is_file(),
+        "Config path {} is not a regular file",
+        path.display()
+    );
+    anyhow::ensure!(
+        path_meta.len() <= MAX_CONFIG_BYTES,
+        "Config file {} exceeds maximum size ({} bytes)",
+        path.display(),
+        MAX_CONFIG_BYTES
+    );
+    let file = fs::File::open(path)?;
+    let meta = file.metadata()?;
+    anyhow::ensure!(
+        meta.is_file(),
+        "Config path {} is not a regular file",
+        path.display()
+    );
+    anyhow::ensure!(
+        meta.len() <= MAX_CONFIG_BYTES,
+        "Config file {} exceeds maximum size ({} bytes)",
+        path.display(),
+        MAX_CONFIG_BYTES
+    );
+    let mut contents = String::with_capacity(meta.len() as usize);
+    file.take(MAX_CONFIG_BYTES).read_to_string(&mut contents)?;
+    Ok(contents)
+}
+
+/// Remove and return `include` paths from a TOML table.
+///
+/// Accepts `include = "file.toml"` or `include = ["a.toml", "b.toml"]`.
+fn take_include_paths(table: &mut toml::Table, source: &Path) -> anyhow::Result<Vec<String>> {
+    let Some(value) = table.remove("include") else {
+        return Ok(Vec::new());
+    };
+    match value {
+        toml::Value::String(s) => Ok(vec![s]),
+        toml::Value::Array(items) => {
+            let mut paths = Vec::with_capacity(items.len());
+            for item in items {
+                match item {
+                    toml::Value::String(s) => paths.push(s),
+                    other => {
+                        anyhow::bail!(
+                            "Config include in {} must be a string or array of strings, got {}",
+                            source.display(),
+                            other.type_str()
+                        );
+                    }
+                }
+            }
+            Ok(paths)
+        }
+        other => anyhow::bail!(
+            "Config include in {} must be a string or array of strings, got {}",
+            source.display(),
+            other.type_str()
+        ),
+    }
+}
+
+/// Resolve an include path: absolute paths are used as-is; relative paths are
+/// joined to `base` (the including file's directory).
+fn resolve_include_path(base: &Path, include: &str) -> PathBuf {
+    let candidate = PathBuf::from(include);
+    if candidate.is_absolute() {
+        candidate
+    } else {
+        base.join(candidate)
+    }
+}
+
+/// Deep-merge `overlay` into `base`: tables recurse, all other values replace.
+fn deep_merge_table(base: &mut toml::Table, overlay: toml::Table) {
+    for (key, overlay_value) in overlay {
+        match (base.get_mut(&key), overlay_value) {
+            (Some(toml::Value::Table(base_table)), toml::Value::Table(overlay_table)) => {
+                deep_merge_table(base_table, overlay_table);
+            }
+            (_, overlay_value) => {
+                base.insert(key, overlay_value);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -374,7 +511,7 @@ mod tests {
 
     #[test]
     fn test_merge_defaults_all_present() {
-        let existing = "theme = \"dark\"\ncolor = \"auto\"\nshow_logo = true\nascii_only = false\nchafa = false\nlogo = \"fedora\"\nfields = [\"os\"]\nweather_location = \"London\"\nweather_unit = \"fahrenheit\"\n[custom_theme]\nlabel_color = \"red\"\n";
+        let existing = "theme = \"dark\"\ninclude = \"themes/noctalia.toml\"\ncolor = \"auto\"\nshow_logo = true\nascii_only = false\nchafa = false\nlogo = \"fedora\"\nfields = [\"os\"]\nweather_location = \"London\"\nweather_unit = \"fahrenheit\"\n[custom_theme]\nlabel_color = \"red\"\n";
         let (merged, additions) = Config::merge_defaults(existing);
         assert!(additions.is_empty());
         assert_eq!(merged.trim(), existing.trim());
@@ -382,7 +519,7 @@ mod tests {
 
     #[test]
     fn test_merge_defaults_commented_ignored() {
-        let existing = "# theme = \"auto\"\n# color = \"auto\"\n# show_logo = true\n# ascii_only = false\n# chafa = false\n# logo = \"arch\"\n# fields = []\n# weather_location = \"\"\n# weather_unit = \"fahrenheit\"\n# [custom_theme]\n";
+        let existing = "# theme = \"auto\"\n# include = \"themes/noctalia.toml\"\n# color = \"auto\"\n# show_logo = true\n# ascii_only = false\n# chafa = false\n# logo = \"arch\"\n# fields = []\n# weather_location = \"\"\n# weather_unit = \"fahrenheit\"\n# [custom_theme]\n";
         let (merged, additions) = Config::merge_defaults(existing);
         assert!(additions.is_empty());
         assert_eq!(merged.trim(), existing.trim());
@@ -395,6 +532,7 @@ mod tests {
         assert_eq!(
             additions,
             vec![
+                "include",
                 "color",
                 "show_logo",
                 "ascii_only",
@@ -407,6 +545,7 @@ mod tests {
             ]
         );
         assert!(merged.contains("theme = \"light\""));
+        assert!(merged.contains("include = \"themes/noctalia.toml\""));
         assert!(merged.contains("color = \"auto\""));
         assert!(merged.contains("show_logo = true"));
         assert!(merged.contains("ascii_only = false"));
@@ -414,6 +553,130 @@ mod tests {
         assert!(merged.contains("logo = \"arch\""));
         assert!(merged.contains("fields = ["));
         assert!(merged.contains("[custom_theme]"));
+    }
+
+    #[test]
+    fn test_config_load_include_string() {
+        let dir = std::env::temp_dir().join("retch_include_string_test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("themes")).unwrap();
+        fs::write(
+            dir.join("themes/noctalia.toml"),
+            "theme = \"custom\"\n[custom_theme]\nlabel_color = \"#89b4fa\"\nvalue_color = \"#cdd6f4\"\n",
+        )
+        .unwrap();
+        let main = dir.join("config.toml");
+        fs::write(
+            &main,
+            "include = \"themes/noctalia.toml\"\nshow_logo = false\n",
+        )
+        .unwrap();
+
+        let config = Config::load(Some(main.to_str().unwrap())).unwrap();
+        assert_eq!(config.theme.as_deref(), Some("custom"));
+        assert_eq!(config.show_logo, Some(false));
+        let custom = config.custom_theme.expect("custom_theme from include");
+        assert_eq!(custom.label_color.as_deref(), Some("#89b4fa"));
+        assert_eq!(custom.value_color.as_deref(), Some("#cdd6f4"));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_config_load_include_overlay_wins() {
+        let dir = std::env::temp_dir().join("retch_include_overlay_test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("themes")).unwrap();
+        fs::write(
+            dir.join("themes/noctalia.toml"),
+            "theme = \"custom\"\n[custom_theme]\nlabel_color = \"#111111\"\nvalue_color = \"#222222\"\n",
+        )
+        .unwrap();
+        let main = dir.join("config.toml");
+        fs::write(
+            &main,
+            "include = \"themes/noctalia.toml\"\ntheme = \"dark\"\n[custom_theme]\nlabel_color = \"#abcdef\"\n",
+        )
+        .unwrap();
+
+        let config = Config::load(Some(main.to_str().unwrap())).unwrap();
+        assert_eq!(config.theme.as_deref(), Some("dark"));
+        let custom = config.custom_theme.expect("merged custom_theme");
+        // Main overlays include: label from main, value retained from include.
+        assert_eq!(custom.label_color.as_deref(), Some("#abcdef"));
+        assert_eq!(custom.value_color.as_deref(), Some("#222222"));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_config_load_include_array_order() {
+        let dir = std::env::temp_dir().join("retch_include_array_test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("a.toml"), "theme = \"light\"\nlogo = \"arch\"\n").unwrap();
+        fs::write(dir.join("b.toml"), "theme = \"dark\"\n").unwrap();
+        let main = dir.join("config.toml");
+        fs::write(&main, "include = [\"a.toml\", \"b.toml\"]\n").unwrap();
+
+        let config = Config::load(Some(main.to_str().unwrap())).unwrap();
+        // Later includes overlay earlier ones; main has no theme of its own.
+        assert_eq!(config.theme.as_deref(), Some("dark"));
+        assert_eq!(config.logo.as_deref(), Some("arch"));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_config_load_include_missing_errors() {
+        let dir = std::env::temp_dir().join("retch_include_missing_test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let main = dir.join("config.toml");
+        fs::write(&main, "include = \"missing.toml\"\n").unwrap();
+
+        let err = Config::load(Some(main.to_str().unwrap())).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("missing.toml")
+                || msg.contains("No such file")
+                || msg.contains("os error"),
+            "expected missing-include error, got: {msg}"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_config_load_include_cycle_errors() {
+        let dir = std::env::temp_dir().join("retch_include_cycle_test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("a.toml"), "include = \"b.toml\"\n").unwrap();
+        fs::write(dir.join("b.toml"), "include = \"a.toml\"\n").unwrap();
+        let main = dir.join("config.toml");
+        fs::write(&main, "include = \"a.toml\"\n").unwrap();
+
+        let err = Config::load(Some(main.to_str().unwrap())).unwrap_err();
+        assert!(
+            err.to_string().contains("cycle"),
+            "expected cycle error, got: {err}"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_deep_merge_table_nested() {
+        let mut base: toml::Table =
+            toml::from_str("[custom_theme]\nlabel_color = \"red\"\nvalue_color = \"white\"\n")
+                .unwrap();
+        let overlay: toml::Table =
+            toml::from_str("[custom_theme]\nlabel_color = \"blue\"\n").unwrap();
+        deep_merge_table(&mut base, overlay);
+        let custom = base.get("custom_theme").unwrap().as_table().unwrap();
+        assert_eq!(custom.get("label_color").unwrap().as_str(), Some("blue"));
+        assert_eq!(custom.get("value_color").unwrap().as_str(), Some("white"));
     }
 
     #[test]
