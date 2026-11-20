@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795115255813,
+  "lastUpdate": 1795197941055,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2088,6 +2088,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 722191947.3000001,
             "extra": "v0.21.13; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "8f74fee4c3878900f5a4deaac16c5a5d33e093e8",
+          "message": "Add config.toml include for theme fragments (#341)\n\n* Add config.toml include for theme fragments\n\nSupport include as a string or path list so tools like Noctalia can\nown a separate [custom_theme] file without rewriting config.toml.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n* Fix include docs poisoning --merge-config theme\n\ncontains_key_line treats any commented key= line as present, so the\ninclude example must not use theme = assignment syntax.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n---------\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+          "timestamp": "2026-11-20T10:05:07-08:00",
+          "tree_id": "c46e58f36328113f72a70f93deb90db31ed263c5",
+          "url": "https://github.com/l1a/retch/commit/8f74fee4c3878900f5a4deaac16c5a5d33e093e8"
+        },
+        "date": 1795197941055,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 2374101.7,
+            "extra": "v0.22.1; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 9912486.4,
+            "extra": "v0.22.1; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 1334397.1000000003,
+            "extra": "v0.22.1; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 1529005.3,
+            "extra": "v0.22.1; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 206909514.10000005,
+            "extra": "v0.22.1; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 511320426.8,
+            "extra": "v0.22.1; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 336327614.90000004,
+            "extra": "v0.22.1; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 517125154.6000001,
+            "extra": "v0.22.1; AC"
           }
         ]
       }
