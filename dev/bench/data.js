@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795198630904,
+  "lastUpdate": 1795198631142,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -28405,6 +28405,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 262046987.5,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8f74fee4c3878900f5a4deaac16c5a5d33e093e8",
+          "message": "Add config.toml include for theme fragments (#341)\n\n* Add config.toml include for theme fragments\n\nSupport include as a string or path list so tools like Noctalia can\nown a separate [custom_theme] file without rewriting config.toml.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n* Fix include docs poisoning --merge-config theme\n\ncontains_key_line treats any commented key= line as present, so the\ninclude example must not use theme = assignment syntax.\n\nAssisted-By: Composer\nCo-authored-by: Cursor <cursoragent@cursor.com>\n\n---------\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+          "timestamp": "2026-11-20T10:05:07-08:00",
+          "tree_id": "c46e58f36328113f72a70f93deb90db31ed263c5",
+          "url": "https://github.com/l1a/retch/commit/8f74fee4c3878900f5a4deaac16c5a5d33e093e8"
+        },
+        "date": 1795198631098,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 27141260,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2346336160.000001,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1301097840.0000002,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 18594800,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 23495300,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 258958809.99999997,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 206909509.99999997,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 21133340,
+            "unit": "ns",
+            "extra": "v0.22.1"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 246.45734896536345,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 4.37909899052392,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 165.75695325312324,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1195.2558386428188,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 41984.588820132056,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 621.6985498195478,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 751.976002307335,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 224969670,
             "unit": "ns"
           }
         ]
