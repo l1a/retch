@@ -204,8 +204,9 @@ const DEFAULT_INCLUDE_BLOCK: &str = r##"# Merge another TOML file (or list of fi
 # Relative paths resolve against this file's directory. Included tables are
 # deep-merged first; keys in this file then overlay them. Useful for a theme
 # fragment rewritten by an external tool (e.g. a Noctalia color template):
-#   theme = "custom"
-#   include = "themes/noctalia.toml"
+# set the theme key to "custom" and point include at themes/noctalia.toml.
+# Do not write other keys as `name =` in these comments — --merge-config
+# treats any commented `key =` line as that key already being present.
 # include = "themes/noctalia.toml"
 # include = ["base.toml", "themes/noctalia.toml"]"##;
 
@@ -553,6 +554,24 @@ mod tests {
         assert!(merged.contains("logo = \"arch\""));
         assert!(merged.contains("fields = ["));
         assert!(merged.contains("[custom_theme]"));
+    }
+
+    #[test]
+    fn test_merge_defaults_include_docs_do_not_poison_theme() {
+        // Bugbot: an earlier draft of DEFAULT_INCLUDE_BLOCK embedded
+        // `#   theme = "custom"` as a usage example. contains_key_line treats
+        // any commented `key =` line as the key being present, so a later
+        // --merge-config would skip adding the real theme block. The shipped
+        // include docs must not contain that shape for any other key.
+        assert!(
+            !contains_key_line(DEFAULT_INCLUDE_BLOCK, "theme"),
+            "DEFAULT_INCLUDE_BLOCK must not contain a commented theme = line"
+        );
+        let (_, additions) = Config::merge_defaults(DEFAULT_INCLUDE_BLOCK);
+        assert!(
+            additions.contains(&"theme"),
+            "include docs alone must still cause theme to be merged in: {additions:?}"
+        );
     }
 
     #[test]

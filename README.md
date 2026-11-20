@@ -344,9 +344,8 @@ theme = "auto"
 
 # Merge another TOML file (string or array). Relative paths are from this file's
 # directory; included tables merge first, then this file overlays them. Useful for
-# a theme fragment an external tool rewrites (e.g. Noctalia):
-#   theme = "custom"
-#   include = "themes/noctalia.toml"
+# a theme fragment an external tool rewrites (e.g. Noctalia): set the theme key
+# to "custom" and point include at the fragment.
 # include = "themes/noctalia.toml"
 
 # When to use colour: "auto" (default), "always", or "never".

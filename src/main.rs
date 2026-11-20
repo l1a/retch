@@ -200,8 +200,9 @@ fn default_config_content() -> String {
 # Relative paths resolve against this file's directory. Included tables are
 # deep-merged first; keys in this file then overlay them. Useful for a theme
 # fragment rewritten by an external tool (e.g. a Noctalia color template):
-#   theme = "custom"
-#   include = "themes/noctalia.toml"
+# set the theme key to "custom" and point include at themes/noctalia.toml.
+# Do not write other keys as `name =` in these comments — --merge-config
+# treats any commented `key =` line as that key already being present.
 # include = "themes/noctalia.toml"
 # include = ["base.toml", "themes/noctalia.toml"]
 
