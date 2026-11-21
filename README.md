@@ -142,7 +142,7 @@ sudo dnf install retch
 
 > [!NOTE]
 > COPR is Fedora's community build service, not an official Fedora repository — packages
-> there are not reviewed by Fedora. Builds are provided for Fedora 43 and 44 on `x86_64`
+> there are not reviewed by Fedora. Builds are provided for Fedora 44 and 45 on `x86_64`
 > and `aarch64`.
 
 *(The RPM spec file is available in [packaging/copr](packaging/copr/retch.spec)).*
