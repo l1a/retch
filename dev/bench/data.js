@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795198631382,
+  "lastUpdate": 1795221395718,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2160,6 +2160,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 517125154.6000001,
             "extra": "v0.22.1; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "861fb43ccdf5f71777f0e2f5d349fe25d38f4a9c",
+          "message": "Add include_optional and CLI --theme precedence (#342)\n\nSupport optional config/theme includes, missing-path error context,\nand CLI --theme override precedence for retch v0.23.0:\n\n- Add `include_optional` (string or array) merged after required\n  `include` files and before the including file's own keys; skip only\n  `ErrorKind::NotFound` while still failing on directories, permission\n  errors, invalid TOML, empty paths, size/depth limits, cycles, and\n  nested required `include` failures\n- Attach path context via `anyhow::Context` in `read_config_bytes`\n- Ignore `[custom_theme]` overrides when `--theme <name>` is passed on\n  the CLI with any value other than `\"custom\"` (`Config::merge_with_cli`\n  and `display::resolve_theme`)\n- Add unit and CLI integration tests covering `include_optional`,\n  error context, `--merge-config` doc safety, and `--theme` precedence\n- Fix `packaging/homebrew/retch.rb` header comment exceeding Homebrew's\n  118-char line limit when rendered, and enforce line length in\n  `scripts/render_packaging.py --self-test`\n- Bump `retch-cli` to `0.23.0`, update `Cargo.lock`, regenerate\n  `docs/retch.1`, and update `README.md` and `NOTES.md`\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-20T16:36:02-08:00",
+          "tree_id": "0ffaa25b467f5085a0dd1aeba54960e9e03a22ab",
+          "url": "https://github.com/l1a/retch/commit/861fb43ccdf5f71777f0e2f5d349fe25d38f4a9c"
+        },
+        "date": 1795221395718,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 2674563.1000000006,
+            "extra": "v0.23.0; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 9024576.7,
+            "extra": "v0.23.0; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 1474312.9000000004,
+            "extra": "v0.23.0; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 1461857.6,
+            "extra": "v0.23.0; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 206932263.50000003,
+            "extra": "v0.23.0; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 614594357.6000001,
+            "extra": "v0.23.0; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 333787587.0,
+            "extra": "v0.23.0; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 722489912.0000001,
+            "extra": "v0.23.0; AC"
           }
         ]
       }
