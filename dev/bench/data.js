@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795221395718,
+  "lastUpdate": 1795221909001,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2224,7 +2224,7 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch --full",
             "unit": "ns",
-            "value": 333787587.0,
+            "value": 333787587,
             "extra": "v0.23.0; AC"
           },
           {
@@ -10385,6 +10385,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 265.99507685285226,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "861fb43ccdf5f71777f0e2f5d349fe25d38f4a9c",
+          "message": "Add include_optional and CLI --theme precedence (#342)\n\nSupport optional config/theme includes, missing-path error context,\nand CLI --theme override precedence for retch v0.23.0:\n\n- Add `include_optional` (string or array) merged after required\n  `include` files and before the including file's own keys; skip only\n  `ErrorKind::NotFound` while still failing on directories, permission\n  errors, invalid TOML, empty paths, size/depth limits, cycles, and\n  nested required `include` failures\n- Attach path context via `anyhow::Context` in `read_config_bytes`\n- Ignore `[custom_theme]` overrides when `--theme <name>` is passed on\n  the CLI with any value other than `\"custom\"` (`Config::merge_with_cli`\n  and `display::resolve_theme`)\n- Add unit and CLI integration tests covering `include_optional`,\n  error context, `--merge-config` doc safety, and `--theme` precedence\n- Fix `packaging/homebrew/retch.rb` header comment exceeding Homebrew's\n  118-char line limit when rendered, and enforce line length in\n  `scripts/render_packaging.py --self-test`\n- Bump `retch-cli` to `0.23.0`, update `Cargo.lock`, regenerate\n  `docs/retch.1`, and update `README.md` and `NOTES.md`\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-20T16:36:02-08:00",
+          "tree_id": "0ffaa25b467f5085a0dd1aeba54960e9e03a22ab",
+          "url": "https://github.com/l1a/retch/commit/861fb43ccdf5f71777f0e2f5d349fe25d38f4a9c"
+        },
+        "date": 1795221908935,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 1543179,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 499972285.6,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 499942852.4000001,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1003189.6,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 1685052.3000000003,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 499940468.20000005,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 499958165.7,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1051488.0000000002,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 500006401.425,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 642.85722964056,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 93.29786445472845,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.461609106633644,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 59.256151781766775,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 5859.143689068078,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 129142.12562615101,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 3502.4212735426713,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 2482.535877372445,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 16242.412087560235,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 298.7746987632812,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 193.39370373743077,
             "unit": "ns"
           }
         ]
