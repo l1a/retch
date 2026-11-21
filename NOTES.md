@@ -154,7 +154,7 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.23.0)
+## Current State (v0.23.1)
 
 `main` carries **`retch-cli` 0.22.1** / **`retch-sysinfo` 0.1.111`** (newest released tag
 **`v0.22.1`**); this branch bumps **`retch-cli` to `0.23.0`** (keeping `retch-sysinfo` at
