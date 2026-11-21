@@ -82,6 +82,7 @@ fn test_cli_generate_config() {
     assert!(success);
     assert!(stderr.is_empty());
     assert!(stdout.contains("# Theme to use"));
+    assert!(stdout.contains("# include_optional = \"themes/noctalia.toml\""));
     assert!(stdout.contains("# color = \"auto\""));
     assert!(stdout.contains("# show_logo = true"));
 }
@@ -470,5 +471,119 @@ fn test_config_color_and_dumb_term() {
     assert!(
         cli_always.contains('\x1b'),
         "CLI --color=always must override config color=never: {cli_always:?}"
+    );
+}
+
+#[test]
+fn test_cli_include_optional_and_theme_override() {
+    struct TempDir(std::path::PathBuf);
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    let dir =
+        TempDir(std::env::temp_dir().join(format!("retch_cli_include_opt_{}", std::process::id())));
+    let _ = fs::remove_dir_all(&dir.0);
+    fs::create_dir_all(dir.0.join("themes")).unwrap();
+
+    let cfg_path = dir.0.join("config.toml");
+    let theme_path = dir.0.join("themes/noctalia.toml");
+    fs::write(&cfg_path, "include_optional = \"themes/noctalia.toml\"\n").unwrap();
+    fs::write(
+        &theme_path,
+        "theme = \"custom\"\n[custom_theme]\nlabel_color = \"#123456\"\nvalue_color = \"#abcdef\"\n",
+    )
+    .unwrap();
+    let cfg_str = cfg_path.to_str().unwrap();
+
+    // Optional include applies custom_theme (#123456 -> 18;52;86).
+    let (stdout, stderr, ok) = run_retch(&[
+        "--config",
+        cfg_str,
+        "--color=always",
+        "--fields",
+        "os",
+        "--no-logo",
+    ]);
+    assert!(ok, "stderr: {stderr}");
+    assert!(
+        stdout.contains("\x1b[38;2;18;52;86m"),
+        "expected custom label color #123456 in {stdout:?}"
+    );
+
+    // Explicit --theme solarized-dark overrides [custom_theme] (#268bd2 -> 38;139;210).
+    let (stdout, stderr, ok) = run_retch(&[
+        "--config",
+        cfg_str,
+        "--theme",
+        "solarized-dark",
+        "--color=always",
+        "--fields",
+        "os",
+        "--no-logo",
+    ]);
+    assert!(ok, "stderr: {stderr}");
+    assert!(
+        stdout.contains("\x1b[38;2;38;139;210m"),
+        "expected solarized-dark label color #268bd2 in {stdout:?}"
+    );
+    assert!(
+        !stdout.contains("\x1b[38;2;18;52;86m"),
+        "custom_theme should not clobber --theme solarized-dark: {stdout:?}"
+    );
+
+    // Explicit --theme custom still uses included [custom_theme].
+    let (stdout, stderr, ok) = run_retch(&[
+        "--config",
+        cfg_str,
+        "--theme",
+        "custom",
+        "--color=always",
+        "--fields",
+        "os",
+        "--no-logo",
+    ]);
+    assert!(ok, "stderr: {stderr}");
+    assert!(
+        stdout.contains("\x1b[38;2;18;52;86m"),
+        "expected --theme custom to retain custom label color: {stdout:?}"
+    );
+
+    // Removing the optional include file falls back cleanly without errors.
+    fs::remove_file(&theme_path).unwrap();
+    let (stdout, stderr, ok) = run_retch(&[
+        "--config",
+        cfg_str,
+        "--color=always",
+        "--fields",
+        "os",
+        "--no-logo",
+    ]);
+    assert!(
+        ok,
+        "missing optional include should succeed, stderr: {stderr}"
+    );
+    assert!(stderr.is_empty(), "expected empty stderr, got: {stderr}");
+    assert!(
+        !stdout.contains("\x1b[38;2;18;52;86m"),
+        "deleted optional include color should not appear: {stdout:?}"
+    );
+
+    // Missing required include fails loudly and names the missing path.
+    let req_cfg = dir.0.join("req_config.toml");
+    fs::write(&req_cfg, "include = \"missing_required.toml\"\n").unwrap();
+    let (_, stderr, ok) = run_retch(&[
+        "--config",
+        req_cfg.to_str().unwrap(),
+        "--fields",
+        "os",
+        "--no-logo",
+    ]);
+    assert!(!ok, "missing required include must fail");
+    assert!(
+        stderr.contains("missing_required.toml"),
+        "expected missing path in stderr, got: {stderr}"
     );
 }

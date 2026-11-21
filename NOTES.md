@@ -154,15 +154,21 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.22.1)
+## Current State (v0.23.0)
 
-`main` carries **`retch-cli` 0.21.13** / **`retch-sysinfo` 0.1.111`** (newest released tag
-**`v0.21.11`**); this branch bumps **`retch-cli` to `0.22.1`** (keeping `retch-sysinfo` at
-`0.1.111`) and adds `include` support to `config.toml` so a theme fragment can live in a
-separate TOML file (string or array of paths; relative to the including file; deep-merge then
-overlay; cycle/depth/size guards). That is the intended hook for a Noctalia color template:
-set the theme key to `"custom"` and `include = "themes/noctalia.toml"` in the stable config,
-with the template rewriting only the included `[custom_theme]` file.
+`main` carries **`retch-cli` 0.22.1** / **`retch-sysinfo` 0.1.111`** (newest released tag
+**`v0.22.1`**); this branch bumps **`retch-cli` to `0.23.0`** (keeping `retch-sysinfo` at
+`0.1.111`) and refines `config.toml` includes and theme override precedence for external
+theme templates:
+- **`include_optional` (`src/config.rs`):** string or array of paths merged after required
+  `include` files and before the including file's own keys; `ErrorKind::NotFound` skips
+  silently while non-`NotFound` I/O errors, directories, invalid TOML, size/depth limits,
+  cycles, and nested required `include` failures still error.
+- **Missing-path error context (`src/config.rs`):** `read_config_bytes` attaches the
+  offending path via `anyhow::Context` on metadata/open/read failures.
+- **CLI `--theme` precedence (`src/config.rs`, `src/display.rs`):** passing `--theme <name>`
+  on the CLI (for any name other than `"custom"`, case-insensitive) skips `[custom_theme]`
+  overrides so explicit CLI themes are not silently overwritten by an included fragment.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
@@ -170,14 +176,17 @@ and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
 
-- **v0.22.1: `include` in `config.toml` for theme (and other) fragments (`src/config.rs`).**
-  - `include = "path.toml"` or `include = ["a.toml", "b.toml"]` loads those files before the
-    including file's own keys. Tables deep-merge; scalars replace. Relative paths resolve
-    against the including file's directory. Missing includes and cycles error out; nesting
-    caps at depth 8; each file still has the 1 MiB size limit.
+- **v0.22.1–v0.23.0: `include` & `include_optional` in `config.toml` (`src/config.rs`, `src/display.rs`).**
+  - `include` (required) and `include_optional` (skips `NotFound`) accept a path string or
+    array of paths, merging required < optional < including file. Tables deep-merge; scalars
+    replace. Relative paths resolve against the including file's directory; nesting caps at
+    depth 8; each file has the 1 MiB size limit and empty entries are rejected.
+  - Passing `--theme <name>` (other than `"custom"`) clears/skips `[custom_theme]` so CLI
+    theme flags beat included theme fragments.
   - Default/`--merge-config` templates, man page, README, and wiki
-    (`Configuration-and-Theming.md`) document the Noctalia-style split. Comment examples in
-    those templates must not use other keys' `name =` assignment form — see §7.2.
+    (`Configuration-and-Theming.md`) document `include_optional = "themes/noctalia.toml"`.
+    Comment examples in those templates must not use other keys' `name =` assignment form —
+    see §7.2.
 
 - **v0.21.10: Eliminate serial probe regressions and redundant sysfs/subprocess bottlenecks across `--short`, `default`, and `--full`.**
   - **Fail-fast DMI check (`crates/sysinfo/src/memory.rs`):** After checking `/run/udev/data/+dmi:id`, `detect_linux()` verifies `/sys/firmware/dmi/tables/DMI` or `/dev/mem` is readable via `can_read_dmi_tables_in()` before spawning `dmidecode`, and stops after the first executed binary failure rather than retrying 3 more path aliases (eliminated ~7 ms in unprivileged containers).
@@ -1650,6 +1659,13 @@ nobody asked.
   dimension and let it derive the other.
 
 ### 7.4 Release, packaging and publishing
+
+- **`render_packaging.py` substitutes `@TOKEN@` placeholders everywhere, including `#` comments.**
+  Putting literal `@SHA256@` or `@VERSION@` in a template comment line causes the rendered
+  output to expand (8-char `@SHA256@` -> 64-char hex), which pushed `packaging/homebrew/retch.rb`
+  line 8 over `brew audit --strict`'s 118-character `Layout/LineLength` limit (caught on PR #342).
+  Refer to placeholders in prose inside template comments, and keep
+  `render_packaging.py --self-test` enforcing `<= 118` chars on rendered `brew` lines.
 
 - **This repo squash-merges with `squash_merge_commit_message=COMMIT_MESSAGES`**, so the commit
   that lands on `main` takes its body from the **branch commit**. Editing the PR body changes

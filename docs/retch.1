@@ -1,4 +1,4 @@
-.TH "RETCH" "1" "" "retch 0.22.1" "System Information Fetcher"
+.TH "RETCH" "1" "" "retch 0.23.0" "System Information Fetcher"
 
 .SH "NAME"
 .PP
@@ -51,7 +51,7 @@ Force a specific distribution logo by name/ID (e\.g\. `\f[CR]pop\fP`, `\f[CR]man
 .RE
 \fB\-\-theme\fP \fITHEME\fP
 .RS
-Use a specific theme (e\.g\. `\f[CR]default\fP`, `\f[CR]dark\fP`, `\f[CR]light\fP`, or community themes)\.
+Use a specific theme (e\.g\. `\f[CR]default\fP`, `\f[CR]dark\fP`, `\f[CR]light\fP`, or community themes)\. Any value other than `\f[CR]custom\fP` ignores `\f[CR][custom_theme]\fP` overrides from config files\.
 .RE
 \fB\-\-list\-themes\fP
 .RS
@@ -152,7 +152,9 @@ retch \-\-write\-config
 .IP \(bu 4
 \fBtheme\fP: Theme name to use\. (default: `\f[CR]"auto"\fP`)\.
 .IP \(bu 4
-\fBinclude\fP: Path string or array of path strings to other TOML files merged into this config\. Relative paths resolve against the including file's directory\. Included tables are deep\-merged left\-to\-right as a base; keys in the including file then overlay them\. Nested includes are allowed (depth capped)\. Missing paths and include cycles are errors\. Intended for theme fragments rewritten by an external tool (e\.g\. a Noctalia color template writing `\f[CR]themes/noctalia\.toml\fP` while `\f[CR]config\.toml\fP` keeps `\f[CR]theme = "custom"\fP` and `\f[CR]include = "themes/noctalia\.toml"\fP`)\.
+\fBinclude\fP: Path string or array of path strings to other TOML files merged into this config\. Relative paths resolve against the including file's directory\. Included tables are deep\-merged left\-to\-right as a base; keys in the including file then overlay them\. Nested includes are allowed (depth capped)\. Missing paths and include cycles are errors\.
+.IP \(bu 4
+\fBinclude_optional\fP: Like \fBinclude\fP, except missing paths are silently skipped instead of erroring (non\-`\f[CR]NotFound\fP` errors such as invalid TOML, directories, permission errors, and cycles still fail)\. Optional includes merge after required \fBinclude\fP files and before this file's own keys\. Recommended for theme fragments written by external tools (e\.g\. a Noctalia colour template writing `\f[CR]themes/noctalia\.toml\fP` while `\f[CR]config\.toml\fP` sets `\f[CR]include_optional = "themes/noctalia\.toml"\fP`)\.
 .IP \(bu 4
 \fBcolor\fP: When to use colour: `\f[CR]"auto"\fP` (default), `\f[CR]"always"\fP`, or `\f[CR]"never"\fP`\. Overrides `\f[CR]NO_COLOR\fP` and `\f[CR]TERM=dumb\fP`, and is overridden by `\f[CR]\-\-color\fP`\. See \fBCOLOR\fP\.
 .IP \(bu 4
@@ -343,14 +345,18 @@ accent_color = "bright_green"
 .RE
 .PP
 To keep those colors in a separate file (for example one rewritten by a desktop theme
-engine), point `\f[CR]include\fP` at it and leave the rest of `\f[CR]config\.toml\fP` alone:
+engine), point `\f[CR]include_optional\fP` (or `\f[CR]include\fP` to require the file) at it and leave the
+rest of `\f[CR]config\.toml\fP` alone:
 .RS
 .PP
 .nf
-theme = "custom"
-include = "themes/noctalia\.toml"
+include_optional = "themes/noctalia\.toml"
 .fi
 .RE
+.PP
+Passing `\f[CR]\-\-theme <name>\fP` on the command line (for any name other than `\f[CR]"custom"\fP`) ignores
+`\f[CR][custom_theme]\fP` overrides from configuration files so explicit CLI theme previews work even
+when an included theme fragment is active; pass `\f[CR]\-\-theme custom\fP` to re\-enable them\.
 
 .SH "COLOR"
 .PP

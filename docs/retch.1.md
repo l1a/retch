@@ -40,7 +40,7 @@ retch - a fast, feature-rich system information fetcher
 :   Force a specific distribution logo by name/ID (e.g. `pop`, `manjaro`, `endeavouros`, `opensuse`, `ubuntu`, `fedora`, `macos`, `windows`).
 
 **--theme** *THEME*
-:   Use a specific theme (e.g. `default`, `dark`, `light`, or community themes).
+:   Use a specific theme (e.g. `default`, `dark`, `light`, or community themes). Any value other than `custom` ignores `[custom_theme]` overrides from config files.
 
 **--list-themes**
 :   List all available built-in themes.
@@ -106,7 +106,8 @@ default path with:
 ## Available Configuration Keys
 
 - **theme**: Theme name to use. (default: `"auto"`).
-- **include**: Path string or array of path strings to other TOML files merged into this config. Relative paths resolve against the including file's directory. Included tables are deep-merged left-to-right as a base; keys in the including file then overlay them. Nested includes are allowed (depth capped). Missing paths and include cycles are errors. Intended for theme fragments rewritten by an external tool (e.g. a Noctalia color template writing `themes/noctalia.toml` while `config.toml` keeps `theme = "custom"` and `include = "themes/noctalia.toml"`).
+- **include**: Path string or array of path strings to other TOML files merged into this config. Relative paths resolve against the including file's directory. Included tables are deep-merged left-to-right as a base; keys in the including file then overlay them. Nested includes are allowed (depth capped). Missing paths and include cycles are errors.
+- **include_optional**: Like **include**, except missing paths are silently skipped instead of erroring (non-`NotFound` errors such as invalid TOML, directories, permission errors, and cycles still fail). Optional includes merge after required **include** files and before this file's own keys. Recommended for theme fragments written by external tools (e.g. a Noctalia colour template writing `themes/noctalia.toml` while `config.toml` sets `include_optional = "themes/noctalia.toml"`).
 - **color**: When to use colour: `"auto"` (default), `"always"`, or `"never"`. Overrides `NO_COLOR` and `TERM=dumb`, and is overridden by `--color`. See **COLOR**.
 - **show_logo**: Boolean indicating whether to show the logo (default: `true`).
 - **ascii_only**: Boolean: always draw the ASCII logo, like `--ascii-logo` (default: `false`).
@@ -209,10 +210,14 @@ Example:
     accent_color = "bright_green"
 
 To keep those colors in a separate file (for example one rewritten by a desktop theme
-engine), point `include` at it and leave the rest of `config.toml` alone:
+engine), point `include_optional` (or `include` to require the file) at it and leave the
+rest of `config.toml` alone:
 
-    theme = "custom"
-    include = "themes/noctalia.toml"
+    include_optional = "themes/noctalia.toml"
+
+Passing `--theme <name>` on the command line (for any name other than `"custom"`) ignores
+`[custom_theme]` overrides from configuration files so explicit CLI theme previews work even
+when an included theme fragment is active; pass `--theme custom` to re-enable them.
 
 # COLOR
 

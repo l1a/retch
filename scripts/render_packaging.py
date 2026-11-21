@@ -266,6 +266,8 @@ def _self_test() -> int:
     check("brew url", "/refs/tags/v1.2.3.tar.gz" in brew, "rendered formula has no versioned url")
     check("brew sha", f'sha256 "{_SHA}"' in brew, "rendered formula has no sha256")
     check("brew no sentinel", not SENTINEL_RE.search(brew), "sentinel survived")
+    long_lines = [(i, len(line)) for i, line in enumerate(brew.splitlines(), 1) if len(line) > 118]
+    check("brew line length", not long_lines, f"rendered lines exceed 118 chars: {long_lines}")
 
     scoop = render("scoop", "1.2.3", sha256_x86_64=_SHA, sha256_arm64=_SHA_ARM)
     check("scoop version", '"version": "1.2.3"' in scoop, "rendered manifest has no version 1.2.3")

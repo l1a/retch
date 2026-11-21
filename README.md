@@ -343,10 +343,13 @@ Here is an example of the settings you can configure in `config.toml`:
 theme = "auto"
 
 # Merge another TOML file (string or array). Relative paths are from this file's
-# directory; included tables merge first, then this file overlays them. Useful for
-# a theme fragment an external tool rewrites (e.g. Noctalia): set the theme key
-# to "custom" and point include at the fragment.
-# include = "themes/noctalia.toml"
+# directory; included tables merge first, then this file overlays them. Missing
+# files fail loudly.
+# include = "base.toml"
+
+# Like include, but skips missing files silently. Useful for a theme fragment
+# rewritten by an external tool (e.g. Noctalia) before its first render.
+# include_optional = "themes/noctalia.toml"
 
 # When to use colour: "auto" (default), "always", or "never".
 # Overrides NO_COLOR and TERM=dumb; overridden by --color.
