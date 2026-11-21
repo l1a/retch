@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795293608064,
+  "lastUpdate": 1795293608365,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -29473,6 +29473,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 287466472.5,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e96d3677bccfe1d33a0b438a7777be17a0a92723",
+          "message": "Update COPR targets to Fedora 44 and 45 (#343)\n\nUpdate COPR instructions, README, and copr.yml chroots to Fedora 44 and 45; bump retch-cli to 0.23.1 with synced Cargo.lock, NOTES.md, and docs/retch.1.\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-21T12:30:58-08:00",
+          "tree_id": "62a242b138e26de27e67f843eb22810ea146dd9c",
+          "url": "https://github.com/l1a/retch/commit/e96d3677bccfe1d33a0b438a7777be17a0a92723"
+        },
+        "date": 1795293608309,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 25410780,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2338190440,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1297703860,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 17901229.999999996,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 22215190.000000004,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 283775580,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 218974520,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 19294250.000000004,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 299.6127145034751,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 5.390921755615972,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 200.18847996894957,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1645.8344446778399,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 57856.45586333263,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 703.7075334933818,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 791.4371586417748,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 279988890,
             "unit": "ns"
           }
         ]
