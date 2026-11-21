@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795293607790,
+  "lastUpdate": 1795293608064,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -23749,6 +23749,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 592.0661384948655,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e96d3677bccfe1d33a0b438a7777be17a0a92723",
+          "message": "Update COPR targets to Fedora 44 and 45 (#343)\n\nUpdate COPR instructions, README, and copr.yml chroots to Fedora 44 and 45; bump retch-cli to 0.23.1 with synced Cargo.lock, NOTES.md, and docs/retch.1.\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-21T12:30:58-08:00",
+          "tree_id": "62a242b138e26de27e67f843eb22810ea146dd9c",
+          "url": "https://github.com/l1a/retch/commit/e96d3677bccfe1d33a0b438a7777be17a0a92723"
+        },
+        "date": 1795293608016,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 380781170.70000005,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1081740712.5,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1015201062.5999999,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 14490108.200000001,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 262974604.09999996,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 305938291.70000005,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 338285237.59999996,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 8076383.400000001,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 269719089.55,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 439.3450371055903,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 111.89285354918147,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 1.642653787912042,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 80.24103814048178,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 8355.292946455998,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 849.0308170639694,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 289.94929658351845,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 69270.91040186667,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 385.8987556631506,
             "unit": "ns"
           }
         ]
