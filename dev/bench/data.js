@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795293607476,
+  "lastUpdate": 1795293607790,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17515,6 +17515,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 234.1080161244713,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e96d3677bccfe1d33a0b438a7777be17a0a92723",
+          "message": "Update COPR targets to Fedora 44 and 45 (#343)\n\nUpdate COPR instructions, README, and copr.yml chroots to Fedora 44 and 45; bump retch-cli to 0.23.1 with synced Cargo.lock, NOTES.md, and docs/retch.1.\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-21T12:30:58-08:00",
+          "tree_id": "62a242b138e26de27e67f843eb22810ea146dd9c",
+          "url": "https://github.com/l1a/retch/commit/e96d3677bccfe1d33a0b438a7777be17a0a92723"
+        },
+        "date": 1795293607741,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2603479,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 288889338.40000004,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252344634.5,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1547257.7,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3599530.6999999997,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 478625705.2000001,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 207702969.49999997,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 2293512.6000000006,
+            "unit": "ns",
+            "extra": "v0.23.1"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 378659264.95,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1140.9280640558445,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 127.84999050654028,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947701921020916,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 72.49893184908498,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8900.492224061478,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 371720.32505611057,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 5692.640476695623,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4027.7210049984014,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 56000.328642740926,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 398.57409783160193,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 222.69819231544847,
             "unit": "ns"
           }
         ]
