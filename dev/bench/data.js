@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795221909001,
+  "lastUpdate": 1795221910152,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -17251,6 +17251,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 260.44545756710886,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "861fb43ccdf5f71777f0e2f5d349fe25d38f4a9c",
+          "message": "Add include_optional and CLI --theme precedence (#342)\n\nSupport optional config/theme includes, missing-path error context,\nand CLI --theme override precedence for retch v0.23.0:\n\n- Add `include_optional` (string or array) merged after required\n  `include` files and before the including file's own keys; skip only\n  `ErrorKind::NotFound` while still failing on directories, permission\n  errors, invalid TOML, empty paths, size/depth limits, cycles, and\n  nested required `include` failures\n- Attach path context via `anyhow::Context` in `read_config_bytes`\n- Ignore `[custom_theme]` overrides when `--theme <name>` is passed on\n  the CLI with any value other than `\"custom\"` (`Config::merge_with_cli`\n  and `display::resolve_theme`)\n- Add unit and CLI integration tests covering `include_optional`,\n  error context, `--merge-config` doc safety, and `--theme` precedence\n- Fix `packaging/homebrew/retch.rb` header comment exceeding Homebrew's\n  118-char line limit when rendered, and enforce line length in\n  `scripts/render_packaging.py --self-test`\n- Bump `retch-cli` to `0.23.0`, update `Cargo.lock`, regenerate\n  `docs/retch.1`, and update `README.md` and `NOTES.md`\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-20T16:36:02-08:00",
+          "tree_id": "0ffaa25b467f5085a0dd1aeba54960e9e03a22ab",
+          "url": "https://github.com/l1a/retch/commit/861fb43ccdf5f71777f0e2f5d349fe25d38f4a9c"
+        },
+        "date": 1795221910104,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2204140,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 253636055.89999998,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252404329.20000005,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1280923.0000000002,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2975294.8000000003,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 303058871.40000004,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205686141.20000002,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1898209.8,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 298083337.65,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1010.5697876555512,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 126.67060144363661,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9474449271059555,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 72.52612466055476,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8926.705534709146,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 380494.0850460505,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 5669.722383968079,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4034.5265586133073,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 55839.70929616412,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 399.57772664551214,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 234.1080161244713,
             "unit": "ns"
           }
         ]
