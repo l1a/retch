@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795221910737,
+  "lastUpdate": 1795221911032,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -34801,6 +34801,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 315342800,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "861fb43ccdf5f71777f0e2f5d349fe25d38f4a9c",
+          "message": "Add include_optional and CLI --theme precedence (#342)\n\nSupport optional config/theme includes, missing-path error context,\nand CLI --theme override precedence for retch v0.23.0:\n\n- Add `include_optional` (string or array) merged after required\n  `include` files and before the including file's own keys; skip only\n  `ErrorKind::NotFound` while still failing on directories, permission\n  errors, invalid TOML, empty paths, size/depth limits, cycles, and\n  nested required `include` failures\n- Attach path context via `anyhow::Context` in `read_config_bytes`\n- Ignore `[custom_theme]` overrides when `--theme <name>` is passed on\n  the CLI with any value other than `\"custom\"` (`Config::merge_with_cli`\n  and `display::resolve_theme`)\n- Add unit and CLI integration tests covering `include_optional`,\n  error context, `--merge-config` doc safety, and `--theme` precedence\n- Fix `packaging/homebrew/retch.rb` header comment exceeding Homebrew's\n  118-char line limit when rendered, and enforce line length in\n  `scripts/render_packaging.py --self-test`\n- Bump `retch-cli` to `0.23.0`, update `Cargo.lock`, regenerate\n  `docs/retch.1`, and update `README.md` and `NOTES.md`\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-20T16:36:02-08:00",
+          "tree_id": "0ffaa25b467f5085a0dd1aeba54960e9e03a22ab",
+          "url": "https://github.com/l1a/retch/commit/861fb43ccdf5f71777f0e2f5d349fe25d38f4a9c"
+        },
+        "date": 1795221910981,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 47034880.00000001,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2380873050.0000005,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1305764270,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 21919820,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 25583020,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 276312730,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 204045050,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 23423460,
+            "unit": "ns",
+            "extra": "v0.23.0"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 251.6214237958105,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.953907915214049,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 170.90183165665536,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1311.5724051491836,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 47584.00028573784,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 566.5890087724057,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 677.9240635361114,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 232899705,
             "unit": "ns"
           }
         ]
