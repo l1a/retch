@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795307878398,
+  "lastUpdate": 1795361142588,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2304,6 +2304,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 518623345.8,
             "extra": "v0.23.1; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "4902002f8094c7c2b89f9b5e5befe1d531bdbcea",
+          "message": "Tune benchmark alert threshold and push paths (#344)\n\nReduce Continuous Benchmarking false-positive alert comments caused by\nshared CI runner jitter and non-code merges on main:\n\n- Raise alert-threshold from 200% to 300% across all five platform\n  publish steps (recent jitter alerts clustered at 2.0x-2.87x) while\n  keeping comment-on-alert enabled and fail-on-alert false.\n- Add on.push.paths scoping main benchmark runs to src/**, crates/**,\n  benches/**, assets/**, .github/workflows/benchmark.yml, and the\n  benchmark helper scripts (intentionally omitting root Cargo.toml and\n  Cargo.lock since every PR bumps them for just pr).\n- Add scripts/bench_meta.py to on.pull_request.paths for symmetry.\n- Bump retch-cli to 0.23.2, refresh Cargo.lock, regenerate docs/retch.1,\n  and update NOTES.md.\n\nAssisted-By: Gemini 4 Neon",
+          "timestamp": "2026-11-22T07:24:55-08:00",
+          "tree_id": "16e0c86a0919fd2e2d572aadcf8f68aabfdfba3e",
+          "url": "https://github.com/l1a/retch/commit/4902002f8094c7c2b89f9b5e5befe1d531bdbcea"
+        },
+        "date": 1795361142588,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 3912261.000000001,
+            "extra": "v0.23.2; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 14786818.399999999,
+            "extra": "v0.23.2; battery"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 2553520.9,
+            "extra": "v0.23.2; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2767633.8000000003,
+            "extra": "v0.23.2; battery"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 214981256.30000004,
+            "extra": "v0.23.2; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 625497175.5,
+            "extra": "v0.23.2; battery"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 495625443.90000004,
+            "extra": "v0.23.2; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 744133370.9,
+            "extra": "v0.23.2; battery"
           }
         ]
       }
