@@ -62,6 +62,15 @@ jobs:
       # alone would run a command via `--upload-pack`). A deny wins over an allow; the
       # guard step fails the job if an allow is ever added without a matching deny.
       REVIEW_DENY: 'Bash,WebFetch,WebSearch,Edit,Write,NotebookEdit,Read(//tmp/**)'
+      # Disable background tasks/subagents: `claude-code-action`'s `run-claude-sdk.ts`
+      # breaks out of the SDK stream on the first `result` message. When the main
+      # session backgrounds Step 4's parallel reviewers and ends a turn waiting for
+      # them (observed on #347: "Three reviewers are still running."), that emits a
+      # `result` message and kills the session with `conclusion: success` before
+      # Steps 5-9 run. Setting this env var disables explicit `run_in_background`,
+      # `backgroundLaunchByDefault`, and auto-backgrounding while keeping synchronous
+      # parallel foreground subagent calls working (see NOTES.md §7.5).
+      CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1'
 
     steps:
       # The PR number goes into the prompt, so it must be a bare number and nothing else:
