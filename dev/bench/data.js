@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795361660223,
+  "lastUpdate": 1795363154536,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2376,6 +2376,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 744133370.9,
             "extra": "v0.23.2; battery"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "492dc50295a05c866c327684e0485c3bd9e43023",
+          "message": "Disable noisy benchmark commit alert comments (#345)\n\nDisable commit alert comments in Continuous Benchmarking while keeping\nall five CI benchmark suites publishing to gh-pages:\n\n- Set comment-on-alert: false and remove alert-comment-cc-users across\n  all five Publish steps in .github/workflows/benchmark.yml. Even with\n  alert-threshold at 300% and zero Rust source changes, heterogeneous\n  ubuntu-latest CPU tiers produced a 6.32x swing on 4902002; real\n  regressions are tracked via retch/fastfetch ratios on benches/dashboard/.\n- Bump retch-cli to 0.23.3, refresh Cargo.lock, regenerate docs/retch.1,\n  and update NOTES.md.\n\nAssisted-By: Gemini 4 Neon",
+          "timestamp": "2026-11-22T07:58:38-08:00",
+          "tree_id": "3ef858b2f8cd161556874232c5f2520ed519471e",
+          "url": "https://github.com/l1a/retch/commit/492dc50295a05c866c327684e0485c3bd9e43023"
+        },
+        "date": 1795363154536,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 3614742.1000000006,
+            "extra": "v0.23.3; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 14651308.900000002,
+            "extra": "v0.23.3; battery"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 2720916.0000000005,
+            "extra": "v0.23.3; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2867755.4000000004,
+            "extra": "v0.23.3; battery"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 213388557.2,
+            "extra": "v0.23.3; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 619557919.5,
+            "extra": "v0.23.3; battery"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 365540255.5,
+            "extra": "v0.23.3; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 736617854.5999999,
+            "extra": "v0.23.3; battery"
           }
         ]
       }
