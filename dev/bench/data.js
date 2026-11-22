@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795363689859,
+  "lastUpdate": 1795363690165,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -18331,6 +18331,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 233.98164591599703,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "492dc50295a05c866c327684e0485c3bd9e43023",
+          "message": "Disable noisy benchmark commit alert comments (#345)\n\nDisable commit alert comments in Continuous Benchmarking while keeping\nall five CI benchmark suites publishing to gh-pages:\n\n- Set comment-on-alert: false and remove alert-comment-cc-users across\n  all five Publish steps in .github/workflows/benchmark.yml. Even with\n  alert-threshold at 300% and zero Rust source changes, heterogeneous\n  ubuntu-latest CPU tiers produced a 6.32x swing on 4902002; real\n  regressions are tracked via retch/fastfetch ratios on benches/dashboard/.\n- Bump retch-cli to 0.23.3, refresh Cargo.lock, regenerate docs/retch.1,\n  and update NOTES.md.\n\nAssisted-By: Gemini 4 Neon",
+          "timestamp": "2026-11-22T07:58:38-08:00",
+          "tree_id": "3ef858b2f8cd161556874232c5f2520ed519471e",
+          "url": "https://github.com/l1a/retch/commit/492dc50295a05c866c327684e0485c3bd9e43023"
+        },
+        "date": 1795363690117,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2200826.7000000007,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 291519540.8,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252256463.50000003,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1296592.5000000002,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 3167154.8,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 558095832.1,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 205814452.3,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1959774,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 418653130.3,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1011.1610274931963,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 127.61518520096664,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.947173663634408,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 72.70042684089977,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 8923.895749615893,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 367829.6979144552,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 5658.828596274454,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 4028.025415021236,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 56039.8536321357,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 398.5667241328622,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 224.589076964099,
             "unit": "ns"
           }
         ]
