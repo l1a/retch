@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795363690165,
+  "lastUpdate": 1795363690453,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -24809,6 +24809,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 523.5782856315715,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "492dc50295a05c866c327684e0485c3bd9e43023",
+          "message": "Disable noisy benchmark commit alert comments (#345)\n\nDisable commit alert comments in Continuous Benchmarking while keeping\nall five CI benchmark suites publishing to gh-pages:\n\n- Set comment-on-alert: false and remove alert-comment-cc-users across\n  all five Publish steps in .github/workflows/benchmark.yml. Even with\n  alert-threshold at 300% and zero Rust source changes, heterogeneous\n  ubuntu-latest CPU tiers produced a 6.32x swing on 4902002; real\n  regressions are tracked via retch/fastfetch ratios on benches/dashboard/.\n- Bump retch-cli to 0.23.3, refresh Cargo.lock, regenerate docs/retch.1,\n  and update NOTES.md.\n\nAssisted-By: Gemini 4 Neon",
+          "timestamp": "2026-11-22T07:58:38-08:00",
+          "tree_id": "3ef858b2f8cd161556874232c5f2520ed519471e",
+          "url": "https://github.com/l1a/retch/commit/492dc50295a05c866c327684e0485c3bd9e43023"
+        },
+        "date": 1795363690404,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 424628250.20000005,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1010880966.5999998,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 998827033.1999998,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 18790233.600000005,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 342017066.5,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 339986225.00000006,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 387122620.8,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 8629016.8,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 342433217.7,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 561.7844019849356,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 179.7904730966157,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.138515758135892,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 100.46285853427528,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 20851.249055333614,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1633.5694178699719,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 362.8655109053685,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 172722.9917018645,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 628.1712364975847,
             "unit": "ns"
           }
         ]
