@@ -154,20 +154,24 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.23.2)
+## Current State (v0.23.3)
 
-`main` carries **`retch-cli` 0.23.1** / **`retch-sysinfo` 0.1.111** (newest released tag
-**`v0.23.1`**); this branch bumps **`retch-cli` to `0.23.2`** (keeping `retch-sysinfo` at
-`0.1.111`) and reduces Continuous Benchmarking alert noise in `.github/workflows/benchmark.yml`:
-- **Higher alert threshold:** Raised `alert-threshold` from `'200%'` to `'300%'` across all five
-  platform publish steps so shared CI runner jitter (`2.0x–2.87x`) no longer triggers false
-  regression comments while keeping alerts active (`comment-on-alert: true`, `fail-on-alert: false`)
-  for `>= 3x` regressions.
-- **Scoped `push` trigger paths:** Added `on.push.paths` scoping `main` benchmark runs to
-  `src/**`, `crates/**`, `benches/**`, `assets/**`, `.github/workflows/benchmark.yml`, and the
-  benchmark scripts (intentionally omitting root `Cargo.toml`/`Cargo.lock` because every PR bumps
-  them unconditionally for `just pr`; use `workflow_dispatch` for root-only dependency bumps), and
-  added `scripts/bench_meta.py` to `on.pull_request.paths`.
+`main` carries **`retch-cli` 0.23.2** / **`retch-sysinfo` 0.1.111** (newest released tag
+**`v0.23.1`**); this branch bumps **`retch-cli` to `0.23.3`** (keeping `retch-sysinfo` at
+`0.1.111`) and disables `comment-on-alert` across all five `Publish ...` steps in
+`.github/workflows/benchmark.yml`:
+- **No commit alert comments (`comment-on-alert: false`):** Even with `alert-threshold: '300%'`
+  and `on.push.paths` scoping `main` runs (`4902002`, zero Rust code changes), GitHub's
+  heterogeneous `ubuntu-latest` runner pool swapped CPU tiers and swung up to `6.32x` on Linux
+  x64 microbenchmarks (`gpu__detect_gpus` `6.32x`, `fetch__detect_cpu_freq_range` `3.24x`,
+  `fetch__format_cpu_cores` `3.18x`, `fetch__detect_cpu_cache` `3.01x`). Because
+  `github-action-benchmark` compares only against the single preceding run, absolute CI thresholds
+  cannot separate runner swaps from regressions; `benches/dashboard/` tracks `retch ÷ fastfetch`
+  ratios instead.
+- **Trigger-path invariant (`v0.23.2`):** `on.push.paths` scopes `main` runs to `src/**`,
+  `crates/**`, `benches/**`, `assets/**`, `.github/workflows/benchmark.yml`, and the benchmark
+  scripts (root `Cargo.toml`/`Cargo.lock` are intentionally omitted since every PR bumps them for
+  `just pr`; use `workflow_dispatch` for root-only dependency bumps).
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
