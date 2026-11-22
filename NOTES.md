@@ -154,21 +154,20 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.23.1)
+## Current State (v0.23.2)
 
-`main` carries **`retch-cli` 0.22.1** / **`retch-sysinfo` 0.1.111`** (newest released tag
-**`v0.22.1`**); this branch bumps **`retch-cli` to `0.23.0`** (keeping `retch-sysinfo` at
-`0.1.111`) and refines `config.toml` includes and theme override precedence for external
-theme templates:
-- **`include_optional` (`src/config.rs`):** string or array of paths merged after required
-  `include` files and before the including file's own keys; `ErrorKind::NotFound` skips
-  silently while non-`NotFound` I/O errors, directories, invalid TOML, size/depth limits,
-  cycles, and nested required `include` failures still error.
-- **Missing-path error context (`src/config.rs`):** `read_config_bytes` attaches the
-  offending path via `anyhow::Context` on metadata/open/read failures.
-- **CLI `--theme` precedence (`src/config.rs`, `src/display.rs`):** passing `--theme <name>`
-  on the CLI (for any name other than `"custom"`, case-insensitive) skips `[custom_theme]`
-  overrides so explicit CLI themes are not silently overwritten by an included fragment.
+`main` carries **`retch-cli` 0.23.1** / **`retch-sysinfo` 0.1.111** (newest released tag
+**`v0.23.1`**); this branch bumps **`retch-cli` to `0.23.2`** (keeping `retch-sysinfo` at
+`0.1.111`) and reduces Continuous Benchmarking alert noise in `.github/workflows/benchmark.yml`:
+- **Higher alert threshold:** Raised `alert-threshold` from `'200%'` to `'300%'` across all five
+  platform publish steps so shared CI runner jitter (`2.0x–2.87x`) no longer triggers false
+  regression comments while keeping alerts active (`comment-on-alert: true`, `fail-on-alert: false`)
+  for `>= 3x` regressions.
+- **Scoped `push` trigger paths:** Added `on.push.paths` scoping `main` benchmark runs to
+  `src/**`, `crates/**`, `benches/**`, `assets/**`, `.github/workflows/benchmark.yml`, and the
+  benchmark scripts (intentionally omitting root `Cargo.toml`/`Cargo.lock` because every PR bumps
+  them unconditionally for `just pr`; use `workflow_dispatch` for root-only dependency bumps), and
+  added `scripts/bench_meta.py` to `on.pull_request.paths`.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
