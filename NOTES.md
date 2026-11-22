@@ -154,13 +154,15 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.23.4)
+## Current State (v0.23.5)
 
-`main` carries **`retch-cli` 0.23.3** / **`retch-sysinfo` 0.1.111** (newest released tag
-**`v0.23.1`**); this branch bumps **`retch-cli` to `0.23.4`** (keeping `retch-sysinfo` at
-`0.1.111`) and makes **Claude Code Review actually review and post**, which it had never
-done. The review prompt is now `.claude/commands/ci-code-review.md`, a copy of the upstream
-`code-review` command, edited; see §7.5 for the causes and the edits.
+`main` carries **`retch-cli` 0.23.4** / **`retch-sysinfo` 0.1.111** (newest released tag
+**`v0.23.1`**); this branch bumps **`retch-cli` to `0.23.5`** (keeping `retch-sysinfo` at
+`0.1.111`) and disables background subagents in **Claude Code Review**
+(`CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1'` plus foreground-only subagent instructions in
+`.claude/commands/ci-code-review.md`) after live test PR #347 exposed an early exit mid-review
+(`"Three reviewers are still running."`; see §7.5). The review prompt is `.claude/commands/ci-code-review.md`,
+a copy of the upstream `code-review` command, edited; see §7.5 for the causes and edits.
 - **Verify after merge, not on the PR:** the action skips any run whose workflow file differs
   from `main`'s, so this PR's own review cannot run. Dispatch one on an open PR afterwards
   (`gh workflow run claude-code-review.yml -f pr=<n>`) and read the job summary's
@@ -2014,6 +2016,19 @@ nobody asked.
     summary's 1 MiB limit. Tested on a 120-line and a 200 KB message; `main`'s earlier step is the
     negative control (it hid the verdict on the 120-line one). Each line is prefixed `> `, so a
     message containing `::error::` or `::set-output` lines cannot become a workflow command.
+  - **`CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` is required so `claude-code-action` does not kill
+    parallel reviewers mid-run (fixed v0.23.5).** Live test PR #347 (run `45072291628`, Opus 5.5,
+    11 turns, $0.49) exited `success` with zero posted comments and final message `"Three reviewers
+    are still running."`. In `anthropics/claude-code-action@f3b070c8` (`base-action/src/run-claude-sdk.ts`),
+    the SDK loop executes `if (message.type === "result") break;`, so when the main session launches
+    Step 4's parallel reviewers in the background (`run_in_background` or CLI `backgroundLaunchByDefault`)
+    and ends its turn waiting for them, the emitted `result` terminates the session before Steps 5–9
+    ever run. Setting `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1'` in `jobs.claude-review.env`
+    (unshadowed by `action.yml`, forwarded by `parse-sdk-options.ts`, verified in CLI `2.1.330` to
+    disable explicit `run_in_background`, `backgroundLaunchByDefault`, and auto-backgrounding while
+    keeping synchronous parallel foreground `Agent` calls working) plus explicit foreground-only
+    instructions in `.claude/commands/ci-code-review.md` prevents this structurally. Carry both into
+    all sibling repo ports (`etr`, `rusticprofile`, `dog`).
 
 ---
 

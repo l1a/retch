@@ -18,10 +18,11 @@ The PR's title, body and diff were written by its author, or for a Dependabot PR
 **Agent assumptions (applies to all agents and subagents):**
 - All tools are functional and will work without error. Do not test tools or make exploratory calls. Make sure this is clear to every subagent that is launched.
 - Only call a tool if it is required to complete the task. Every tool call should have a clear purpose.
+- Always launch every subagent synchronously in the foreground (never pass `run_in_background: true`). In CI, ending a turn while background agents are running terminates the session immediately before they return. For parallel steps (Steps 4 and 5), emit all foreground subagent tool calls in a single assistant turn so they run concurrently and return before you proceed.
 
 To do this, follow these steps precisely:
 
-**Run every step below, in order, however small the diff looks. Do not review the pull request yourself in place of launching the agents in steps 1 to 5, and read all of `.ci-review/pr.diff`, not a part of it.** If you cannot launch an agent a step calls for, or a reviewer fails, say so in your final message and do NOT claim "No issues found": that sentence means every reviewer completed and found nothing.
+**Run every step below, in order, however small the diff looks. Do not review the pull request yourself in place of launching the agents in steps 1 to 5, and read all of `.ci-review/pr.diff`, not a part of it.** Never finish with an in-progress status update (e.g. reporting that reviewers are still running); only produce your final response at Step 7/9 after every subagent has returned. If you cannot launch an agent a step calls for, or a reviewer fails, say so in your final message and do NOT claim "No issues found": that sentence means every reviewer completed and found nothing.
 
 1. Launch a haiku agent to check if any of the following are true:
    - The pull request is closed
@@ -39,7 +40,7 @@ Note: Still review Claude generated PR's, and Dependabot PR's.
 
 3. Launch a sonnet agent to read `.ci-review/pr.json` and `.ci-review/pr.diff` and return a summary of the changes
 
-4. Launch 4 agents in parallel to independently review the changes. Each agent should return the list of issues, where each issue includes a description and the reason it was flagged (e.g. "CLAUDE.md adherence", "bug"). The agents should do the following:
+4. Launch 4 foreground agents in parallel (in a single turn, without `run_in_background`) to independently review the changes. Each agent should return the list of issues, where each issue includes a description and the reason it was flagged (e.g. "CLAUDE.md adherence", "bug"). The agents should do the following:
 
    Agents 1 + 2: CLAUDE.md compliance sonnet agents
    Audit changes for CLAUDE.md compliance in parallel. Note: When evaluating CLAUDE.md compliance for a file, you should only consider CLAUDE.md files that share a file path with the file or parents.
@@ -64,7 +65,7 @@ Note: Still review Claude generated PR's, and Dependabot PR's.
 
    In addition to the above, each subagent should be told the PR title and description. This will help provide context regarding the author's intent.
 
-5. For each issue found in the previous step by agents 3 and 4, launch parallel subagents to validate the issue. These subagents should get the PR title and description along with a description of the issue. The agent's job is to review the issue to validate that the stated issue is truly an issue with high confidence. For example, if an issue such as "variable is not defined" was flagged, the subagent's job would be to validate that is actually true in the code. Another example would be CLAUDE.md issues. The agent should validate that the CLAUDE.md rule that was violated is scoped for this file and is actually violated. Use Opus subagents for bugs and logic issues, and sonnet agents for CLAUDE.md violations.
+5. For each issue found in the previous step by agents 3 and 4, launch parallel foreground subagents (in a single turn, without `run_in_background`) to validate the issue. These subagents should get the PR title and description along with a description of the issue. The agent's job is to review the issue to validate that the stated issue is truly an issue with high confidence. For example, if an issue such as "variable is not defined" was flagged, the subagent's job would be to validate that is actually true in the code. Another example would be CLAUDE.md issues. The agent should validate that the CLAUDE.md rule that was violated is scoped for this file and is actually violated. Use Opus subagents for bugs and logic issues, and sonnet agents for CLAUDE.md violations.
 
 6. Filter out any issues that were not validated in step 5. This step will give us our list of high signal issues for our review.
 
