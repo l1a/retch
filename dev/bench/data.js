@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795301620121,
+  "lastUpdate": 1795307878398,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -3724,6 +3724,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 1245863240,
             "extra": "v0.21.12; battery"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "e96d3677bccfe1d33a0b438a7777be17a0a92723",
+          "message": "Update COPR targets to Fedora 44 and 45 (#343)\n\nUpdate COPR instructions, README, and copr.yml chroots to Fedora 44 and 45; bump retch-cli to 0.23.1 with synced Cargo.lock, NOTES.md, and docs/retch.1.\n\nAssisted-By: Gemini",
+          "timestamp": "2026-11-21T12:30:58-08:00",
+          "tree_id": "62a242b138e26de27e67f843eb22810ea146dd9c",
+          "url": "https://github.com/l1a/retch/commit/e96d3677bccfe1d33a0b438a7777be17a0a92723"
+        },
+        "date": 1795307878398,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 30545860.0,
+            "extra": "v0.23.1; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 289557470.0,
+            "extra": "v0.23.1; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 27492280.0,
+            "extra": "v0.23.1; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 52452159.99999999,
+            "extra": "v0.23.1; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 144733020.00000006,
+            "extra": "v0.23.1; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 745261700.0000001,
+            "extra": "v0.23.1; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 439760210.00000006,
+            "extra": "v0.23.1; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 1026593510.0000001,
+            "extra": "v0.23.1; AC"
           }
         ]
       }
