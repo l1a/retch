@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795361142588,
+  "lastUpdate": 1795361658339,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2290,7 +2290,7 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - fastfetch (long)",
             "unit": "ns",
-            "value": 512846755.0,
+            "value": 512846755,
             "extra": "v0.23.1; AC"
           },
           {
@@ -3824,19 +3824,19 @@ window.BENCHMARK_DATA = {
           {
             "name": "CLI execution - retch",
             "unit": "ns",
-            "value": 30545860.0,
+            "value": 30545860,
             "extra": "v0.23.1; AC"
           },
           {
             "name": "CLI execution - fastfetch (default)",
             "unit": "ns",
-            "value": 289557470.0,
+            "value": 289557470,
             "extra": "v0.23.1; AC"
           },
           {
             "name": "CLI execution - retch --short",
             "unit": "ns",
-            "value": 27492280.0,
+            "value": 27492280,
             "extra": "v0.23.1; AC"
           },
           {
@@ -10865,6 +10865,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 172.15090944978905,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4902002f8094c7c2b89f9b5e5befe1d531bdbcea",
+          "message": "Tune benchmark alert threshold and push paths (#344)\n\nReduce Continuous Benchmarking false-positive alert comments caused by\nshared CI runner jitter and non-code merges on main:\n\n- Raise alert-threshold from 200% to 300% across all five platform\n  publish steps (recent jitter alerts clustered at 2.0x-2.87x) while\n  keeping comment-on-alert enabled and fail-on-alert false.\n- Add on.push.paths scoping main benchmark runs to src/**, crates/**,\n  benches/**, assets/**, .github/workflows/benchmark.yml, and the\n  benchmark helper scripts (intentionally omitting root Cargo.toml and\n  Cargo.lock since every PR bumps them for just pr).\n- Add scripts/bench_meta.py to on.pull_request.paths for symmetry.\n- Bump retch-cli to 0.23.2, refresh Cargo.lock, regenerate docs/retch.1,\n  and update NOTES.md.\n\nAssisted-By: Gemini 4 Neon",
+          "timestamp": "2026-11-22T07:24:55-08:00",
+          "tree_id": "16e0c86a0919fd2e2d572aadcf8f68aabfdfba3e",
+          "url": "https://github.com/l1a/retch/commit/4902002f8094c7c2b89f9b5e5befe1d531bdbcea"
+        },
+        "date": 1795361658285,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2624321.8,
+            "unit": "ns",
+            "extra": "v0.23.2"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 254034767.6,
+            "unit": "ns",
+            "extra": "v0.23.2"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252148576.10000002,
+            "unit": "ns",
+            "extra": "v0.23.2"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1341614.4,
+            "unit": "ns",
+            "extra": "v0.23.2"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2236516.9,
+            "unit": "ns",
+            "extra": "v0.23.2"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 453256883.2,
+            "unit": "ns",
+            "extra": "v0.23.2"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 204861982.50000003,
+            "unit": "ns",
+            "extra": "v0.23.2"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1417927.8,
+            "unit": "ns",
+            "extra": "v0.23.2"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 249605615.2,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1622.8175523219047,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 104.49351815659665,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.915699048010821,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 66.46699826299073,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 16414.71529941596,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 386051.3415012995,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 11254.401238956803,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 7919.628343663057,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 103260.7867673609,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 319.02940851508157,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 205.22336609869822,
             "unit": "ns"
           }
         ]
