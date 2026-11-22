@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795363690747,
+  "lastUpdate": 1795363691039,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -36919,6 +36919,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 233328175,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "492dc50295a05c866c327684e0485c3bd9e43023",
+          "message": "Disable noisy benchmark commit alert comments (#345)\n\nDisable commit alert comments in Continuous Benchmarking while keeping\nall five CI benchmark suites publishing to gh-pages:\n\n- Set comment-on-alert: false and remove alert-comment-cc-users across\n  all five Publish steps in .github/workflows/benchmark.yml. Even with\n  alert-threshold at 300% and zero Rust source changes, heterogeneous\n  ubuntu-latest CPU tiers produced a 6.32x swing on 4902002; real\n  regressions are tracked via retch/fastfetch ratios on benches/dashboard/.\n- Bump retch-cli to 0.23.3, refresh Cargo.lock, regenerate docs/retch.1,\n  and update NOTES.md.\n\nAssisted-By: Gemini 4 Neon",
+          "timestamp": "2026-11-22T07:58:38-08:00",
+          "tree_id": "3ef858b2f8cd161556874232c5f2520ed519471e",
+          "url": "https://github.com/l1a/retch/commit/492dc50295a05c866c327684e0485c3bd9e43023"
+        },
+        "date": 1795363690990,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 47190410,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2429235550.0000005,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1312887460,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 23294390,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 27060360,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 349986540,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 211189660,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 23912160,
+            "unit": "ns",
+            "extra": "v0.23.3"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 254.12968139058177,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9524154017009385,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 171.9841595531844,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1313.3538131245473,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 45725.926472489235,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 564.2819908625188,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 680.2650804942349,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 315515295,
             "unit": "ns"
           }
         ]
