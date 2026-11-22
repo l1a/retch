@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795376746969,
+  "lastUpdate": 1795386299567,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2520,6 +2520,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 518351503.0000001,
             "extra": "v0.23.4; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "51f771e5055b2253b53c592e0862fff120937222",
+          "message": "Disable background subagents in Claude review (#348)\n\nLive verification on PR #347 showed claude-code-action breaking out of\nthe SDK stream on the first result message when Opus 5.5 backgrounded\nStep 4's parallel reviewers (\"Three reviewers are still running.\"),\nterminating the session with conclusion=success before Steps 5-9 ran.\n\nSet CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 in jobs.claude-review.env\nand require synchronous foreground subagent calls in ci-code-review.md.\nBump retch-cli to 0.23.5, regenerate docs/retch.1, and document the\nlesson in NOTES.md.\n\nAssisted-By: Gemini 4 Neon",
+          "timestamp": "2026-11-22T14:24:24-08:00",
+          "tree_id": "859b97955dbb76f8b7e5a7ed228fde39cadd04be",
+          "url": "https://github.com/l1a/retch/commit/51f771e5055b2253b53c592e0862fff120937222"
+        },
+        "date": 1795386299567,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 3475757.7000000007,
+            "extra": "v0.23.5; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 13593877.600000001,
+            "extra": "v0.23.5; battery"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 2933876.3000000007,
+            "extra": "v0.23.5; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 2383341.1999999997,
+            "extra": "v0.23.5; battery"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 212669326.80000004,
+            "extra": "v0.23.5; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 619471092.3,
+            "extra": "v0.23.5; battery"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 441527253.90000004,
+            "extra": "v0.23.5; battery"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 742359346.2,
+            "extra": "v0.23.5; battery"
           }
         ]
       }
