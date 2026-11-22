@@ -48,3 +48,21 @@ pub(crate) mod win_users;
 pub(crate) mod macos_ffi;
 
 pub use fetch::{CollectOptions, SystemInfo};
+
+/// Convert a temperature from degrees Celsius to degrees Fahrenheit.
+///
+/// Returns the equivalent temperature in °F using the standard linear scale
+/// conversion (0 °C = 32 °F, 100 °C = 212 °F).
+pub fn celsius_to_fahrenheit(celsius: f64) -> f64 {
+    (celsius - 32.0) * 5.0 / 9.0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_celsius_to_fahrenheit_fixed_point() {
+        assert!((celsius_to_fahrenheit(-40.0) - (-40.0)).abs() < 1e-9);
+    }
+}
