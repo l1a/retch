@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795363691039,
+  "lastUpdate": 1795376746969,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2448,6 +2448,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 736617854.5999999,
             "extra": "v0.23.3; battery"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "46ed526484a2116b7154abbe6c44ba540bbdaa9a",
+          "message": "Make Claude Code Review review and post (#346)\n\nThe review workflow has never posted a review on this repository:\nevery CI run for weeks cost $0.06-0.20, against $1.62 for a real pass\nof the same command, and there are no Claude review comments, inline\nor top-level, in the repo's history. Three causes, each read from the\nsource at the pinned SHA:\n\n- the upstream code-review command posts only with --comment, which\n  the prompt never passed;\n- its first step stops on \"automated PR\", i.e. on Dependabot PRs;\n- the inline-comment MCP server is installed only for tools named in\n  claude_args --allowedTools, and never on workflow_dispatch.\n\nThe prompt is now .claude/commands/ci-code-review.md, a copy of\nanthropics/claude-plugins-official@c905cd8's command, edited: it reads\nthe PR from files instead of gh; Dependabot PRs are reviewed; a clean\nreview posts nothing (just merge-pr counts any Claude comment as a\nfinding); dispatched runs post nothing and leave their findings in the\njob summary; and a review is skipped only when Claude already reviewed\nthe current head commit, so fixes get re-reviewed.\n\nThe session reads untrusted PR text while the App token can write to\nevery repository the App is installed on, so it gets no shell, no gh\nand no network. A plain step fetches the PR's metadata and diff into\n.ci-review/ and checks out the PR head; the model's only write is the\ninline-comment MCP tool, which the action binds to this PR. The\nworkspace root is always the base branch, so no .claude/ hook, setting\nor command comes from the PR; its head is checked out under\n.ci-review/head/ as data with every CLAUDE.md, AGENTS.md, .claude/ and\n.mcp.json removed (Claude Code loads nested CLAUDE.md files as\ninstructions; AGENTS.md is removed as hardening); the\nbase branch is asked of the API, so dispatch uses the PR's real base,\nand fork PRs are refused before any checkout. Narrower\nrules all leaked (gh pr comment <N> * took -R and --body-file; read-only\ngh pr view took -R). Every allow rule in the committed\n.claude/settings.json is denied too, and a guard step fails the job if\none is added without a matching deny.\n\nCI's main session defaults to Sonnet, which a local run showed reviewing\nalone in one cheap pass and skipping the command's subagent steps, so\nthe model is pinned to claude-opus-5-5 and the command forbids skipping\nsteps and reserves \"No issues found\" for a run in which every reviewer\ncompleted.\n\nThe report step now prints the session's whole final message, verdict\nincluded, instead of saying that no comment means nothing was found. Posting uses the\nClaude GitHub App token obtained through OIDC, so the job keeps\npull-requests: read.\n\nAssisted-By: Claude Opus 5.5",
+          "timestamp": "2026-11-22T11:45:18-08:00",
+          "tree_id": "8aabc6b9b0fd076e43e072a46c958a9de052a14a",
+          "url": "https://github.com/l1a/retch/commit/46ed526484a2116b7154abbe6c44ba540bbdaa9a"
+        },
+        "date": 1795376746969,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 2193792.1,
+            "extra": "v0.23.4; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 8398094.900000002,
+            "extra": "v0.23.4; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 1206117.5000000002,
+            "extra": "v0.23.4; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 1503235.4000000001,
+            "extra": "v0.23.4; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 208217594.99999997,
+            "extra": "v0.23.4; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 513237233.1,
+            "extra": "v0.23.4; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 344944186.6,
+            "extra": "v0.23.4; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 518351503.0000001,
+            "extra": "v0.23.4; AC"
           }
         ]
       }
