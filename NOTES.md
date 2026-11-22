@@ -154,30 +154,41 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.23.3)
+## Current State (v0.23.4)
 
-`main` carries **`retch-cli` 0.23.2** / **`retch-sysinfo` 0.1.111** (newest released tag
-**`v0.23.1`**); this branch bumps **`retch-cli` to `0.23.3`** (keeping `retch-sysinfo` at
-`0.1.111`) and disables `comment-on-alert` across all five `Publish ...` steps in
-`.github/workflows/benchmark.yml`:
-- **No commit alert comments (`comment-on-alert: false`):** Even with `alert-threshold: '300%'`
-  and `on.push.paths` scoping `main` runs (`4902002`, zero Rust code changes), GitHub's
-  heterogeneous `ubuntu-latest` runner pool swapped CPU tiers and swung up to `6.32x` on Linux
-  x64 microbenchmarks (`gpu__detect_gpus` `6.32x`, `fetch__detect_cpu_freq_range` `3.24x`,
-  `fetch__format_cpu_cores` `3.18x`, `fetch__detect_cpu_cache` `3.01x`). Because
-  `github-action-benchmark` compares only against the single preceding run, absolute CI thresholds
-  cannot separate runner swaps from regressions; `benches/dashboard/` tracks `retch ÷ fastfetch`
-  ratios instead.
-- **Trigger-path invariant (`v0.23.2`):** `on.push.paths` scopes `main` runs to `src/**`,
-  `crates/**`, `benches/**`, `assets/**`, `.github/workflows/benchmark.yml`, and the benchmark
-  scripts (root `Cargo.toml`/`Cargo.lock` are intentionally omitted since every PR bumps them for
-  `just pr`; use `workflow_dispatch` for root-only dependency bumps).
+`main` carries **`retch-cli` 0.23.3** / **`retch-sysinfo` 0.1.111** (newest released tag
+**`v0.23.1`**); this branch bumps **`retch-cli` to `0.23.4`** (keeping `retch-sysinfo` at
+`0.1.111`) and makes **Claude Code Review actually review and post**, which it had never
+done. The review prompt is now `.claude/commands/ci-code-review.md`, a copy of the upstream
+`code-review` command, edited; see §7.5 for the causes and the edits.
+- **Verify after merge, not on the PR:** the action skips any run whose workflow file differs
+  from `main`'s, so this PR's own review cannot run. Dispatch one on an open PR afterwards
+  (`gh workflow run claude-code-review.yml -f pr=<n>`) and read the job summary's
+  "Final message from the review".
+- **`CLAUDE_CODE_OAUTH_TOKEN` lives in TWO stores with the same name:** Actions secrets, and
+  Dependabot secrets. A Dependabot-triggered run sees only the second, and an empty secret
+  fails silently. Regenerate with `claude setup-token` (from a real terminal) and set both;
+  both were rotated together 2026-11-22.
 
 The fastfetch feature gap (§6) is closed on Linux, macOS and Windows (except for the
 deliberately omitted platform-specific items in §6a and §6c). What is open is listed in §5, §6a
 and §6c.
 
 Recent work worth knowing about, beyond what `git log` says:
+
+- **v0.23.2–v0.23.3: benchmark commit alerts off, `main` push paths scoped (`.github/workflows/benchmark.yml`).**
+  - **No commit alert comments (`comment-on-alert: false`):** Even with `alert-threshold: '300%'`
+    and `on.push.paths` scoping `main` runs (`4902002`, zero Rust code changes), GitHub's
+    heterogeneous `ubuntu-latest` runner pool swapped CPU tiers and swung up to `6.32x` on Linux
+    x64 microbenchmarks (`gpu__detect_gpus` `6.32x`, `fetch__detect_cpu_freq_range` `3.24x`,
+    `fetch__format_cpu_cores` `3.18x`, `fetch__detect_cpu_cache` `3.01x`). Because
+    `github-action-benchmark` compares only against the single preceding run, absolute CI
+    thresholds cannot separate runner swaps from regressions; `benches/dashboard/` tracks
+    `retch ÷ fastfetch` ratios instead.
+  - **Trigger-path invariant (`v0.23.2`):** `on.push.paths` scopes `main` runs to `src/**`,
+    `crates/**`, `benches/**`, `assets/**`, `.github/workflows/benchmark.yml`, and the benchmark
+    scripts (root `Cargo.toml`/`Cargo.lock` are intentionally omitted since every PR bumps them
+    for `just pr`; use `workflow_dispatch` for root-only dependency bumps).
 
 - **v0.22.1–v0.23.0: `include` & `include_optional` in `config.toml` (`src/config.rs`, `src/display.rs`).**
   - `include` (required) and `include_optional` (skips `NotFound`) accept a path string or
@@ -239,7 +250,7 @@ Recent work worth knowing about, beyond what `git log` says:
   - `image = "0.25"` enabled `default-formats` (`avif`, `exr`, `dds`, `hdr`, etc.), where `avif` pulls in the `ravif`/`rav1e` AV1 encoder and its unmaintained `paste 1.0.15` proc-macro dependency (`RUSTSEC-2024-0436`) even though `image`'s `avif` feature only provides AVIF encoding (not decoding) and `retch` only decodes raster logos and encodes `ImageFormat::Png`. Setting `default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "ico"]` removes `paste`, `ravif`, `rav1e`, and `exr` (54 transitive crates, `247 -> 193`) from `Cargo.lock`.
 - **v0.21.3: Workflow and gate hardening across the four-repo fleet.**
   - `scripts/man_pages.py --check` now always validates the `.TH` version/title header and LF line endings in both the worktree and `HEAD` even when `mandown` is not installed locally, while `ci.yml` installs `mandown` (`cargo install --locked mandown`) so CI runs the full byte-for-byte re-render check.
-  - `copr.yml` installs `git` before `actions/checkout` in `fedora:latest`, `security.yml` grants `issues: write` to `actions-rust-lang/audit`, `claude.yml` enforces `author_association` and refuses fork PRs at the job/step level, and `claude-code-review.yml` passes `github_token: ${{ secrets.GITHUB_TOKEN }}` to `code-review@claude-code-plugins`.
+  - `copr.yml` installs `git` before `actions/checkout` in `fedora:latest`, `security.yml` grants `issues: write` to `actions-rust-lang/audit`, `claude.yml` enforces `author_association` and refuses fork PRs at the job/step level. (This entry used to say `claude-code-review.yml` passes `github_token: ${{ secrets.GITHUB_TOKEN }}`; no revision of that file ever has — `git log -S github_token` on it is empty. It posts with the Claude GitHub App token from OIDC; see §7.5.)
   - `Justfile` `aur-publish` requires positive SSH authentication output from `aur.archlinux.org`, and `merge-pr` requires all non-skipped checks to conclude `SUCCESS` and refuses to merge when inline PR review comments exist unless `MERGE_ALLOW_COMMENTS=1` is set after inspecting them.
 - **v0.21.2: Cross-repo Justfile, scripts & GitHub workflow standardization.**
   - Split `.github/workflows/rust.yml` into `ci.yml` (`checks`, 7-platform `build` matrix with 2-step `rustup-init.sh` + `cargo --version` verification, `no-default-features`) and `release.yml` (`full-test`, `build-release`, `release`), pinned all GitHub Actions across all workflows to 40-char commit SHAs, switched `security.yml` to `actions-rust-lang/audit`, and fixed `dependabot.yml` (`patterns: ["*"]`).
@@ -1828,6 +1839,181 @@ nobody asked.
   allowing a classifier to approve tool calls outside `--allowedTools`. Keep `--permission-mode
   acceptEdits` explicitly in `.github/workflows/claude.yml` (`claude_args`) whenever `--allowedTools`
   is intended as a strict boundary.
+- **Claude Code Review never reviewed or posted, while every run reported success (fixed v0.23.4).**
+  Measured 2026-11-22: every CI run for weeks cost $0.06–0.20, and retch had zero Claude review
+  comments, inline or top-level, since the workflow was added. A real pass of the same command
+  (run locally against #346, **Opus as the main session**, with haiku/sonnet/opus subagents) cost
+  **$1.43–1.77**. **Cost is the better signal; `num_turns` and `duration_ms` are not.** A full
+  pass reported `num_turns: 1` and ~11 s, because neither counts subagent work, so a "3 turns,
+  6 s" run says nothing on its own.
+  **Cost alone does not say why a run was cheap, though.** CI's main session is Sonnet (the
+  action's default; its init line shows `claude-sonnet-5-5`), and a local run with Sonnet as the
+  main session cost **$0.21**, read only part of the diff, launched none of the command's
+  subagents ("the diff is small") and still printed "No issues found". So the old cheap runs
+  were some mix of the three causes below and of Sonnet reviewing alone; the causes are certain
+  (zero comments were ever posted), the mix is not. The workflow now pins `--model
+  claude-opus-5-5`, and the command forbids skipping its steps and reserves "No issues found" for
+  a run where every reviewer completed.
+  Three independent causes, none of them visible in a run's conclusion; each was read from the
+  source at the pinned SHA, not inferred:
+  1. **The upstream `code-review` command posts only when given `--comment`**; without it, it
+     prints to the job log and stops (step 7). The prompt never passed it.
+  2. **Its step 1 stops on "does not need code review (e.g. automated PR …)"**, i.e. on exactly
+     the Dependabot PRs this workflow was extended to cover (#134).
+  3. **The inline-comment MCP server is installed only for tools named in `claude_args`'s
+     `--allowedTools`** (`src/modes/agent/index.ts`: `parseAllowedTools(userClaudeArgs)`). The
+     command's own `allowed-tools` frontmatter does not count, so even a review that found a bug
+     could not have posted it inline. **And it is never installed on `workflow_dispatch`**
+     (`context.isPR` is false there), whatever `--allowedTools` says.
+  - **The fix is a copy, not a wrapper:** `.claude/commands/ci-code-review.md` is
+    `anthropics/claude-plugins-official@c905cd8`'s `plugins/code-review/commands/code-review.md`
+    with these edits:
+    - **it reads the PR from files, never through `gh`** (`.ci-review/pr.json` and `pr.diff`, which a
+      plain workflow step fetches; see below), and treats the PR's text as data, not instructions;
+    - automated/Dependabot PRs are reviewed;
+    - a clean review posts **nothing** (upstream posts "No issues found", and `just merge-pr`
+      counts any top-level comment whose author matches `^claude` as a finding, so it would have
+      blocked every merge);
+    - when the inline tool is missing (dispatched runs), the session posts **nothing** and ends
+      its final message with the findings, which the report step prints in the job summary;
+    - step 1 skips only an already-reviewed head commit (below);
+    - the frontmatter grants only the inline-comment tool.
+
+    A prompt-level "review it anyway" was rejected: the skip is decided by a haiku subagent that
+    never sees the prompt. The copy also stops upstream `main` from changing the review under
+    us; the plugin was installed at `ref: main`. The pinned action loads it because
+    `settingSources` defaults to `["user", "project", "local"]` (`parse-sdk-options.ts`). To
+    re-sync, diff against `gh api 'repos/anthropics/claude-plugins-official/commits?path=plugins/code-review/commands/code-review.md'`.
+  - **`pull-requests: read` is enough.** With no `github_token:` input the action posts with
+    the Claude GitHub App token it gets through OIDC (`id-token: write`), so widening
+    `GITHUB_TOKEN` buys nothing. Unverified: whether that OIDC exchange also works on a
+    Dependabot-triggered run. The first one will say.
+  - **The session has no shell, no `gh` and no network; its only capability beyond reading the
+    checkout is the inline-comment MCP tool, which the action binds to the PR under review.** The
+    workflow fetches everything the review needs (`gh pr view --json …` and `gh pr diff` into
+    `.ci-review/`) in a plain step. **The workspace root is always the base branch, and the PR's
+    head is checked out under `.ci-review/head/` as data** (`persist-credentials: false`). The
+    fetch step fails if that head is not the one the metadata names.
+    `REVIEW_DENY` removes `Bash`, `WebFetch`, `WebSearch`, `Edit`, `Write` and `NotebookEdit`
+    outright (a bare tool name in `--disallowedTools` takes the tool out of the session: the model
+    reported "There is no Bash tool in this session"), plus `Read(//tmp/**)`; Read outside the
+    working directory is refused anyway with nothing allowing it (tested on `/etc/hostname`).
+    **Why so blunt: six rounds of Cursor's security and Bugbot reviews on #346 each found a hole in the
+    previous design**, and the lesson generalises:
+    - Round 1: an unscoped `Bash(gh pr comment:*)` could comment on any PR. Narrowed to
+      `Bash(gh pr comment <N> *)`.
+    - Round 2: **a prefix rule constrains the first arguments only.** The trailing `*` still
+      admitted `-R other/repo`, `--edit-last`, `--delete-last --yes`, and `--body-file <any file>`
+      (e.g. `/proc/self/environ`, which would publish the tokens). No `Bash(...)` rule can admit
+      `--body` alone, so the comment path was removed. Bugbot's round-2 finding fell out of the same
+      change: the top-level fallback comment was never cleared once fixed, so it would have
+      blocked `just merge-pr` indefinitely.
+    - Round 3 (HIGH): **the committed `.claude/settings.json` is part of the reviewer's
+      permissions**, because project settings load in CI. It allows `git clone *` for local
+      development, and `git clone --upload-pack=<cmd>` runs a command. Whether CI's CLI (2.1.325)
+      honours project allows at all is **unknown** (a local, untrusted `claude -p` ignores them,
+      but CI hides the CLI's stderr), so the deny does not rely on either answer. A guard step
+      fails the job if that file gains an allow rule `REVIEW_DENY` does not cover. A bare tool
+      name covers every rule for it, so a new `Bash(…)` allow passes, while `Read(//etc/**)` and
+      `mcp__evil__exfil` were both tested to fail.
+    - Round 4: even **read-only** `gh pr view:*`, `gh search:*` and the like took `-R`/`--owner`,
+      so injected text could read other repositories in the App installation and post them as an
+      inline comment here. So the model gets no `gh` at all; a plain step fetches the PR.
+    - Round 5 (HIGH), **caused by round 4's first version**, which checked out the PR's head as
+      the workspace root so the review could read the PR's code. The CLI loads project config
+      (`.claude/` hooks and `env`, `.mcp.json`, `CLAUDE.md`, the command) from its working
+      directory only. The action restores those paths from the base branch on PR events
+      (`SENSITIVE_PATHS` in `src/github/operations/restore-config.ts`: `.claude`, `.mcp.json`,
+      `.claude.json`, `.gitmodules`, `.ripgreprc`, `CLAUDE.md`, `CLAUDE.local.md`, `.husky`), but
+      not on `workflow_dispatch`. So dispatching a review of a fork PR would have run the fork's
+      hooks with the tokens present. Now the root is the base branch on every event, and the head
+      is data under `.ci-review/head/`. That holds with or without the action's restore. A step
+      before any checkout also refuses a cross-repository PR (`isCrossRepository`), so "fork PRs
+      never run this job" is true on dispatch as well, not only through the job's `if`.
+      **This round was found by the review it was protecting:** a local run of the finished
+      command on #346's diff ($1.77, full pass) reported the same hole independently, which is
+      also the first evidence that the redesigned reviewer finds a real issue.
+    - **The rule: for an agent that reads untrusted input, decide everything it can reach before
+      it runs.** Fetch its inputs yourself, and give it a write only through a tool whose target
+      is fixed outside the model's reach. Every rule written as "this command, but only with safe
+      arguments" leaked.
+    - **The Read tool can open anything in the checkout.** For bot authors (Dependabot, via
+      `allowed_bots`) the action authenticates git through a credential helper, so `.git/config`
+      holds no token (`src/github/operations/git-config.ts`). For write-access authors it embeds
+      the App token in the remote URL, but those authors are trusted.
+    - **No config comes from the PR.** Settings, hooks, `CLAUDE.md` and this command load from the
+      base branch, so a PR cannot change its own review, and the guard step reads the settings
+      that really load. A PR that edits `.claude/settings.json` therefore changes the next PR's
+      review, not its own. What the PR does supply is data: its text and `.ci-review/head/`.
+    - Round 6 (Bugbot, Medium): **Claude Code loads a `CLAUDE.md` as instructions when it reads a
+      file in that directory, at any depth**, so a PR's nested `CLAUDE.md` under
+      `.ci-review/head/` would have steered the session even though the root config was trusted.
+      A step now deletes `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md` (case-insensitive), `.claude/`,
+      `.claude.json` and `.mcp.json` from the head tree and fails if any remain; a PR's change to
+      one is still in `pr.diff`. The command takes its CLAUDE.md rules from the base branch only,
+      so a PR that edits `CLAUDE.md` is not judged by its own edit. Tested on a tree with nested,
+      differently-cased and `.git`-internal copies, plus a look-alike (`claude-notes.md`, kept).
+      **Probed with a canary instruction on CLI 2.1.330: a nested `CLAUDE.md` was obeyed on Read;
+      a nested `AGENTS.md` was not** (Bugbot's round-7 claim that it loads did not reproduce).
+      `AGENTS.md` is stripped anyway, as hardening: this repo's `CLAUDE.md` points to it, the CLI
+      is adding support for it, and the action installs whatever CLI is current. Rules come from
+      the base branch's root `CLAUDE.md` and `AGENTS.md` only.
+    - Same round (Low): **on `workflow_dispatch` the base was the default branch, not the PR's.**
+      A step now asks the API for `baseRefName` and refuses forks before any checkout, and the
+      trusted checkout uses that base on every event.
+
+    The rule semantics this relied on were tested with the local CLI (2.1.330), headless.
+    Allowing `Bash(touch p34 *)` denied `touch p345 a` and ran `touch p34 b`, so the space before
+    `*` is a word boundary. An allow of `Bash(touch *)` plus a deny of `Bash(touch q1 *)` denied
+    `touch q1 y` and ran `touch q2 z`, so deny beats allow. **Testing trap:** a local
+    `claude -p` ignores a project's `permissions.allow` until that folder is trusted
+    (`Ignoring 1 permissions.allow entry … this workspace has not been trusted`). The first
+    deny-vs-allow test therefore "denied everything" for the wrong reason, which only its
+    control caught. Supply the allow rule with `--settings` instead.
+
+    The PR number is validated as a bare integer (a `case` glob over the whole string), because it
+    goes into the prompt and the checkout ref. **A `grep -x` check let `346<newline>9` through**: grep
+    matches line by line.
+  - **A review is skipped only when Claude already reviewed the PR's current head commit**
+    (Bugbot on #346). Upstream skipped any PR Claude had commented on, so once `--comment` made
+    findings post, a fix pushed afterwards was never reviewed. Two traps here:
+    - **`gh pr view --comments` does not include inline review comment text**, so upstream's
+      check could not even see inline findings;
+    - **`gh pr view --json reviews` gives each review's `commit.oid`**, which is what the check
+      now compares with `headRefOid` (both are in the pre-fetched `.ci-review/pr.json`).
+
+    Known cost: an unchanged, still-unresolved finding can be raised again on a later commit,
+    because inline comment bodies are not in the pre-fetched data. That
+    fails in the safe direction: an extra thread to resolve, never a missed review.
+  - **Test the session locally before merging; CI cannot test it on its own PR.** Clone the
+    branch outside `/tmp` (`REVIEW_DENY` denies `Read(//tmp/**)`, so a clone in the scratchpad has
+    every read refused), run the fetch step's commands to fill `.ci-review/`, then:
+    `claude -p --setting-sources project,local --permission-mode default --allowedTools
+    "mcp__github_inline_comment__create_inline_comment" --disallowedTools "<REVIEW_DENY>"
+    --output-format json "/ci-code-review l1a/retch/pull/<N>"`. Leave out `--comment` so nothing can
+    post, and leave out the `user` source so your own `~/.claude/CLAUDE.md` mandates do not load
+    (CI has none). On #346 this gave a full pass with zero permission denials and a clean final
+    message; the first attempt, from the scratchpad, was refused every read for the `/tmp` reason.
+    **Run it with the model CI uses** (`--model claude-opus-5-5`; the CLI's own default can differ
+    from the action's), or the result is not evidence about CI.
+  - **An Opus reviewer can be stopped by the API's safeguards on a security-heavy diff.** One local
+    run of #346 (text about prompt injection, credential exfiltration, `git clone --upload-pack`)
+    had its Opus logic-and-security subagent refused, with "Opus 5.5's safeguards flagged this
+    message", and the session correctly declined to report a clean pass. Cursor's review of the
+    same diff completed. If it happens in CI the job still succeeds, and the summary's "Final
+    message from the review" shows the error. Do not retry around it by rephrasing.
+  - **The report step was a check that could not fail.** It printed "No comment means the review
+    found nothing to raise" after every run with an execution file, so an early stop read as a
+    clean review for a month. It now prints the session's final `result` text. That text is in
+    the execution file (`run-claude-sdk.ts` saves the raw SDK messages, before sanitising), but
+    **not in the job log**, whose result record is the sanitised one without it, which is why
+    reading the log never showed what the session said.
+    **It quotes the WHOLE message** (Bugbot, round 9: a first version showed only the first 40 lines,
+    but the verdict and the findings come last, and a dispatched run posts nothing else). Only a
+    message over 200 KB loses anything, and then its START, not its end, to stay under the job
+    summary's 1 MiB limit. Tested on a 120-line and a 200 KB message; `main`'s earlier step is the
+    negative control (it hid the verdict on the 120-line one). Each line is prefixed `> `, so a
+    message containing `::error::` or `::set-output` lines cannot become a workflow command.
 
 ---
 
