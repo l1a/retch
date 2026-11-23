@@ -61,7 +61,7 @@ jobs:
       # `.claude/settings.json`, because project settings load here (its `git clone *`
       # alone would run a command via `--upload-pack`). A deny wins over an allow; the
       # guard step fails the job if an allow is ever added without a matching deny.
-      REVIEW_DENY: 'Bash,WebFetch,WebSearch,Edit,Write,NotebookEdit,Read(//tmp/**)'
+      REVIEW_DENY: 'Bash,WebFetch,WebSearch,Edit,Write,NotebookEdit,Read(//tmp/**),Read(//proc/**),Read(//etc/**),Read(//sys/**),Read(//dev/**),Read(//var/**),Read(//run/**),Read(//root/**),Read(//home/runner/.*),Read(//home/runner/.*/**),Read(~/.*),Read(~/.*/**),Read(//home/runner/work/_actions/**),Read(//home/runner/work/_tool/**),Read(//home/runner/work/_PipelineMapping/**),Read(./.git/**),Read(.ci-review/head/.git/**),Read(**/.git/**),Grep(//tmp/**),Grep(//proc/**),Grep(//etc/**),Grep(//sys/**),Grep(//dev/**),Grep(//var/**),Grep(//run/**),Grep(//root/**),Grep(//home/runner/.*),Grep(//home/runner/.*/**),Grep(~/.*),Grep(~/.*/**),Grep(//home/runner/work/_actions/**),Grep(//home/runner/work/_tool/**),Grep(//home/runner/work/_PipelineMapping/**),Grep(./.git/**),Grep(.ci-review/head/.git/**),Grep(**/.git/**),Glob(//tmp/**),Glob(//proc/**),Glob(//etc/**),Glob(//sys/**),Glob(//dev/**),Glob(//var/**),Glob(//run/**),Glob(//root/**),Glob(//home/runner/.*),Glob(//home/runner/.*/**),Glob(~/.*),Glob(~/.*/**),Glob(//home/runner/work/_actions/**),Glob(//home/runner/work/_tool/**),Glob(//home/runner/work/_PipelineMapping/**),Glob(./.git/**),Glob(.ci-review/head/.git/**),Glob(**/.git/**)'
       # Disable background tasks/subagents: `claude-code-action`'s `run-claude-sdk.ts`
       # breaks out of the SDK stream on the first `result` message. When the main
       # session backgrounds Step 4's parallel reviewers and ends a turn waiting for
@@ -120,11 +120,16 @@ jobs:
           PY
           rm -f meta.json
 
+      # `persist-credentials: false`: actions/checkout v7 stores GITHUB_TOKEN under
+      # `$RUNNER_TEMP` and links it via `includeIf.gitdir:...` in `.git/config`, which
+      # `claude-code-action@f3b070c8` (`replaceCheckoutCredentials`) does not clear (it only
+      # unsets v6 `include.path`). This job needs no checkout credentials after checkout.
       - name: Checkout base branch (trusted config)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.meta.outputs.base }}
           fetch-depth: 1
+          persist-credentials: false
 
       # The PR's head, as data only: nothing under `.ci-review/` is loaded as config. No
       # credentials are left in it for the Read tool to find.
@@ -220,9 +225,11 @@ jobs:
             --model claude-opus-5-5
             --permission-mode default
             --allowedTools "mcp__github_inline_comment__create_inline_comment"
-            --disallowedTools "${{ env.REVIEW_DENY }}"
+            --disallowedTools "${{ env.REVIEW_DENY }},Read(/${{ runner.temp }}/**),Grep(/${{ runner.temp }}/**),Glob(/${{ runner.temp }}/**)"
           allowed_bots: 'dependabot[bot]'
-          use_sticky_comment: true
+          # Explicit false: agent mode posts no sticky top-level comment, and `just merge-pr`
+          # treats any `^claude` issue comment as a finding.
+          use_sticky_comment: false
 
       - name: Report whether the review actually ran
         if: always()
@@ -242,7 +249,24 @@ jobs:
               echo "Search the job log for \`Workflow validation failed\` to confirm."
             else
               python3 - "$EXECUTION_FILE" <<'PYEOF'
-          import json, sys
+          import json, re, sys
+
+          def redact_secrets(value: str) -> str:
+              # Mirror claude-code-action's redactSecrets + Authorization headers so
+              # raw execution_file output cannot disclose credentials into logs or
+              # GITHUB_STEP_SUMMARY.
+              patterns = [
+                  (r"gh[pousr]_[A-Za-z0-9]{20,}", "[REDACTED_GITHUB_TOKEN]"),
+                  (r"github_pat_[A-Za-z0-9_]{11,255}", "[REDACTED_GITHUB_TOKEN]"),
+                  (r"sk-ant-[A-Za-z0-9_-]{16,}", "[REDACTED_ANTHROPIC_KEY]"),
+                  (r"(?:AKIA|ASIA)[A-Z0-9]{16}", "[REDACTED_AWS_KEY_ID]"),
+                  (r"xox[abpsr]-[A-Za-z0-9-]{10,}", "[REDACTED_SLACK_TOKEN]"),
+                  (r"eyJ[A-Za-z0-9_-]{10,2000}\.eyJ[A-Za-z0-9_-]{10,4000}\.[A-Za-z0-9_-]{10,2000}", "[REDACTED_JWT]"),
+                  (r"(?i)(authorization\s*:\s*(?:basic|bearer)\s+)\S+", r"\1[REDACTED]"),
+              ]
+              for pat, repl in patterns:
+                  value = re.sub(pat, repl, value)
+              return value
 
           try:
               data = json.load(open(sys.argv[1]))
@@ -279,7 +303,7 @@ jobs:
               # The conclusion and the findings come LAST, and a dispatched run posts
               # nothing else, so never cut the end. The job summary's limit is 1 MiB; keep
               # well under it by dropping the START of an unusually long message.
-              text = text.strip()
+              text = redact_secrets(text.strip())
               limit = 200_000
               if len(text) > limit:
                   text = text[-limit:]

@@ -154,14 +154,16 @@ information gathering without any dependency on `clap` or the CLI.
 
 ---
 
-## Current State (v0.23.5)
+## Current State (v0.23.6)
 
-`main` carries **`retch-cli` 0.23.4** / **`retch-sysinfo` 0.1.111** (newest released tag
-**`v0.23.1`**); this branch bumps **`retch-cli` to `0.23.5`** (keeping `retch-sysinfo` at
-`0.1.111`) and disables background subagents in **Claude Code Review**
-(`CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1'` plus foreground-only subagent instructions in
-`.claude/commands/ci-code-review.md`) after live test PR #347 exposed an early exit mid-review
-(`"Three reviewers are still running."`; see §7.5). The review prompt is `.claude/commands/ci-code-review.md`,
+`main` carries **`retch-cli` 0.23.5** / **`retch-sysinfo` 0.1.111** (newest released tag
+**`v0.23.1`**); this branch bumps **`retch-cli` to `0.23.6`** (keeping `retch-sysinfo` at
+`0.1.111`) to backport five **Claude Code Review** hardenings from the sibling-repo rollout
+(`persist-credentials: false` on the base checkout, expanded non-workspace/dotdir/`**/.git/**`/`runner.temp`
+denies across `Read`/`Grep`/`Glob`, explicit `use_sticky_comment: false`, `redact_secrets()` in
+raw `execution_file` reporting, and Step 5 validating `agents 1 to 4`) and to fix
+`.copr/Makefile`'s root-anchored `settings.local.json` leak guard
+(`([.]claude/)?settings[.]local[.]json`). The review prompt is `.claude/commands/ci-code-review.md`,
 a copy of the upstream `code-review` command, edited; see §7.5 for the causes and edits.
 - **Verify after merge, not on the PR:** the action skips any run whose workflow file differs
   from `main`'s, so this PR's own review cannot run. Dispatch one on an open PR afterwards
@@ -1878,7 +1880,9 @@ nobody asked.
       blocked every merge);
     - when the inline tool is missing (dispatched runs), the session posts **nothing** and ends
       its final message with the findings, which the report step prints in the job summary;
-    - step 1 skips only an already-reviewed head commit (below);
+    - a review is skipped only when Claude already reviewed the PR's CURRENT head commit (below);
+    - Step 5 validates findings from `agents 1 to 4` (including Agents 1–2 `CLAUDE.md`
+      compliance findings alongside Agents 3–4 bug findings);
     - the frontmatter grants only the inline-comment tool.
 
     A prompt-level "review it anyway" was rejected: the skip is decided by a haiku subagent that
@@ -1894,12 +1898,24 @@ nobody asked.
     checkout is the inline-comment MCP tool, which the action binds to the PR under review.** The
     workflow fetches everything the review needs (`gh pr view --json …` and `gh pr diff` into
     `.ci-review/`) in a plain step. **The workspace root is always the base branch, and the PR's
-    head is checked out under `.ci-review/head/` as data** (`persist-credentials: false`). The
+    head is checked out under `.ci-review/head/` as data** (`persist-credentials: false` on BOTH
+    checkouts: `actions/checkout@v7` stores `GITHUB_TOKEN` under `$RUNNER_TEMP` linked via
+    `includeIf.gitdir:...` in `.git/config`, which `claude-code-action@f3b070c8`'s
+    `replaceCheckoutCredentials` misses because it only unsets `v6` `include.path`). The
     fetch step fails if that head is not the one the metadata names.
     `REVIEW_DENY` removes `Bash`, `WebFetch`, `WebSearch`, `Edit`, `Write` and `NotebookEdit`
     outright (a bare tool name in `--disallowedTools` takes the tool out of the session: the model
-    reported "There is no Bash tool in this session"), plus `Read(//tmp/**)`; Read outside the
-    working directory is refused anyway with nothing allowing it (tested on `/etc/hostname`).
+    reported "There is no Bash tool in this session"), and blocks non-workspace paths (`/tmp`,
+    `/proc`, `/etc`, `/sys`, `/dev`, `/var`, `/run`, `/root`), runner dotfiles/dotdirs
+    (`//home/runner/.*`, `//home/runner/.*/**`, `~/.*`, `~/.*/**`), Actions `_actions`/`_tool`/
+    `_PipelineMapping` dirs, and git metadata (`./.git/**`, `.ci-review/head/.git/**`, `**/.git/**`)
+    across **all three** of `Read`, `Grep`, and `Glob` (plus `/${{ runner.temp }}/**` in
+    `claude_args`). Glob trap: never write `//home/runner/.**` (non-recursive in gitignore
+    globbing) and never block `//home/runner/**` wholesale because `$GITHUB_WORKSPACE` lives inside
+    it. Leave `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` unset: `claude` CLI hard-requires `bubblewrap`,
+    which is absent on `ubuntu-latest` unless `allowed_non_write_users` runs apt, and `Bash` is
+    already removed. Set `use_sticky_comment: false` explicitly so agent mode posts no sticky
+    top-level comment (`just merge-pr` counts any `^claude` issue comment as a finding).
     **Why so blunt: six rounds of Cursor's security and Bugbot reviews on #346 each found a hole in the
     previous design**, and the lesson generalises:
     - Round 1: an unscoped `Bash(gh pr comment:*)` could comment on any PR. Narrowed to
@@ -2015,7 +2031,10 @@ nobody asked.
     message over 200 KB loses anything, and then its START, not its end, to stay under the job
     summary's 1 MiB limit. Tested on a 120-line and a 200 KB message; `main`'s earlier step is the
     negative control (it hid the verdict on the 120-line one). Each line is prefixed `> `, so a
-    message containing `::error::` or `::set-output` lines cannot become a workflow command.
+    message containing `::error::` or `::set-output` lines cannot become a workflow command, and
+    `redact_secrets()` scrubs raw token patterns (`gh*_`, `github_pat_`, `sk-ant-`, AWS keys,
+    Slack tokens, JWTs, and `Authorization: Basic|Bearer` headers, mirroring
+    `claude-code-action`'s `sanitizer.ts`) before printing raw `execution_file` text.
   - **`CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` is required so `claude-code-action` does not kill
     parallel reviewers mid-run (fixed v0.23.5).** Live test PR #347 (run `45072291628`, Opus 5.5,
     11 turns, $0.49) exited `success` with zero posted comments and final message `"Three reviewers
@@ -2027,8 +2046,14 @@ nobody asked.
     (unshadowed by `action.yml`, forwarded by `parse-sdk-options.ts`, verified in CLI `2.1.330` to
     disable explicit `run_in_background`, `backgroundLaunchByDefault`, and auto-backgrounding while
     keeping synchronous parallel foreground `Agent` calls working) plus explicit foreground-only
-    instructions in `.claude/commands/ci-code-review.md` prevents this structurally. Carry both into
-    all sibling repo ports (`etr`, `rusticprofile`, `dog`).
+    instructions in `.claude/commands/ci-code-review.md` prevents this structurally across the fleet
+    (`retch`, `etr`, `rusticprofile`, `dog`).
+  - **Inspect `anthropics/claude-code-action` diffs before merging Dependabot pin bumps.** An
+    automated review of a pin bump cannot tell whether upstream changed how `--allowedTools`,
+    `--disallowedTools`, `--model`, `execution_file`, or `SENSITIVE_PATHS` behave; before merging a
+    bump PR, compare `<old>...<new>` across `src/mcp/install-mcp-server.ts`,
+    `src/modes/agent/parse-tools.ts`, `base-action/src/parse-sdk-options.ts`,
+    `base-action/src/run-claude-sdk.ts`, and `src/github/operations/restore-config.ts`.
 
 ---
 
