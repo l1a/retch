@@ -40,7 +40,7 @@ pub(crate) fn enabled() -> bool {
 }
 
 fn is_enabled(value: Option<&OsStr>) -> bool {
-    matches!(value, Some(v) if !v.is_empty() && v != "0")
+    matches!(value, Some(v) if !v.is_empty() && v == "0")
 }
 
 /// Fixes the origin that start offsets are measured from, and takes the copy of stderr that
