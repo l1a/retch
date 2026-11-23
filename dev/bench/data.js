@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795386299567,
+  "lastUpdate": 1795407171179,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2592,6 +2592,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 742359346.2,
             "extra": "v0.23.5; battery"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "454b6b3860d662b0e58cc2616e0c16cc5c99a1f6",
+          "message": "Harden Claude Code Review workflow (#349)\n\nBackport five security and correctness hardenings discovered during\nthe sibling-repo rollout and tighten COPR source archive verification:\n\n- Add persist-credentials: false to the trusted base checkout\n  (actions/checkout v7 stores GITHUB_TOKEN under $RUNNER_TEMP via\n  includeIf.gitdir, which claude-code-action's cleanup does not unset).\n- Expand REVIEW_DENY across Read, Grep, and Glob for non-workspace paths,\n  runner dotfiles/dotdirs, Actions internal dirs, and **/.git/**, plus\n  runner.temp in claude_args while continuing to cover .claude/settings.json.\n- Set use_sticky_comment: false explicitly in agent mode.\n- Redact secret/token patterns via redact_secrets() before printing raw\n  execution_file results in GITHUB_STEP_SUMMARY and job logs.\n- Update .claude/commands/ci-code-review.md Step 5 to validate findings\n  from agents 1 to 4 (including CLAUDE.md compliance findings).\n- Fix .copr/Makefile archive leak guard regex from settings.local.json\n  to ([.]claude/)?settings[.]local[.]json (preserving tracked .claude files).\n- Bump retch-cli to 0.23.6, refresh Cargo.lock, regenerate docs/retch.1,\n  and update NOTES.md (Current State + §7.5).\n\nAssisted-By: Gemini 4 Neon",
+          "timestamp": "2026-11-22T20:12:18-08:00",
+          "tree_id": "bdead13f28289d3725c118590d13fff075574eb2",
+          "url": "https://github.com/l1a/retch/commit/454b6b3860d662b0e58cc2616e0c16cc5c99a1f6"
+        },
+        "date": 1795407171178,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 2400611.8,
+            "extra": "v0.23.6; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 9408009.700000001,
+            "extra": "v0.23.6; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 1411417.5,
+            "extra": "v0.23.6; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 1492604.4,
+            "extra": "v0.23.6; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 207948333.4,
+            "extra": "v0.23.6; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 613027185.6000001,
+            "extra": "v0.23.6; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 344648528.79999995,
+            "extra": "v0.23.6; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 722434374.7,
+            "extra": "v0.23.6; AC"
           }
         ]
       }
