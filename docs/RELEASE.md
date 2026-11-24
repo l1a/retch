@@ -16,15 +16,15 @@ Loaded on demand before tagging, publishing, updating the wiki/README/tldr, or e
 ---
 
 ## 2. Packaging Architecture (Zero-Drift Templates)
-- **Single source of truth:** `packaging/metadata.toml` governs crates.io, AUR (`retch`), COPR (`kentobias/retch`), Homebrew (`l1a/homebrew-retch`), Scoop (`l1a/scoop-retch`), Nixpkgs (`packaging/nixpkgs/package.nix`), and GitHub About metadata (`just github-metadata`).
-- **Templates:** `packaging/aur/PKGBUILD`, `packaging/copr/retch.spec`, `packaging/homebrew/retch.rb`, `packaging/scoop/retch.json`, and `packaging/nixpkgs/package.nix` carry `@VERSION@` / `@SHA256@` / `@SRC_HASH@` / `@CARGO_HASH@` sentinels rendered at publish time (`scripts/render_packaging.py`). **Never commit concrete versions or checksums, and never put literal `@TOKEN@` placeholders in `#` comments** (substituting 64-char SHAs breaks `brew audit --strict`'s 118-char `Layout/LineLength` limit).
-- **Nixpkgs / Home Manager:** Darwin Home Manager module writes `home.file."Library/Application Support/retch/config.toml"` (matching `dirs::config_dir()` on macOS). No CI job evaluates the flake; validate locally with `lib.evalModules` in `nixos/nix` if edited.
-- **Offline checks (`just check`):** `standard-check`, `man-check`, `packaging-check` (`render-check`, `aur-check`, `copr-check`, `brew-check`, `scoop-check`, `nix-check`, `metadata-check`), `bench-check`, `text-check`, `wip-check`.
+- **Single source of truth:** `packaging/metadata.toml` governs crates.io, AUR (`retch`), COPR (`kentobias/retch`), Homebrew (`l1a/homebrew-retch`), Scoop (`l1a/scoop-retch`), and GitHub About metadata (`just github-metadata`).
+- **Templates:** `packaging/aur/PKGBUILD`, `packaging/copr/retch.spec`, `packaging/homebrew/retch.rb`, and `packaging/scoop/retch.json` carry `@VERSION@` / `@SHA256@` sentinels rendered at publish time (`scripts/render_packaging.py`). **Never commit concrete versions or checksums, and never put literal `@TOKEN@` placeholders in `#` comments** (substituting 64-char SHAs breaks `brew audit --strict`'s 118-char `Layout/LineLength` limit).
+- **Offline checks (`just check`):** `standard-check`, `man-check`, `packaging-check` (`render-check`, `aur-check`, `copr-check`, `brew-check`, `scoop-check`, `metadata-check`), `bench-check`, `text-check`, `wip-check`.
 
 ---
 
 ## 3. Releasing & Publishing Sequence
 A release requires **no version bump and no packaging commit** (`main` stays at the released version until the next PR bumps it).
+- **Before tagging:** Read the READMEs and channel text (`packaging/metadata.toml`, COPR description, `crates/sysinfo/README.md`) for claims that are no longer true — `metadata-check` proves the copies agree, not that they are right.
 
 ```bash
 git checkout main && git pull --ff-only && git status --porcelain   # must be clean
@@ -44,5 +44,5 @@ just github-metadata                                              # sync About b
 ## 4. CI, Benchmarks & Claude Code Review Notes
 - **Continuous Benchmarking (`benchmark.yml`):** 5 platform jobs run in parallel (`skip-fetch-gh-pages: true`, single `git fetch` + `git push` in `publish`), `comment-on-alert: false` (runner swaps swing up to ~6x; track `retch / fastfetch` ratio on `benches/dashboard/`, updated via `just bench-page`). `on.push.paths` intentionally omits root `Cargo.toml`/`Cargo.lock` — use `workflow_dispatch` for root-only dependency bumps.
 - **After every merge to `main`:** Confirm the `benchmark.yml` run for that `headSha` concluded `success` and `gh-pages` has the new points. Note local `scripts/hooks/post-merge` runs hyperfine and pushes on `git pull` (`GIT_NO_BENCH=1 git pull` skips it).
-- **`Claude Code Review` (`claude-code-review.yml` + `.claude/commands/ci-code-review.md`):** Keep `CLAUDE_CODE_OAUTH_TOKEN` synced in **both** GitHub Actions secrets and Dependabot secrets (`claude setup-token` rotates both). See `~/.agents/docs/ops/rust-ci-packaging.md` §1 for the full security-hardening spec.
+- **`Claude Code Review` (`claude-code-review.yml` + `.claude/commands/ci-code-review.md`):** Keep `CLAUDE_CODE_OAUTH_TOKEN` synced in **both** GitHub Actions secrets and Dependabot secrets. Regenerate with `claude setup-token` (from a real terminal), then set **both** stores manually; Dependabot-triggered runs see only the Dependabot copy, and an empty/stale secret fails silently. See `~/.agents/docs/ops/rust-ci-packaging.md` §1 for the full security-hardening spec.
 - **Interactive `@claude` (`claude.yml`):** Keeps `--permission-mode acceptEdits` explicitly so `--allowedTools` stays a strict boundary.
