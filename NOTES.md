@@ -162,6 +162,10 @@ Diffing `sudo retch --full` against plain `retch --full` is apples-to-oranges (`
 - **COPR token (`~/.config/copr`):** Expires **2027-02-27** — renew CLI token and GitHub repo secrets together.
 - **See `docs/RELEASE.md` & `~/.agents/docs/ops/rust-ci-packaging.md`** for full packaging, AUR, COPR, Homebrew, Scoop, and Claude Code Review details.
 
+### 7.5 CI & Claude Code Review Hardening
+- **Two-checkout isolation & fork guard (#346/#349):** `claude-code-review.yml` checks out the API-resolved base branch at workspace root and the PR head under `.ci-review/head/` with `persist-credentials: false` on both (narrower designs tried on #346 leaked credentials or workspace rules). Cross-repo PRs are refused before checkout, and `.ci-review/head/` is stripped of `CLAUDE*.md`, `AGENTS.md`, `.claude/`, `.claude.json`, and `.mcp.json`.
+- **Tool boundary & foreground subagents (#347/#349):** Pin `--model claude-opus-5-5` (Sonnet skips subagents while still reporting clean), `--permission-mode default` with `--allowedTools` scoped solely to `mcp__github_inline_comment__create_inline_comment`, `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` (prevents `claude-code-action` from exiting on the first result while subagents are still running), and `use_sticky_comment: false` (clean runs post no top-level comment). Interactive `claude.yml` pins `--permission-mode acceptEdits` explicitly so `--allowedTools` remains a strict boundary.
+
 ---
 
 ## 8. Dependencies (`Cargo.toml`)
