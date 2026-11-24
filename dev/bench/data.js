@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795407171179,
+  "lastUpdate": 1795530228926,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2664,6 +2664,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 722434374.7,
             "extra": "v0.23.6; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "d4bb6c83028a59be48f753b3aa4f52883581d2a0",
+          "message": "chore: compact AGENTS and NOTES into Tier 0/1 (#351)\n\n* Compact AGENTS and NOTES into Tier 0/1\n\nCompact AGENTS.md and NOTES.md, extract release/packaging/CI checklists into docs/RELEASE.md, and bump retch-cli to 0.23.7.\n\nAssisted-By: Gemini 4 Neon\n\n* Address Claude Code Review doc comments\n\n* Restore concise NOTES.md §7.5 workflow rationale\n\n* Document ci-code-review.md edits in NOTES.md §7.5",
+          "timestamp": "2026-11-24T06:23:12-08:00",
+          "tree_id": "c8c63710236f8bc728803bc5a8126eeb8f48895b",
+          "url": "https://github.com/l1a/retch/commit/d4bb6c83028a59be48f753b3aa4f52883581d2a0"
+        },
+        "date": 1795530228926,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 2822958.2000000007,
+            "extra": "v0.23.7; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 10222672.7,
+            "extra": "v0.23.7; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 1920984.7,
+            "extra": "v0.23.7; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 1988606.2000000004,
+            "extra": "v0.23.7; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 208473345.5,
+            "extra": "v0.23.7; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 615777765.7,
+            "extra": "v0.23.7; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 455037035.3000001,
+            "extra": "v0.23.7; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 728771854.4,
+            "extra": "v0.23.7; AC"
           }
         ]
       }
