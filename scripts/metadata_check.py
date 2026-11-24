@@ -49,7 +49,7 @@ WHAT IT IS NOT
 --------------
 It does not judge whether the prose is TRUE -- a README can agree with itself and still name a
 flag that does not exist, which is what the v0.17.9 review also found. That is a human review
-before tagging, and AGENTS.md §4.9 says so.
+before tagging, and docs/RELEASE.md §3 says so.
 """
 
 from __future__ import annotations

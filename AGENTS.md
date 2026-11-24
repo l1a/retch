@@ -1,390 +1,71 @@
-# AI Agent Guidelines (AGENTS.md)
+# AI Agent Guidelines (`AGENTS.md`) — `retch`
 
-Welcome! This file contains project-specific guidelines, constraints, and instructions for
-all AI assistants (Gemini, Claude, etc.) contributing to the **retch** project.
-
-This file has two parts:
-
-- **Part 1 — Portable Core**: rules that are identical across all of Ken's repos using this
-  pattern (currently `etr`, `retch`, `rusticprofile`, and `dog`). If you change wording here, propagate the same
-  change to the Portable Core section in sibling repos so they stay in sync.
-- **Part 2 — Project-Specific**: rules that only make sense for `retch`.
+Welcome! This file governs all AI assistants (`Claude`, `Gemini`, etc.) contributing to **retch**.
 
 ---
 
-# Part 1 — Portable Core
+# Part 1 — Core Rules
 
-## STEP ONE — READ EVERY INSTRUCTION FILE IN FULL BEFORE ANYTHING ELSE (NO EXCEPTIONS)
+## STEP ONE — READ IN FULL BEFORE ANYTHING ELSE
+1. **Read `~/AGENTS.md` (if present), this file (`AGENTS.md`), `NOTES.md`, and `WIP.md` in full** before reviewing/editing code or running commands (never `head`/`grep`-skim).
+2. **Load Tier 1 docs on trigger:** Read `docs/RELEASE.md` in full before tagging, releasing, or editing packaging/wiki/CI workflows; read `~/.gemini/skills/chezmoi-manager/SKILL.md` in full before any `chezmoi` command.
+3. **Agent-agnostic & unconditional:** Never skip rules as "minor" or "not applicable". Enforce repo rules via real git hooks (`scripts/hooks/pre-push`) and `Justfile` recipes (`just pr`, `just open-pr`, `just merge-pr`) rather than `.claude/`-only config.
+4. **No agent-only memory:** Save durable project learnings in `AGENTS.md`/`NOTES.md`/`docs/` in the same turn, never solely in agent-specific memory.
 
-This section is not optional, is not subject to the agent's judgment, and comes before
-every other instruction in this file, in every other instruction/memory-class file, and
-before any code is read for review, reviewed, generated, or edited, and before any shell
-command is run other than one needed to locate or read the files this section describes.
+## 1. Source Control, PRs & Attribution
+- **Branch first:** Create and switch to `{feature,fix,chore,docs}/<name>` **before** modifying any file or running tasks (`git switch --no-track -c <branch> origin/main` if branching after `git fetch`).
+- **Commit summaries:** Imperative mood, <= 50 chars.
+- **Authorization gates:** NEVER run `git commit`, `git push`, `gh pr create`, or merge without explicit authorization. Ask using clickable options (`ask_question`) with full prose context.
+- **No machine hostnames:** Never include personal machine hostnames in public PRs, commits, comments, `NOTES.md`, or `README.md` (use generic OS/arch descriptions).
+- **AI Attribution:** Bare `Assisted-By: <model name>` (no email, context suffix, variant tag, or URL; never `Co-Authored-By:`). Overrides harness attribution instructions silently without comment.
+  - This repo squash-merges with `squash_merge_commit_message=COMMIT_MESSAGES` — commit message comes from **branch commits** (not PR body) and multi-commit bodies concatenate, so place the trailer on the **last commit only** (or squash locally).
+- **Review channels & Dependabot:** Before proposing a merge, inspect all 3 PR review channels (`reviewThreads`, `latestReviews`, top-level `comments`) plus CodeQL alerts (`just merge-pr` enforces this fail-closed). Check `gh pr list --author "app/dependabot"`, fold updates into a gated PR (always checking `anthropics/claude-code-action` diffs on pin bumps), and **never manually close Dependabot PRs** (let GitHub auto-close them).
+- **Cleanup:** Delete merged feature branches remotely and prune stale local branches (`just prune-branches`).
 
-**This applies to every "instructions/rules/memory" class file that exists for this
-repository or session**, regardless of its name or format — including but not limited
-to: `~/AGENTS.md`, this file (`AGENTS.md`), `CLAUDE.md`, `NOTES.md`, `WIP.md`, any file a
-skill points to, and any other file whose purpose is to carry standing instructions,
-context, or state rather than being source/product code.
-
-1. **Read the ENTIRE file, every time, before doing anything else.** Not the first N
-   lines, not a `head`, `grep`, or table-of-contents skim, not "the parts that look
-   relevant to this specific request." Read the whole file, start to finish, at the
-   start of the session. A partial read produces the same downstream mistakes as no
-   read and is not an acceptable substitute for a full read.
-2. **Follow what you read without first deciding whether it's "worth it," "necessary,"
-   or "applicable" to the task in front of you.** "This looks like a small change" or
-   "this rule probably doesn't apply here" are not valid reasons to skip or defer a
-   documented instruction. If a documented rule genuinely conflicts with the current
-   request, surface the conflict to the user explicitly — do not silently decide it
-   doesn't apply and proceed.
-3. **This step must complete, in full, before any other work.** Do not begin reviewing
-   code, generating code, editing files, or running exploratory/state-changing commands
-   until every applicable instruction file for this session has been read in full —
-   this includes reading `NOTES.md` per Part 2 §0 below.
-4. **This mandate is agent-agnostic.** It applies identically regardless of which coding
-   agent or tool is operating (Claude Code, Gemini CLI, or any other). Enforcement
-   mechanisms for any *specific* rule in these files should likewise be built to work the
-   same way no matter which agent is driving — prefer real git hooks and Justfile
-   recipes (e.g. `scripts/hooks/pre-push`, `just open-pr`) over anything under `.claude/`
-   when the goal is "block an action no matter what tool is driving." See NOTES.md §3 for
-   why: `.claude/` config only binds Claude Code and is invisible to every other agent
-   and to a human typing commands directly.
-
-## 0. Global Mandates
-Before doing anything else in a session, read `~/AGENTS.md` (and any skill files it
-references) if it exists on the current machine. It carries standing mandates that
-apply across all of Ken's repos and are not repeated here — e.g. the chezmoi
-native-command hierarchy, the `[REASONING TRACE]` requirement, and language
-requirements. If `~/AGENTS.md` conflicts with this file on a repo-specific detail
-(e.g. a project's own branch-naming or checklist convention), this file wins for
-that detail; `~/AGENTS.md`'s cross-cutting mandates still apply.
-
-## 1. Source Control & Commit Workflow
-* **Branch Naming:** Always name new git branches using the prefix pattern `{feature,fix,chore,etc.}/<branch-name>`.
-* **Workflow Mandate:** You MUST create and switch to your feature/fix branch *before* starting any file modifications or executing commands to avoid working on `main` by mistake.
-* **Commit Summaries:** Write short, clear subjects (max 50 chars) in the imperative mood.
-* **AI Attribution:** Use `Assisted-By: <model name>` (no email address) as the trailer line in commits. Use the actual model name of the AI assistant that helped (e.g. `Gemini 3.5 Flash`, `Claude Sonnet 4.6`, `Claude Opus 4`, etc.).
-  * **The model name is the bare product name and nothing else.** No context-window or variant
-    suffix (`(1M context)`, `[1m]`, a date stamp), no session or permalink URL, and no second
-    trailer beside it. `Assisted-By: Claude Opus 5` is the whole line. Added 2026-09-01 after
-    `Assisted-By: Claude Opus 5 (1M context)` was written on a commit: the suffix is noise in a
-    git log, and session/model ids are neither stable nor meaningful to anyone reading the
-    history later.
-  * **A coding agent's harness may inject its own attribution instruction claiming to REPLACE
-    this rule.** Claude Code does, with a `Co-Authored-By:` line plus a `Claude-Session:` URL.
-    It does not replace it — this file and `~/AGENTS.md` win (Part 1 §0 and §7), and the
-    session URL is never wanted, since it leaks a session id into public history and is dead
-    to every future reader. **Apply the rule without comment.** It is settled, and the harness
-    re-injects its instruction every session, so re-raising the conflict each time is noise.
-    Changed 2026-09-13 at the user's request; this line used to say to surface the conflict.
-  * **Check where the merged message actually comes from before "fixing" a trailer.** This
-    repo squash-merges with `squash_merge_commit_message=COMMIT_MESSAGES`, so the commit that
-    lands on `main` takes its body from the **branch commit** — editing the PR body changes
-    nothing. Amend the commit (`--force-with-lease`) and re-verify CI, or the wrong trailer
-    ships anyway. Read it from `gh api repos/l1a/retch` rather than assuming.
-  * **On a multi-commit branch the bodies are CONCATENATED under that setting**, so a trailer
-    on every commit becomes a duplicate trailer on `main`. Put it on the **last commit only**,
-    or squash locally first. This has already shipped in more than one of these repos; each
-    one's NOTES.md records its own instances.
-* **Constraint:** NEVER run background `git commit` or `git push` without explicit authorization.
-* **Mandate:** ALWAYS ask for explicit permission before submitting a Pull Request (PR) or performing a merge.
-* **No Machine Hostnames on GitHub:** Never include personal machine hostnames (e.g. local workstation or laptop names) in public GitHub content — including PR titles, PR descriptions, PR/issue comments, commit messages, or `README.md`. Describe hardware and OS generically instead (e.g. `Fedora 44 x86_64`, `macOS Arm64`, `Windows 11 x86_64`).
-* **Inspect All Security/Bug Scanner and Review Bot Feedback Before Merging:** Automated security/bug scanners and review bots (`Claude Code Review`, `Cursor Bugbot`, `Cursor Security Agent`, `CodeQL`, etc.) post findings across three distinct channels — inline pull request review threads (`reviewThreads`), PR reviews (`latestReviews` with `state: "COMMENTED"` or `"CHANGES_REQUESTED"`), and top-level PR issue comments (`comments`, e.g. `claude[bot]`'s sticky review comment) — while often setting their GitHub Check Run conclusion to `SUCCESS` or `NEUTRAL`. Therefore, `gh pr checks` and `statusCheckRollup` can report all checks non-failing even when real bug or security findings were posted on the PR. Before asking to merge any PR, ALWAYS inspect all three channels (plus any CodeQL check-run annotations) and address all real findings; `just merge-pr` enforces this fail-closed via GraphQL by refusing to merge when unresolved `reviewThreads`, `CHANGES_REQUESTED` `latestReviews`, or top-level bot `comments` (`claude`, `cursor`, `github-advanced-security`, `codeql`) are present unless `MERGE_ALLOW_COMMENTS=1` is explicitly set after verification.
-* **Review and Address Open Dependabot PRs Before Merging:** Before merging a PR (or during maintenance sweeps), check for open Dependabot PRs (`gh pr list --author "app/dependabot"`). Dependabot PRs are never merged directly (they lack our required version bump, `NOTES.md` update, and `just pr` gate); instead, review what Dependabot found (workflows and Cargo dependencies), fold or expand the updates into our gated PR, verify they compile and pass all tests/advisories (`cargo audit`), and let GitHub auto-close the Dependabot PRs once `main` carries the update.
-* **Branch Cleanup:** Delete feature branches from the remote after they are merged. Periodically prune abandoned branches that were never PRed.
-
-## 2. Engineering Philosophy & Safety
-* **Cognitive Circuit Breaker:** Before modifying files or running commands, identify if target files are managed by `chezmoi` (except if located in `~/git` or `~/Sync/git`). If managed, prioritize chezmoi native commands.
-* **Chezmoi — do not improvise, ever:** Read `~/.gemini/skills/chezmoi-manager/SKILL.md`
-  in full before running any `chezmoi` command or touching any chezmoi-managed file
-  (`chezmoi managed <path>` to check), if it hasn't been read yet this session — this
-  applies even when the target path is under `~/git`/`~/Sync/git` and the circuit-breaker
-  preamble above is exempted; the skill itself is not optional once a file is confirmed
-  chezmoi-managed. This is not hypothetical caution: it has already gone wrong twice —
-  once badly enough that the chezmoi source git repo desynced and required multiple
-  reverts and cherry-picks to recover, and again when `chezmoi add` was run without
-  `CHEZMOI_COMMIT_MSG` and hung on an interactive prompt with no TTY to answer it. Both
-  mistakes, and their fixes, are already documented in the skill and don't need
-  rediscovering by trial and error:
-  - Modify at the destination path, then `CHEZMOI_COMMIT_MSG="message" chezmoi add
-    <destination-path>` — never bare `chezmoi add`.
-  - Never `chezmoi git -- add/commit/push`; prefer native `chezmoi status`/`chezmoi diff`
-    over raw `git -C <chezmoi-source-path> ...` even for read-only checks. The
-    `ALLOW_CHEZMOI_GIT=1` git-hook bypass is "human only" — never set it yourself.
-  - For `.tmpl` files, use `chezmoi edit <destination>` with `VISUAL`/`EDITOR` set to a
-    non-interactive command (e.g. `cp`), never an interactive editor.
-  - One improvised command succeeding is not evidence improvisation is safe — the base
-    rate includes the desync incident above.
-* **Absolute Accuracy:** Absolute accuracy is the primary metric. Speed is irrelevant.
-* **The Reasoning Trace:** Before implementing any multi-file change, you MUST output a `[REASONING TRACE]` covering Invariants, Subsystem Impact, and Edge-Cases.
-* **Empirical Validation:** Test changes locally (compilation, lints, formatting, and unit tests) before proposing a push. See Part 2 §4 for this project's full Pre-PR Checklist and automated gate.
-
-## 3. Cross-Machine Work Handoff (WIP.md)
-Any agent starting a session on a repository utilizing cross-machine sync MUST read `WIP.md` before doing anything else.
-* **Purpose:** `WIP.md` is a `.gitignored` file synced via Syncthing/Insync to carry context that cannot be inferred from git history alone (what is partially done, machine specs, active branch, next-step checklists, caveats).
-* **When to Update:**
-  * When switching to a new branch (clear old content, write new context).
-  * Before switching machines or ending a session.
-  * After pushing commits that change the state of the work.
-  * After a PR is merged (set `Active Branch: none (main is current)`).
-  * Whenever the next-step checklist changes.
-* **What to Include:**
-  1. **Machine**: OS, distro, and architecture of the last saved state (e.g. `Linux Fedora 44 x86_64`).
-  2. **Active branch name** and PR URL (if open).
-  3. **Latest commit hash** and message.
-  4. **What was implemented**: Concise description of new/modified files.
-  5. **Bugs fixed**: What went wrong and how it was resolved.
-  6. **Current CI state**: Passing/failing.
-  7. **Open tasks**: Checkbox list of remaining work.
-  8. **How to resume**: Exact shell commands to check out, build, and verify.
-  9. **Why this work**: Motivating context.
-* **What NOT to Include:** Full code diffs, large file contents, detailed architecture docs.
-
-## 4. Continuous Learning Loop
-At the conclusion of any task involving a specific skill:
-1. Did you encounter a failure, edge case, or nuance not currently documented in the skill?
-2. Did the user have to correct your workflow?
-3. If YES to either, you MUST automatically update the corresponding `SKILL.md` file with the new learning and synchronize the change before declaring the task complete.
-
-**Learnings belong in `AGENTS.md` (this file, `~/AGENTS.md`, or the relevant
-`SKILL.md`), never in an agent-specific memory/preference store.** Tools like Claude
-Code's auto-memory or Gemini's session memory are invisible to every other agent, and to
-a fresh session of the *same* agent elsewhere. Saving a correction only there means the
-next agent — or the same agent next time — re-learns it the expensive way. If an
-agent-specific memory feature also gets used as a convenience cache, the durable copy of
-the learning MUST still land in `AGENTS.md`/`SKILL.md` in the same turn, not deferred.
-This file exists specifically so Claude, Gemini, and any other agent working here read
-the same standing knowledge — an agent-specific memory entry does not satisfy that.
-
-## 5. Sandbox Bypass (`BypassSandbox: true`) & Sandbox Learning Loop
-See `~/AGENTS.md` §6 (**Sandbox Bypass & Sandbox Learning Loop**) for the full universal rule. Do NOT run commands that structurally fail inside the `bwrap` sandbox (no network access, `.git/` mounted read-only, `/run/user/1000/just` mounted read-only) with `BypassSandbox: false` first:
-* **Always `BypassSandbox: true` on the first call:**
-  * All `gh` and `ghpub` commands (`gh pr`, `gh issue`, `gh run`, `gh api`, `gh workflow`).
-  * All `git` write or remote operations (`git checkout`, `git switch`, `git branch`, `git add`, `git rm`, `git mv`, `git commit`, `git merge`, `git rebase`, `git cherry-pick`, `git reset`, `git tag`, `git stash`, `git fetch`, `git pull`, `git push`). Read-only git commands (`git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git for-each-ref`) work in the sandbox (`BypassSandbox: false`).
-  * All `just` shebang (`#!/usr/bin/env ...`) and network/publish recipes (`just pr`, `just open-pr`, `just merge-pr`, `just prune-branches`, `just github-metadata`, `just aur-publish` / `just publish-aur`, `just brew-publish` / `just publish-brew`, `just scoop-publish` / `just publish-scoop`).
-  * All `chezmoi` commands and network-bound `cargo` commands (`cargo update`, `cargo fetch`, `cargo publish`, `cargo audit` when updating the advisory DB).
-* **Repo-Local Sandbox Learning Loop:**
-  1. **Read before running:** Check Part 1 §5 and Part 2 §6 (plus any staged entries in `WIP.md`) at session start and pass `BypassSandbox: true` on the **first** invocation for every listed command/recipe.
-  2. **Learn on first failure (never fail twice on the same sandbox boundary):** If a command run with `BypassSandbox: false` fails because of a sandbox boundary (`Read-only file system`, `Could not resolve host`, `no connections available`, `Permission denied` on a non-workspace path/socket, or unmounted interpreter), immediately re-run with `BypassSandbox: true` (do not retry with `BypassSandbox: false`).
-  3. **Clean-tree staging (`WIP.md`):** If a new repo-specific sandbox exception is discovered while on `main` or after a PR's final commit is already pushed and waiting to merge (where modifying tracked `AGENTS.md` would dirty the working tree or invalidate CI checks), record it immediately in `WIP.md` under `## Sandbox Exceptions (staged for AGENTS.md)`.
-  4. **Fold into `AGENTS.md` on the next PR:** Promote any staged entries from `WIP.md` into Part 2 §6 of `AGENTS.md` (or `~/AGENTS.md` §6 if universal) in the very next commit/PR and remove the staged section from `WIP.md`.
+## 2. Engineering Safety & `WIP.md` Handoff
+- **Accuracy > speed.** Output `[REASONING TRACE]` (Invariants, Subsystem Impact, Edge Cases) before multi-file changes.
+- **Task runners:** Use `Justfile` recipes (`just check`, `just test`, `just pr`, `just open-pr`, `just merge-pr`) — never bypass `just open-pr` with raw `gh pr create`.
+- **Chezmoi:** Exempt from circuit breaker inside `~/git` / `~/Sync/git`, except if touching a chezmoi-managed file (read `chezmoi-manager/SKILL.md` first).
+- **`WIP.md` (`.gitignored`, Syncthing-synced):** Read at session start; update outside the `<!-- BEGIN merge-pr state -->` / `<!-- END merge-pr state -->` markers when switching branches, pushing, ending a session, or changing tasks (`just merge-pr` regenerates the marked block). Keep pure LF (`just wip-check`). Never run `git clean -fdx` without `--exclude=WIP.md --exclude=.claude`.
 
 ---
 
-# Part 2 — Project-Specific: retch
+# Part 2 — Project-Specific: `retch`
 
-## 0. Start of session — required reading
+## 1. Overview & Tier 1 Triggers
+`retch` is a fast system information fetcher written in Rust (`retch-cli` binary `retch`, plus `crates/sysinfo` library `retch-sysinfo`). Config dir: `$XDG_CONFIG_HOME/retch` (Linux), `~/Library/Application Support/retch` (macOS), `%APPDATA%\retch` (Windows).
 
-**Before doing any work**, read `NOTES.md` in this directory. It is the authoritative
-record of current project state: architecture decisions, known gaps, working features,
-and design intent. Do not rely on git history or code inspection alone — NOTES.md
-captures context that is not in the code.
-
-## 1. Project Overview
-`retch` is a fast, feature-rich system information fetcher written in Rust (published on
-crates.io as `retch-cli`; the binary is `retch`, and its config lives in `retch/` under the
-platform config directory, `~/.config/retch/` on Linux). It runs concurrent hardware/system probes (GPU, display, network,
-audio, Bluetooth, etc.) and renders themed output, including graphical distro logos. See
-NOTES.md for full architecture and current status.
+| Document | Read in full BEFORE... |
+|---|---|
+| `NOTES.md` | Doing any work in this repository (authoritative state, architecture, strata, gaps, lessons) |
+| `docs/RELEASE.md` | Tagging, releasing, editing packaging (`packaging/`), README/tldr/wiki, benchmarks, or CI/Claude-Review workflows |
+| `~/.agents/docs/ops/rust-ci-packaging.md` | Debugging CI gates, AUR/COPR/Homebrew/Scoop publishing, or Claude Code Review internals |
 
 ## 2. Core Developer Guidelines
-* **Safety First:** Avoid `unsafe` Rust unless absolutely necessary for low-level system integrations. If `unsafe` is used, it must be thoroughly documented with safety comments.
-* **Idiomatic Rust:** Follow standard Rust styling, formatting (`rustfmt`), and linting (`clippy`). Prefer standard library constructs and robust, well-established crates.
-* **Testing & Documentation Mandates:**
-  * When writing code, always write the corresponding tests to go with it.
-  * Always document the code clearly as you go.
-  * All new features must include unit or integration tests where applicable.
+- **Safety & Style:** Avoid `unsafe` unless required for OS FFI/syscalls (document every `unsafe` block with `// SAFETY:`); keep `rustfmt` and `clippy --workspace -- -D warnings` clean (`just check` also lints `-p retch-cli --no-default-features`).
+- **Architecture:** Split every detector into a **pure parsing/formatting helper** (unit-tested with captured real fixtures) + thin I/O wrapper (`crates/sysinfo`).
+- **Docs & Tests:** Document `pub` items with `///` (and explain *why* in non-obvious code); add unit/regression tests for every new function/fix and integration tests for new CLI flags/config keys.
+- **Command efficiency:** Prefer `cargo test --workspace` during iteration and `just check` once before staging (both build).
 
-## 3. NOTES.md — update on every commit or push
-Before committing or pushing, update `NOTES.md` to reflect any changes to architecture,
-known gaps, working features, or design decisions made during the session. NOTES.md must
-stay current — a reader picking up the project from NOTES.md alone should have an
-accurate picture.
+## 3. Pre-PR Gate (`just pr` / `just open-pr`)
+Before opening or updating a PR, run `just pr` (or `just open-pr`, which runs `just pr` then `gh pr create`). Two items are **unconditional** on every PR (including doc/test/chore PRs):
+1. **Version bump:** Bump `Cargo.toml` (`retch-cli`, and `retch-sysinfo` if library code changed; patch for fixes/docs/CI/deps, minor for new user-visible features) and refresh `Cargo.lock` (`cargo check --workspace`).
+2. **Man page regen:** Run `just man` (requires `mandown >= 1.1.1`) and commit `docs/retch.1` (`just man-check` verifies both worktree and `HEAD`).
+3. **`NOTES.md` header & rules:** Update `## Current State (v<version>)` header (enforced by `just pr`); update body/gaps (§5/§6/§6a/§6c)/lessons (§7) **only** when state or rules change (`NOTES.md` is not a changelog — delete finished backlog items rather than striking through).
+4. **Automated gate checks:** Feature branch, bumped version, matching `NOTES.md` header, clean `docs/retch.1` & `Cargo.lock`, `just check` (`fmt-check`, `clippy`, `standard-check`, `man-check`, `packaging-check`, `bench-check`, `text-check`, `wip-check`), `cargo test --workspace`, advisory `cargo audit`, plus manual confirmation (`PR_CONFIRM=y` non-interactively after verifying README/wiki/`docs/retch.md`/benchmarks).
 
-## 4. Pre-PR Checklist
-
-Before opening a pull request — and before each subsequent push to an open PR — you
-MUST run `just pr` (or, to open the PR itself, `just open-pr`, which runs `just pr` first
-and only calls `gh pr create` if it passes). It automates most of this checklist and
-hard-fails on the unconditional items; the rest is a manual checklist it prints for you
-to confirm. **Never call `gh pr create` directly** — `gh` has no hook mechanism of its
-own, so `just open-pr` is the one enforcement point that works regardless of which agent
-or human is driving. See NOTES.md's "Pre-PR Gate" and "Git hooks are the actual
-enforcement layer" entries for the full rationale.
-
-### STOP — read this before treating anything as optional
-
-Two items are **unconditional** — they apply to every PR without exception, including
-doc-only, test-only, and chore PRs. There is no "this is just a small change" carve-out,
-and `just pr` will hard-fail the gate if either is missed:
-
-| Step | Why unconditional |
-|------|------------------|
-| **Man page regen (4.4)** | Verifies mandown still builds `docs/retch.1`; the version footer must match the bumped version. `just pr` fails if the regenerated page differs from what's committed. |
-| **Version bump (4.7)** | Every merged PR changes the codebase; the published version must reflect that. Use **patch** for fixes, tests, and doc improvements; **minor** for new user-visible features. `just pr` fails if `Cargo.toml`'s version still matches the last git tag. |
-
-Rationalising either of these away — "it's only docs", "it's only tests", "no behaviour
-changed" — is incorrect. If you find yourself about to skip 4.4 or 4.7, stop and do
-them instead.
-
-NOTES.md (4.6) and the wiki (4.8) are also required on every PR. They must be updated
-**before** the PR is opened, not deferred. AGENTS.md itself must be included in the
-same PR as any change to the checklist — never pushed to `main` as a standalone commit.
-
-### 4.0 Automated gate — `just pr`
-Run `just pr` before opening a PR and before each subsequent push. It runs, in order,
-and hard-fails on the first problem (except the advisory-only audit step, which never
-blocks):
-1. Confirms you are on a feature branch, not `main`.
-2. Confirms `Cargo.toml`'s version has been bumped past the last git tag.
-3. Confirms `NOTES.md` has a `## Current State (v<version>)` header matching the bumped version.
-4. Regenerates the man page (`just man`) and fails if `docs/retch.1` differs from what's committed — regenerate and commit first.
-5. Runs `cargo check` and fails if `Cargo.lock` changed but wasn't committed.
-6. Runs `just check` (`cargo fmt --check` + `cargo clippy --workspace -- -D warnings`).
-7. Runs `cargo test --workspace`.
-8. Runs `cargo audit` (installing `cargo-audit` first if it is not already present)
-   and prints any RustSec advisories. **Advisory only — it does not fail the gate**,
-   because advisories can be newly published against unchanged transitive deps and
-   should not hard-block otherwise-ready work. It mirrors the separate (also
-   non-required) CI `audit` job so you see advisories locally before pushing.
-9. Prints the manual checklist below and requires an explicit `y` confirmation before printing "Gate passed."
-
-### 4.1 Code quality gate
-- [ ] `just check` passes — `cargo fmt --check` + `cargo clippy --workspace -- -D warnings`
-- [ ] `cargo test --workspace` passes — all unit and integration tests green
-
-> **Why `--workspace`:** the root `Cargo.toml` is both the `retch-cli` package and the
-> workspace root, so a bare `cargo test` / `cargo clippy` covers only `retch-cli` and
-> silently skips the `crates/sysinfo` (`retch-sysinfo`) member — where most of the actual
-> system-probing code lives. `--workspace` lints and tests every member. (Target scope is
-> unchanged — lib + bins, not `--all-targets` — so test/bench code is still not linted.)
-
-### 4.2 Tests
-- [ ] Every new public function or non-trivial private function has at least one unit test.
-- [ ] Every bug fix has a regression test that would have caught the original bug.
-- [ ] New user-visible behaviour (new detection field, new CLI flag, new config key) has
-      coverage or an explicit note in the PR explaining why it cannot be tested automatically.
-- [ ] If performance-sensitive code changed, run `just bench` (criterion) or `just bench-cli`
-      (hyperfine) and note the before/after numbers in the PR description.
-
-### 4.3 Inline code documentation
-- [ ] All new `pub` items (functions, structs, enums, traits, modules) have `///` doc
-      comments explaining what they do and any non-obvious invariants.
-- [ ] Every `unsafe` block has a `// SAFETY:` comment explaining why it is sound.
-- [ ] Non-obvious logic inside function bodies has a brief inline comment explaining
-      *why*, not *what*.
-
-### 4.4 Man page
-- [ ] Run `just man` and verify it succeeds (requires `mandown` — `cargo install mandown`).
-- [ ] `docs/retch.1` must be committed — it is not gitignored (unlike etr's `man/build/`).
-
-### 4.5 README.md
-- [ ] If a new user-visible feature, CLI flag, config key, or platform support note was
-      added, update `README.md` accordingly.
-- [ ] If CLI flags changed, check whether `docs/retch.md` / the upstream tldr page needs
-      `just tldr-release`.
-
-### 4.6 NOTES.md
-- [ ] "Current State" header version updated to match the new version (`just pr` enforces this).
-- [ ] "Current State" body updated **only if the change leaves something a future reader needs**
-      — a changed default, a new user-visible behaviour, an open follow-up. Routine changes need
-      nothing here: `git log` is the changelog.
-- [ ] Feature-gap or known-issue list (§6/§6a/§6c) updated: remove completed items, add gaps
-      discovered during the work.
-- [ ] §5 backlog updated: **delete** finished items rather than striking them through.
-- [ ] §7 "Hard-won lessons" updated **if the work leaves behind a rule** — a trap, a gotcha, a
-      check that turned out to answer the wrong question. This is the part of NOTES.md that
-      earns its keep; a PR that found nothing surprising adds nothing here.
-
-> **NOTES.md is not a changelog.** It held a full per-release log until v0.18.1 — ~4,400 lines,
-> which buried everything load-bearing. Do not reintroduce one. If an entry would only say what
-> changed, write a good commit message instead.
-
-### 4.7 Version bump & release hygiene
-- [ ] Bump the version in `Cargo.toml` following semver:
-      patch (`0.x.N+1`) for bug fixes, minor (`0.x+1.0`) for new features.
-      This applies to **PRs**. A *release* needs no bump of its own: after a tag, `main`
-      stays at the released version and the next PR is the thing that bumps (§4.9).
-- [ ] `Cargo.lock` updated (`cargo check` does this automatically) and committed.
-- [ ] `just man` re-run after the bump so the man page version footer is current, and committed.
-- [ ] Before tagging, verify `git status` is completely clean. The tag must only be
-      created from a clean `main`.
-- [ ] `cargo publish` (via `just publish`) must **never** use `--allow-dirty`. If publish
-      requires that flag, stop: something tracked was left uncommitted. Commit or discard
-      it first. Run `just publish-check` (dry-run) before the real `just publish`.
-
-### 4.8 Wiki
-Update the GitHub wiki **before opening the PR** (not deferred to publish time).
-Clone `https://github.com/l1a/retch.wiki.git`, edit the relevant pages, and push:
-- [ ] **Configuration-and-Theming.md** — if config keys, theming, or CLI display flags changed.
-- [ ] **Workspace-Architecture.md** — if module layout, concurrency model, or crate
-      boundaries (`crates/sysinfo`) changed.
-- [ ] **Development-Setup.md** — if `just` recipes, build prerequisites, or the
-      Pre-PR/merge workflow (`just pr`, `just merge-pr`) changed.
-
-### 4.9 Packaging
-- [ ] **There is no post-release packaging PR, and a release requires no version bump.**
-      `packaging/aur/PKGBUILD`, `packaging/copr/retch.spec`,
-      `packaging/homebrew/retch.rb` and `packaging/scoop/retch.json` are **templates**
-      carrying `@VERSION@` / `@SHA256@` (or `@SHA256_X86_64@` / `@SHA256_ARM64@`);
-      `scripts/render_packaging.py` fills those in at publish time, from the tag. So a
-      release is: tag → wait for `release.yml` → `just publish` (which runs pre-flight
-      checks and chains crates.io → `just aur-publish` → `just brew-publish` →
-      `just scoop-publish`, with `SKIP_AUR=1` optional for split-host AUR setups; COPR
-      rebuilds itself off the tag),
-      and nothing is committed afterwards. `main` sits **at** the
-      released version until the next feature PR bumps it — which is what makes
-      `just publish` on `main` correct, and its HEAD-is-the-tag guard is what enforces
-      that rather than trusting it.
-- [ ] If you are touching packaging, the guards run offline in `just check`
-      (`render-check`, `aur-check`, `copr-check`, `brew-check`, `scoop-check`)
-      and assert the templates still record nothing. Do not "fix" one by writing a version
-      back into a template.
-- [ ] **Channel text is part of publishing each channel.** `packaging/metadata.toml` holds the
-      one-line summary, the Homebrew `desc`, the licence, the GitHub description and topics,
-      and the COPR project-page files; `just check` (`metadata-check`) fails when
-      `Cargo.toml`, the PKGBUILD, the spec, the formula or the Scoop manifest
-      drift from it. Text an artifact carries (crates.io description and README, AUR `pkgdesc`,
-      RPM `%description`, the tap's `desc`, the Scoop bucket's `description`) ships with that
-      channel's publish step. The COPR project page is pushed by `copr.yml` on the tag, and
-      GitHub's About box by `just github-metadata` after it. **Before tagging, read the
-      READMEs and those files for claims that are no longer true** — the guard proves the
-      copies agree, not that they are right; the v0.17.9 review found a README flag that does
-      not exist and a crates.io example that did not compile.
-- [ ] History, for anyone reading an old commit: releases up to v0.9.10 committed the
-      packaging bump straight to `main` believing the gate made a PR impossible (it did
-      not); v0.9.12 turned it into a gated PR via `just post-release`; and the bump itself
-      is now gone because nothing records a released version. See NOTES §5.
-
-### 4.10 PR description
-- [ ] Title is concise (≤ 70 chars), imperative mood.
-- [ ] Body summarises *what* changed and *why* (not just a commit list).
-- [ ] Test plan lists manual verification steps the reviewer can follow.
-
-## 5. Merging
-After a PR is merged, run `just merge-pr` to squash-merge via `gh`, switch to `main`,
-pull, delete the local feature branch, and update `WIP.md`. WIP.md is an ongoing
-rolling log, not reset per-PR — `merge-pr` regenerates **only** the state block between the
-`<!-- BEGIN merge-pr state … -->` / `<!-- END merge-pr state -->` markers at the top of the
-file (active branch, main HEAD, versions, newest tag), inserting it on first run. Nothing
-outside the markers is touched, so hand-written entries and open tasks still need updating by
-hand after a merge. It refuses, writing nothing, if the markers are duplicated or unpaired.
-
-## 6. Sandbox Exceptions (`BypassSandbox: true`)
-Always run the following `retch` commands with `BypassSandbox: true` on the **first** attempt — never try them with `BypassSandbox: false` first:
-- **All `gh` / `ghpub` commands** (`gh pr ...`, `gh run ...`, `gh workflow ...`, `gh api ...`, `gh issue ...`): require network access to `api.github.com`.
-- **All `git` write or remote commands** (`git checkout -b`, `git switch`, `git branch -d/-D`, `git add`, `git commit`, `git merge`, `git rebase`, `git tag`, `git fetch`, `git pull`, `git push`): `.git/` is mounted read-only in the sandbox and remote ops need network access.
-- **`just` shebang and network/publish recipes (`#!/usr/bin/env bash` recipes fail in the sandbox with `/run/user/1000/just: Read-only file system (os error 30)`):**
-  - `just pr` / `PR_CONFIRM=y just pr`, `just open-pr` (in Antigravity's PTY, always pass `--fill` or `--title ... --body-file ...`, e.g. `PR_CONFIRM=y just open-pr --fill`, because `[ -t 0 ]` is true in `run_command` and bare `gh pr create` hangs on an interactive prompt), `just merge-pr`, `just prune-branches`
-  - `just audit`, `just publish-check`, `just publish`, `just aur-publish` / `just publish-aur`, `just brew-publish` / `just publish-brew`, `just scoop-publish` / `just publish-scoop`, `just github-metadata`, `just bench-upload`, `just bench-page`
-  - `just logos`, `just install-tag`
-- **Workspace-writing `just` recipes (`docs/retch.1`, `Cargo.lock`, `.git/hooks` fail in the sandbox with `Read-only file system (os error 30)`):**
-  - `just man`, `just fmt`, `just fastfetch-configs`, `just install-hooks`, and `just build` / `just test` / `just check` whenever `Cargo.lock` or `target/` needs writes.
-- **Cargo network operations:** `cargo update` (use `cargo --config net.retry=0 update` with `BypassSandbox: true`), `cargo fetch`, `cargo publish`, `cargo audit`, and the first build after `Cargo.lock` updates a crate not yet cached in `~/.cargo/registry/cache/`.
-- **Live `./target/debug/retch` hardware/session probes** when testing fields that query host sockets/devices unmounted in the sandbox (Wayland/X11/DBus/PipeWire/NetworkManager/udev).
-- **Commands that DO work in the sandbox (`BypassSandbox: false`):**
-  - Read-only `just` check recipes once `target/` and `Cargo.lock` are up to date: `just fmt-check`, `just man-check`, `just packaging-check`, `just standard-check`, `just render-check`, `just aur-check`, `just copr-check`, `just brew-check`, `just scoop-check`, `just metadata-check`, `just text-check`, `just wip-check`, `just bench-check`
-  - Read-only `git` commands: `git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git for-each-ref`
+## 4. Merging
+Run `just merge-pr` (standalone, not piped/chained) once authorized: squash-merges via `gh`, switches to `main`, pulls, deletes local feature branch, and updates `WIP.md`'s marked state block. Afterwards verify `benchmark.yml` for the merge SHA succeeds.
 
 ---
+
+## 5. Sandbox Exceptions (`BypassSandbox: true`)
+Per `~/AGENTS.md` §3, pass `BypassSandbox: true` on the **first** invocation for:
+- **All `gh` / `ghpub` commands** (`gh pr`, `gh run`, `gh workflow`, `gh api`, `gh issue`).
+- **All `git` write or remote commands** (`checkout`, `switch`, `branch`, `add`, `rm`, `mv`, `commit`, `merge`, `rebase`, `cherry-pick`, `reset`, `tag`, `stash`, `fetch`, `pull`, `push`).
+- **`just` shebang & network/publish recipes** (`/run/user/1000/just` is read-only): `just pr` / `PR_CONFIRM=y just pr`, `just open-pr` (always pass `--fill` or `--title ... --body-file ...` in Antigravity PTYs), `just merge-pr`, `just prune-branches`, `just audit`, `just publish-check`, `just publish`, `just aur-publish` / `publish-aur`, `just brew-publish` / `publish-brew`, `just scoop-publish` / `publish-scoop`, `just github-metadata`, `just bench-upload`, `just bench-page`, `just logos`, `just install-tag`.
+- **Workspace-writing `just` recipes** (`docs/retch.1`, `Cargo.lock`, `.git/hooks`, `target/`): `just man`, `just fmt`, `just fastfetch-configs`, `just install-hooks`, and `just build` / `just test` / `just check` whenever `Cargo.lock` or `target/` needs writes.
+- **Cargo network ops:** `cargo --config net.retry=0 update`, `cargo fetch`, `cargo publish`, `cargo audit`, and first build after `Cargo.lock` updates an unpacked/uncached crate.
+- **Live `./target/debug/retch` hardware/session probes** querying host sockets/devices (Wayland/X11/DBus/PipeWire/NM/udev).
+- **Works inside sandbox (`BypassSandbox: false`):** Read-only `just` checks once `target/` & `Cargo.lock` are current (`just fmt-check`, `man-check`, `packaging-check`, `standard-check`, `render-check`, `aur-check`, `copr-check`, `brew-check`, `scoop-check`, `metadata-check`, `text-check`, `wip-check`, `bench-check`) and read-only `git` (`status`, `diff`, `log`, `show`, `rev-parse`, `for-each-ref`).
+- **Repo-Local Sandbox Learning Loop:** Stage new exceptions in `WIP.md` (`## Sandbox Exceptions (staged for AGENTS.md)`) if tree must stay clean; fold into this section on the next PR.
