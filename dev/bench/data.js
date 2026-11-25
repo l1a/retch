@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795630340366,
+  "lastUpdate": 1795630340634,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -37961,6 +37961,118 @@ window.BENCHMARK_DATA = {
           {
             "name": "systeminfo__collect",
             "value": 315515295,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4d5ad5e7e277d8ec2ccce09748e68cb0585d9ff0",
+          "message": "Bump claude-code-action and Cargo deps (#354)\n\nFold Dependabot PRs #352 and #353 into a single gated PR:\n- Bump `anthropics/claude-code-action` from `1.0.276` (`f3b070c8`) to\n  `1.0.286` (`acfe7992`) in `.github/workflows/claude-code-review.yml` and\n  `.github/workflows/claude.yml` (adds `AGENTS.md` to `SENSITIVE_PATHS`,\n  hardens Bun cache/tsconfig isolation, and fixes comma/paren deny-rule\n  parsing).\n- Bump `rusqlite` from `0.42` to `0.43` (`0.43.0`, fixing 3 UAF bugs and\n  rejecting empty/comment-only SQL) in `crates/sysinfo/Cargo.toml`, and\n  update `Cargo.lock` (`clap` `4.6.10`, `clap_complete` `4.6.12`,\n  `clap_complete_nushell` `4.6.3`, `toml` `1.2.3+spec-1.1.0`,\n  `rusqlite` `0.43.0`, plus `clap_derive`, `proc-macro2`, `quote`, `syn`,\n  `toml_parser`).\n- Bump `retch-sysinfo` to `0.1.112` and `retch-cli` to `0.23.8`, update\n  `NOTES.md`, and regenerate `docs/retch.1`.\n\nAssisted-By: Gemini 4 Neon",
+          "timestamp": "2026-11-25T09:55:32-08:00",
+          "tree_id": "0e9ed56ed159869aee70cb3a8d2c70638a3ae8dd",
+          "url": "https://github.com/l1a/retch/commit/4d5ad5e7e277d8ec2ccce09748e68cb0585d9ff0"
+        },
+        "date": 1795630340592,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 47432890,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 2386360009.9999995,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1304294510,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 24168680,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 27238030.000000004,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 276992930,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 237989550,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 24996370,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 251.05927830235456,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.9480216158320545,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 171.12801657203326,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1331.468362681276,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 46611.34912183888,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 563.807992453271,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_netsh_output",
+            "value": 680.2073286439943,
+            "unit": "ns"
+          },
+          {
+            "name": "systeminfo__collect",
+            "value": 234036385,
             "unit": "ns"
           }
         ]
