@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795629371405,
+  "lastUpdate": 1795630339174,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -11633,6 +11633,138 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_proc_net_route",
             "value": 249.28418164649847,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4d5ad5e7e277d8ec2ccce09748e68cb0585d9ff0",
+          "message": "Bump claude-code-action and Cargo deps (#354)\n\nFold Dependabot PRs #352 and #353 into a single gated PR:\n- Bump `anthropics/claude-code-action` from `1.0.276` (`f3b070c8`) to\n  `1.0.286` (`acfe7992`) in `.github/workflows/claude-code-review.yml` and\n  `.github/workflows/claude.yml` (adds `AGENTS.md` to `SENSITIVE_PATHS`,\n  hardens Bun cache/tsconfig isolation, and fixes comma/paren deny-rule\n  parsing).\n- Bump `rusqlite` from `0.42` to `0.43` (`0.43.0`, fixing 3 UAF bugs and\n  rejecting empty/comment-only SQL) in `crates/sysinfo/Cargo.toml`, and\n  update `Cargo.lock` (`clap` `4.6.10`, `clap_complete` `4.6.12`,\n  `clap_complete_nushell` `4.6.3`, `toml` `1.2.3+spec-1.1.0`,\n  `rusqlite` `0.43.0`, plus `clap_derive`, `proc-macro2`, `quote`, `syn`,\n  `toml_parser`).\n- Bump `retch-sysinfo` to `0.1.112` and `retch-cli` to `0.23.8`, update\n  `NOTES.md`, and regenerate `docs/retch.1`.\n\nAssisted-By: Gemini 4 Neon",
+          "timestamp": "2026-11-25T09:55:32-08:00",
+          "tree_id": "0e9ed56ed159869aee70cb3a8d2c70638a3ae8dd",
+          "url": "https://github.com/l1a/retch/commit/4d5ad5e7e277d8ec2ccce09748e68cb0585d9ff0"
+        },
+        "date": 1795630339114,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 2595949.7999999993,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 311417198.1,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 252231963.39999998,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 1322474.2000000002,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 2294414.0000000005,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 534402987.50000006,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 204720171.5,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 1419732.2000000002,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 471600244.65,
+            "unit": "ns"
+          },
+          {
+            "name": "audio__parse_asound_cards",
+            "value": 1624.7431670811652,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 105.04532374333193,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 3.912868081903614,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 69.06994243003602,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_xrandr_displays",
+            "value": 16379.811380759817,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 385548.09806823696,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_freq_range",
+            "value": 11308.421493255826,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 7900.0828348916475,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 103588.90104643612,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 322.2141351998133,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_proc_net_route",
+            "value": 191.50302681566285,
             "unit": "ns"
           }
         ]
