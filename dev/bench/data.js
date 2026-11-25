@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795630339603,
+  "lastUpdate": 1795630340101,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -25627,6 +25627,128 @@ window.BENCHMARK_DATA = {
           {
             "name": "network__parse_iw_link_output",
             "value": 628.1712364975847,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4d5ad5e7e277d8ec2ccce09748e68cb0585d9ff0",
+          "message": "Bump claude-code-action and Cargo deps (#354)\n\nFold Dependabot PRs #352 and #353 into a single gated PR:\n- Bump `anthropics/claude-code-action` from `1.0.276` (`f3b070c8`) to\n  `1.0.286` (`acfe7992`) in `.github/workflows/claude-code-review.yml` and\n  `.github/workflows/claude.yml` (adds `AGENTS.md` to `SENSITIVE_PATHS`,\n  hardens Bun cache/tsconfig isolation, and fixes comma/paren deny-rule\n  parsing).\n- Bump `rusqlite` from `0.42` to `0.43` (`0.43.0`, fixing 3 UAF bugs and\n  rejecting empty/comment-only SQL) in `crates/sysinfo/Cargo.toml`, and\n  update `Cargo.lock` (`clap` `4.6.10`, `clap_complete` `4.6.12`,\n  `clap_complete_nushell` `4.6.3`, `toml` `1.2.3+spec-1.1.0`,\n  `rusqlite` `0.43.0`, plus `clap_derive`, `proc-macro2`, `quote`, `syn`,\n  `toml_parser`).\n- Bump `retch-sysinfo` to `0.1.112` and `retch-cli` to `0.23.8`, update\n  `NOTES.md`, and regenerate `docs/retch.1`.\n\nAssisted-By: Gemini 4 Neon",
+          "timestamp": "2026-11-25T09:55:32-08:00",
+          "tree_id": "0e9ed56ed159869aee70cb3a8d2c70638a3ae8dd",
+          "url": "https://github.com/l1a/retch/commit/4d5ad5e7e277d8ec2ccce09748e68cb0585d9ff0"
+        },
+        "date": 1795630340058,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "value": 397637933.3000001,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "value": 1011642962.4000003,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "value": 1031989054.0999999,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "value": 17989479.100000005,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - retch",
+            "value": 338383845.8,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "value": 412628066.60000014,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "value": 385222720.79999995,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "value": 10441912.4,
+            "unit": "ns",
+            "extra": "v0.23.8"
+          },
+          {
+            "name": "SystemInfo__collect",
+            "value": 328459058.325,
+            "unit": "ns"
+          },
+          {
+            "name": "camera__parse_macos_camera",
+            "value": 623.6884115615264,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_monitor_name_from_edid",
+            "value": 205.49952225139447,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_refresh_rate_from_edid",
+            "value": 2.8634120963364493,
+            "unit": "ns"
+          },
+          {
+            "name": "display__parse_serial_number_from_edid",
+            "value": 110.29604360013384,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__detect_cpu_cache",
+            "value": 13417.213737980706,
+            "unit": "ns"
+          },
+          {
+            "name": "fetch__format_cpu_cores",
+            "value": 1572.2406982971902,
+            "unit": "ns"
+          },
+          {
+            "name": "gamepad__parse_macos_gamepad",
+            "value": 405.8779516089326,
+            "unit": "ns"
+          },
+          {
+            "name": "gpu__detect_gpus",
+            "value": 104939.45563183445,
+            "unit": "ns"
+          },
+          {
+            "name": "network__parse_iw_link_output",
+            "value": 564.6507203259177,
             "unit": "ns"
           }
         ]
