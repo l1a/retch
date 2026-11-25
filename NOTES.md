@@ -44,9 +44,9 @@ crates/sysinfo/                 ← retch-sysinfo crate (no clap dependency)
 
 ---
 
-## Current State (v0.23.7)
+## Current State (v0.23.8)
 
-`main` carries **`retch-cli` 0.23.6** / **`retch-sysinfo` 0.1.111** (newest released tag `v0.23.1`); this branch (`chore/compact-agent-docs`) bumps `retch-cli` to **`0.23.7`** to compact `AGENTS.md` / `NOTES.md` and extract `docs/RELEASE.md`.
+`main` carries **`retch-cli` 0.23.8** / **`retch-sysinfo` 0.1.112** (newest released tag `v0.23.1`).
 
 Key enduring behaviours and architecture (see `git log` for per-release history):
 - **Cross-platform parity & native fast paths:** Fastfetch feature gap (§6) is closed across Linux, macOS, and Windows (aside from deliberate exclusions in §6a/§6c). Linux reads `/run/udev/data/+dmi:id` (`phys-mem`), `/run/udev/data/+pci:<slot>` (`gpu`), `/sys/bus/hdaudio` (`audio`), `/proc` directly (`proc_tree.rs`), and `EGL_PLATFORM_SURFACELESS_MESA` (`opengl`). macOS reads IOKit/CoreGraphics/CoreAudio/CoreWLAN/ObjC directly without `system_profiler`/`diskutil` on Apple Silicon. Windows reads `GetIfTable2` + `GetUnicastIpAddressTable`, SetupAPI (`keyboard`/`mouse`), `\\.\LCD`, `Tbsi_GetDeviceInfo`, SMBIOS Type 4 (`cpu-freq`), `RelationCache`, and Win32 Job Objects (`own_cpu_time`).
