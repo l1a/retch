@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795587497167,
+  "lastUpdate": 1795629371405,
   "repoUrl": "https://github.com/l1a/retch",
   "entries": {
     "Local - Linux x64 (real hardware)": [
@@ -2736,6 +2736,78 @@ window.BENCHMARK_DATA = {
             "unit": "ns",
             "value": 728771854.4,
             "extra": "v0.23.7; AC"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "committer": {
+            "email": "634380+l1a@users.noreply.github.com",
+            "name": "Ken Tobias",
+            "username": "l1a"
+          },
+          "distinct": true,
+          "id": "4d5ad5e7e277d8ec2ccce09748e68cb0585d9ff0",
+          "message": "Bump claude-code-action and Cargo deps (#354)\n\nFold Dependabot PRs #352 and #353 into a single gated PR:\n- Bump `anthropics/claude-code-action` from `1.0.276` (`f3b070c8`) to\n  `1.0.286` (`acfe7992`) in `.github/workflows/claude-code-review.yml` and\n  `.github/workflows/claude.yml` (adds `AGENTS.md` to `SENSITIVE_PATHS`,\n  hardens Bun cache/tsconfig isolation, and fixes comma/paren deny-rule\n  parsing).\n- Bump `rusqlite` from `0.42` to `0.43` (`0.43.0`, fixing 3 UAF bugs and\n  rejecting empty/comment-only SQL) in `crates/sysinfo/Cargo.toml`, and\n  update `Cargo.lock` (`clap` `4.6.10`, `clap_complete` `4.6.12`,\n  `clap_complete_nushell` `4.6.3`, `toml` `1.2.3+spec-1.1.0`,\n  `rusqlite` `0.43.0`, plus `clap_derive`, `proc-macro2`, `quote`, `syn`,\n  `toml_parser`).\n- Bump `retch-sysinfo` to `0.1.112` and `retch-cli` to `0.23.8`, update\n  `NOTES.md`, and regenerate `docs/retch.1`.\n\nAssisted-By: Gemini 4 Neon",
+          "timestamp": "2026-11-25T09:55:32-08:00",
+          "tree_id": "0e9ed56ed159869aee70cb3a8d2c70638a3ae8dd",
+          "url": "https://github.com/l1a/retch/commit/4d5ad5e7e277d8ec2ccce09748e68cb0585d9ff0"
+        },
+        "date": 1795629371405,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CLI execution - retch",
+            "unit": "ns",
+            "value": 2672844.7,
+            "extra": "v0.23.8; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (default)",
+            "unit": "ns",
+            "value": 9220473.1,
+            "extra": "v0.23.8; AC"
+          },
+          {
+            "name": "CLI execution - retch --short",
+            "unit": "ns",
+            "value": 1355416.3,
+            "extra": "v0.23.8; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (short)",
+            "unit": "ns",
+            "value": 1511669.8,
+            "extra": "v0.23.8; AC"
+          },
+          {
+            "name": "CLI execution - retch --long",
+            "unit": "ns",
+            "value": 207065337.89999998,
+            "extra": "v0.23.8; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (long)",
+            "unit": "ns",
+            "value": 615324120.7,
+            "extra": "v0.23.8; AC"
+          },
+          {
+            "name": "CLI execution - retch --full",
+            "unit": "ns",
+            "value": 338821444.3000001,
+            "extra": "v0.23.8; AC"
+          },
+          {
+            "name": "CLI execution - fastfetch (full)",
+            "unit": "ns",
+            "value": 723969624.1000001,
+            "extra": "v0.23.8; AC"
           }
         ]
       }
